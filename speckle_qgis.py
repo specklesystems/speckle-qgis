@@ -24,13 +24,20 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
-from qgis.core import QgsProject
+from qgis.core import QgsProject, Qgis, QgsWkbTypes
 
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
 from .speckle_qgis_dialog import SpeckleQGISDialog
 import os.path
+
+from specklepy.api import operations
+from specklepy.api.client import SpeckleClient
+from specklepy.api.credentials import get_default_account, get_local_accounts
+from specklepy.transports.server import ServerTransport
+from specklepy.objects import Base
+from specklepy.objects.geometry import Point
 
 
 class SpeckleQGIS:
@@ -181,10 +188,91 @@ class SpeckleQGIS:
                 action)
             self.iface.removeToolBarIcon(action)
 
-    def select_output_file(self):
-        filename, _filter = QFileDialog.getSaveFileName(
-            self.dlg, "Select   output file ", "", '*.csv')
-        self.dlg.lineEdit.setText(filename)
+    def onAccountSelected(self, ix):
+        self.speckle_account = self.speckle_accounts[ix]
+        # initialise the client
+        self.speckle_client = SpeckleClient(host=self.speckle_account.serverInfo.url)  # or whatever your host is
+        # client = SpeckleClient(host="localhost:3000", use_ssl=False) or use local server
+        self.speckle_client.authenticate(token=self.speckle_account.token)
+
+        self.iface.messageBar().pushMessage(
+            "Speckle", "Authentication success: " + self.speckle_account.userInfo.name + " - " + self.speckle_account.serverInfo.url,
+            level=Qgis.Success, duration=1)
+
+    def getSelectedLayerObject(self):
+        layers = QgsProject.instance().layerTreeRoot().children()
+        selectedLayerIndex = self.dlg.comboBox.currentIndex()
+        selectedLayer = layers[selectedLayerIndex].layer()
+        fieldnames = [field.name() for field in selectedLayer.fields()]
+        # write header
+        line = ','.join(name for name in fieldnames) + '\n'
+
+        objs = []
+        # write feature attributes
+        for f in selectedLayer.getFeatures():
+            b = Base()
+            geom = self.extractGeometry(f)
+            if(geom != None):
+                b['@displayValue'] = geom
+            for name in fieldnames:
+                self.iface.messageBar().pushMessage(
+                    "Success", "Field name" + str(name),
+                    level=Qgis.Success, duration=3)
+                b[name.replace("/","_").replace(".","-")] = str(f[name])
+            objs.append(b)
+        return objs
+
+    def extractGeometry(self, feature):
+        geom = feature.geometry()
+        geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
+        if geom.type() == QgsWkbTypes.PointGeometry:
+            # the geometry type can be of single or multi type
+            if geomSingleType:
+                pt = geom.asPoint()
+                print("Point: ", pt)
+                return Point(x=pt.x(), y=pt.y())
+            else:
+                x = geom.asMultiPoint()
+                print("MultiPoint: ", x)
+        elif geom.type() == QgsWkbTypes.LineGeometry:
+            if geomSingleType:
+                x = geom.asPolyline()
+                print("Line: ", x, "length: ", geom.length())
+            else:
+                x = geom.asMultiPolyline()
+                print("MultiLine: ", x, "length: ", geom.length())
+        elif geom.type() == QgsWkbTypes.PolygonGeometry:
+            if geomSingleType:
+                x = geom.asPolygon()
+                print("Polygon: ", x, "Area: ", geom.area())
+            else:
+                x = geom.asMultiPolygon()
+                print("MultiPolygon: ", x, "Area: ", geom.area())
+        else:
+            print("Unknown or invalid geometry")
+        return None
+
+    def onSendButtonClicked(self):
+        # here's the data you want to send
+        block = Base(data = self.getSelectedLayerObject())
+        streamId = self.dlg.streamIdField.text()
+        # next create a server transport - this is the vehicle through which you will send and receive
+        transport = ServerTransport(client=self.speckle_client, stream_id=streamId)
+
+        # this serialises the block and sends it to the transport
+        hash = operations.send(base=block, transports=[transport])
+
+        # you can now create a commit on your stream with this object
+        commid_id = self.speckle_client.commit.create(
+            stream_id=streamId,
+            object_id=hash,
+            message="This was sent from QGIS!!",
+            source_application="QGIS"
+        )
+
+        self.iface.messageBar().pushMessage(
+            "Speckle", "Successfully sent data to stream: " + streamId,
+            level=Qgis.Success, duration=3)
 
     def run(self):
         """Run method that performs all the real work"""
@@ -192,13 +280,13 @@ class SpeckleQGIS:
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
 
-
-
         if self.first_start == True:
             self.first_start = False
             self.dlg = SpeckleQGISDialog()
-            self.dlg.pushButton.clicked.connect(self.select_output_file)
 
+            # Setup events on first load only!
+            self.dlg.accountListField.currentIndexChanged.connect(self.onAccountSelected)
+            self.dlg.sendButton.clicked.connect(self.onSendButtonClicked)
         # Fetch the currently loaded layers
         layers = QgsProject.instance().layerTreeRoot().children()
         # Clear the contents of the comboBox from previous runs
@@ -206,24 +294,17 @@ class SpeckleQGIS:
         # Populate the comboBox with names of all the loaded layers
         self.dlg.comboBox.addItems([layer.name() for layer in layers])
 
+        # Populate the accounts comboBox
+        self.speckle_accounts = get_local_accounts()
+        self.dlg.accountListField.clear()
+        self.dlg.accountListField.addItems([acc.userInfo.name + " - " + acc.serverInfo.url for acc in self.speckle_accounts])
+
+
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
-            filename = self.dlg.lineEdit.text()
-            with open(filename, 'w') as output_file:
-                selectedLayerIndex = self.dlg.comboBox.currentIndex()
-                selectedLayer = layers[selectedLayerIndex].layer()
-                fieldnames = [field.name() for field in selectedLayer.fields()]
-                # write header
-                line = ','.join(name for name in fieldnames) + '\n'
-                output_file.write(line)
-                # wirte feature attributes
-
-                for f in selectedLayer.getFeatures():
-                    print('Features!!')
-                    print(f)
-                    line = ','.join(str(f[name]) for name in fieldnames) + '\n'
-                    output_file.write(line)
+            # Do something when ok is pressed, we don't have an ok button so this is nor required for us
+            return
