@@ -10,7 +10,7 @@ version=0.1
 author=Speckle Systems
 email=alan@speckle.systems
 
-about=Specke QGIS About field
+about=SpeckleQGIS
 
 tracker=http://github.com/specklesystems/speckle-qgis/issues
 repository=http://github.com/specklesystems/speckle-qgis
@@ -39,8 +39,6 @@ deprecated=False
 # Check the documentation for more information.
 # plugin_dependencies=
 
-Category of the plugin: Raster, Vector, Database or Web
-# category=
 
 # If the plugin can run on QGIS Server.
 server=False

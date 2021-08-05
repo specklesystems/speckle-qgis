@@ -23,7 +23,8 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QFileDialog
+from qgis.core import QgsProject
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -44,6 +45,7 @@ class SpeckleQGIS:
         :type iface: QgsInterface
         """
         # Save reference to the QGIS interface
+
         self.iface = iface
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
@@ -179,15 +181,30 @@ class SpeckleQGIS:
                 action)
             self.iface.removeToolBarIcon(action)
 
+    def select_output_file(self):
+        filename, _filter = QFileDialog.getSaveFileName(
+            self.dlg, "Select   output file ", "", '*.csv')
+        self.dlg.lineEdit.setText(filename)
 
     def run(self):
         """Run method that performs all the real work"""
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+
+
+
         if self.first_start == True:
             self.first_start = False
             self.dlg = SpeckleQGISDialog()
+            self.dlg.pushButton.clicked.connect(self.select_output_file)
+
+        # Fetch the currently loaded layers
+        layers = QgsProject.instance().layerTreeRoot().children()
+        # Clear the contents of the comboBox from previous runs
+        self.dlg.comboBox.clear()
+        # Populate the comboBox with names of all the loaded layers
+        self.dlg.comboBox.addItems([layer.name() for layer in layers])
 
         # show the dialog
         self.dlg.show()
@@ -195,6 +212,18 @@ class SpeckleQGIS:
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+            filename = self.dlg.lineEdit.text()
+            with open(filename, 'w') as output_file:
+                selectedLayerIndex = self.dlg.comboBox.currentIndex()
+                selectedLayer = layers[selectedLayerIndex].layer()
+                fieldnames = [field.name() for field in selectedLayer.fields()]
+                # write header
+                line = ','.join(name for name in fieldnames) + '\n'
+                output_file.write(line)
+                # wirte feature attributes
+
+                for f in selectedLayer.getFeatures():
+                    print('Features!!')
+                    print(f)
+                    line = ','.join(str(f[name]) for name in fieldnames) + '\n'
+                    output_file.write(line)
