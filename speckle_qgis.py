@@ -24,7 +24,7 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
-from qgis.core import QgsProject, Qgis, QgsWkbTypes
+from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMessageLog
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -38,6 +38,7 @@ from specklepy.api.credentials import get_default_account, get_local_accounts
 from specklepy.transports.server import ServerTransport
 from specklepy.objects import Base
 from specklepy.objects.geometry import Point
+
 
 
 class SpeckleQGIS:
@@ -204,8 +205,6 @@ class SpeckleQGIS:
         selectedLayerIndex = self.dlg.comboBox.currentIndex()
         selectedLayer = layers[selectedLayerIndex].layer()
         fieldnames = [field.name() for field in selectedLayer.fields()]
-        # write header
-        line = ','.join(name for name in fieldnames) + '\n'
 
         objs = []
         # write feature attributes
@@ -215,9 +214,6 @@ class SpeckleQGIS:
             if(geom != None):
                 b['@displayValue'] = geom
             for name in fieldnames:
-                self.iface.messageBar().pushMessage(
-                    "Success", "Field name" + str(name),
-                    level=Qgis.Success, duration=3)
                 b[name.replace("/","_").replace(".","-")] = str(f[name])
             objs.append(b)
         return objs
@@ -270,9 +266,7 @@ class SpeckleQGIS:
             source_application="QGIS"
         )
 
-        self.iface.messageBar().pushMessage(
-            "Speckle", "Successfully sent data to stream: " + streamId,
-            level=Qgis.Success, duration=3)
+        self.log("Successfully sent data to stream: " + streamId)
 
     def run(self):
         """Run method that performs all the real work"""
@@ -287,6 +281,10 @@ class SpeckleQGIS:
             # Setup events on first load only!
             self.dlg.accountListField.currentIndexChanged.connect(self.onAccountSelected)
             self.dlg.sendButton.clicked.connect(self.onSendButtonClicked)
+
+            import pydevd
+            pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True)
+
         # Fetch the currently loaded layers
         layers = QgsProject.instance().layerTreeRoot().children()
         # Clear the contents of the comboBox from previous runs
@@ -308,3 +306,11 @@ class SpeckleQGIS:
         if result:
             # Do something when ok is pressed, we don't have an ok button so this is nor required for us
             return
+
+    def logToUser(self, message, title= "Speckle", level=Qgis.Info, duration=3):
+        self.iface.messageBar().pushMessage(
+            title, message,
+            level=Qgis.Success, duration=3)
+
+    def log(self, message, level=Qgis.Info):
+        QgsMessageLog.logMessage(message, 'SpeckleQGIS', level=Qgis.Info)
