@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>401</width>
     <height>300</height>
    </rect>
   </property>
@@ -129,39 +129,6 @@
    <property name="text">
     <string>Receive</string>
    </property>
-  </widget>
-  <widget class="QScrollArea" name="scrollArea">
-   <property name="geometry">
-    <rect>
-     <x>100</x>
-     <y>150</y>
-     <width>281</width>
-     <height>91</height>
-    </rect>
-   </property>
-   <property name="widgetResizable">
-    <bool>true</bool>
-   </property>
-   <widget class="QWidget" name="scrollAreaWidgetContents">
-    <property name="geometry">
-     <rect>
-      <x>0</x>
-      <y>0</y>
-      <width>279</width>
-      <height>89</height>
-     </rect>
-    </property>
-    <widget class="QListWidget" name="listWidget">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>1</y>
-       <width>281</width>
-       <height>192</height>
-      </rect>
-     </property>
-    </widget>
-   </widget>
   </widget>
  </widget>
  <resources/>

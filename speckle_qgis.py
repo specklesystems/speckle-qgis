@@ -180,7 +180,6 @@ class SpeckleQGIS:
         # will be set False in run()
         self.first_start = True
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
@@ -282,9 +281,11 @@ class SpeckleQGIS:
             self.dlg.accountListField.currentIndexChanged.connect(self.onAccountSelected)
             self.dlg.sendButton.clicked.connect(self.onSendButtonClicked)
 
-            import pydevd
-            pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True)
-
+            try:
+                import pydevd
+                pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True)
+            except:
+                self.logToUser('Debugger failed to attach')
         # Fetch the currently loaded layers
         layers = QgsProject.instance().layerTreeRoot().children()
         # Clear the contents of the comboBox from previous runs
@@ -307,10 +308,10 @@ class SpeckleQGIS:
             # Do something when ok is pressed, we don't have an ok button so this is nor required for us
             return
 
-    def logToUser(self, message, title= "Speckle", level=Qgis.Info, duration=3):
+    def logToUser(self, message, level=Qgis.Info, duration=3):
         self.iface.messageBar().pushMessage(
-            title, message,
-            level=Qgis.Success, duration=3)
+            "Speckle", message,
+            level=level, duration=duration)
 
     def log(self, message, level=Qgis.Info):
-        QgsMessageLog.logMessage(message, 'SpeckleQGIS', level=Qgis.Info)
+        QgsMessageLog.logMessage(message, 'Speckle', level=level)
