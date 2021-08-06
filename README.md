@@ -80,7 +80,9 @@ It is not required, but extremelly recommended, to install these plugins from th
 Only *remote debugging* has been successfully set up in PyCharm. It should work on other IDE's with some configuration.
 
 1. First, create a `Python Debug Server` configuration with the port 53100 and run it.
-2. Then open QGIS and press the 'Speckle' button to open the pop-up window. Your IDE should hit a breakpoint on `speckle_qgis.py` at first. From then, your app will hit all other breakpoints set in your IDE.
+   ![Screenshot 2021-08-06 at 10 08 25](https://user-images.githubusercontent.com/2316535/128479786-014c0ae9-6710-4f25-8a30-c9155ac881cc.png)
+
+3. Then open QGIS and press the 'Speckle' button to open the pop-up window. Your IDE should hit a breakpoint on `speckle_qgis.py` at first. From then, your app will hit all other breakpoints set in your IDE.
 
 Enjoy!
 
