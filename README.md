@@ -53,14 +53,69 @@ http://www.qgis.org/pyqgis-cookbook/index.html
 
 </details>
 
-## Setup
+## Installation
 
-Setup is a bit cumbersome for now. First, follow the instructions on the "Get the tools" section of [this tutorial](https://www.qgistutorials.com/en/docs/3/building_a_python_plugin.html#get-the-tools)
+This plugin is still in early development and should only be used for testing. If you'd like to be an early tester and provide us with feedback and feature requests, forge ahead!
 
-You'll also need to manually install `specklepy` on your QGIS python interpeter.
+### Adding the Plugin
 
-- Find your interpeter's path:
-  - Windows: `C:\Program Files\QGIS 3.20.1\apps\Python39\Lib\`
+First, you'll need to place the `speckle_qgis` folder into your plugins folder. To find this folder, go to the "Settings" menu and select "User Profiles" > "Open Active Profile Folder".
+
+![active project folder](https://user-images.githubusercontent.com/7717434/129204454-11685461-cfe2-483a-8f91-77b5e8e8107b.png)
+
+Inside this folder, navigate into the `python` folder then the `plugins` folder. Once inside the `plugins` folder, drop your `speckle_qgis` folder into it.
+
+![plugins folder](https://user-images.githubusercontent.com/7717434/129224685-896b6102-746c-4c86-84eb-55226161f9ac.png)
+
+
+### Speckle Dependencies
+
+Before you can launch the plugin, you'll need to add the Speckle dependencies. To do this, you'll need to head to your QGIS installation folder and find the Python `site-packages` folder. This is in a different location from your plugins folder.
+
+For QGIS 3.20, you'll find this folder at:
+- Windows: `C:\Program Files\QGIS 3.20.1\apps\Python39\Lib\site-packages`
+- MacOS: 
+
+![site packages](https://user-images.githubusercontent.com/7717434/129223920-d7d428cf-5f56-44e9-a932-7ada175712aa.png)
+
+Drop the *contents* of the included `dependencies` folder (not the folder itself) into the `site-packages` folder to add `specklepy` and all its dependencies to your QGIS environment.
+
+![specklepy in packages folder](https://user-images.githubusercontent.com/7717434/129224484-24afc749-4d41-4dbc-9d02-dff5ee5a7358.png)
+
+### Launching the Plugin
+
+You should now launch QGIS and you should see SpeckleQGIS in your installed plugins. Click the blue brick in the toolbar to open the plugin.
+
+![image](https://user-images.githubusercontent.com/7717434/129228049-266a1e86-9b1b-48f4-b421-5e1757dd89ad.png)
+
+
+## Developing
+### Setup
+
+Setup is a bit cumbersome for now. The following is adapted from [this tutorial](https://www.qgistutorials.com/en/docs/3/building_a_python_plugin.html#get-the-tools)
+
+#### Qt Creator
+
+To edit the UI of the plugin, you'll want to install Qt creator. You can find the free installers on [this page](https://www.qt.io/offline-installers) in the "Qt Creator" tab. On Windows, you'll be prompted to create an account during the installation process.
+
+![qt creator install](https://user-images.githubusercontent.com/7717434/129229210-1899ae09-ec4f-4b52-bf18-99ca75e66292.png)
+
+#### Python Qt Bindings
+
+For Windows, the bindings are already included in the QGIS installation.
+
+For Mac, you can install `PyQt` using [homebrew](https://brew.sh/).
+
+```sh
+brew install pyqt
+```
+
+#### Installing `specklepy`
+
+You'll also need to manually install `specklepy` in the QGIS python environment. This will add `specklepy` and its dependencies to the QGIS python's `site-packages` folder.
+
+- Find your interpreter's path:
+  - Windows: `C:\Program Files\QGIS 3.20.1\apps\Python39\`
   - Mac: `/Applications/QGIS.app/Contents/MacOS/bin`
 - Use the command line to install `specklepy`
   - `QGIS_PYTHON_PATH -m pip install specklepy`
@@ -70,12 +125,12 @@ You'll also need to manually install `specklepy` on your QGIS python interpeter.
 
 ### QGIS Plugins
 
-It is not required, but extremelly recommended, to install these plugins from the QGIS Plugin Manager:
+Though it is not required, we recommend installing these plugins from the QGIS Plugin Manager:
 
-- Plugin Reloader
-- Remote Debugger
+- Plugin Reloader (allows you to reload the plugin without restarting QGIS)
+- Remote Debugger (enables interactive debugging)
 
-## Debug
+### Debug
 
 Only *remote debugging* has been successfully set up in PyCharm. It should work on other IDE's with some configuration.
 
