@@ -21,10 +21,11 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QFileDialog
-from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMessageLog
+from qgis.PyQt.QtWidgets import QAction
+from qgis.core import QgsProject, Qgis, QgsMessageLog
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -34,11 +35,12 @@ import os.path
 
 from specklepy.api import operations
 from specklepy.api.client import SpeckleClient
-from specklepy.api.credentials import get_default_account, get_local_accounts
+from specklepy.api.credentials import get_local_accounts
 from specklepy.transports.server import ServerTransport
 from specklepy.objects import Base
-from specklepy.objects.geometry import Point
 
+from .speckle.logging import *
+from .speckle.geometry import *
 
 
 class SpeckleQGIS:
@@ -209,43 +211,13 @@ class SpeckleQGIS:
         # write feature attributes
         for f in selectedLayer.getFeatures():
             b = Base()
-            geom = self.extractGeometry(f)
+            geom = extractGeometry(f)
             if(geom != None):
                 b['@displayValue'] = geom
             for name in fieldnames:
                 b[name.replace("/","_").replace(".","-")] = str(f[name])
             objs.append(b)
         return objs
-
-    def extractGeometry(self, feature):
-        geom = feature.geometry()
-        geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
-        if geom.type() == QgsWkbTypes.PointGeometry:
-            # the geometry type can be of single or multi type
-            if geomSingleType:
-                pt = geom.asPoint()
-                print("Point: ", pt)
-                return Point(x=pt.x(), y=pt.y())
-            else:
-                x = geom.asMultiPoint()
-                print("MultiPoint: ", x)
-        elif geom.type() == QgsWkbTypes.LineGeometry:
-            if geomSingleType:
-                x = geom.asPolyline()
-                print("Line: ", x, "length: ", geom.length())
-            else:
-                x = geom.asMultiPolyline()
-                print("MultiLine: ", x, "length: ", geom.length())
-        elif geom.type() == QgsWkbTypes.PolygonGeometry:
-            if geomSingleType:
-                x = geom.asPolygon()
-                print("Polygon: ", x, "Area: ", geom.area())
-            else:
-                x = geom.asMultiPolygon()
-                print("MultiPolygon: ", x, "Area: ", geom.area())
-        else:
-            print("Unknown or invalid geometry")
-        return None
 
     def onSendButtonClicked(self):
         # here's the data you want to send
@@ -254,18 +226,25 @@ class SpeckleQGIS:
         # next create a server transport - this is the vehicle through which you will send and receive
         transport = ServerTransport(client=self.speckle_client, stream_id=streamId)
 
-        # this serialises the block and sends it to the transport
-        hash = operations.send(base=block, transports=[transport])
+        try:
+            # this serialises the block and sends it to the transport
+            hash = operations.send(base=block, transports=[transport])
+        except:
+            logToUser(self.iface,"Error sending data", Qgis.Critical)
+            return
 
-        # you can now create a commit on your stream with this object
-        commid_id = self.speckle_client.commit.create(
-            stream_id=streamId,
-            object_id=hash,
-            message="This was sent from QGIS!!",
-            source_application="QGIS"
-        )
-
-        self.log("Successfully sent data to stream: " + streamId)
+        try:
+            # you can now create a commit on your stream with this object
+            commid_id = self.speckle_client.commit.create(
+                stream_id=streamId,
+                object_id=hash,
+                message="This was sent from QGIS!!",
+                source_application="QGIS"
+            )
+        except:
+            logToUser(self.iface, "Error creating commit", Qgis.Critical)
+            return
+        logToUser(self.iface, "Successfully sent data to stream: " + streamId)
 
     def run(self):
         """Run method that performs all the real work"""
@@ -285,7 +264,7 @@ class SpeckleQGIS:
                 import pydevd
                 pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True)
             except:
-                self.logToUser('Debugger failed to attach')
+                log(self.iface, 'Debugger failed to attach')
         # Fetch the currently loaded layers
         layers = QgsProject.instance().layerTreeRoot().children()
         # Clear the contents of the comboBox from previous runs
@@ -303,15 +282,8 @@ class SpeckleQGIS:
         self.dlg.show()
         # Run the dialog event loop
         result = self.dlg.exec_()
-        # See if OK was pressed
+        # See if OK was pressedzx
         if result:
             # Do something when ok is pressed, we don't have an ok button so this is nor required for us
             return
 
-    def logToUser(self, message, level=Qgis.Info, duration=3):
-        self.iface.messageBar().pushMessage(
-            "Speckle", message,
-            level=level, duration=duration)
-
-    def log(self, message, level=Qgis.Info):
-        QgsMessageLog.logMessage(message, 'Speckle', level=level)
