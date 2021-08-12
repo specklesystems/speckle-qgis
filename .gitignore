@@ -113,3 +113,4 @@ venv.bak/
 # other
 scratch.py
 settings.json
+**/.DS_Store
