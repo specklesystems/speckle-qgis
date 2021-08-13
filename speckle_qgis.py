@@ -281,11 +281,6 @@ class SpeckleQGIS:
             self.dlg.accountListField.currentIndexChanged.connect(self.onAccountSelected)
             self.dlg.sendButton.clicked.connect(self.onSendButtonClicked)
 
-            try:
-                import pydevd
-                pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True)
-            except:
-                self.logToUser('Debugger failed to attach')
         # Fetch the currently loaded layers
         layers = QgsProject.instance().layerTreeRoot().children()
         # Clear the contents of the comboBox from previous runs

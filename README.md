@@ -196,15 +196,6 @@ That's all there is to it! Now any breakpoints you create should be hit.
 
 ![successful debugging in vs code](https://user-images.githubusercontent.com/7717434/129324011-42ebd156-ba6b-4eca-8b67-22300eb462fc.png)
 
-#### PyCharm
-
-You can set up _remote debugging_ in PyCharm Pro. It should work on other IDE's with some configuration.
-
-1. First, create a `Python Debug Server` configuration with the port 53100 and run it.
-   ![Screenshot 2021-08-06 at 10 08 25](https://user-images.githubusercontent.com/2316535/128479786-014c0ae9-6710-4f25-8a30-c9155ac881cc.png)
-
-2. Then open QGIS and press the 'Speckle' button to open the pop-up window. Your IDE should hit a breakpoint on `speckle_qgis.py` at first. From then, your app will hit all other breakpoints set in your IDE.
-
 Enjoy!
 
 ## Deploy
