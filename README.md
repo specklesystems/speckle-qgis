@@ -152,7 +152,7 @@ You'll also need to manually install `specklepy` in the QGIS python environment.
 For a better development experience in your editor, we recommend creating a virtual environment. In the venv, you'll just need to install `specklepy`. You will also need to copy over the `qgis` module into the `{venv}/Lib/site-packages`. You can find the `qgis` module in your QGIS install directory:
 
 - Windows: `C:\Program Files\QGIS 3.20.1\apps\qgis\python`
-- MacOS:
+- MacOS: `/Applications/QGIS.app/Contents/Resources/python`
 
 ![qgis dependency for venv](https://user-images.githubusercontent.com/7717434/129324330-1744cc1e-8657-4ef1-90eb-d1ffb2b0229e.png)
 
