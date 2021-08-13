@@ -21,10 +21,11 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QFileDialog
-from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMessageLog
+from qgis.PyQt.QtWidgets import QAction
+from qgis.core import QgsProject, Qgis
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -34,12 +35,12 @@ import os.path
 
 from specklepy.api import operations
 from specklepy.api.client import SpeckleClient
-from specklepy.api.credentials import get_default_account, get_local_accounts
+from specklepy.api.credentials import get_local_accounts
 from specklepy.transports.server import ServerTransport
 from specklepy.objects import Base
-from specklepy.objects.geometry import Point
 
-
+from .speckle.logging import *
+from .speckle.geometry import *
 
 class SpeckleQGIS:
     """QGIS Plugin Implementation."""
@@ -92,18 +93,17 @@ class SpeckleQGIS:
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('SpeckleQGIS', message)
 
-
     def add_action(
-        self,
-        icon_path,
-        text,
-        callback,
-        enabled_flag=True,
-        add_to_menu=True,
-        add_to_toolbar=True,
-        status_tip=None,
-        whats_this=None,
-        parent=None):
+            self,
+            icon_path,
+            text,
+            callback,
+            enabled_flag=True,
+            add_to_menu=True,
+            add_to_toolbar=True,
+            status_tip=None,
+            whats_this=None,
+            parent=None):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -196,7 +196,8 @@ class SpeckleQGIS:
         self.speckle_client.authenticate(token=self.speckle_account.token)
 
         self.iface.messageBar().pushMessage(
-            "Speckle", "Authentication success: " + self.speckle_account.userInfo.name + " - " + self.speckle_account.serverInfo.url,
+            "Speckle",
+            "Authentication success: " + self.speckle_account.userInfo.name + " - " + self.speckle_account.serverInfo.url,
             level=Qgis.Success, duration=1)
 
     def getSelectedLayerObject(self):
@@ -209,63 +210,43 @@ class SpeckleQGIS:
         # write feature attributes
         for f in selectedLayer.getFeatures():
             b = Base()
-            geom = self.extractGeometry(f)
-            if(geom != None):
-                b['@displayValue'] = geom
+            try:
+                geom = extractGeometry(f)
+                if (geom != None):
+                    b['@displayValue'] = geom
+            except:
+                logToUser(self.iface,"Error converting geometry", Qgis.Critical)
             for name in fieldnames:
-                b[name.replace("/","_").replace(".","-")] = str(f[name])
+                b[name.replace("/", "_").replace(".", "-")] = str(f[name])
             objs.append(b)
         return objs
 
-    def extractGeometry(self, feature):
-        geom = feature.geometry()
-        geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
-        if geom.type() == QgsWkbTypes.PointGeometry:
-            # the geometry type can be of single or multi type
-            if geomSingleType:
-                pt = geom.asPoint()
-                print("Point: ", pt)
-                return Point(x=pt.x(), y=pt.y())
-            else:
-                x = geom.asMultiPoint()
-                print("MultiPoint: ", x)
-        elif geom.type() == QgsWkbTypes.LineGeometry:
-            if geomSingleType:
-                x = geom.asPolyline()
-                print("Line: ", x, "length: ", geom.length())
-            else:
-                x = geom.asMultiPolyline()
-                print("MultiLine: ", x, "length: ", geom.length())
-        elif geom.type() == QgsWkbTypes.PolygonGeometry:
-            if geomSingleType:
-                x = geom.asPolygon()
-                print("Polygon: ", x, "Area: ", geom.area())
-            else:
-                x = geom.asMultiPolygon()
-                print("MultiPolygon: ", x, "Area: ", geom.area())
-        else:
-            print("Unknown or invalid geometry")
-        return None
-
     def onSendButtonClicked(self):
         # here's the data you want to send
-        block = Base(data = self.getSelectedLayerObject())
+        block = Base(data=self.getSelectedLayerObject())
         streamId = self.dlg.streamIdField.text()
         # next create a server transport - this is the vehicle through which you will send and receive
         transport = ServerTransport(client=self.speckle_client, stream_id=streamId)
 
-        # this serialises the block and sends it to the transport
-        hash = operations.send(base=block, transports=[transport])
+        try:
+            # this serialises the block and sends it to the transport
+            hash = operations.send(base=block, transports=[transport])
+        except:
+            logToUser(self.iface, "Error sending data", Qgis.Critical)
+            return
 
-        # you can now create a commit on your stream with this object
-        commid_id = self.speckle_client.commit.create(
-            stream_id=streamId,
-            object_id=hash,
-            message="This was sent from QGIS!!",
-            source_application="QGIS"
-        )
-
-        self.log("Successfully sent data to stream: " + streamId)
+        try:
+            # you can now create a commit on your stream with this object
+            commit_id = self.speckle_client.commit.create(
+                stream_id=streamId,
+                object_id=hash,
+                message="This was sent from QGIS!!",
+                source_application="QGIS"
+            )
+        except:
+            logToUser(self.iface, "Error creating commit", Qgis.Critical)
+            return
+        logToUser(self.iface, "Successfully sent data to stream: " + streamId)
 
     def run(self):
         """Run method that performs all the real work"""
@@ -291,8 +272,8 @@ class SpeckleQGIS:
         # Populate the accounts comboBox
         self.speckle_accounts = get_local_accounts()
         self.dlg.accountListField.clear()
-        self.dlg.accountListField.addItems([acc.userInfo.name + " - " + acc.serverInfo.url for acc in self.speckle_accounts])
-
+        self.dlg.accountListField.addItems(
+            [acc.userInfo.name + " - " + acc.serverInfo.url for acc in self.speckle_accounts])
 
         # show the dialog
         self.dlg.show()
@@ -302,11 +283,3 @@ class SpeckleQGIS:
         if result:
             # Do something when ok is pressed, we don't have an ok button so this is nor required for us
             return
-
-    def logToUser(self, message, level=Qgis.Info, duration=3):
-        self.iface.messageBar().pushMessage(
-            "Speckle", message,
-            level=level, duration=duration)
-
-    def log(self, message, level=Qgis.Info):
-        QgsMessageLog.logMessage(message, 'Speckle', level=level)
