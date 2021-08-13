@@ -17,6 +17,19 @@ This repo contains the QGIS plugin for Speckle 2.0. It is written in `python` an
 > Although we're still in early development stages, we encourage you to try out the latest stable release.
 > Just follow the instructions on this file, and head to the [Releases page](https://github.com/specklesystems/speckle-qgis/releases) to download the necessary files and dependencies.
 >
+> **What can it do?**
+>
+> Currently, the plugin allows to send data from a single layer to a Speckle server using one of the accounts configured on your computer. It will extract all the features of that layer along side their properties and, when possible, geometry too.
+> The following geometry types are supported for now:
+>
+> - Point
+> - Multipoint
+> - Polyline (LineString)
+> - MultiLineString
+> - Polygon
+> - MultiPolygon
+> - **More to come!!**
+>
 > If you have questions, you can always find us at our [Community forum](https://speckle.community)
 
 <details>
