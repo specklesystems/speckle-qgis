@@ -123,6 +123,14 @@ You'll also need to manually install `specklepy` in the QGIS python environment.
 
 **THIS WILL NOT WORK ON DEPLOYMENT, WE NEED TO COME UP WITH A BETTER STRATEGY BUT FOR DEV PURPOSES ITS FINE FOR NOW**
 
+#### Dev Environment
+
+For a better development experience in your editor, we recommend creating a virtual environment. In the venv, you'll just need to install `specklepy`. You will also need to copy over the `qgis` module into the `{venv}/Lib/site-packages`. You can find the `qgis` module in your QGIS install directory:
+- Windows: `C:\Program Files\QGIS 3.20.1\apps\qgis\python`
+- MacOS: 
+
+![qgis dependency for venv](https://user-images.githubusercontent.com/7717434/129324330-1744cc1e-8657-4ef1-90eb-d1ffb2b0229e.png)
+
 ### QGIS Plugins
 
 Though it is not required, we recommend installing these plugins from the QGIS Plugin Manager:
@@ -130,14 +138,47 @@ Though it is not required, we recommend installing these plugins from the QGIS P
 - Plugin Reloader (allows you to reload the plugin without restarting QGIS)
 - Remote Debugger (enables interactive debugging)
 
-### Debug
+### Debugging
 
-Only *remote debugging* has been successfully set up in PyCharm. It should work on other IDE's with some configuration.
+#### Visual Studio Code
+
+In VS Code, you can use the built in python debugger. You'll need to create a debug configuration by creating a `launch.json` file.
+
+![create debug config](https://user-images.githubusercontent.com/7717434/129330416-87513b88-4138-4fc8-ae73-5c2d2846ebd8.png)
+
+Select the "Python" -> "Attach using Process ID" option. Your `launch.json` should look like this:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Attach using Process Id",
+      "type": "python",
+      "request": "attach",
+      "processId": "${command:pickProcess}"
+    }
+  ]
+}
+```
+
+To start debugging, you'll need to first launch QGIS. Once it's running, run your debug configuration. You'll see a dropdown where you can search for and select the `qgis-bin.exe` process. 
+
+![select process to attach to](https://user-images.githubusercontent.com/7717434/129324015-7a294488-235c-4004-bc6d-c147a4e597e6.png)
+
+That's all there is to it! Now any breakpoints you create should be hit.
+
+![successful debugging in vs code](https://user-images.githubusercontent.com/7717434/129324011-42ebd156-ba6b-4eca-8b67-22300eb462fc.png)
+
+
+#### PyCharm
+
+You can set up *remote debugging* in PyCharm Pro. It should work on other IDE's with some configuration.
 
 1. First, create a `Python Debug Server` configuration with the port 53100 and run it.
    ![Screenshot 2021-08-06 at 10 08 25](https://user-images.githubusercontent.com/2316535/128479786-014c0ae9-6710-4f25-8a30-c9155ac881cc.png)
 
-3. Then open QGIS and press the 'Speckle' button to open the pop-up window. Your IDE should hit a breakpoint on `speckle_qgis.py` at first. From then, your app will hit all other breakpoints set in your IDE.
+2. Then open QGIS and press the 'Speckle' button to open the pop-up window. Your IDE should hit a breakpoint on `speckle_qgis.py` at first. From then, your app will hit all other breakpoints set in your IDE.
 
 Enjoy!
 
