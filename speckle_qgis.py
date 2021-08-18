@@ -301,7 +301,6 @@ class SpeckleQGIS:
     def reloadUI(self):
         self.populateAccountsDropdown()
         self.populateLayerDropdown()
-        logToUser(self.iface, "Speckle panel reloaded")
 
     def run(self):
         """Run method that performs all the real work"""
@@ -321,8 +320,14 @@ class SpeckleQGIS:
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
+            # Populate the UI dropdowns
             self.populateLayerDropdown()
             self.populateAccountsDropdown()
+            
+            # Setup reload of UI dropdowns when layers change.
+            layerRoot = QgsProject.instance()
+            layerRoot.layersAdded.connect(self.reloadUI)
+            layerRoot.layersRemoved.connect(self.reloadUI)
 
             # show the dockwidget
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
