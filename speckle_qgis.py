@@ -42,6 +42,30 @@ from specklepy.objects import Base
 from .speckle.logging import *
 from .speckle.geometry import *
 
+
+import sys
+import traceback
+from qgis.core import QgsMessageLog, Qgis
+
+
+MESSAGE_CATEGORY = 'Messages'
+
+
+def enable_remote_debugging():
+    try:
+        import ptvsd
+        if ptvsd.is_attached():
+            QgsMessageLog.logMessage("Remote Debug for Visual Studio is already active", MESSAGE_CATEGORY, Qgis.Info)
+            return
+        ptvsd.enable_attach(address=('localhost', 5678))
+        QgsMessageLog.logMessage("Attached remote Debug for Visual Studio", MESSAGE_CATEGORY, Qgis.Info)
+    except Exception as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        format_exception = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        QgsMessageLog.logMessage(repr(format_exception[0]), MESSAGE_CATEGORY, Qgis.Critical)
+        QgsMessageLog.logMessage(repr(format_exception[1]), MESSAGE_CATEGORY, Qgis.Critical)
+        QgsMessageLog.logMessage(repr(format_exception[2]), MESSAGE_CATEGORY, Qgis.Critical)
+
 class SpeckleQGIS:
     """QGIS Plugin Implementation."""
 
@@ -53,6 +77,7 @@ class SpeckleQGIS:
             application at run time.
         :type iface: QgsInterface
         """
+        enable_remote_debugging()
         # Save reference to the QGIS interface
 
         self.iface = iface
@@ -210,11 +235,6 @@ class SpeckleQGIS:
         # client = SpeckleClient(host="localhost:3000", use_ssl=False) or use local server
         self.speckle_client.authenticate(token=self.speckle_account.token)
 
-        self.iface.messageBar().pushMessage(
-            "Speckle",
-            "Authentication success: " + self.speckle_account.userInfo.name + " - " + self.speckle_account.serverInfo.url,
-            level=Qgis.Success, duration=1)
-
     def getSelectedLayerObject(self):
         layers = QgsProject.instance().layerTreeRoot().children()
         selectedLayerIndex = self.dockwidget.layersField.currentIndex()
@@ -258,10 +278,30 @@ class SpeckleQGIS:
                 message="This was sent from QGIS!!",
                 source_application="QGIS"
             )
+            logToUser(self.iface, "Successfully sent data to stream: " + streamId)
         except:
             logToUser(self.iface, "Error creating commit", Qgis.Critical)
             return
-        logToUser(self.iface, "Successfully sent data to stream: " + streamId)
+
+    def populateLayerDropdown(self):
+        # Fetch the currently loaded layers
+        layers = QgsProject.instance().layerTreeRoot().children()
+        # Clear the contents of the comboBox from previous runs
+        self.dockwidget.layersField.clear()
+        # Populate the comboBox with names of all the loaded layers
+        self.dockwidget.layersField.addItems([layer.name() for layer in layers])
+
+    def populateAccountsDropdown(self):
+        # Populate the accounts comboBox
+        self.speckle_accounts = get_local_accounts()
+        self.dockwidget.accountListField.clear()
+        self.dockwidget.accountListField.addItems(
+            [acc.userInfo.name + " - " + acc.serverInfo.url for acc in self.speckle_accounts])
+
+    def reloadUI(self):
+        self.populateAccountsDropdown()
+        self.populateLayerDropdown()
+        logToUser(self.iface, "Speckle panel reloaded")
 
     def run(self):
         """Run method that performs all the real work"""
@@ -277,24 +317,13 @@ class SpeckleQGIS:
             # Setup events on first load only!
             self.dockwidget.accountListField.currentIndexChanged.connect(self.onAccountSelected)
             self.dockwidget.sendButton.clicked.connect(self.onSendButtonClicked)
-
+            self.dockwidget.reloadButton.clicked.connect(self.reloadUI)
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
-            # Fetch the currently loaded layers
-            layers = QgsProject.instance().layerTreeRoot().children()
-            # Clear the contents of the comboBox from previous runs
-            self.dockwidget.layersField.clear()
-            # Populate the comboBox with names of all the loaded layers
-            self.dockwidget.layersField.addItems([layer.name() for layer in layers])
+            self.populateLayerDropdown()
+            self.populateAccountsDropdown()
 
-            # Populate the accounts comboBox
-            self.speckle_accounts = get_local_accounts()
-            self.dockwidget.accountListField.clear()
-            self.dockwidget.accountListField.addItems(
-                [acc.userInfo.name + " - " + acc.serverInfo.url for acc in self.speckle_accounts])
-
-                            # show the dockwidget
-            # TODO: fix to allow choice of dock location
+            # show the dockwidget
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
