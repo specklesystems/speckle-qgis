@@ -22,7 +22,7 @@
  ***************************************************************************/
 """
 
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 from qgis.core import QgsProject, Qgis
@@ -76,7 +76,8 @@ class SpeckleQGIS:
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
-        self.first_start = None
+        self.pluginIsActive = False
+        self.dockwidget = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -177,8 +178,21 @@ class SpeckleQGIS:
             callback=self.run,
             parent=self.iface.mainWindow())
 
-        # will be set False in run()
-        self.first_start = True
+    def onClosePlugin(self):
+        """Cleanup necessary items here when plugin dockwidget is closed"""
+
+        #print "** CLOSING FakePlugin"
+
+        # disconnects
+        self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
+
+        # remove this statement if dockwidget is to remain
+        # for reuse if plugin is reopened
+        # Commented next statement since it causes QGIS crashe
+        # when closing the docked window:
+        # self.dockwidget = None
+
+        self.pluginIsActive = False
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -187,6 +201,7 @@ class SpeckleQGIS:
                 self.tr(u'&SpeckleQGIS'),
                 action)
             self.iface.removeToolBarIcon(action)
+
 
     def onAccountSelected(self, ix):
         self.speckle_account = self.speckle_accounts[ix]
@@ -202,7 +217,7 @@ class SpeckleQGIS:
 
     def getSelectedLayerObject(self):
         layers = QgsProject.instance().layerTreeRoot().children()
-        selectedLayerIndex = self.dlg.comboBox.currentIndex()
+        selectedLayerIndex = self.dockwidget.layersField.currentIndex()
         selectedLayer = layers[selectedLayerIndex].layer()
         fieldnames = [field.name() for field in selectedLayer.fields()]
 
@@ -224,7 +239,7 @@ class SpeckleQGIS:
     def onSendButtonClicked(self):
         # here's the data you want to send
         block = Base(data=self.getSelectedLayerObject())
-        streamId = self.dlg.streamIdField.text()
+        streamId = self.dockwidget.streamIdField.text()
         # next create a server transport - this is the vehicle through which you will send and receive
         transport = ServerTransport(client=self.speckle_client, stream_id=streamId)
 
@@ -254,32 +269,32 @@ class SpeckleQGIS:
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
 
-        if self.first_start == True:
-            self.first_start = False
-            self.dlg = SpeckleQGISDialog()
+        if not self.pluginIsActive:
+            self.pluginIsActive = True
+            if self.dockwidget == None:
+                self.dockwidget = SpeckleQGISDialog()
 
             # Setup events on first load only!
-            self.dlg.accountListField.currentIndexChanged.connect(self.onAccountSelected)
-            self.dlg.sendButton.clicked.connect(self.onSendButtonClicked)
+            self.dockwidget.accountListField.currentIndexChanged.connect(self.onAccountSelected)
+            self.dockwidget.sendButton.clicked.connect(self.onSendButtonClicked)
 
-        # Fetch the currently loaded layers
-        layers = QgsProject.instance().layerTreeRoot().children()
-        # Clear the contents of the comboBox from previous runs
-        self.dlg.comboBox.clear()
-        # Populate the comboBox with names of all the loaded layers
-        self.dlg.comboBox.addItems([layer.name() for layer in layers])
+            # connect to provide cleanup on closing of dockwidget
+            self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
-        # Populate the accounts comboBox
-        self.speckle_accounts = get_local_accounts()
-        self.dlg.accountListField.clear()
-        self.dlg.accountListField.addItems(
-            [acc.userInfo.name + " - " + acc.serverInfo.url for acc in self.speckle_accounts])
+            # Fetch the currently loaded layers
+            layers = QgsProject.instance().layerTreeRoot().children()
+            # Clear the contents of the comboBox from previous runs
+            self.dockwidget.layersField.clear()
+            # Populate the comboBox with names of all the loaded layers
+            self.dockwidget.layersField.addItems([layer.name() for layer in layers])
 
-        # show the dialog
-        self.dlg.show()
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        # See if OK was pressed
-        if result:
-            # Do something when ok is pressed, we don't have an ok button so this is nor required for us
-            return
+            # Populate the accounts comboBox
+            self.speckle_accounts = get_local_accounts()
+            self.dockwidget.accountListField.clear()
+            self.dockwidget.accountListField.addItems(
+                [acc.userInfo.name + " - " + acc.serverInfo.url for acc in self.speckle_accounts])
+
+                            # show the dockwidget
+            # TODO: fix to allow choice of dock location
+            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
+            self.dockwidget.show()
