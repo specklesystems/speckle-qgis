@@ -142,6 +142,8 @@ Though it is not required, we recommend installing these plugins from the QGIS P
 
 #### Visual Studio Code
 
+##### If running on Windows
+
 In VS Code, you can use the built in python debugger. You'll need to create a debug configuration by creating a `launch.json` file.
 
 ![create debug config](https://user-images.githubusercontent.com/7717434/129330416-87513b88-4138-4fc8-ae73-5c2d2846ebd8.png)
@@ -165,6 +167,49 @@ Select the "Python" -> "Attach using Process ID" option. Your `launch.json` shou
 To start debugging, you'll need to first launch QGIS. Once it's running, run your debug configuration. You'll see a dropdown where you can search for and select the `qgis-bin.exe` process.
 
 ![select process to attach to](https://user-images.githubusercontent.com/7717434/129324015-7a294488-235c-4004-bc6d-c147a4e597e6.png)
+
+That's all there is to it! Now any breakpoints you create should be hit.
+
+![successful debugging in vs code](https://user-images.githubusercontent.com/7717434/129324011-42ebd156-ba6b-4eca-8b67-22300eb462fc.png)
+
+##### If running on Mac
+
+> The previous instructions don't work on a Mac (at least the ones we tested), as QGIS seems to freeze when attaching to it's process. If you managed to make it work, or we're missing something, do let us know!
+
+First, you'll need to install `ptvsd` the same way you installed `specklepy` above, so that QGIS will be able to find and use it.
+
+```
+QGIS_PYTHON_PATH -m pip install ptvsd
+```
+
+In VS Code, you can use the built in python debugger. You'll need to create a debug configuration by creating a `launch.json` file.
+
+![Create Debug Config](https://user-images.githubusercontent.com/2316535/129895259-3b9ede24-a898-4dbd-86df-0d15f19a2714.png)
+
+Select the "Python" -> "Remote Attach" option. Your `launch.json` should look like this:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Remote Attach",
+      "type": "python",
+      "request": "attach",
+      "port": 5678,
+      "host": "localhost",
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "${workspaceFolder}"
+        }
+      ]
+    }
+  ]
+}
+```
+
+To start debugging, you'll need to first launch QGIS. Once it's running, run your debug `Python: Remote Attach` configuration.
 
 That's all there is to it! Now any breakpoints you create should be hit.
 

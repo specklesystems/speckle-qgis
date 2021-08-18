@@ -37,8 +37,8 @@ def extractGeometry(feature):
 def pointToSpeckle(pt: QgsPointXY):
     return Point(pt.x(),pt.y())
 
-def polylineToSpeckle(poly: QgsLineString):
-    specklePts = [pointToSpeckle(pt) for pt in poly.vertices()]
+def polylineFromVertices(vertices, closed):
+    specklePts = [pointToSpeckle(pt) for pt in vertices]
     #TODO: Replace with `from_points` function when fix is pushed.
     polyline = Polyline()
     polyline.value = []
@@ -48,8 +48,9 @@ def polylineToSpeckle(poly: QgsLineString):
         polyline.value.extend([point.x, point.y, point.z])
     return polyline
 
+def polylineToSpeckle(poly: QgsLineString):
+    return polylineFromVertices(poly.vertices(),False)
+
+
 def polygonToSpeckle(geom: QgsPolygon):
-    vertices = geom.vertices()
-    poly = polylineToSpeckle(vertices)
-    poly.closed = True
-    return poly
+    return polylineFromVertices(geom.vertices(),True)

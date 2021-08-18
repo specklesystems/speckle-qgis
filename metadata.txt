@@ -3,30 +3,32 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=SpeckleQGIS
+name=Speckle
 qgisMinimumVersion=3.0
-description=SpeckleQGIS Description
+description=Speckle 2.0 Connector for QGIS
 version=0.1
 author=Speckle Systems
-email=alan@speckle.systems
+email=hello@speckle.systems
 
 about=SpeckleQGIS
 
 tracker=http://github.com/specklesystems/speckle-qgis/issues
 repository=http://github.com/specklesystems/speckle-qgis
+
 # End of mandatory metadata
 
 # Recommended items:
 
 hasProcessingProvider=no
+
 # Uncomment the following line and add your changelog:
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=python
+tags=python, speckle, interoperability, colaboration
 
 homepage=http://speckle.systems
-category=Web
+category=Plugins
 icon=icon.png
 # experimental flag
 experimental=True
