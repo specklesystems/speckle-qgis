@@ -1,4 +1,4 @@
-from qgis.core import QgsPointXY, QgsMultiPolygon, QgsWkbTypes, QgsMultiPoint, QgsPolygon, QgsLineString, QgsMultiLineString, QgsGeometry
+from qgis.core import QgsPoint, QgsMultiPolygon, QgsWkbTypes, QgsMultiPoint, QgsPolygon, QgsLineString, QgsMultiLineString, QgsGeometry
 
 from specklepy.objects.geometry import Point, Polyline
 from .logging import log
@@ -34,8 +34,8 @@ def extractGeometry(feature):
         print("Unknown or invalid geometry")
     return None
 
-def pointToSpeckle(pt: QgsPointXY):
-    return Point(pt.x(),pt.y())
+def pointToSpeckle(pt: QgsPoint):
+    return Point(pt.x(),pt.y(),pt.z())
 
 def polylineFromVertices(vertices, closed):
     specklePts = [pointToSpeckle(pt) for pt in vertices]
