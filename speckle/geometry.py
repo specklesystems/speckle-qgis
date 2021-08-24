@@ -1,7 +1,10 @@
-from qgis.core import QgsPointXY, QgsMultiPolygon, QgsWkbTypes, QgsMultiPoint, QgsPolygon, QgsLineString, QgsMultiLineString, QgsGeometry
-
+from qgis.core import (QgsGeometry, QgsLineString, QgsMultiLineString,
+                       QgsMultiPoint, QgsMultiPolygon, QgsPoint, QgsPointXY, QgsPolygon,
+                       QgsWkbTypes)
 from specklepy.objects.geometry import Point, Polyline
+
 from .logging import log
+import math
 
 def extractGeometry(feature):
     geom = feature.geometry()
@@ -34,15 +37,19 @@ def extractGeometry(feature):
         print("Unknown or invalid geometry")
     return None
 
-def pointToSpeckle(pt: QgsPointXY):
-    return Point(pt.x(),pt.y())
+def pointToSpeckle(pt: QgsPoint or QgsPointXY):
+    if isinstance(pt,QgsPointXY):
+        pt = QgsPoint(pt)
+    # when unset, z() returns "nan"
+    z = 0 if math.isnan(pt.z()) else pt.z()
+    return Point(pt.x(),pt.y(),z )
 
 def polylineFromVertices(vertices, closed):
     specklePts = [pointToSpeckle(pt) for pt in vertices]
     #TODO: Replace with `from_points` function when fix is pushed.
     polyline = Polyline()
     polyline.value = []
-    polyline.closed = False
+    polyline.closed = closed
     polyline.units = specklePts[0].units
     for point in specklePts:
         polyline.value.extend([point.x, point.y, point.z])
