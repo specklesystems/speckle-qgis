@@ -266,7 +266,7 @@ class SpeckleQGIS:
         try:
             # this serialises the block and sends it to the transport
             hash = operations.send(base=block, transports=[transport])
-        except:
+        except Exception as error:
             logToUser(self.iface, "Error sending data", Qgis.Critical)
             return
 
