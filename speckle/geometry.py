@@ -15,10 +15,10 @@ def extractGeometry(feature):
         # the geometry type can be of single or multi type
         if geomSingleType:
             log("Point")
-            return pointToSpeckle(geom.asPoint())
+            return pointToSpeckle(geom.constGet())
         else:
             log("Multipoint")
-            return [pointToSpeckle(pt) for pt in geom.asMultiPoint()]
+            return [pointToSpeckle(pt) for pt in geom.parts()]
     elif geom_type == QgsWkbTypes.LineGeometry:
         if geomSingleType:
             log("Converting polyline")
