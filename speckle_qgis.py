@@ -11,15 +11,6 @@
         copyright            : (C) 2021 by Speckle Systems
         email                : alan@speckle.systems
  ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
 """
 
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
@@ -35,36 +26,13 @@ import os.path
 
 from specklepy.api import operations
 from specklepy.api.client import SpeckleClient
-from specklepy.api.credentials import get_local_accounts
+from specklepy.api.credentials import get_local_accounts, StreamWrapper
 from specklepy.transports.server import ServerTransport
 from specklepy.objects import Base
-
 from .speckle.logging import *
-from .speckle.geometry import *
-
-
-import sys
-import traceback
-from qgis.core import QgsMessageLog, Qgis
-
-
-MESSAGE_CATEGORY = 'Messages'
-def enable_remote_debugging():
-    try:
-        import ptvsd
-        if ptvsd.is_attached():
-            QgsMessageLog.logMessage("Remote Debug for Visual Studio is already active", MESSAGE_CATEGORY, Qgis.Info)
-            return
-        ptvsd.enable_attach(address=('localhost', 5678))
-        # Enable this if you want to be able to hit early breakpoints. Execution will stop until IDE attaches to the port, but QGIS will appear to be unresponsive!!!!
-        # ptvsd.wait_for_attach()
-        QgsMessageLog.logMessage("Attached remote Debug for Visual Studio", MESSAGE_CATEGORY, Qgis.Info)
-    except Exception as e:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        format_exception = traceback.format_exception(exc_type, exc_value, exc_traceback)
-        QgsMessageLog.logMessage(repr(format_exception[0]), MESSAGE_CATEGORY, Qgis.Critical)
-        QgsMessageLog.logMessage(repr(format_exception[1]), MESSAGE_CATEGORY, Qgis.Critical)
-        QgsMessageLog.logMessage(repr(format_exception[2]), MESSAGE_CATEGORY, Qgis.Critical)
+from .speckle.converter.geometry import *
+from .speckle.utils import enable_remote_debugging
+from .speckle.converter.layers import convertSelectedLayers
 
 class SpeckleQGIS:
     """Speckle Connector Plugin for QGIS"""
@@ -103,6 +71,10 @@ class SpeckleQGIS:
         # Must be set in initGui() to survive plugin reloads
         self.pluginIsActive = False
         self.dockwidget = None
+        
+        # Setup custom logging functions
+        setupLogger(iface)
+
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -227,7 +199,6 @@ class SpeckleQGIS:
                 action)
             self.iface.removeToolBarIcon(action)
 
-
     def onAccountSelected(self, ix):
         self.speckle_account = self.speckle_accounts[ix]
         # initialise the client
@@ -235,39 +206,26 @@ class SpeckleQGIS:
         # client = SpeckleClient(host="localhost:3000", use_ssl=False) or use local server
         self.speckle_client.authenticate(token=self.speckle_account.token)
 
-    def getSelectedLayerObject(self):
-        layers = QgsProject.instance().layerTreeRoot().children()
-        selectedLayerIndex = self.dockwidget.layersField.currentIndex()
-        selectedLayer = layers[selectedLayerIndex].layer()
-        fieldnames = [field.name() for field in selectedLayer.fields()]
-
-        objs = []
-        # write feature attributes
-        for f in selectedLayer.getFeatures():
-            b = Base()
-            try:
-                geom = extractGeometry(f)
-                if (geom != None):
-                    b['@displayValue'] = geom
-            except:
-                logToUser(self.iface,"Error converting geometry", Qgis.Critical)
-            for name in fieldnames:
-                b[name.replace("/", "_").replace(".", "-")] = str(f[name])
-            objs.append(b)
-        return objs
-
     def onSendButtonClicked(self):
-        # here's the data you want to send
-        block = Base(data=self.getSelectedLayerObject())
-        streamId = self.dockwidget.streamIdField.text()
+        # creating our parent base object
+        project = QgsProject.instance()
+        layers = project.layerTreeRoot().children()
+        selectedLayerNames = [item.text() for item in self.dockwidget.layersWidget.selectedItems()]
+        
+        base_obj = Base()
+        base_obj.layers = convertSelectedLayers(layers, selectedLayerNames)
+        
+        # Get the stream ID
+        streamWrapper = StreamWrapper(self.dockwidget.streamIdField.text())
+        streamId = streamWrapper.stream_id
         # next create a server transport - this is the vehicle through which you will send and receive
         transport = ServerTransport(client=self.speckle_client, stream_id=streamId)
 
         try:
             # this serialises the block and sends it to the transport
-            hash = operations.send(base=block, transports=[transport])
+            hash = operations.send(base=base_obj, transports=[transport])
         except Exception as error:
-            logToUser(self.iface, "Error sending data", Qgis.Critical)
+            logger.logToUser("Error sending data", Qgis.Critical)
             return
 
         try:
@@ -278,18 +236,18 @@ class SpeckleQGIS:
                 message="This was sent from QGIS!!",
                 source_application="QGIS"
             )
-            logToUser(self.iface, "Successfully sent data to stream: " + streamId)
+            logger.logToUser("Successfully sent data to stream: " + streamId)
         except:
-            logToUser(self.iface, "Error creating commit", Qgis.Critical)
+            logger.logToUser("Error creating commit", Qgis.Critical)
             return
 
     def populateLayerDropdown(self):
         # Fetch the currently loaded layers
-        layers = QgsProject.instance().layerTreeRoot().children()
+        layers = QgsProject.instance().mapLayers().values()
         # Clear the contents of the comboBox from previous runs
-        self.dockwidget.layersField.clear()
+        self.dockwidget.layersWidget.clear()
         # Populate the comboBox with names of all the loaded layers
-        self.dockwidget.layersField.addItems([layer.name() for layer in layers])
+        self.dockwidget.layersWidget.addItems([layer.name() for layer in layers])
 
     def populateAccountsDropdown(self):
         # Populate the accounts comboBox
