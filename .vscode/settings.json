@@ -1,4 +1,10 @@
 {
   "python.linting.pylintEnabled": true,
-  "python.linting.enabled": false
+  "python.linting.enabled": true,
+  "python.analysis.extraPaths": [
+    "/Applications/QGIS.app/Contents/Resources/python/qgis"
+  ],
+  "python.autoComplete.extraPaths": [
+    "/Applications/QGIS.app/Contents/Resources/python/qgis"
+  ]
 }

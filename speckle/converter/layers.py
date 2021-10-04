@@ -1,5 +1,4 @@
-from typing import List
-from qgis.core import QgsProject, Qgis
+from qgis.core import Qgis
 from specklepy.objects import Base
 from ..logging import logger
 from ..converter.geometry import extractGeometry
@@ -14,10 +13,10 @@ class CRS(Base):
         self.name = name
         self.wkt = wkt
 
-class Layer(Base):
+class Layer(Base, chunkable={"features": 100}):
     crs: CRS
     name: str
-    features: List[Base]
+    features: Base
 
     def __init__(self, name, crs, features = [], **kwargs) -> None:
         super().__init__(**kwargs)
@@ -27,41 +26,47 @@ class Layer(Base):
 
 
 def convertSelectedLayers(layers, selectedLayerNames):
-    result = Base()
+    result = []
     for layer in layers:
-        layerName = layer.name()
-        
-        if layerName in selectedLayerNames:
-            selectedLayer = layer.layer()
-            crs = selectedLayer.crs()
-            fieldnames = [field.name() for field in selectedLayer.fields()]
+        if layer.name() in selectedLayerNames:
+            result.append(layerToSpeckle(layer))
+    return result
 
-            layerObjs = []
+def layerToSpeckle(layer):
+    layerName = layer.name()
+    selectedLayer = layer.layer()
+    crs = selectedLayer.crs()
+    fieldnames = [field.name() for field in selectedLayer.fields()]
+
+    layerObjs = Base()
             # write feature attributes
-            for f in selectedLayer.getFeatures():
-                b = Base()
-                # Try to extract geometry
-                try:
-                    geom = extractGeometry(f)
-                    if (geom != None):
-                        b['@displayValue'] = geom
-                except Exception as error:
-                    logger.logToUser("Error converting geometry", Qgis.Critical)
-                    
-                for name in fieldnames:
-                    corrected = name.replace("/", "_").replace(".", "-")
-                    if(corrected == "id"):
-                        corrected == "applicationId"
-                    b[corrected] = str(f[name])
-                layerObjs.append(b)
+    for f in selectedLayer.getFeatures():
+        b = featureToSpeckle(fieldnames, f)
+        layerObjs["@"+str(f.id())] = b
             
             # Convert CRS to speckle
-            speckleCrs = CRS(name=crs.authid(),wkt=crs.toWkt())
+    speckleCrs = CRS(name=crs.authid(),wkt=crs.toWkt())
             # Convert layer to speckle
-            layerBase = Layer(layerName,speckleCrs, layerObjs)
-            layerBase.applicationId = selectedLayer.id()
-            # Attach result
-            result["@"+layerName] = layerBase
+    layerBase = Layer(layerName,speckleCrs, layerObjs)
+    layerBase.applicationId = selectedLayer.id()
+    
+    return layerBase
 
-    return result
+def featureToSpeckle(fieldnames, f):
+    b = Base()
+    # Try to extract geometry
+    try:
+        geom = extractGeometry(f)
+        if (geom != None):
+            b['displayValue'] = geom
+    except Exception as error:
+        logger.logToUser("Error converting geometry: " + error, Qgis.Critical)
+                    
+    for name in fieldnames:
+        corrected = name.replace("/", "_").replace(".", "-")
+        if(corrected == "id"):
+            corrected == "applicationId"
+        b[corrected] = str(f[name])
+
+    return b
 

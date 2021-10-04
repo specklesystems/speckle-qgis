@@ -7,6 +7,7 @@ class Logging:
         self.qgisInterface = iface
         
     def logToUser(self, message, level=Qgis.Info, duration=3):
+        self.log(message,level)
         if(self.qgisInterface):
             self.qgisInterface.messageBar().pushMessage(
                 "Speckle", message,
