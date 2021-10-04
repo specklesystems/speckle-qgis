@@ -2,8 +2,6 @@ from qgis.core import (QgsGeometry, QgsLineString, QgsMultiLineString,
                        QgsMultiPoint, QgsMultiPolygon, QgsPoint, QgsPointXY, QgsPolygon,
                        QgsWkbTypes)
 from specklepy.objects.geometry import Point, Polyline
-
-from .logging import log
 import math
 
 def extractGeometry(feature):
@@ -14,36 +12,36 @@ def extractGeometry(feature):
     if geom_type == QgsWkbTypes.PointGeometry:
         # the geometry type can be of single or multi type
         if geomSingleType:
-            log("Point")
             return pointToSpeckle(geom.constGet())
         else:
-            log("Multipoint")
             return [pointToSpeckle(pt) for pt in geom.parts()]
     elif geom_type == QgsWkbTypes.LineGeometry:
         if geomSingleType:
-            log("Converting polyline")
-            return pointToSpeckle(geom.parts()[0])
+            return polylineToSpeckle(geom)
         else:
-            log("Converting multipolyline")
             return [polylineToSpeckle(poly) for poly in geom.parts()]
     elif geom_type == QgsWkbTypes.PolygonGeometry:
         if geomSingleType:
-            log("Polygon")
-            return polygonToSpeckle(geom.parts()[0])
+            return polygonToSpeckle(geom)
         else:
-            log("Multipolygon")
             return [polygonToSpeckle(p) for p in geom.parts()]
     else:
-        print("Unknown or invalid geometry")
+        print("Unsupported or invalid geometry")
     return None
 
 def pointToSpeckle(pt: QgsPoint or QgsPointXY):
     if isinstance(pt,QgsPointXY):
         pt = QgsPoint(pt)
     # when unset, z() returns "nan"
+    x = pt.x()
+    y = pt.y()
     z = 0 if math.isnan(pt.z()) else pt.z()
-    return Point(pt.x(),pt.y(),z )
-
+    specklePoint = Point()
+    specklePoint.x = x
+    specklePoint.y = y
+    specklePoint.z = z
+    return specklePoint
+    
 def polylineFromVertices(vertices, closed):
     specklePts = [pointToSpeckle(pt) for pt in vertices]
     #TODO: Replace with `from_points` function when fix is pushed.
