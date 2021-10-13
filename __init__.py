@@ -33,4 +33,8 @@ def classFactory(iface):  # pylint: disable=invalid-name
     """
     #
     from .speckle_qgis import SpeckleQGIS
+    from specklepy.logging import metrics
+    
+    metrics.set_host_app("QGIS")
+
     return SpeckleQGIS(iface)
