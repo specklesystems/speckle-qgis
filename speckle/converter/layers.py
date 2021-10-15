@@ -1,5 +1,4 @@
 from qgis.core import Qgis
-from specklepy.objects import Base
 from ..logging import logger
 from ..converter.geometry import extractGeometry
 
@@ -14,10 +13,6 @@ class CRS(Base):
         self.wkt = wkt
 
 class Layer(Base, chunkable={"features": 100}):
-    crs: CRS
-    name: str
-    features: Base
-
     def __init__(self, name, crs, features = [], **kwargs) -> None:
         super().__init__(**kwargs)
         self.name = name
@@ -38,11 +33,11 @@ def layerToSpeckle(layer):
     crs = selectedLayer.crs()
     fieldnames = [field.name() for field in selectedLayer.fields()]
 
-    layerObjs = Base()
+    layerObjs = []
             # write feature attributes
     for f in selectedLayer.getFeatures():
         b = featureToSpeckle(fieldnames, f)
-        layerObjs["@"+str(f.id())] = b
+        layerObjs.append(b)
             
             # Convert CRS to speckle
     speckleCrs = CRS(name=crs.authid(),wkt=crs.toWkt())
