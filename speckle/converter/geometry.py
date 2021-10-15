@@ -3,6 +3,7 @@ from qgis.core import (QgsGeometry, QgsLineString, QgsMultiLineString,
                        QgsWkbTypes)
 from specklepy.objects.geometry import Point, Polyline
 import math
+from specklepy.objects import Base
 
 def extractGeometry(feature):
     geom = feature.geometry()
@@ -49,8 +50,10 @@ def polylineFromVertices(vertices, closed):
     polyline.value = []
     polyline.closed = closed
     polyline.units = specklePts[0].units
-    for point in specklePts:
-        polyline.value.extend([point.x, point.y, point.z])
+    for i in range(len(specklePts) - 1):
+        point = specklePts[i]
+        if i < len(specklePts):
+            polyline.value.extend([point.x, point.y, point.z])
     return polyline
 
 def polylineToSpeckle(poly: QgsLineString):
@@ -58,4 +61,11 @@ def polylineToSpeckle(poly: QgsLineString):
 
 
 def polygonToSpeckle(geom: QgsPolygon):
-    return polylineFromVertices(geom.vertices(),True)
+    spklPolygon = Base()
+    spklPolygon.boundary = polylineFromVertices(geom.exteriorRing().vertices(),True)
+    voids = []
+    for i in range(geom.numInteriorRings()):
+        intRing = polylineFromVertices(geom.interiorRing(i).vertices(),True)
+        voids.append(intRing)
+    spklPolygon.voids = voids
+    return spklPolygon
