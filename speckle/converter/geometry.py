@@ -50,10 +50,11 @@ def polylineFromVertices(vertices, closed):
     polyline.value = []
     polyline.closed = closed
     polyline.units = specklePts[0].units
-    for i in range(len(specklePts) - 1):
+    for i in range(len(specklePts)):
+        if closed and i == len(specklePts) - 1:
+            continue
         point = specklePts[i]
-        if i < len(specklePts):
-            polyline.value.extend([point.x, point.y, point.z])
+        polyline.value.extend([point.x, point.y, point.z])
     return polyline
 
 def polylineToSpeckle(poly: QgsLineString):
