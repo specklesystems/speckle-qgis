@@ -1,4 +1,4 @@
-from qgis.core import Qgis
+from qgis.core import Qgis, QgsRasterLayer
 from ..logging import logger
 from ..converter.geometry import extractGeometry
 
@@ -23,6 +23,8 @@ class Layer(Base, chunkable={"features": 100}):
 def convertSelectedLayers(layers, selectedLayerNames):
     result = []
     for layer in layers:
+        if not(hasattr(layer, "fields")):
+            continue
         if layer.name() in selectedLayerNames:
             result.append(layerToSpeckle(layer))
     return result

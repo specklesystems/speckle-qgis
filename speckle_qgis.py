@@ -218,9 +218,23 @@ class SpeckleQGIS:
         base_obj = Base()
         base_obj.layers = convertSelectedLayers(layers, selectedLayerNames)
         
-        # Get the stream ID
-        streamWrapper = StreamWrapper(self.dockwidget.streamIdField.text())
-        streamId = streamWrapper.stream_id
+        # Get the stream id/url
+        try:
+            streamWrapper = StreamWrapper(self.dockwidget.streamIdField.text())
+            streamId = streamWrapper.stream_id
+        except Exception as error:
+            # Not a url, we assume it's an id!
+            streamId = self.dockwidget.streamIdField.text()
+        
+        # Ensure the stream actually exists
+        try:
+            streamRes = self.speckle_client.stream.get(streamId)
+            if(hasattr(streamRes, "errors")):
+                raise Exception(streamRes.errors[0]["message"])
+        except Exception as error:
+            logger.logToUser(str(error), Qgis.Critical)
+            return
+        
         # next create a server transport - this is the vehicle through which you will send and receive
         transport = ServerTransport(client=self.speckle_client, stream_id=streamId)
 
