@@ -20,12 +20,22 @@ def setup():
         subprocess.call(
             [pythonExec, '-m', 'pip', 'install', '--upgrade', 'pip'])
 
+    pkgVersion = "2.3.5"
+    pkgName = 'specklepy'
     try:
         import specklepy
+        print(str(specklepy))
     except Exception as e:
         logger.log("Specklepy not installed")
-
-        version = "2.3.5"
-        package = 'specklepy'
         subprocess.call([pythonExec, '-m', 'pip', 'install',
-                        f"{package}=={version}"])
+                        f"{pkgName}=={pkgVersion}"])
+    
+    # Check if specklpy needs updating
+    try:
+        from importlib_metadata import version
+        current = version(pkgName)
+        if(current != pkgVersion):
+            subprocess.call([pythonExec, '-m', 'pip', 'install', '--upgrade',
+                        f"{pkgName}=={pkgVersion}"])
+    except Exception as e:
+        logger.logToUser("Error updating specklepy")
