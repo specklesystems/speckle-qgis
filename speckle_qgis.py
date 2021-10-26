@@ -13,6 +13,11 @@
  ***************************************************************************/
 """
 
+
+import os.path
+from .speckle.logging import logger
+
+
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
@@ -22,17 +27,16 @@ from qgis.core import QgsProject, Qgis
 from .resources import *
 # Import the code for the dialog
 from .speckle_qgis_dialog import SpeckleQGISDialog
-import os.path
 
 from specklepy.api import operations
 from specklepy.api.client import SpeckleClient
 from specklepy.api.credentials import get_local_accounts, StreamWrapper
 from specklepy.transports.server import ServerTransport
-from specklepy.objects import Base
+
 from .speckle.logging import *
 from .speckle.converter.geometry import *
-from .speckle.utils import enable_remote_debugging
 from .speckle.converter.layers import convertSelectedLayers
+
 
 class SpeckleQGIS:
     """Speckle Connector Plugin for QGIS"""
@@ -45,7 +49,6 @@ class SpeckleQGIS:
             application at run time.
         :type iface: QgsInterface
         """
-        enable_remote_debugging()
         # Save reference to the QGIS interface
 
         self.iface = iface
@@ -73,7 +76,7 @@ class SpeckleQGIS:
         self.dockwidget = None
         
         # Setup custom logging functions
-        setupLogger(iface)
+        logger.qgisInterface = iface
 
 
     # noinspection PyMethodMayBeStatic
@@ -215,9 +218,23 @@ class SpeckleQGIS:
         base_obj = Base()
         base_obj.layers = convertSelectedLayers(layers, selectedLayerNames)
         
-        # Get the stream ID
-        streamWrapper = StreamWrapper(self.dockwidget.streamIdField.text())
-        streamId = streamWrapper.stream_id
+        # Get the stream id/url
+        try:
+            streamWrapper = StreamWrapper(self.dockwidget.streamIdField.text())
+            streamId = streamWrapper.stream_id
+        except Exception as error:
+            # Not a url, we assume it's an id!
+            streamId = self.dockwidget.streamIdField.text()
+        
+        # Ensure the stream actually exists
+        try:
+            streamRes = self.speckle_client.stream.get(streamId)
+            if(hasattr(streamRes, "errors")):
+                raise Exception(streamRes.errors[0]["message"])
+        except Exception as error:
+            logger.logToUser(str(error), Qgis.Critical)
+            return
+        
         # next create a server transport - this is the vehicle through which you will send and receive
         transport = ServerTransport(client=self.speckle_client, stream_id=streamId)
 

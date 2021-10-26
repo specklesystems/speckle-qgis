@@ -22,7 +22,8 @@
  ***************************************************************************/
  This script initializes the plugin, making it known to QGIS.
 """
-
+from .speckle.utils import enable_remote_debugging
+from .installDependencies import setup
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
@@ -31,7 +32,10 @@ def classFactory(iface):  # pylint: disable=invalid-name
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface
     """
-    #
+
+    # Ensure dependencies are installed in the machine
+    setup()
+    enable_remote_debugging()
     from .speckle_qgis import SpeckleQGIS
     from specklepy.logging import metrics
     

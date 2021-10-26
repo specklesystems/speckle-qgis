@@ -6,7 +6,7 @@ class Logging:
     def __init__(self, iface) -> None:
         self.qgisInterface = iface
         
-    def logToUser(self, message, level=Qgis.Info, duration=3):
+    def logToUser(self, message, level=Qgis.Info, duration=10):
         self.log(message,level)
         if(self.qgisInterface):
             self.qgisInterface.messageBar().pushMessage(
@@ -17,7 +17,3 @@ class Logging:
         QgsMessageLog.logMessage(message, 'Speckle', level=level)
 
 logger = Logging(None)
-
-def setupLogger(iface):
-    logger = Logging(iface)
-    logger.logToUser("Logger has been setup")
