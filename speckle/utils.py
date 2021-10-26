@@ -35,8 +35,5 @@ def enable_remote_debugging():
         QgsMessageLog.logMessage(
             "Attached remote Debug for Visual Studio", MESSAGE_CATEGORY, Qgis.Success)
     except Exception as e:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        format_exception = traceback.format_exception(
-            exc_type, exc_value, exc_traceback)
         QgsMessageLog.logMessage(
             "Failed to attach to PTVSD", MESSAGE_CATEGORY, Qgis.Info)
