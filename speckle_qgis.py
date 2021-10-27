@@ -74,9 +74,6 @@ class SpeckleQGIS:
         # Must be set in initGui() to survive plugin reloads
         self.pluginIsActive = False
         self.dockwidget = None
-        
-        # Setup custom logging functions
-        logger.qgisInterface = iface
 
 
     # noinspection PyMethodMayBeStatic
