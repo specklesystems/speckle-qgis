@@ -2,22 +2,39 @@ from qgis.core import Qgis, QgsRasterLayer
 from ..logging import logger
 from ..converter.geometry import extractGeometry
 
-from specklepy.objects import Base 
+from specklepy.objects import Base
+
 
 class CRS(Base):
     name: str
     wkt: str
+
     def __init__(self, name, wkt, **kwargs) -> None:
         super().__init__(**kwargs)
         self.name = name
         self.wkt = wkt
 
+
 class Layer(Base, chunkable={"features": 100}):
-    def __init__(self, name, crs, features = [], **kwargs) -> None:
+    def __init__(self, name, crs, features=[], **kwargs) -> None:
         super().__init__(**kwargs)
         self.name = name
         self.crs = crs
         self.features = features
+
+
+def getLayers(tree, parent):
+    children = parent.children()
+    layers = []
+    for node in children:
+        isLayer = tree.isLayer(node)
+        if isLayer:
+            layers.append(node)
+            continue
+        isGroup = tree.isGroup(node)
+        if isGroup:
+            layers.extend(getLayers(tree, node))
+    return layers
 
 
 def convertSelectedLayers(layers, selectedLayerNames):
@@ -29,6 +46,7 @@ def convertSelectedLayers(layers, selectedLayerNames):
             result.append(layerToSpeckle(layer))
     return result
 
+
 def layerToSpeckle(layer):
     layerName = layer.name()
     selectedLayer = layer.layer()
@@ -36,18 +54,19 @@ def layerToSpeckle(layer):
     fieldnames = [field.name() for field in selectedLayer.fields()]
 
     layerObjs = []
-            # write feature attributes
+    # write feature attributes
     for f in selectedLayer.getFeatures():
         b = featureToSpeckle(fieldnames, f)
         layerObjs.append(b)
-            
-            # Convert CRS to speckle
-    speckleCrs = CRS(name=crs.authid(),wkt=crs.toWkt())
-            # Convert layer to speckle
-    layerBase = Layer(layerName,speckleCrs, layerObjs)
+
+        # Convert CRS to speckle
+    speckleCrs = CRS(name=crs.authid(), wkt=crs.toWkt())
+    # Convert layer to speckle
+    layerBase = Layer(layerName, speckleCrs, layerObjs)
     layerBase.applicationId = selectedLayer.id()
-    
+
     return layerBase
+
 
 def featureToSpeckle(fieldnames, f):
     b = Base()
@@ -58,7 +77,7 @@ def featureToSpeckle(fieldnames, f):
             b['displayValue'] = geom
     except Exception as error:
         logger.logToUser("Error converting geometry: " + error, Qgis.Critical)
-                    
+
     for name in fieldnames:
         corrected = name.replace("/", "_").replace(".", "-")
         if(corrected == "id"):
@@ -66,4 +85,3 @@ def featureToSpeckle(fieldnames, f):
         b[corrected] = str(f[name])
 
     return b
-

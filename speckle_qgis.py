@@ -35,7 +35,7 @@ from specklepy.transports.server import ServerTransport
 
 from .speckle.logging import *
 from .speckle.converter.geometry import *
-from .speckle.converter.layers import convertSelectedLayers
+from .speckle.converter.layers import convertSelectedLayers, getLayers
 
 
 class SpeckleQGIS:
@@ -75,8 +75,8 @@ class SpeckleQGIS:
         self.pluginIsActive = False
         self.dockwidget = None
 
-
     # noinspection PyMethodMayBeStatic
+
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
 
@@ -178,7 +178,7 @@ class SpeckleQGIS:
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
 
-        #print "** CLOSING FakePlugin"
+        # print "** CLOSING FakePlugin"
 
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
@@ -202,27 +202,36 @@ class SpeckleQGIS:
     def onAccountSelected(self, ix):
         self.speckle_account = self.speckle_accounts[ix]
         # initialise the client
-        self.speckle_client = SpeckleClient(host=self.speckle_account.serverInfo.url)  # or whatever your host is
+        self.speckle_client = SpeckleClient(
+            host=self.speckle_account.serverInfo.url)  # or whatever your host is
         # client = SpeckleClient(host="localhost:3000", use_ssl=False) or use local server
         self.speckle_client.authenticate(token=self.speckle_account.token)
 
     def onSendButtonClicked(self):
         # creating our parent base object
         project = QgsProject.instance()
-        layers = project.layerTreeRoot().children()
-        selectedLayerNames = [item.text() for item in self.dockwidget.layersWidget.selectedItems()]
-        
+        layerTreeRoot = project.layerTreeRoot()
+        layers = getLayers(layerTreeRoot, layerTreeRoot)
+
+        selectedLayerNames = [
+            item.text() for item in self.dockwidget.layersWidget.selectedItems()]
+
         base_obj = Base()
         base_obj.layers = convertSelectedLayers(layers, selectedLayerNames)
-        
+
+        # Check if stream id/url is empty
+        if not self.dockwidget.streamIdField.text():
+            logger.logToUser("Please enter a Stream Url/ID.", Qgis.Warning)
+            return
         # Get the stream id/url
         try:
-            streamWrapper = StreamWrapper(self.dockwidget.streamIdField.text())
+            streamWrapper = StreamWrapper(
+                self.dockwidget.streamIdField .text())
             streamId = streamWrapper.stream_id
         except Exception as error:
             # Not a url, we assume it's an id!
             streamId = self.dockwidget.streamIdField.text()
-        
+
         # Ensure the stream actually exists
         try:
             streamRes = self.speckle_client.stream.get(streamId)
@@ -231,9 +240,10 @@ class SpeckleQGIS:
         except Exception as error:
             logger.logToUser(str(error), Qgis.Critical)
             return
-        
+
         # next create a server transport - this is the vehicle through which you will send and receive
-        transport = ServerTransport(client=self.speckle_client, stream_id=streamId)
+        transport = ServerTransport(
+            client=self.speckle_client, stream_id=streamId)
 
         try:
             # this serialises the block and sends it to the transport
@@ -261,7 +271,8 @@ class SpeckleQGIS:
         # Clear the contents of the comboBox from previous runs
         self.dockwidget.layersWidget.clear()
         # Populate the comboBox with names of all the loaded layers
-        self.dockwidget.layersWidget.addItems([layer.name() for layer in layers])
+        self.dockwidget.layersWidget.addItems(
+            [layer.name() for layer in layers])
 
     def populateAccountsDropdown(self):
         # Populate the accounts comboBox
@@ -286,8 +297,10 @@ class SpeckleQGIS:
                 self.dockwidget = SpeckleQGISDialog()
 
             # Setup events on first load only!
-            self.dockwidget.accountListField.currentIndexChanged.connect(self.onAccountSelected)
-            self.dockwidget.sendButton.clicked.connect(self.onSendButtonClicked)
+            self.dockwidget.accountListField.currentIndexChanged.connect(
+                self.onAccountSelected)
+            self.dockwidget.sendButton.clicked.connect(
+                self.onSendButtonClicked)
             self.dockwidget.reloadButton.clicked.connect(self.reloadUI)
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
@@ -295,7 +308,7 @@ class SpeckleQGIS:
             # Populate the UI dropdowns
             self.populateLayerDropdown()
             self.populateAccountsDropdown()
-            
+
             # Setup reload of UI dropdowns when layers change.
             layerRoot = QgsProject.instance()
             layerRoot.layersAdded.connect(self.reloadUI)
