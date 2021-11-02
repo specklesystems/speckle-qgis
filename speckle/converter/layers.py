@@ -40,8 +40,8 @@ def getLayers(tree, parent):
 def convertSelectedLayers(layers, selectedLayerNames):
     result = []
     for layer in layers:
-        if not(hasattr(layer, "fields")):
-            continue
+        # if not(hasattr(layer, "fields")):
+        #     continue
         if layer.name() in selectedLayerNames:
             result.append(layerToSpeckle(layer))
     return result
