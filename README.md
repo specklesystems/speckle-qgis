@@ -32,7 +32,7 @@ What is Speckle? Check our ![YouTube Video Views](https://img.shields.io/youtube
 Give Speckle a try in no time by:
 
 - [![speckle XYZ](https://img.shields.io/badge/https://-speckle.xyz-0069ff?style=flat-square&logo=hackthebox&logoColor=white)](https://speckle.xyz) ⇒ creating an account at our public server
-- [![create a droplet](https://img.shields.io/badge/Create%20a%20Droplet-0069ff?style=flat-square&logo=digitalocean&logoColor=white)](https://marketplace.digitalocean.com/apps/speckle-server?refcode=947a2b5d7dc1) ⇒ deploying an instance in 1 click 
+- [![create a droplet](https://img.shields.io/badge/Create%20a%20Droplet-0069ff?style=flat-square&logo=digitalocean&logoColor=white)](https://marketplace.digitalocean.com/apps/speckle-server?refcode=947a2b5d7dc1) ⇒ deploying an instance in 1 click
 
 ### Resources
 
@@ -67,11 +67,19 @@ This repo contains the QGIS plugin for Speckle 2.0. It is written in `python` an
 
 ## Installation
 
-This plugin is still in early development and should only be used for testing. If you'd like to be an early tester and provide us with feedback and feature requests, forge ahead!
+## QGIS Marketplace
 
-### Adding the Plugin
+You can find Speckle QGIS in the QGIS `Plugins -> Manage and install plugins` menu item.
 
-First, you'll need to place the `speckle_qgis` folder into your plugins folder. To find this folder, go to the "Settings" menu and select "User Profiles" > "Open Active Profile Folder".
+The plugin is currently published as experimental, so make sure you go to `Settings` and activate the `Show also experimental plugins` checkbox.
+
+Then go to the `All` tab and search for `Speckle`. You should see the plugin appear in the list:
+
+![alt](https://link)
+
+## Manual install
+
+You'll need to place the `speckle_qgis` folder into your plugins folder. To find this folder, go to the "Settings" menu and select "User Profiles" > "Open Active Profile Folder".
 
 ![active project folder](https://user-images.githubusercontent.com/7717434/129204454-11685461-cfe2-483a-8f91-77b5e8e8107b.png)
 
@@ -81,18 +89,7 @@ Inside this folder, navigate into the `python` folder then the `plugins` folder.
 
 ### Speckle Dependencies
 
-Before you can launch the plugin, you'll need to add the Speckle dependencies. To do this, you'll need to head to your QGIS installation folder and find the Python `site-packages` folder. This is in a different location from your plugins folder.
-
-For QGIS 3.20, you'll find this folder at:
-
-- Windows: `C:\Program Files\QGIS 3.20.1\apps\Python39\Lib\site-packages`
-- MacOS: `/Applications/QGIS.app/Contents/Resources/python/site-packages`
-
-![site packages](https://user-images.githubusercontent.com/7717434/129223920-d7d428cf-5f56-44e9-a932-7ada175712aa.png)
-
-Drop the _contents_ of the included `dependencies` folder (not the folder itself) into the `site-packages` folder to add `specklepy` and all its dependencies to your QGIS environment.
-
-![specklepy in packages folder](https://user-images.githubusercontent.com/7717434/129224484-24afc749-4d41-4dbc-9d02-dff5ee5a7358.png)
+> You no longer need to take care of installing the dependencies! This will be done automatically if the package is not found.
 
 ### Launching the Plugin
 
@@ -142,18 +139,6 @@ YOUR_PYTHON_EXECUTABLE -m pip install pb_tool
 
 > For convenience, the pre-compiled `resources.py` file so you don't really have to do anything here.
 
-#### Installing `specklepy`
-
-You'll also need to manually install `specklepy` in the QGIS python environment. This will add `specklepy` and its dependencies to the QGIS python's `site-packages` folder.
-
-- Find your interpreter's path:
-  - Windows: `C:\Program Files\QGIS 3.20.1\apps\Python39\`
-  - Mac: `/Applications/QGIS.app/Contents/MacOS/bin`
-- Use the command line to install `specklepy`
-  - `QGIS_PYTHON_PATH -m pip install specklepy`
-
-**THIS WILL NOT WORK ON DEPLOYMENT, WE NEED TO COME UP WITH A BETTER STRATEGY BUT FOR DEV PURPOSES ITS FINE FOR NOW**
-
 #### Dev Environment
 
 For a better development experience in your editor, we recommend creating a virtual environment. In the venv, you'll just need to install `specklepy`. You will also need to copy over the `qgis` module into the `{venv}/Lib/site-packages`. You can find the `qgis` module in your QGIS install directory:
@@ -175,45 +160,14 @@ Though it is not required, we recommend installing these plugins from the QGIS P
 
 #### Visual Studio Code
 
-##### If running on Windows
+First, you'll need to uncomment these 2 lines in the `__init__.py` file:
 
-In VS Code, you can use the built in python debugger. You'll need to create a debug configuration by creating a `launch.json` file.
-
-![create debug config](https://user-images.githubusercontent.com/7717434/129330416-87513b88-4138-4fc8-ae73-5c2d2846ebd8.png)
-
-Select the "Python" -> "Attach using Process ID" option. Your `launch.json` should look like this:
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Python: Attach using Process Id",
-      "type": "python",
-      "request": "attach",
-      "processId": "${command:pickProcess}"
-    }
-  ]
-}
+```python
+    # from .speckle.utils import enable_remote_debugging
+    # enable_remote_debugging()
 ```
 
-To start debugging, you'll need to first launch QGIS. Once it's running, run your debug configuration. You'll see a dropdown where you can search for and select the `qgis-bin.exe` process.
-
-![select process to attach to](https://user-images.githubusercontent.com/7717434/129324015-7a294488-235c-4004-bc6d-c147a4e597e6.png)
-
-That's all there is to it! Now any breakpoints you create should be hit.
-
-![successful debugging in vs code](https://user-images.githubusercontent.com/7717434/129324011-42ebd156-ba6b-4eca-8b67-22300eb462fc.png)
-
-##### If running on Mac
-
-> The previous instructions don't work on a Mac (at least the ones we tested), as QGIS seems to freeze when attaching to it's process. If you managed to make it work, or we're missing something, do let us know!
-
-First, you'll need to install `ptvsd` the same way you installed `specklepy` above, so that QGIS will be able to find and use it.
-
-```
-QGIS_PYTHON_PATH -m pip install ptvsd
-```
+This will automatically setup `ptvsd` if it's not already installed, and start listening to port `5678`.
 
 In VS Code, you can use the built in python debugger. You'll need to create a debug configuration by creating a `launch.json` file.
 
@@ -248,8 +202,10 @@ That's all there is to it! Now any breakpoints you create should be hit.
 
 ![successful debugging in vs code](https://user-images.githubusercontent.com/7717434/129324011-42ebd156-ba6b-4eca-8b67-22300eb462fc.png)
 
+> If you want to have the debugger wait for you to connect using VSCode, you can uncomment this line in the `speckle/utils.py` file:
+>
+> ```python
+>   #ptvsd.wait_for_attach()
+> ```
+
 Enjoy!
-
-## Deploy
-
-TBD
