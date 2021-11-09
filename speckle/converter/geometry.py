@@ -1,9 +1,10 @@
 from qgis.core import (QgsGeometry, QgsLineString, QgsMultiLineString,
                        QgsMultiPoint, QgsMultiPolygon, QgsPoint, QgsPointXY, QgsPolygon,
-                       QgsWkbTypes)
+                       QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsWkbTypes)
 from specklepy.objects.geometry import Point, Polyline
 import math
 from specklepy.objects import Base
+
 
 def extractGeometry(feature):
     geom = feature.geometry()
@@ -30,8 +31,9 @@ def extractGeometry(feature):
         print("Unsupported or invalid geometry")
     return None
 
+
 def pointToSpeckle(pt: QgsPoint or QgsPointXY):
-    if isinstance(pt,QgsPointXY):
+    if isinstance(pt, QgsPointXY):
         pt = QgsPoint(pt)
     # when unset, z() returns "nan"
     x = pt.x()
@@ -42,10 +44,11 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY):
     specklePoint.y = y
     specklePoint.z = z
     return specklePoint
-    
+
+
 def polylineFromVertices(vertices, closed):
     specklePts = [pointToSpeckle(pt) for pt in vertices]
-    #TODO: Replace with `from_points` function when fix is pushed.
+    # TODO: Replace with `from_points` function when fix is pushed.
     polyline = Polyline()
     polyline.value = []
     polyline.closed = closed
@@ -57,16 +60,36 @@ def polylineFromVertices(vertices, closed):
         polyline.value.extend([point.x, point.y, point.z])
     return polyline
 
+
 def polylineToSpeckle(poly: QgsLineString):
-    return polylineFromVertices(poly.vertices(),False)
+    return polylineFromVertices(poly.vertices(), False)
 
 
 def polygonToSpeckle(geom: QgsPolygon):
     spklPolygon = Base()
-    spklPolygon.boundary = polylineFromVertices(geom.exteriorRing().vertices(),True)
+    spklPolygon.boundary = polylineFromVertices(
+        geom.exteriorRing().vertices(), True)
     voids = []
     for i in range(geom.numInteriorRings()):
-        intRing = polylineFromVertices(geom.interiorRing(i).vertices(),True)
+        intRing = polylineFromVertices(geom.interiorRing(i).vertices(), True)
         voids.append(intRing)
     spklPolygon.voids = voids
     return spklPolygon
+
+
+def transform(src: QgsPointXY, crsSrc: QgsCoordinateReferenceSystem, crsDest: QgsCoordinateReferenceSystem):
+    transformContext = QgsProject.instance().transformContext()
+    xform = QgsCoordinateTransform(crsSrc, crsDest, transformContext)
+
+    # forward transformation: src -> dest
+    dest = xform.transform(src)
+    return dest
+
+
+def reverseTransform(dest: QgsPointXY, crsSrc: QgsCoordinateReferenceSystem, crsDest: QgsCoordinateReferenceSystem):
+    transformContext = QgsProject.instance().transformContext()
+    xform = QgsCoordinateTransform(crsSrc, crsDest, transformContext)
+
+    # inverse transformation: dest -> src
+    src = xform.transform(dest, QgsCoordinateTransform.ReverseTransform)
+    return src
