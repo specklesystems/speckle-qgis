@@ -1,8 +1,10 @@
-from qgis.core import Qgis, QgsRasterLayer
+from qgis.core import Qgis, QgsRasterLayer, QgsVectorLayer
 from ..logging import logger
 from ..converter.geometry import extractGeometry
+from typing import Any, List
 
 from specklepy.objects import Base
+# from specklepy.objects.geometry import RasterLayer
 
 
 class CRS(Base):
@@ -51,21 +53,40 @@ def layerToSpeckle(layer):
     layerName = layer.name()
     selectedLayer = layer.layer()
     crs = selectedLayer.crs()
-    fieldnames = [field.name() for field in selectedLayer.fields()]
 
-    layerObjs = []
-    # write feature attributes
-    for f in selectedLayer.getFeatures():
-        b = featureToSpeckle(fieldnames, f)
-        layerObjs.append(b)
+    if isinstance(selectedLayer, QgsVectorLayer):
+
+        fieldnames = [field.name() for field in selectedLayer.fields()]
+
+        layerObjs = []
+        # write feature attributes
+        for f in selectedLayer.getFeatures():
+            b = featureToSpeckle(fieldnames, f)
+            layerObjs.append(b)
 
         # Convert CRS to speckle
-    speckleCrs = CRS(name=crs.authid(), wkt=crs.toWkt())
-    # Convert layer to speckle
-    layerBase = Layer(layerName, speckleCrs, layerObjs)
-    layerBase.applicationId = selectedLayer.id()
+        speckleCrs = CRS(name=crs.authid(), wkt=crs.toWkt())
+        # Convert layer to speckle
+        layerBase = Layer(layerName, speckleCrs, layerObjs)
+        layerBase.applicationId = selectedLayer.id()
+        return layerBase
 
-    return layerBase
+    if isinstance(selectedLayer, QgsRasterLayer):
+
+        for i in range(0, selectedLayer.bandCount()):
+            # bandName = selectedLayer.bandName(i+1)
+            # pipe = selectedLayer.pipe()
+
+            rasterLayer = RasterLayer()
+            f = open("test.asc", "r")
+            Lines = f.readlines()
+
+            rasterLayer.Raster = []
+            for line in Lines:
+                rasterLayer.Raster.append(line)
+            f.close()
+
+            return rasterLayer
 
 
 def featureToSpeckle(fieldnames, f):
@@ -85,3 +106,19 @@ def featureToSpeckle(fieldnames, f):
         b[corrected] = str(f[name])
 
     return b
+
+
+class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 10000}, detachable={"Raster"}):
+    Raster: List[str] = None
+
+    @classmethod
+    def from_list(cls, args: List[Any]) -> "RasterLayer":
+        return cls(
+            Raster=args,
+        )
+
+    def to_list(self) -> List[Any]:
+        encoded = []
+        for line in self.Raster:
+            encoded.append(line)
+        return encoded
