@@ -6,7 +6,6 @@ from ..converter.geometry import extractGeometry
 from typing import Any, List
 
 from specklepy.objects import Base
-# from specklepy.objects.geometry import RasterLayer
 
 
 class CRS(Base):
@@ -102,7 +101,7 @@ def layerToSpeckle(layer):
 
             f.close()
 
-            chunkable = math.floor(10485760/size)
+            chunkable = max(1, math.floor(1048576/size))
             rasterLayer._chunkable["Raster"] = chunkable
 
         return rasterLayer
