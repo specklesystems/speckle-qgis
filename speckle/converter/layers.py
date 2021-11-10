@@ -1,3 +1,5 @@
+import os
+import math
 from qgis.core import Qgis, QgsRasterLayer, QgsVectorLayer
 from ..logging import logger
 from ..converter.geometry import extractGeometry
@@ -73,20 +75,37 @@ def layerToSpeckle(layer):
 
     if isinstance(selectedLayer, QgsRasterLayer):
 
-        for i in range(0, selectedLayer.bandCount()):
-            # bandName = selectedLayer.bandName(i+1)
-            # pipe = selectedLayer.pipe()
+        rasterLayer = RasterLayer()
 
-            rasterLayer = RasterLayer()
-            f = open("test.asc", "r")
+        # bandcount = selectedLayer.bandCount()
+        # dataProvider = selectedLayer.dataProvider
+        # extent = dataProvider.extent
+        # for i in range(0, selectedLayer.bandCount()):
+        # bandName = selectedLayer.bandName(i+1)
+        # pipe = selectedLayer.pipe()
+
+        path = selectedLayer.source()
+        if(os.path.exists(path)):
+
+            f = open(path, "r")
             Lines = f.readlines()
 
+            # calculate maximum size of one line in the raster and set chunk size accordingly
+            maxSize = 0
             rasterLayer.Raster = []
             for line in Lines:
                 rasterLayer.Raster.append(line)
+
+                size = len(line.encode('utf-8'))
+                if(size > maxSize):
+                    maxSize = size
+
             f.close()
 
-            return rasterLayer
+            chunkable = math.floor(10485760/size)
+            rasterLayer._chunkable["Raster"] = chunkable
+
+        return rasterLayer
 
 
 def featureToSpeckle(fieldnames, f):
@@ -108,17 +127,14 @@ def featureToSpeckle(fieldnames, f):
     return b
 
 
-class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 10000}, detachable={"Raster"}):
+class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 1000}, detachable={"Raster"}):
     Raster: List[str] = None
 
-    @classmethod
+    @ classmethod
     def from_list(cls, args: List[Any]) -> "RasterLayer":
         return cls(
             Raster=args,
         )
 
     def to_list(self) -> List[Any]:
-        encoded = []
-        for line in self.Raster:
-            encoded.append(line)
-        return encoded
+        return self.Raster
