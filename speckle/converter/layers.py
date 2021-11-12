@@ -76,13 +76,6 @@ def layerToSpeckle(layer):
 
         rasterLayer = RasterLayer()
 
-        # bandcount = selectedLayer.bandCount()
-        # dataProvider = selectedLayer.dataProvider
-        # extent = dataProvider.extent
-        # for i in range(0, selectedLayer.bandCount()):
-        # bandName = selectedLayer.bandName(i+1)
-        # pipe = selectedLayer.pipe()
-
         path = selectedLayer.source()
         if(os.path.exists(path)):
 
