@@ -16,7 +16,7 @@
 
 import os.path
 
-from .speckle.logging import logger
+from speckle.logging import logger
 
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
@@ -24,10 +24,10 @@ from qgis.PyQt.QtWidgets import QAction, QDockWidget
 from qgis.core import Qgis, QgsProject
 
 # Initialize Qt resources from file resources.py
-from .resources import *
+from resources import *
 
 # Import the code for the dialog
-from .ui.speckle_qgis_dialog import SpeckleQGISDialog
+from ui.speckle_qgis_dialog import SpeckleQGISDialog
 
 from specklepy.api import operations
 from specklepy.api.client import SpeckleClient
@@ -35,18 +35,18 @@ from specklepy.api.credentials import Account, get_local_accounts, StreamWrapper
 from specklepy.transports.server import ServerTransport
 from specklepy.objects import Base
 
-from .speckle.logging import *
-from .speckle.converter.geometry import *
-from .speckle.converter.layers import convertSelectedLayers, getLayers
+from speckle.logging import *
+from speckle.converter.geometry import *
+from speckle.converter.layers import convertSelectedLayers, getLayers
 
-
+from ui.add_stream_modal import AddStreamModalDialog
 class SpeckleQGIS:
     """Speckle Connector Plugin for QGIS"""
 
-    dockwidget: QDockWidget
-    speckle_account: Account
-    speckle_client: SpeckleClient
-    
+    dockwidget: QDockWidget = None
+    speckle_account: Account = None
+    speckle_client: SpeckleClient = None
+    add_stream_modal: AddStreamModalDialog = None
     def __init__(self, iface):
         """Constructor.
 
@@ -78,6 +78,7 @@ class SpeckleQGIS:
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.pluginIsActive = False
+        self.add_stream_modal = AddStreamModalDialog()
 
     # noinspection PyMethodMayBeStatic
 
@@ -285,9 +286,17 @@ class SpeckleQGIS:
             ]
         )
 
+    def populateProjectStreams(self):
+
+        self.dockwidget.streamList.clear()
+        self.dockwidget.streamList.addItems([
+            f"{stream.name} - {stream.id}" for stream in self.speckle_client.stream.list()
+        ])
+
     def reloadUI(self):
         self.populateAccountsDropdown()
         self.populateLayerDropdown()
+        self.populateProjectStreams()
 
     def run(self):
         """Run method that performs all the real work"""
@@ -309,9 +318,17 @@ class SpeckleQGIS:
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
+            # Connect streams section events
+            self.dockwidget.streams_add_button.clicked.connect(self.onStreamAdd)
+            self.dockwidget.streams_remove_button.clicked.connect(self.onStreamRemove)
+            self.dockwidget.streams_reload_button.clicked.connect(self.onStreamReload)
+            self.dockwidget.streamList.itemSelectionChanged.connect(self.onActiveStreamChanged)
+
+
             # Populate the UI dropdowns
             self.populateLayerDropdown()
             self.populateAccountsDropdown()
+            self.populateProjectStreams()
 
             # Setup reload of UI dropdowns when layers change.
             layerRoot = QgsProject.instance()
@@ -321,3 +338,16 @@ class SpeckleQGIS:
             # show the dockwidget
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
+
+    def onStreamAdd(self, signal):
+        logger.log("on stream add")
+        self.add_stream_modal.show()
+    
+    def onStreamRemove(self, signal):
+        logger.log("on stream remove")
+
+    def onStreamReload(signal):
+        logger.log("on stream reload")
+    
+    def onActiveStreamChanged(signal):
+        logger.log("on active stream changed")

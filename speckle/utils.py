@@ -3,7 +3,8 @@ import os
 import traceback
 import subprocess
 from qgis.core import QgsMessageLog, Qgis
-from .logging import logger
+
+from speckle.logging import logger
 
 MESSAGE_CATEGORY = 'Speckle'
 

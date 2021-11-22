@@ -1,6 +1,6 @@
 from qgis.core import Qgis, QgsRasterLayer
-from ..logging import logger
-from ..converter.geometry import extractGeometry
+from speckle.logging import logger
+from speckle.converter.geometry import extractGeometry
 
 from specklepy.objects import Base
 

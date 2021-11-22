@@ -23,6 +23,7 @@
 """
 
 import os
+import ui.speckle_qgis_dialog
 
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
@@ -31,7 +32,6 @@ from qgis.PyQt.QtCore import pyqtSignal
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "speckle_qgis_dialog_base.ui")
 )
-
 
 class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 

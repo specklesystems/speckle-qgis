@@ -1,3 +1,3 @@
 {
-    "files": ["ui/speckle_qgis_dialog_base.ui","ui/main_form.py","ui/speckle_qgis_dialog.py","ui/main_form.ui","ui/Accounts.py"]
+    "files": ["ui/speckle_qgis_dialog_base.ui","ui/main_form.ui","ui/speckle_qgis_dialog.py","ui/Accounts.py","ui/main_form.py","ui/streamlist_dialog.py","ui/streamlist_dialog.ui"]
 }
