@@ -1,0 +1,3 @@
+{
+    "files": ["ui/speckle_qgis_dialog_base.ui","ui/main_form.py","ui/speckle_qgis_dialog.py","ui/main_form.ui","ui/Accounts.py"]
+}
