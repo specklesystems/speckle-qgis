@@ -8,17 +8,18 @@
 
 """
 
-__author__ = 'alan@speckle.systems'
-__date__ = '2021-08-04'
-__copyright__ = 'Copyright 2021, Speckle Systems'
+__author__ = "alan@speckle.systems"
+__date__ = "2021-08-04"
+__copyright__ = "Copyright 2021, Speckle Systems"
 
 import unittest
 
-from qgis.PyQt.QtGui import QDialogButtonBox, QDialog
+from qgis.PyQt.QtWidgets import QDialogButtonBox, QDialog
 
-from speckle_qgis_dialog import SpeckleQGISDialog
+from ui.speckle_qgis_dialog import SpeckleQGISDialog
 
 from utilities import get_qgis_app
+
 QGIS_APP = get_qgis_app()
 
 
@@ -48,8 +49,8 @@ class SpeckleQGISDialogTest(unittest.TestCase):
         result = self.dialog.result()
         self.assertEqual(result, QDialog.Rejected)
 
+
 if __name__ == "__main__":
     suite = unittest.makeSuite(SpeckleQGISDialogTest)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
-
