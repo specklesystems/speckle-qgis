@@ -66,20 +66,20 @@ def polylineToSpeckle(poly: QgsLineString):
 
 
 def polygonToSpeckle(geom: QgsPolygon):
-    spklPolygon = Base()
-    spklPolygon.boundary = polylineFromVertices(
+    polygon = Base()
+    polygon.boundary = polylineFromVertices(
         geom.exteriorRing().vertices(), True)
     voids = []
     for i in range(geom.numInteriorRings()):
         intRing = polylineFromVertices(geom.interiorRing(i).vertices(), True)
         voids.append(intRing)
-    spklPolygon.voids = voids
-    return spklPolygon
+    polygon.voids = voids
+    return polygon
 
 
-def transform(src: QgsPointXY, crsSrc: QgsCoordinateReferenceSystem, crsDest: QgsCoordinateReferenceSystem):
+def transform(src: QgsPointXY, crs_src: QgsCoordinateReferenceSystem, crsDest: QgsCoordinateReferenceSystem):
     transformContext = QgsProject.instance().transformContext()
-    xform = QgsCoordinateTransform(crsSrc, crsDest, transformContext)
+    xform = QgsCoordinateTransform(crs_src, crsDest, transformContext)
 
     # forward transformation: src -> dest
     dest = xform.transform(src)

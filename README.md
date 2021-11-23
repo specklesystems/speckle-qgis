@@ -163,7 +163,7 @@ Though it is not required, we recommend installing these plugins from the QGIS P
 First, you'll need to uncomment these 2 lines in the `__init__.py` file:
 
 ```python
-    # from .speckle.utils import enable_remote_debugging
+    # from speckle.utils import enable_remote_debugging
     # enable_remote_debugging()
 ```
 

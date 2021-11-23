@@ -22,9 +22,17 @@
  ***************************************************************************/
  This script initializes the plugin, making it known to QGIS.
 """
-#from .speckle.utils import enable_remote_debugging
-from .installDependencies import setup
-from .speckle.logging import logger
+
+import os
+import sys
+path = os.path.dirname(os.path.abspath(__file__))
+if(path not in sys.path):
+    sys.path.insert(0, path)
+
+from plugin_utils.installDependencies import setup
+from speckle.logging import logger
+
+
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
     """Load SpeckleQGIS class from file SpeckleQGIS.
@@ -37,10 +45,10 @@ def classFactory(iface):  # pylint: disable=invalid-name
     logger.qgisInterface = iface
     
     # Ensure dependencies are installed in the machine
-    # from .speckle.utils import enable_remote_debugging
-    # enable_remote_debugging()
+    from speckle.utils import enable_remote_debugging
+    enable_remote_debugging()
     setup()
-    from .speckle_qgis import SpeckleQGIS
+    from speckle_qgis import SpeckleQGIS
     from specklepy.logging import metrics
     
     metrics.set_host_app("QGIS")
