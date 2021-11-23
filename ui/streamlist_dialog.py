@@ -7,7 +7,7 @@ FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "streamlist_dialog.ui")
 )
 
-class StreamListDialog(QtWidgets.QWidget):
+class StreamListDialog(QtWidgets.QWidget, FORM_CLASS):
     streams_add_button: QtWidgets.QPushButton
     streams_reload_button: QtWidgets.QPushButton
     streams_remove_button: QtWidgets.QPushButton

@@ -36,7 +36,10 @@ FORM_CLASS, _ = uic.loadUiType(
 class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
-
+    streamList: QtWidgets.QListWidget
+    streamIdField: QtWidgets.QLineEdit
+    streamBranchDropdown: QtWidgets.QComboBox
+    
     def __init__(self, parent=None):
         """Constructor."""
         super(SpeckleQGISDialog, self).__init__(parent)

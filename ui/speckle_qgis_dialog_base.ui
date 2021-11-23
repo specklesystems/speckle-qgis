@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>440</width>
-    <height>906</height>
+    <width>575</width>
+    <height>651</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -32,39 +32,32 @@
          <number>10</number>
         </property>
         <item row="0" column="0">
-         <widget class="QLabel" name="accountListLabel">
-          <property name="text">
-           <string>Account</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QComboBox" name="accountListField"/>
-        </item>
-        <item row="1" column="1">
-         <spacer name="verticalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeType">
-           <enum>QSizePolicy::Fixed</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>5</width>
-            <height>10</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="2" column="0">
          <widget class="QLabel" name="streamListLabel">
           <property name="text">
            <string>Project Streams</string>
           </property>
          </widget>
         </item>
-        <item row="3" column="1">
+        <item row="0" column="1">
+         <widget class="QListWidget" name="streamList">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QAbstractScrollArea::AdjustToContents</enum>
+          </property>
+          <property name="resizeMode">
+           <enum>QListView::Fixed</enum>
+          </property>
+          <property name="viewMode">
+           <enum>QListView::ListMode</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
          <layout class="QHBoxLayout" name="streamListButtons">
           <item>
            <widget class="QPushButton" name="streams_add_button">
@@ -77,13 +70,6 @@
            <widget class="QPushButton" name="streams_remove_button">
             <property name="text">
              <string>-</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="streams_reload_button">
-            <property name="text">
-             <string>R</string>
             </property>
            </widget>
           </item>
@@ -105,48 +91,62 @@
           </item>
          </layout>
         </item>
-        <item row="4" column="0">
+        <item row="2" column="0">
          <widget class="QLabel" name="streamIdLabel">
           <property name="text">
            <string>Active Stream</string>
           </property>
          </widget>
         </item>
-        <item row="4" column="1">
+        <item row="2" column="1">
          <widget class="QLineEdit" name="streamIdField">
           <property name="enabled">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
           <property name="clearButtonEnabled">
            <bool>false</bool>
           </property>
          </widget>
         </item>
-        <item row="5" column="0">
+        <item row="3" column="0">
+         <widget class="QLabel" name="streamBranchLabel">
+          <property name="text">
+           <string>Branch</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QComboBox" name="streamBranchDropdown"/>
+        </item>
+        <item row="4" column="0">
          <widget class="QLabel" name="layersLabel">
           <property name="text">
            <string>Layer</string>
           </property>
          </widget>
         </item>
-        <item row="5" column="1">
+        <item row="4" column="1">
          <widget class="QListWidget" name="layersWidget">
           <property name="selectionMode">
            <enum>QAbstractItemView::MultiSelection</enum>
           </property>
          </widget>
         </item>
-        <item row="7" column="0">
+        <item row="6" column="0">
          <widget class="QLabel" name="messageLabel">
           <property name="text">
            <string>Message</string>
           </property>
          </widget>
         </item>
-        <item row="7" column="1">
-         <widget class="QLineEdit" name="messageInput"/>
+        <item row="6" column="1">
+         <widget class="QLineEdit" name="messageInput">
+          <property name="placeholderText">
+           <string>Sent XXX objects from QGIS</string>
+          </property>
+         </widget>
         </item>
-        <item row="8" column="1">
+        <item row="7" column="1">
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
            <widget class="QPushButton" name="reloadButton">
@@ -176,9 +176,6 @@
            </widget>
           </item>
          </layout>
-        </item>
-        <item row="2" column="1">
-         <widget class="QListWidget" name="streamList"/>
         </item>
        </layout>
       </item>
