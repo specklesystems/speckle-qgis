@@ -3,7 +3,8 @@ import os
 import traceback
 import subprocess
 from qgis.core import QgsMessageLog, Qgis
-from .logging import logger
+
+from speckle.logging import logger
 
 MESSAGE_CATEGORY = 'Speckle'
 
@@ -30,8 +31,10 @@ def enable_remote_debugging():
                 "Remote Debug for Visual Studio is already active", MESSAGE_CATEGORY, Qgis.Info)
             return
         ptvsd.enable_attach(address=('localhost', 5678))
+
         # Enable this if you want to be able to hit early breakpoints. Execution will stop until IDE attaches to the port, but QGIS will appear to be unresponsive!!!!
         #ptvsd.wait_for_attach()
+        
         QgsMessageLog.logMessage(
             "Attached remote Debug for Visual Studio", MESSAGE_CATEGORY, Qgis.Success)
     except Exception as e:

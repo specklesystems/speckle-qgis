@@ -1,8 +1,8 @@
 import os
 import math
 from qgis.core import Qgis, QgsRasterLayer, QgsVectorLayer
-from ..logging import logger
-from ..converter.geometry import extractGeometry
+from speckle.logging import logger
+from speckle.converter.geometry import extractGeometry
 from typing import Any, List
 
 from specklepy.objects import Base

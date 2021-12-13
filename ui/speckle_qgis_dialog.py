@@ -23,19 +23,23 @@
 """
 
 import os
+import ui.speckle_qgis_dialog
 
-from qgis.PyQt import QtGui, QtWidgets, uic
+from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'speckle_qgis_dialog_base.ui'))
-
+FORM_CLASS, _ = uic.loadUiType(
+    os.path.join(os.path.dirname(__file__), "speckle_qgis_dialog_base.ui")
+)
 
 class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
-
+    streamList: QtWidgets.QListWidget
+    streamIdField: QtWidgets.QLineEdit
+    streamBranchDropdown: QtWidgets.QComboBox
+    
     def __init__(self, parent=None):
         """Constructor."""
         super(SpeckleQGISDialog, self).__init__(parent)
@@ -45,7 +49,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
-    
+
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
