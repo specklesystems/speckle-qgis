@@ -10,7 +10,7 @@ version=0.0.7
 author=Speckle Systems
 email=hello@speckle.systems
 
-about=SpeckleQGIS
+about=The plugin allows you to select several layers in your project, and send their geometry (as well as their contained metadata), to a Speckle server. Only vector and raster based layers are supported. Make sure you have a Speckle account and SpeckleManager installed, or follow the instructions in the GitHub repository. 
 
 tracker=http://github.com/specklesystems/speckle-qgis/issues
 repository=http://github.com/specklesystems/speckle-qgis
@@ -25,7 +25,7 @@ hasProcessingProvider=no
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=python, speckle, interoperability, colaboration
+tags=python, speckle, interoperability, collaboration
 
 homepage=http://speckle.systems
 category=Plugins
