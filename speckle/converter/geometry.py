@@ -1,8 +1,8 @@
+import math
 from qgis.core import (QgsGeometry, QgsLineString, QgsMultiLineString,
                        QgsMultiPoint, QgsMultiPolygon, QgsPoint, QgsPointXY, QgsPolygon,
                        QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsWkbTypes)
 from specklepy.objects.geometry import Point, Polyline
-import math
 from specklepy.objects import Base
 
 
