@@ -212,6 +212,7 @@ class SpeckleQGIS:
     def onSendButtonClicked(self):
         # creating our parent base object
         project = QgsProject.instance()
+        projectCRS = project.crs()
         layerTreeRoot = project.layerTreeRoot()
         layers = getLayers(layerTreeRoot, layerTreeRoot)
 
@@ -220,7 +221,7 @@ class SpeckleQGIS:
         ]
 
         base_obj = Base()
-        base_obj.layers = convertSelectedLayers(layers, selectedLayerNames)
+        base_obj.layers = convertSelectedLayers(layers, selectedLayerNames, projectCRS)
 
         # Check if stream id/url is empty
         if not self.dockwidget.streamIdField.text():

@@ -1,12 +1,13 @@
 import os
 import math
-from qgis.core import Qgis, QgsRasterLayer, QgsVectorLayer
+from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsVectorLayer
 from speckle.logging import logger
 from speckle.converter.geometry import extractGeometry
 from typing import Any, List
 
 from specklepy.objects import Base
 
+import processing
 
 class CRS(Base):
     name: str
@@ -40,19 +41,26 @@ def getLayers(tree, parent):
     return layers
 
 
-def convertSelectedLayers(layers, selectedLayerNames):
+def convertSelectedLayers(layers, selectedLayerNames, projectCRS):
     result = []
     for layer in layers:
         # if not(hasattr(layer, "fields")):
         #     continue
         if layer.name() in selectedLayerNames:
-            result.append(layerToSpeckle(layer))
+            reprojectedLayer = reprojectLayerToProjectCRS(layer, projectCRS)['OUTPUT']
+            result.append(layerToSpeckle(reprojectedLayer))
     return result
 
+def reprojectLayerToProjectCRS(layer, targetCRS):
+    reprojectedLayer = processing.run("native:reprojectlayer", {'INPUT':layer.name(),
+                                                                'TARGET_CRS':targetCRS,
+                                                                'OPERATION':'+proj=noop',
+                                                                'OUTPUT':'TEMPORARY_OUTPUT'})
+    return reprojectedLayer
 
-def layerToSpeckle(layer):
+def layerToSpeckle(layer): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     layerName = layer.name()
-    selectedLayer = layer.layer()
+    selectedLayer = layer #.layer()
     crs = selectedLayer.crs()
 
     if isinstance(selectedLayer, QgsVectorLayer):
