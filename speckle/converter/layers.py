@@ -10,11 +10,13 @@ from specklepy.objects import Base
 class CRS(Base):
     name: str
     wkt: str
+    units: str
 
-    def __init__(self, name, wkt, **kwargs) -> None:
+    def __init__(self, name, wkt, units, **kwargs) -> None:
         super().__init__(**kwargs)
         self.name = name
         self.wkt = wkt
+        self.units = units
 
 
 class Layer(Base, chunkable={"features": 100}):
@@ -56,7 +58,7 @@ def reprojectLayer(layer, targetCRS, project):
 
     if isinstance(layer.layer(), QgsVectorLayer):
         ### create copy of the layer in memory
-        typeGeom = QgsWkbTypes.displayString(int(layer.layer().wkbType()))
+        typeGeom = QgsWkbTypes.displayString(int(layer.layer().wkbType())) #returns e.g. Point, Polygon, Line
         crsId = layer.layer().crs().authid()
         layerReprojected = QgsVectorLayer(typeGeom+"?crs="+crsId, layer.name() + "_copy", "memory")
         
@@ -83,6 +85,8 @@ def layerToSpeckle(layer): #now the input is QgsVectorLayer instead of qgis._cor
     layerName = layer.name()
     selectedLayer = layer #.layer()
     crs = selectedLayer.crs()
+    units = "m"
+    if crs.isGeographic(): units = "degrees"
 
     if isinstance(selectedLayer, QgsVectorLayer):
 
@@ -95,7 +99,7 @@ def layerToSpeckle(layer): #now the input is QgsVectorLayer instead of qgis._cor
             layerObjs.append(b)
 
         # Convert CRS to speckle
-        speckleCrs = CRS(name=crs.authid(), wkt=crs.toWkt())
+        speckleCrs = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units)
         # Convert layer to speckle
         layerBase = Layer(layerName, speckleCrs, layerObjs)
         layerBase.applicationId = selectedLayer.id()
