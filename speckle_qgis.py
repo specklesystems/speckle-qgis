@@ -221,7 +221,7 @@ class SpeckleQGIS:
         ]
 
         base_obj = Base()
-        base_obj.layers = convertSelectedLayers(layers, selectedLayerNames, projectCRS)
+        base_obj.layers = convertSelectedLayers(layers, selectedLayerNames, projectCRS, project)
 
         # Check if stream id/url is empty
         if not self.dockwidget.streamIdField.text():

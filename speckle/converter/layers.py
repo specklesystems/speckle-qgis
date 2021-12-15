@@ -1,13 +1,11 @@
 import os
 import math
-from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsVectorLayer
+from qgis.core import Qgis, QgsWkbTypes, QgsRasterLayer, QgsVectorLayer, QgsCoordinateTransform
 from speckle.logging import logger
 from speckle.converter.geometry import extractGeometry
 from typing import Any, List
 
 from specklepy.objects import Base
-
-import processing
 
 class CRS(Base):
     name: str
@@ -41,22 +39,41 @@ def getLayers(tree, parent):
     return layers
 
 
-def convertSelectedLayers(layers, selectedLayerNames, projectCRS):
+def convertSelectedLayers(layers, selectedLayerNames, projectCRS, project):
     result = []
     for layer in layers:
         # if not(hasattr(layer, "fields")):
         #     continue
         if layer.name() in selectedLayerNames:
-            reprojectedLayer = reprojectLayerToProjectCRS(layer, projectCRS)['OUTPUT']
+            if layer.layer().crs() == projectCRS:
+                reprojectedLayer = layer.layer() 
+            else: 
+                reprojectedLayer = reprojectLayer(layer, projectCRS, project)
             result.append(layerToSpeckle(reprojectedLayer))
     return result
 
-def reprojectLayerToProjectCRS(layer, targetCRS):
-    reprojectedLayer = processing.run("native:reprojectlayer", {'INPUT':layer.name(),
-                                                                'TARGET_CRS':targetCRS,
-                                                                'OPERATION':'+proj=noop',
-                                                                'OUTPUT':'TEMPORARY_OUTPUT'})
-    return reprojectedLayer
+def reprojectLayer(layer, targetCRS, project):
+    ### create copy of the layer in memory
+    typeGeom = QgsWkbTypes.displayString(int(layer.layer().wkbType()))
+    crsId = layer.layer().crs().authid()
+    layerReprojected = QgsVectorLayer(typeGeom+"?crs="+crsId, layer.name() + "_copy", "memory")
+    
+    ### copy fields/attributes to the new layer
+    fields = layer.layer().dataProvider().fields().toList()
+    layerReprojected.dataProvider().addAttributes(fields)
+    layerReprojected.updateFields()
+
+    ### get and transform the features
+    features=[f for f in layer.layer().getFeatures()]
+    xform = QgsCoordinateTransform(layer.layer().crs(), targetCRS, project)
+    for feature in features:
+        geometry = feature.geometry()
+        geometry.transform(xform)
+        feature.setGeometry(geometry)
+    layerReprojected.dataProvider().addFeatures(features)
+    layerReprojected.setCrs(targetCRS)
+
+    return layerReprojected
 
 def layerToSpeckle(layer): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     layerName = layer.name()
