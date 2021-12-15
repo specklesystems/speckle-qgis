@@ -53,27 +53,31 @@ def convertSelectedLayers(layers, selectedLayerNames, projectCRS, project):
     return result
 
 def reprojectLayer(layer, targetCRS, project):
-    ### create copy of the layer in memory
-    typeGeom = QgsWkbTypes.displayString(int(layer.layer().wkbType()))
-    crsId = layer.layer().crs().authid()
-    layerReprojected = QgsVectorLayer(typeGeom+"?crs="+crsId, layer.name() + "_copy", "memory")
-    
-    ### copy fields/attributes to the new layer
-    fields = layer.layer().dataProvider().fields().toList()
-    layerReprojected.dataProvider().addAttributes(fields)
-    layerReprojected.updateFields()
 
-    ### get and transform the features
-    features=[f for f in layer.layer().getFeatures()]
-    xform = QgsCoordinateTransform(layer.layer().crs(), targetCRS, project)
-    for feature in features:
-        geometry = feature.geometry()
-        geometry.transform(xform)
-        feature.setGeometry(geometry)
-    layerReprojected.dataProvider().addFeatures(features)
-    layerReprojected.setCrs(targetCRS)
+    if isinstance(layer.layer(), QgsVectorLayer):
+        ### create copy of the layer in memory
+        typeGeom = QgsWkbTypes.displayString(int(layer.layer().wkbType()))
+        crsId = layer.layer().crs().authid()
+        layerReprojected = QgsVectorLayer(typeGeom+"?crs="+crsId, layer.name() + "_copy", "memory")
+        
+        ### copy fields/attributes to the new layer
+        fields = layer.layer().dataProvider().fields().toList()
+        layerReprojected.dataProvider().addAttributes(fields)
+        layerReprojected.updateFields()
 
-    return layerReprojected
+        ### get and transform the features
+        features=[f for f in layer.layer().getFeatures()]
+        xform = QgsCoordinateTransform(layer.layer().crs(), targetCRS, project)
+        for feature in features:
+            geometry = feature.geometry()
+            geometry.transform(xform)
+            feature.setGeometry(geometry)
+        layerReprojected.dataProvider().addFeatures(features)
+        layerReprojected.setCrs(targetCRS)
+
+        return layerReprojected
+    else:
+        return layer.layer()
 
 def layerToSpeckle(layer): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     layerName = layer.name()
