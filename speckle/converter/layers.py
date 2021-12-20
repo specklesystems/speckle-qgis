@@ -1,6 +1,12 @@
+"""
+Contains all Layer related classes and methods.
+"""
 import os
 import math
+from typing import Any, List, Optional, Union
+
 from qgis.core import Qgis, QgsWkbTypes, QgsPointXY, QgsGeometry, QgsMapLayer, QgsRasterBandStats, QgsRasterLayer, QgsVectorLayer, QgsCoordinateTransform
+from qgis.PyQt.QtCore import QVariant
 from speckle.logging import logger
 from qgis.gui import QgsRendererWidget
 from speckle.converter.geometry import extractGeometry, rasterToMesh, transform
@@ -13,43 +19,53 @@ from osgeo import gdal, osr ## C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\si
 from specklepy.objects import Base
 
 class CRS(Base):
+    """A very basic GIS Coordinate Reference System stored in wkt format"""
     name: str
     wkt: str
     units: str
 
-    def __init__(self, name, wkt, units, **kwargs) -> None:
+    def __init__(self, name=None, wkt=None, units=None, **kwargs) -> None:
         super().__init__(**kwargs)
         self.name = name
         self.wkt = wkt
         self.units = units
 
 class Layer(Base, chunkable={"features": 100}):
-    def __init__(self, name, crs, features=[], **kwargs) -> None:
+    """A GIS Layer"""
+
+    def __init__(
+        self,
+        name=None,
+        crs=None,
+        features: List[Base] = [],
+        layerType: str = None,
+        **kwargs
+    ) -> None:
         super().__init__(**kwargs)
         self.name = name
         self.crs = crs
+        self.type = layerType
         self.features = features
 
 
-def getLayers(tree, parent):
+def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[QgsLayerTreeNode]:
+    """Gets a list of all layers in the given QgsLayerTree"""
+
     children = parent.children()
     layers = []
     for node in children:
-        isLayer = tree.isLayer(node)
-        if isLayer:
+        if tree.isLayer(node):
             layers.append(node)
             continue
-        isGroup = tree.isGroup(node)
-        if isGroup:
+        if tree.isGroup(node):
             layers.extend(getLayers(tree, node))
     return layers
 
 
 def convertSelectedLayers(layers, selectedLayerNames, projectCRS, project):
+    """Converts the current selected layers to Speckle"""
     result = []
     for layer in layers:
-        # if not(hasattr(layer, "fields")):
-        #     continue
         if layer.name() in selectedLayerNames:
             result.append(layerToSpeckle(layer, projectCRS, project))
     return result
@@ -87,7 +103,7 @@ def reprojectLayer(layer, targetCRS, project):
 '''    
 
 def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
-    
+    """Converts a given QGIS Layer to Speckle"""
     layerName = layer.name()
     selectedLayer = layer.layer()
     crs = selectedLayer.crs()
@@ -132,15 +148,15 @@ def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project):
 
     # Try to extract geometry
     try:
-        geom = extractGeometry(f)
-        if (geom != None):
-            b['displayValue'] = geom
+        geom = convertToSpeckle(f)
+        if geom is not None:
+            b["displayValue"] = geom
     except Exception as error:
-        logger.logToUser("Error converting geometry: " + error, Qgis.Critical)
+        logger.logToUser("Error converting geometry: " + str(error), Qgis.Critical)
 
     for name in fieldnames:
         corrected = name.replace("/", "_").replace(".", "-")
-        if(corrected == "id"):
+        if corrected == "id":
             corrected == "applicationId"
         b[corrected] = str(f[name])
     return b
@@ -354,7 +370,7 @@ def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, r
 '''
 
 class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 1000}, detachable={"Raster"}):
-    Raster: List[str] = None
+    Raster: Optional[List[str]] = None
 
     @ classmethod
     def from_list(cls, args: List[Any]) -> "RasterLayer":
@@ -363,4 +379,89 @@ class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunka
         )
 
     def to_list(self) -> List[Any]:
+        if(self.Raster is None):
+            raise Exception("This RasterLayer has no data set.")
         return self.Raster
+
+
+def featureToNative(feature: Base) -> QgsFeature:
+    return
+
+
+def layerToNative(layer: Layer) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+    layerType = type(layer.type)
+    if layer.type is None:
+        # Handle this case
+        return
+    elif layer.type.endswith("VectorLayer"):
+        vectorLayerToNative(layer)
+    elif layer.type.endswith("RasterLayer"):
+        rasterLayerToNative(layer)
+    return None
+
+
+def getLayerAttributes(layer: Layer):
+    names = {}
+    for feature in layer.features:
+        featNames = feature.get_member_names()
+        for n in featNames:
+            if not (n in names):
+                try:
+                    value = feature[n]
+                    variant = getVariantFromValue(value)
+                    if variant:
+                        names[n] = QgsField(n, variant)
+                except Exception as error:
+                    logger.log(str(error))
+    return names.values()
+
+
+def getVariantFromValue(value):
+    pairs = {
+        str: QVariant.String,
+        float: QVariant.Double,
+        int: QVariant.Int,
+        bool: QVariant.Bool,
+    }
+    t = type(value)
+    return pairs[t]
+
+
+def vectorLayerToNative(layer: Layer):
+    opts = QgsVectorLayer.LayerOptions()
+    vl = None
+    for lyr in QgsProject.instance().mapLayers().values():
+        if lyr.id() == layer.applicationId:
+            vl = lyr
+            break
+    if vl is None:
+        vl = QgsVectorLayer("Speckle", layer.name, "memory", opts)
+        pr = vl.dataProvider()
+        vl.startEditing()
+        attrs = getLayerAttributes(layer)
+        pr.addAttributes(attrs)
+        vl.setCrs(QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt))
+        vl.commitChanges()
+    vl.startEditing()
+    # fets = [featureToNative(feature) for feature in layer.features]
+    # vl.addFeatures(fets)
+    vl.commitChanges()
+    QgsProject.instance().addMapLayer(vl)
+    return None
+
+
+def rasterLayerToNative(layer: Layer):
+    rl = QgsRasterLayer("Speckle", layer.name, "memory", QgsRasterLayer.LayerOptions())
+
+    return None
+
+
+def get_type(type_name):
+    try:
+        return getattr(__builtins__, type_name)
+    except AttributeError:
+        try:
+            obj = globals()[type_name]
+        except KeyError:
+            return None
+        return repr(obj) if isinstance(obj, type) else None
