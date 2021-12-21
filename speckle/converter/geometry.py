@@ -2,12 +2,16 @@ import math
 from qgis.core import (QgsGeometry, QgsLineString, QgsMultiLineString,
                        QgsMultiPoint, QgsMultiPolygon, QgsPoint, QgsPointXY, QgsPolygon,
                        QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsWkbTypes)
-from specklepy.objects.geometry import Point, Polyline
+from specklepy.objects.geometry import Point, Polyline, Mesh
 from specklepy.objects import Base
 
 
 def extractGeometry(feature):
-    geom = feature.geometry()
+    try:
+        geom = feature.geometry()
+    except AttributeError:
+        geom = feature
+        
     geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
     geom_type = geom.type()
 
@@ -93,3 +97,9 @@ def reverseTransform(dest: QgsPointXY, crsSrc: QgsCoordinateReferenceSystem, crs
     # inverse transformation: dest -> src
     src = xform.transform(dest, QgsCoordinateTransform.ReverseTransform)
     return src
+
+def rasterToMesh():
+    mesh = Mesh()
+    mesh.vertices = []
+    mesh.faces = []
+    mesh.colors = []
