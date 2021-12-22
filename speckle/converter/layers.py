@@ -58,31 +58,31 @@ def convertSelectedLayers(layers, selectedLayerNames, projectCRS, project):
 
 def reprojectLayer(layer, targetCRS, project):
 
-    #if isinstance(layer.layer(), QgsVectorLayer):
-    ### create copy of the layer in memory
-    typeGeom = QgsWkbTypes.displayString(int(layer.layer().wkbType())) #returns e.g. Point, Polygon, Line
-    crsId = layer.layer().crs().authid()
-    layerReprojected = QgsVectorLayer(typeGeom+"?crs="+crsId, layer.name() + "_copy", "memory")
-    
-    ### copy fields/attributes to the new layer
-    fields = layer.layer().dataProvider().fields().toList()
-    layerReprojected.dataProvider().addAttributes(fields)
-    layerReprojected.updateFields()
+    if isinstance(layer.layer(), QgsVectorLayer):
+        ### create copy of the layer in memory
+        typeGeom = QgsWkbTypes.displayString(int(layer.layer().wkbType())) #returns e.g. Point, Polygon, Line
+        crsId = layer.layer().crs().authid()
+        layerReprojected = QgsVectorLayer(typeGeom+"?crs="+crsId, layer.name() + "_copy", "memory")
+        
+        ### copy fields/attributes to the new layer
+        fields = layer.layer().dataProvider().fields().toList()
+        layerReprojected.dataProvider().addAttributes(fields)
+        layerReprojected.updateFields()
 
-    ### get and transform the features
-    features=[f for f in layer.layer().getFeatures()]
-    xform = QgsCoordinateTransform(layer.layer().crs(), targetCRS, project)
-    for feature in features:
-        geometry = feature.geometry()
-        geometry.transform(xform)
-        feature.setGeometry(geometry)
+        ### get and transform the features
+        features=[f for f in layer.layer().getFeatures()]
+        xform = QgsCoordinateTransform(layer.layer().crs(), targetCRS, project)
+        for feature in features:
+            geometry = feature.geometry()
+            geometry.transform(xform)
+            feature.setGeometry(geometry)
 
-    layerReprojected.dataProvider().addFeatures(features)
-    layerReprojected.setCrs(targetCRS)
+        layerReprojected.dataProvider().addFeatures(features)
+        layerReprojected.setCrs(targetCRS)
 
-    return layerReprojected
-    #else:
-    #    return layer.layer()
+        return layerReprojected
+    else:
+        return layer.layer()
 
 def layerToSpeckle(layer): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     layerName = layer.name()
@@ -110,11 +110,13 @@ def layerToSpeckle(layer): #now the input is QgsVectorLayer instead of qgis._cor
     if isinstance(selectedLayer, QgsRasterLayer):
         
         # write feature attributes
-        b = rasterFeatureToSpeckle(selectedLayer)
+        b, b2 = rasterFeatureToSpeckle(selectedLayer)
         layerObjs.append(b)
+        layerObjs.append(b2)
         # Convert layer to speckle
         layerBase = Layer(layerName, speckleCrs, layerObjs)
         layerBase.applicationId = selectedLayer.id()
+        #layerBase._chunkable["rasterBandVals"] = 1
         return layerBase
 
 def featureToSpeckle(fieldnames, f):
@@ -140,25 +142,12 @@ def rasterFeatureToSpeckle(selectedLayer):
     rasterDimensions = [selectedLayer.width(), selectedLayer.height()]
 
     ds = gdal.Open(selectedLayer.source(), gdal.GA_ReadOnly)
-    #rasterOriginXY = [ds.GetGeoTransform()[0],ds.GetGeoTransform()[3]]
     rasterOriginPoint = QgsPointXY(ds.GetGeoTransform()[0], ds.GetGeoTransform()[3])
     rasterResXY = [ds.GetGeoTransform()[1],ds.GetGeoTransform()[5]]
     rasterBandNoDataVal = []
     rasterBandMinVal = []
-    rasterDataMaxVal = []
+    rasterBandMaxVal = []
     rasterBandVals = []
-    print(ds.GetGeoTransform()) # top left corner, (X.start, X.step,X.smth, Y.start, Y.step, Y.smth), for North hemisphere Y vals will be negative
-    
-    for index in range(rasterBandCount):
-        rasterBandNames.append(selectedLayer.bandName(index+1))
-        rb = ds.GetRasterBand(index+1)
-        valMin = selectedLayer.dataProvider().bandStatistics(index+1, QgsRasterBandStats.All).minimumValue
-        valMax = selectedLayer.dataProvider().bandStatistics(index+1, QgsRasterBandStats.All).maximumValue
-        bandVals = rb.ReadAsArray().tolist()
-        rasterBandVals.append(bandVals)
-        rasterBandNoDataVal.append(rb.GetNoDataValue())
-        rasterBandMinVal.append(valMin)
-        rasterDataMaxVal.append(valMax)
 
     b = Base()
     # Try to extract geometry
@@ -169,13 +158,74 @@ def rasterFeatureToSpeckle(selectedLayer):
             b['displayValue'] = geom
     except Exception as error:
         logger.logToUser("Error converting geometry: " + error, Qgis.Critical)
+
+    for index in range(rasterBandCount):
+        rasterBandNames.append(selectedLayer.bandName(index+1))
+        rb = ds.GetRasterBand(index+1)
+        valMin = selectedLayer.dataProvider().bandStatistics(index+1, QgsRasterBandStats.All).minimumValue
+        valMax = selectedLayer.dataProvider().bandStatistics(index+1, QgsRasterBandStats.All).maximumValue
+        bandVals = rb.ReadAsArray().tolist()
+
+        '''
+        ## reduce resolution if needed: 
+        if totalValues>max_values : 
+            bandVals_resized = [] #list of lists
+            factor = 1 #recalculate factor to reach max size
+            for i in range(1,20):
+                if totalValues/(i*i) <= max_values:
+                    factor = i
+                    break
+            for item in bandVals: #reduce each row and each column
+                bandVals_resized = [bandVals]
+        '''
+        bandValsFlat = []
+        [bandValsFlat.extend(item) for item in bandVals]
+        #look at mesh chunking 
+        b["@(10000)" + selectedLayer.bandName(index+1) + str(index+1) + " values"] = bandValsFlat #[0:int(max_values/rasterBandCount)]
+        rasterBandVals.append(bandValsFlat)
+        rasterBandNoDataVal.append(rb.GetNoDataValue())
+        rasterBandMinVal.append(valMin)
+        rasterBandMaxVal.append(valMax)
+
+    b["X resolution"] = rasterResXY[0]
+    b["Y resolution"] = rasterResXY[1]
+    b["X pixels"] = rasterDimensions[0]
+    b["Y pixels"] = rasterDimensions[1]
+    b["Band count"] = rasterBandCount
+    b["Band names"] = rasterBandNames
+
+    # creating a mesh
+    vertices = []
+    faces = []
+    colors = []
+    count = 0
+    # TODO identify symbology type and if Multiband, which band is which color
+    for v in range(rasterDimensions[1] ): #each row, Y
+        for h in range(rasterDimensions[0] ): #item in a row, X
+            vertices.extend([rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1], 0, ## add 4 points
+                            rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1], 0,
+                            rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1], 0,
+                            rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1], 0])
+            faces.extend([4, count, count+1, count+2, count+3])
+
+            rVal = 0
+            gVal = 0
+            bVal = 0
+            for k in range(rasterBandCount): 
+                #### REMAP band values to (0,255) range
+                colorVal = (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / (rasterBandMaxVal[k] - rasterBandMinVal[k]) * 255 
+                if k==0: rVal = int(colorVal)
+                if k==1: gVal = int(colorVal)
+                if k==2: bVal = int(colorVal)
+            color =  (rVal<<16) + (gVal<<8) + bVal
+            colors.extend([color,color,color,color])
+            count += 4
     
-    b["X,Y resolution"] = rasterResXY
-    b["X,Y dimensions"] = rasterDimensions
-    b["Band count"] = str(rasterBandCount)
-    b["Band names"] = str(rasterBandNames)
-    #b["Band values"] = rasterBandVals
-    return b
+    mesh = rasterToMesh(vertices, faces, colors)
+    b2 = Base()
+    b2['displayValue'] = mesh
+    
+    return b, b2
 
 class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 1000}, detachable={"Raster"}):
     Raster: List[str] = None

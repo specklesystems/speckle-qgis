@@ -98,8 +98,9 @@ def reverseTransform(dest: QgsPointXY, crsSrc: QgsCoordinateReferenceSystem, crs
     src = xform.transform(dest, QgsCoordinateTransform.ReverseTransform)
     return src
 
-def rasterToMesh():
+def rasterToMesh(vertices, faces, colors):
     mesh = Mesh()
-    mesh.vertices = []
-    mesh.faces = []
-    mesh.colors = []
+    mesh.vertices = vertices
+    mesh.faces = faces
+    mesh.colors = colors
+    return mesh
