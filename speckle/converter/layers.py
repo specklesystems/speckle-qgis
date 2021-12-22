@@ -225,8 +225,8 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS):
             noValColor = selectedLayer.renderer().nodataColor().getRgb()
             
             if rendererType == "multibandcolor":
-                redBand = selectedLayer.renderer().blueBand()
-                greenBand = selectedLayer.renderer().blueBand()
+                redBand = selectedLayer.renderer().redBand()
+                greenBand = selectedLayer.renderer().greenBand()
                 blueBand = selectedLayer.renderer().blueBand()
                 rVal = 0
                 gVal = 0
