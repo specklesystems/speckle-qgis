@@ -1,8 +1,9 @@
 import os
 import math
-from qgis.core import Qgis, QgsWkbTypes, QgsPointXY, QgsGeometry, QgsFeature, QgsRasterBandStats, QgsRasterLayer, QgsVectorLayer, QgsCoordinateTransform
+from qgis.core import Qgis, QgsWkbTypes, QgsPointXY, QgsGeometry, QgsMapLayer, QgsRasterBandStats, QgsRasterLayer, QgsVectorLayer, QgsCoordinateTransform
 from speckle.logging import logger
-from speckle.converter.geometry import extractGeometry, rasterToMesh
+from qgis.gui import QgsRendererWidget
+from speckle.converter.geometry import extractGeometry, rasterToMesh, transform
 from typing import Any, List
 
 from encodings.aliases import aliases
@@ -53,7 +54,7 @@ def convertSelectedLayers(layers, selectedLayerNames, projectCRS, project):
                 reprojectedLayer = layer.layer() 
             else: 
                 reprojectedLayer = reprojectLayer(layer, projectCRS, project)
-            result.append(layerToSpeckle(reprojectedLayer))
+            result.append(layerToSpeckle(reprojectedLayer, projectCRS))
     return result
 
 def reprojectLayer(layer, targetCRS, project):
@@ -81,10 +82,12 @@ def reprojectLayer(layer, targetCRS, project):
         layerReprojected.setCrs(targetCRS)
 
         return layerReprojected
+    
     else:
         return layer.layer()
+    
 
-def layerToSpeckle(layer): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
+def layerToSpeckle(layer, projectCRS): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     layerName = layer.name()
     selectedLayer = layer #.layer()
     crs = selectedLayer.crs()
@@ -110,13 +113,11 @@ def layerToSpeckle(layer): #now the input is QgsVectorLayer instead of qgis._cor
     if isinstance(selectedLayer, QgsRasterLayer):
         
         # write feature attributes
-        b, b2 = rasterFeatureToSpeckle(selectedLayer)
+        b = rasterFeatureToSpeckle(selectedLayer, projectCRS)
         layerObjs.append(b)
-        layerObjs.append(b2)
         # Convert layer to speckle
         layerBase = Layer(layerName, speckleCrs, layerObjs)
         layerBase.applicationId = selectedLayer.id()
-        #layerBase._chunkable["rasterBandVals"] = 1
         return layerBase
 
 def featureToSpeckle(fieldnames, f):
@@ -136,7 +137,7 @@ def featureToSpeckle(fieldnames, f):
         b[corrected] = str(f[name])
     return b
 
-def rasterFeatureToSpeckle(selectedLayer):
+def rasterFeatureToSpeckle(selectedLayer, projectCRS):
     rasterBandCount = selectedLayer.bandCount()
     rasterBandNames = []
     rasterDimensions = [selectedLayer.width(), selectedLayer.height()]
@@ -152,10 +153,12 @@ def rasterFeatureToSpeckle(selectedLayer):
     b = Base()
     # Try to extract geometry
     try:
-        pt = QgsGeometry.fromPointXY(rasterOriginPoint)
+        reprojectedPt = rasterOriginPoint
+        if selectedLayer.crs()!= projectCRS: reprojectedPt = transform(rasterOriginPoint, selectedLayer.crs(), projectCRS)
+        pt = QgsGeometry.fromPointXY(reprojectedPt)
         geom = extractGeometry(pt)
         if (geom != None):
-            b['displayValue'] = geom
+            b['displayValue'] = [geom]
     except Exception as error:
         logger.logToUser("Error converting geometry: " + error, Qgis.Critical)
 
@@ -199,33 +202,93 @@ def rasterFeatureToSpeckle(selectedLayer):
     faces = []
     colors = []
     count = 0
+    rendererType = selectedLayer.renderer().type()
+    print(rendererType)
     # TODO identify symbology type and if Multiband, which band is which color
     for v in range(rasterDimensions[1] ): #each row, Y
         for h in range(rasterDimensions[0] ): #item in a row, X
-            vertices.extend([rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1], 0, ## add 4 points
-                            rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1], 0,
-                            rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1], 0,
-                            rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1], 0])
+            pt1 = QgsPointXY(rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1])
+            pt2 = QgsPointXY(rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1])
+            pt3 = QgsPointXY(rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1])
+            pt4 = QgsPointXY(rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1])
+            # first, get point coordinates with correct position and resolution, then reproject each: 
+            if selectedLayer.crs()!= projectCRS: 
+                pt1 = transform(src = pt1, crs_src = selectedLayer.crs(), crsDest = projectCRS)
+                pt2 = transform(src = pt2, crs_src = selectedLayer.crs(), crsDest = projectCRS)
+                pt3 = transform(src = pt3, crs_src = selectedLayer.crs(), crsDest = projectCRS)
+                pt4 = transform(src = pt4, crs_src = selectedLayer.crs(), crsDest = projectCRS)
+            vertices.extend([pt1.x(), pt1.y(), 0, pt2.x(), pt2.y(), 0, pt3.x(), pt3.y(), 0, pt4.x(), pt4.y(), 0]) ## add 4 points
             faces.extend([4, count, count+1, count+2, count+3])
 
-            rVal = 0
-            gVal = 0
-            bVal = 0
-            for k in range(rasterBandCount): 
-                #### REMAP band values to (0,255) range
-                colorVal = (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / (rasterBandMaxVal[k] - rasterBandMinVal[k]) * 255 
-                if k==0: rVal = int(colorVal)
-                if k==1: gVal = int(colorVal)
-                if k==2: bVal = int(colorVal)
-            color =  (rVal<<16) + (gVal<<8) + bVal
+            # color vertices according to QGIS renderer
+            color = (0<<16) + (0<<8) + 0
+            noValColor = selectedLayer.renderer().nodataColor().getRgb()
+            
+            if rendererType == "multibandcolor":
+                redBand = selectedLayer.renderer().blueBand()
+                greenBand = selectedLayer.renderer().blueBand()
+                blueBand = selectedLayer.renderer().blueBand()
+                rVal = 0
+                gVal = 0
+                bVal = 0
+                for k in range(rasterBandCount): 
+                    #### REMAP band values to (0,255) range
+                    valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
+                    colorVal = int( (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / valRange * 255 )
+                    if k+1 == redBand: rVal = colorVal
+                    if k+1 == greenBand: gVal = colorVal
+                    if k+1 == blueBand: bVal = colorVal
+                color =  (rVal<<16) + (gVal<<8) + bVal
+                # for missing values (check by 1st band)
+                if rasterBandVals[0][int(count/4)] != rasterBandVals[0][int(count/4)]: 
+                    color = (noValColor[0]<<16) + (noValColor[1]<<8) + noValColor[2]
+                
+            elif rendererType == "paletted":
+                bandIndex = selectedLayer.renderer().band()-1 #int
+                value = rasterBandVals[bandIndex][int(count/4)] #find in the list and match with color
+                
+                rendererClasses = selectedLayer.renderer().classes()
+                for c in range(len(rendererClasses)-1):
+                    if value >= rendererClasses[c].value and value <= rendererClasses[c+1].value :
+                        rgb = rendererClasses[c].color.getRgb()
+                        color =  (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
+                        break
+
+            elif rendererType == "singlebandpseudocolor":
+                bandIndex = selectedLayer.renderer().band()-1 #int
+                value = rasterBandVals[bandIndex][int(count/4)] #find in the list and match with color
+
+                rendererClasses = selectedLayer.renderer().legendSymbologyItems()
+                for c in range(len(rendererClasses)-1):
+                    if value >= float(rendererClasses[c][0]) and value <= float(rendererClasses[c+1][0]) :
+                        rgb = rendererClasses[c][1].getRgb()
+                        color =  (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
+                        break
+
+            else:
+                if rendererType == "singlebandgray":
+                    bandIndex = selectedLayer.renderer().grayBand()-1 
+                if rendererType == "hillshade":
+                    bandIndex = selectedLayer.renderer().band()-1 
+                if rendererType == "contour":
+                    try: bandIndex = selectedLayer.renderer().inputBand()-1 
+                    except: 
+                        try: bandIndex = selectedLayer.renderer().band()-1 
+                        except: bandIndex = 0
+                else: # e.g. single band data
+                    bandIndex = 0
+                # REMAP band values to (0,255) range
+                valRange = (rasterBandMaxVal[bandIndex] - rasterBandMinVal[bandIndex])
+                colorVal = int( (rasterBandVals[bandIndex][int(count/4)] - rasterBandMinVal[bandIndex]) / valRange * 255 )
+                color =  (colorVal<<16) + (colorVal<<8) + colorVal
+
             colors.extend([color,color,color,color])
             count += 4
     
     mesh = rasterToMesh(vertices, faces, colors)
-    b2 = Base()
-    b2['displayValue'] = mesh
+    b['displayValue'].append(mesh)
     
-    return b, b2
+    return b
 
 class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 1000}, detachable={"Raster"}):
     Raster: List[str] = None
