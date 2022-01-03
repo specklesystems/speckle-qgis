@@ -50,13 +50,10 @@ def convertSelectedLayers(layers, selectedLayerNames, projectCRS, project):
         # if not(hasattr(layer, "fields")):
         #     continue
         if layer.name() in selectedLayerNames:
-            if layer.layer().crs() == projectCRS:
-                reprojectedLayer = layer.layer() 
-            else: 
-                reprojectedLayer = reprojectLayer(layer, projectCRS, project)
-            result.append(layerToSpeckle(reprojectedLayer, projectCRS))
+            result.append(layerToSpeckle(layer, projectCRS, project))
     return result
 
+'''
 def reprojectLayer(layer, targetCRS, project):
 
     if isinstance(layer.layer(), QgsVectorLayer):
@@ -85,17 +82,19 @@ def reprojectLayer(layer, targetCRS, project):
     
     else:
         return layer.layer()
-    
+'''    
 
-def layerToSpeckle(layer, projectCRS): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
+def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
+    
     layerName = layer.name()
-    selectedLayer = layer #.layer()
+    selectedLayer = layer.layer()
     crs = selectedLayer.crs()
     units = "m"
-    if crs.isGeographic(): units = "degrees"
+    if crs.isGeographic(): units = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
     layerObjs = []
-    # Convert CRS to speckle
-    speckleCrs = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units)
+    # Convert CRS to speckle, use the projectCRS
+    speckleCrs = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units) 
+    speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units) 
 
     if isinstance(selectedLayer, QgsVectorLayer):
 
@@ -103,25 +102,32 @@ def layerToSpeckle(layer, projectCRS): #now the input is QgsVectorLayer instead 
 
         # write feature attributes
         for f in selectedLayer.getFeatures():
-            b = featureToSpeckle(fieldnames, f)
+            b = featureToSpeckle(fieldnames, f, crs, projectCRS, project)
             layerObjs.append(b)
         # Convert layer to speckle
-        layerBase = Layer(layerName, speckleCrs, layerObjs)
+        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs)
         layerBase.applicationId = selectedLayer.id()
         return layerBase
 
     if isinstance(selectedLayer, QgsRasterLayer):
-        
         # write feature attributes
         b = rasterFeatureToSpeckle(selectedLayer, projectCRS)
         layerObjs.append(b)
         # Convert layer to speckle
-        layerBase = Layer(layerName, speckleCrs, layerObjs)
+        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs)
         layerBase.applicationId = selectedLayer.id()
         return layerBase
 
-def featureToSpeckle(fieldnames, f):
+def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project):
     b = Base()
+
+    #apply transformation if needed
+    if sourceCRS != targetCRS:
+        xform = QgsCoordinateTransform(sourceCRS, targetCRS, project)
+        geometry = f.geometry()
+        geometry.transform(xform)
+        f.setGeometry(geometry)
+
     # Try to extract geometry
     try:
         geom = extractGeometry(f)
@@ -141,6 +147,8 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS):
     rasterBandCount = selectedLayer.bandCount()
     rasterBandNames = []
     rasterDimensions = [selectedLayer.width(), selectedLayer.height()]
+    #if rasterDimensions[0]*rasterDimensions[1] > 1000000 :
+    #    logger.logToUser("Large layer: ", Qgis.Warning)
 
     ds = gdal.Open(selectedLayer.source(), gdal.GA_ReadOnly)
     rasterOriginPoint = QgsPointXY(ds.GetGeoTransform()[0], ds.GetGeoTransform()[3])
@@ -151,7 +159,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS):
     rasterBandVals = []
 
     b = Base()
-    # Try to extract geometry
+    # Try to extract geometry 
     try:
         reprojectedPt = rasterOriginPoint
         if selectedLayer.crs()!= projectCRS: reprojectedPt = transform(rasterOriginPoint, selectedLayer.crs(), projectCRS)
@@ -160,7 +168,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS):
         if (geom != None):
             b['displayValue'] = [geom]
     except Exception as error:
-        logger.logToUser("Error converting geometry: " + error, Qgis.Critical)
+        logger.logToUser("Error converting point geometry: " + error, Qgis.Critical)
 
     for index in range(rasterBandCount):
         rasterBandNames.append(selectedLayer.bandName(index+1))
@@ -184,7 +192,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS):
         bandValsFlat = []
         [bandValsFlat.extend(item) for item in bandVals]
         #look at mesh chunking 
-        b["@(10000)" + selectedLayer.bandName(index+1) + str(index+1) + " values"] = bandValsFlat #[0:int(max_values/rasterBandCount)]
+        b["@(10000)" + selectedLayer.bandName(index+1) + "_values"] = bandValsFlat #[0:int(max_values/rasterBandCount)]
         rasterBandVals.append(bandValsFlat)
         rasterBandNoDataVal.append(rb.GetNoDataValue())
         rasterBandMinVal.append(valMin)
