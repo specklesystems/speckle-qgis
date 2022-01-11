@@ -7,7 +7,8 @@ from speckle.converter.geometry import extractGeometry, rasterToMesh, transform
 from typing import Any, List
 
 from encodings.aliases import aliases
-from osgeo import gdal ## C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
+from osgeo import gdal, osr ## C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
+#import numpy as np
 
 from specklepy.objects import Base
 
@@ -52,6 +53,7 @@ def convertSelectedLayers(layers, selectedLayerNames, projectCRS, project):
         if layer.name() in selectedLayerNames:
             result.append(layerToSpeckle(layer, projectCRS, project))
     return result
+
 
 '''
 def reprojectLayer(layer, targetCRS, project):
@@ -111,7 +113,7 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
 
     if isinstance(selectedLayer, QgsRasterLayer):
         # write feature attributes
-        b = rasterFeatureToSpeckle(selectedLayer, projectCRS)
+        b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project)
         layerObjs.append(b)
         # Convert layer to speckle
         layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs)
@@ -143,7 +145,7 @@ def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project):
         b[corrected] = str(f[name])
     return b
 
-def rasterFeatureToSpeckle(selectedLayer, projectCRS):
+def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
     rasterBandCount = selectedLayer.bandCount()
     rasterBandNames = []
     rasterDimensions = [selectedLayer.width(), selectedLayer.height()]
@@ -295,8 +297,61 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS):
     
     mesh = rasterToMesh(vertices, faces, colors)
     b['displayValue'].append(mesh)
-    
+
+    '''# testing, only for receiving layers
+    source_folder = selectedLayer.source().replace(selectedLayer.source().split('/')[len(selectedLayer.source().split('/'))-1],"")
+    epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
+    receiveRaster(project, source_folder, selectedLayer.name(), epsg, rasterDimensions,  rasterBandCount, rasterBandVals, reprojectedPt, rasterResXY)
+    '''
     return b
+'''
+class fakeNpArray(object):
+    def __init__(self, shape=None):
+        self.shape=shape
+	
+### WORKING: Creating raster layer from the data. ISSUES: import numpy, save to local folder
+def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, rasterBandVals, pt, rasterResXY): 
+    ## https://opensourceoptions.com/blog/pyqgis-create-raster/
+    # creating file in temporary folder: https://stackoverflow.com/questions/56038742/creating-in-memory-qgsrasterlayer-from-the-rasterization-of-a-qgsvectorlayer-wit
+    fn = source_folder + name + '_received_raster.tif'
+    print(fn)
+    
+    driver = gdal.GetDriverByName('GTiff')
+    # create raster dataset
+    ds = driver.Create(fn, xsize=rasterDimensions[0], ysize=rasterDimensions[1], bands=bands, eType=gdal.GDT_Float32)
+
+    # Write data to raster band
+    for i in range(bands):
+        #rasterband = np.zeros((10,10))
+        rasterband = np.array(rasterBandVals[i])
+        rasterband = np.reshape(rasterband,(rasterDimensions[1], rasterDimensions[0]))
+        rasterband = []
+        for k in range(rasterDimensions[0]):
+            row = []
+            for n in range(rasterDimensions[1]):
+                row.append(rasterBandVals[i][n+n*k])
+            rasterband.append(row)
+        print(rasterband)
+        #rasterband.shape = (rasterDimensions[1], rasterDimensions[0])
+        ds.GetRasterBand(i+1).WriteArray(rasterband) # or "rasterband.T"
+
+    # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
+    ds.SetGeoTransform([pt.x(), rasterResXY[0], 0, pt.y(), 0, rasterResXY[1]])
+    # create a spatial reference object
+    srs = osr.SpatialReference()
+    #  For the Universal Transverse Mercator the SetUTM(Zone, North=1 or South=2)
+    # Other methods can set the spatial reference from well-known text or EPSG code
+    #srs.SetUTM(12,1) 
+    #srs.SetWellKnownGeogCS('NAD83')
+    srs.ImportFromEPSG(epsg) # from https://gis.stackexchange.com/questions/34082/creating-raster-layer-from-numpy-array-using-pyqgis
+    ds.SetProjection(srs.ExportToWkt())
+    # close the rater datasource by setting it equal to None
+    ds = None
+    #add the new raster to the QGIS interface
+    #rlayer = iface.addRasterLayer(fn)
+    raster_layer = QgsRasterLayer(fn, 'Layer_name', 'gdal')
+    project.addMapLayer(raster_layer)
+'''
 
 class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 1000}, detachable={"Raster"}):
     Raster: List[str] = None
