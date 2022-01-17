@@ -21,7 +21,7 @@ from speckle.logging import logger
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QDockWidget, QListWidget
-from qgis.core import Qgis, QgsProject
+from qgis.core import Qgis, QgsProject, QgsRasterLayer
 
 # Initialize Qt resources from file resources.py
 from resources import *
@@ -212,15 +212,16 @@ class SpeckleQGIS:
     def onSendButtonClicked(self):
         # creating our parent base object
         project = QgsProject.instance()
+        projectCRS = project.crs()
         layerTreeRoot = project.layerTreeRoot()
         layers = getLayers(layerTreeRoot, layerTreeRoot)
 
         selectedLayerNames = [
-            item.text() for item in self.dockwidget.layersWidget.selectedItems()
+            item.text().replace("(LARGE!) ","") for item in self.dockwidget.layersWidget.selectedItems()
         ]
 
         base_obj = Base()
-        base_obj.layers = convertSelectedLayers(layers, selectedLayerNames)
+        base_obj.layers = convertSelectedLayers(layers, selectedLayerNames, projectCRS, project)
 
         # Check if stream id/url is empty
         if not self.dockwidget.streamIdField.text():
@@ -271,7 +272,15 @@ class SpeckleQGIS:
         # Clear the contents of the comboBox from previous runs
         self.dockwidget.layersWidget.clear()
         # Populate the comboBox with names of all the loaded layers
-        self.dockwidget.layersWidget.addItems([layer.name() for layer in layers])
+        #self.dockwidget.layersWidget.addItems([layer.name() for layer in layers])
+        nameDisplay = []
+        for layer in layers:
+            if isinstance(layer, QgsRasterLayer):
+                if layer.width()*layer.height() > 1000000:
+                    nameDisplay.append("(LARGE!) " + layer.name())
+                else: nameDisplay.append(layer.name())
+            else: nameDisplay.append(layer.name())
+        self.dockwidget.layersWidget.addItems(nameDisplay)
 
     def populateProjectStreams(self):
         
