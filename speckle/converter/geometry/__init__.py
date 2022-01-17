@@ -1,5 +1,6 @@
 """ This module contains all geometry conversion functionality To and From Speckle."""
 
+from speckle.logging import logger
 from typing import List, Union
 
 from qgis.core import QgsGeometry, QgsWkbTypes
@@ -18,7 +19,7 @@ from specklepy.objects.geometry import Line, Mesh, Point, Polyline
 def convertToSpeckle(feature) -> Union[Base, List[Base], None]:
     """Converts the provided layer feature to Speckle objects"""
 
-    geom = feature.geometry()
+    geom: QgsGeometry = feature.geometry()
     geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
     geomType = geom.type()
 
@@ -39,7 +40,7 @@ def convertToSpeckle(feature) -> Union[Base, List[Base], None]:
         else:
             return [polygonToSpeckle(p) for p in geom.parts()]
     else:
-        print("Unsupported or invalid geometry")
+        logger.log("Unsupported or invalid geometry")
     return None
 
 

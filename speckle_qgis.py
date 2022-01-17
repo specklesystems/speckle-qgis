@@ -291,6 +291,7 @@ class SpeckleQGIS:
             objId = operations.send(base=base_obj, transports=[transport])
         except SpeckleException as error:
             logger.logToUser("Error sending data", Qgis.Critical)
+            logger.log(error.message)
             return
 
         message = self.dockwidget.messageInput.text()
