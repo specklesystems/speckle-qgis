@@ -1,19 +1,15 @@
 """
 Contains all Layer related classes and methods.
 """
-import math
-import os
-from encodings.aliases import aliases
 from typing import Any, List, Optional, Union
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
-    gdal, osr)
-from qgis.core import (Qgis, QgsCoordinateTransform, QgsGeometry, QgsMapLayer,
+    gdal)
+from qgis.core import (Qgis, QgsCoordinateTransform, QgsGeometry,
                        QgsPointXY, QgsRasterBandStats, QgsRasterLayer,
-                       QgsVectorLayer, QgsWkbTypes, QgsProject, QgsLayerTree, QgsLayerTreeNode, QgsFeature, QgsField, QgsCoordinateReferenceSystem)
-from qgis.gui import QgsRendererWidget
+                       QgsVectorLayer, QgsProject, QgsLayerTree, QgsLayerTreeNode, QgsField, QgsCoordinateReferenceSystem)
 from qgis.PyQt.QtCore import QVariant
-from speckle.converter.geometry import (convertToNative, convertToSpeckle,
+from speckle.converter.geometry import (convertToSpeckle,
                                         transform)
 from speckle.converter.geometry.mesh import rasterToMesh
 from speckle.logging import logger
@@ -28,7 +24,7 @@ class CRS(Base):
     wkt: str
     units: str
 
-    def __init__(self, name: str, wkt: str, units: str, **kwargs) -> None:
+    def __init__(self, name, wkt, units, **kwargs) -> None:
         super().__init__(**kwargs)
         self.name = name
         self.wkt = wkt
