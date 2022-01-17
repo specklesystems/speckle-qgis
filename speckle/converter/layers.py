@@ -24,11 +24,12 @@ class CRS(Base):
     wkt: str
     units: str
 
-    def __init__(self, name, wkt, units, **kwargs) -> None:
+    def __init__(self, name = None, wkt = None, units = None, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.name = name
-        self.wkt = wkt
-        self.units = units
+        
+        self.name = name if name != None else ""
+        self.wkt = wkt if wkt != None else ""
+        self.units = units if units != None else "m"
 
 class Layer(Base, chunkable={"features": 100}):
     """A GIS Layer"""
