@@ -1,22 +1,26 @@
 """
 Contains all Layer related classes and methods.
 """
-import os
 import math
+import os
+from encodings.aliases import aliases
 from typing import Any, List, Optional, Union
 
-from qgis.core import Qgis, QgsWkbTypes, QgsPointXY, QgsGeometry, QgsMapLayer, QgsRasterBandStats, QgsRasterLayer, QgsVectorLayer, QgsCoordinateTransform
-from qgis.PyQt.QtCore import QVariant
-from speckle.logging import logger
+from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
+    gdal, osr)
+from qgis.core import (Qgis, QgsCoordinateTransform, QgsGeometry, QgsMapLayer,
+                       QgsPointXY, QgsRasterBandStats, QgsRasterLayer,
+                       QgsVectorLayer, QgsWkbTypes, QgsProject, QgsLayerTree, QgsLayerTreeNode, QgsFeature, QgsField, QgsCoordinateReferenceSystem)
 from qgis.gui import QgsRendererWidget
-from speckle.converter.geometry import extractGeometry, rasterToMesh, transform
-from typing import Any, List
+from qgis.PyQt.QtCore import QVariant
+from speckle.converter.geometry import (convertToNative, convertToSpeckle,
+                                        transform)
+from speckle.converter.geometry.mesh import rasterToMesh
+from speckle.logging import logger
+from specklepy.objects import Base
 
-from encodings.aliases import aliases
-from osgeo import gdal, osr ## C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
 #import numpy as np
 
-from specklepy.objects import Base
 
 class CRS(Base):
     """A very basic GIS Coordinate Reference System stored in wkt format"""
@@ -24,7 +28,7 @@ class CRS(Base):
     wkt: str
     units: str
 
-    def __init__(self, name=None, wkt=None, units=None, **kwargs) -> None:
+    def __init__(self, name: str, wkt: str, units: str, **kwargs) -> None:
         super().__init__(**kwargs)
         self.name = name
         self.wkt = wkt
@@ -180,13 +184,13 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
     # Try to extract geometry 
     try:
         reprojectedPt = rasterOriginPoint
-        if selectedLayer.crs()!= projectCRS: reprojectedPt = transform(rasterOriginPoint, selectedLayer.crs(), projectCRS)
+        if selectedLayer.crs()!= projectCRS: reprojectedPt = transform.transform(rasterOriginPoint, selectedLayer.crs(), projectCRS)
         pt = QgsGeometry.fromPointXY(reprojectedPt)
-        geom = extractGeometry(pt)
+        geom = convertToSpeckle(pt)
         if (geom != None):
             b['displayValue'] = [geom]
     except Exception as error:
-        logger.logToUser("Error converting point geometry: " + error, Qgis.Critical)
+        logger.logToUser("Error converting point geometry: " + str(error), Qgis.Critical)
 
     for index in range(rasterBandCount):
         rasterBandNames.append(selectedLayer.bandName(index+1))
@@ -239,10 +243,10 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
             pt4 = QgsPointXY(rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1])
             # first, get point coordinates with correct position and resolution, then reproject each: 
             if selectedLayer.crs()!= projectCRS: 
-                pt1 = transform(src = pt1, crs_src = selectedLayer.crs(), crsDest = projectCRS)
-                pt2 = transform(src = pt2, crs_src = selectedLayer.crs(), crsDest = projectCRS)
-                pt3 = transform(src = pt3, crs_src = selectedLayer.crs(), crsDest = projectCRS)
-                pt4 = transform(src = pt4, crs_src = selectedLayer.crs(), crsDest = projectCRS)
+                pt1 = transform.transform(src = pt1, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                pt2 = transform.transform(src = pt2, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                pt3 = transform.transform(src = pt3, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                pt4 = transform.transform(src = pt4, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
             vertices.extend([pt1.x(), pt1.y(), 0, pt2.x(), pt2.y(), 0, pt3.x(), pt3.y(), 0, pt4.x(), pt4.y(), 0]) ## add 4 points
             faces.extend([4, count, count+1, count+2, count+3])
 
@@ -320,6 +324,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
     receiveRaster(project, source_folder, selectedLayer.name(), epsg, rasterDimensions,  rasterBandCount, rasterBandVals, reprojectedPt, rasterResXY)
     '''
     return b
+
 '''
 class fakeNpArray(object):
     def __init__(self, shape=None):
@@ -384,8 +389,8 @@ class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunka
         return self.Raster
 
 
-def featureToNative(feature: Base) -> QgsFeature:
-    return
+def featureToNative(feature: Base):
+    return None
 
 
 def layerToNative(layer: Layer) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
@@ -415,7 +420,6 @@ def getLayerAttributes(layer: Layer):
                     logger.log(str(error))
     return names.values()
 
-
 def getVariantFromValue(value):
     pairs = {
         str: QVariant.String,
@@ -425,7 +429,6 @@ def getVariantFromValue(value):
     }
     t = type(value)
     return pairs[t]
-
 
 def vectorLayerToNative(layer: Layer):
     opts = QgsVectorLayer.LayerOptions()
@@ -449,12 +452,10 @@ def vectorLayerToNative(layer: Layer):
     QgsProject.instance().addMapLayer(vl)
     return None
 
-
 def rasterLayerToNative(layer: Layer):
     rl = QgsRasterLayer("Speckle", layer.name, "memory", QgsRasterLayer.LayerOptions())
 
     return None
-
 
 def get_type(type_name):
     try:
