@@ -1,55 +1,76 @@
-import os
-import math
-from qgis.core import Qgis, QgsWkbTypes, QgsPointXY, QgsGeometry, QgsMapLayer, QgsRasterBandStats, QgsRasterLayer, QgsVectorLayer, QgsCoordinateTransform
+"""
+Contains all Layer related classes and methods.
+"""
+from typing import Any, List, Optional, Union
+
+from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
+    gdal, osr)
+from qgis.core import (Qgis, QgsCoordinateTransform, QgsGeometry,
+                       QgsPointXY, QgsRasterBandStats, QgsRasterLayer,
+                       QgsVectorLayer, QgsProject, QgsLayerTree, QgsLayerTreeNode, QgsField, QgsFields, QgsFeature, QgsCoordinateReferenceSystem, QgsWkbTypes)
+from qgis.PyQt.QtCore import QVariant
+from speckle.converter import geometry
+from speckle.converter.geometry import (convertToSpeckle,
+                                        transform)
+from speckle.converter.geometry.mesh import rasterToMesh
+from speckle.converter.geometry.point import pointToNative
 from speckle.logging import logger
-from qgis.gui import QgsRendererWidget
-from speckle.converter.geometry import extractGeometry, rasterToMesh, transform
-from typing import Any, List
-
-from encodings.aliases import aliases
-from osgeo import gdal, osr ## C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
-#import numpy as np
-
 from specklepy.objects import Base
 
+import numpy as np
+
+
 class CRS(Base):
+    """A very basic GIS Coordinate Reference System stored in wkt format"""
     name: str
     wkt: str
     units: str
 
-    def __init__(self, name, wkt, units, **kwargs) -> None:
+    def __init__(self, name = None, wkt = None, units = None, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.name = name
-        self.wkt = wkt
-        self.units = units
+        
+        self.name = name if name != None else ""
+        self.wkt = wkt if wkt != None else ""
+        self.units = units if units != None else "m"
 
 class Layer(Base, chunkable={"features": 100}):
-    def __init__(self, name, crs, features=[], **kwargs) -> None:
+    """A GIS Layer"""
+
+    def __init__(
+        self,
+        name=None,
+        crs=None,
+        features: List[Base] = [],
+        layerType: str = None,
+        geomType: str = "None",
+        **kwargs
+    ) -> None:
         super().__init__(**kwargs)
         self.name = name
         self.crs = crs
+        self.type = layerType
         self.features = features
+        self.geomType = geomType
 
 
-def getLayers(tree, parent):
+def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[QgsLayerTreeNode]:
+    """Gets a list of all layers in the given QgsLayerTree"""
+
     children = parent.children()
     layers = []
     for node in children:
-        isLayer = tree.isLayer(node)
-        if isLayer:
+        if tree.isLayer(node):
             layers.append(node)
             continue
-        isGroup = tree.isGroup(node)
-        if isGroup:
+        if tree.isGroup(node):
             layers.extend(getLayers(tree, node))
     return layers
 
 
 def convertSelectedLayers(layers, selectedLayerNames, projectCRS, project):
+    """Converts the current selected layers to Speckle"""
     result = []
     for layer in layers:
-        # if not(hasattr(layer, "fields")):
-        #     continue
         if layer.name() in selectedLayerNames:
             result.append(layerToSpeckle(layer, projectCRS, project))
     return result
@@ -86,8 +107,25 @@ def reprojectLayer(layer, targetCRS, project):
         return layer.layer()
 '''    
 
+def getLayerGeomType(layer: QgsVectorLayer):
+    if layer.wkbType()==QgsWkbTypes.Point:
+        return "Point"
+    if layer.wkbType()==QgsWkbTypes.MultiPoint:
+        return "Multipoint"
+    if layer.wkbType()== QgsWkbTypes.MultiLineString:
+        return "MultiLineString"
+    if layer.wkbType()==QgsWkbTypes.LineString:
+        return "LineString"
+    if layer.wkbType()==QgsWkbTypes.Polygon:
+        return "Polygon"
+    if layer.wkbType()==QgsWkbTypes.MultiPolygon:
+        return "Multipolygon"
+
+    return "None"
+
+
 def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
-    
+    """Converts a given QGIS Layer to Speckle"""
     layerName = layer.name()
     selectedLayer = layer.layer()
     crs = selectedLayer.crs()
@@ -95,7 +133,6 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
     if crs.isGeographic(): units = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
     layerObjs = []
     # Convert CRS to speckle, use the projectCRS
-    speckleCrs = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units) 
     speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units) 
 
     if isinstance(selectedLayer, QgsVectorLayer):
@@ -107,7 +144,7 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
             b = featureToSpeckle(fieldnames, f, crs, projectCRS, project)
             layerObjs.append(b)
         # Convert layer to speckle
-        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs)
+        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs, "VectorLayer", getLayerGeomType(selectedLayer))
         layerBase.applicationId = selectedLayer.id()
         return layerBase
 
@@ -116,7 +153,7 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
         b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project)
         layerObjs.append(b)
         # Convert layer to speckle
-        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs)
+        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs, "RasterLayer")
         layerBase.applicationId = selectedLayer.id()
         return layerBase
 
@@ -132,15 +169,15 @@ def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project):
 
     # Try to extract geometry
     try:
-        geom = extractGeometry(f)
-        if (geom != None):
-            b['displayValue'] = geom
+        geom = convertToSpeckle(f)
+        if geom is not None:
+            b["geometry"] = geom
     except Exception as error:
-        logger.logToUser("Error converting geometry: " + error, Qgis.Critical)
+        logger.logToUser("Error converting geometry: " + str(error), Qgis.Critical)
 
     for name in fieldnames:
         corrected = name.replace("/", "_").replace(".", "-")
-        if(corrected == "id"):
+        if corrected == "id":
             corrected == "applicationId"
         b[corrected] = str(f[name])
     return b
@@ -162,15 +199,16 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
 
     b = Base()
     # Try to extract geometry 
+    reprojectedPt = QgsGeometry.fromPointXY(QgsPointXY())
     try:
         reprojectedPt = rasterOriginPoint
-        if selectedLayer.crs()!= projectCRS: reprojectedPt = transform(rasterOriginPoint, selectedLayer.crs(), projectCRS)
+        if selectedLayer.crs()!= projectCRS: reprojectedPt = transform.transform(rasterOriginPoint, selectedLayer.crs(), projectCRS)
         pt = QgsGeometry.fromPointXY(reprojectedPt)
-        geom = extractGeometry(pt)
+        geom = convertToSpeckle(pt)
         if (geom != None):
             b['displayValue'] = [geom]
     except Exception as error:
-        logger.logToUser("Error converting point geometry: " + error, Qgis.Critical)
+        logger.logToUser("Error converting point geometry: " + str(error), Qgis.Critical)
 
     for index in range(rasterBandCount):
         rasterBandNames.append(selectedLayer.bandName(index+1))
@@ -223,10 +261,10 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
             pt4 = QgsPointXY(rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1])
             # first, get point coordinates with correct position and resolution, then reproject each: 
             if selectedLayer.crs()!= projectCRS: 
-                pt1 = transform(src = pt1, crs_src = selectedLayer.crs(), crsDest = projectCRS)
-                pt2 = transform(src = pt2, crs_src = selectedLayer.crs(), crsDest = projectCRS)
-                pt3 = transform(src = pt3, crs_src = selectedLayer.crs(), crsDest = projectCRS)
-                pt4 = transform(src = pt4, crs_src = selectedLayer.crs(), crsDest = projectCRS)
+                pt1 = transform.transform(src = pt1, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                pt2 = transform.transform(src = pt2, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                pt3 = transform.transform(src = pt3, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                pt4 = transform.transform(src = pt4, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
             vertices.extend([pt1.x(), pt1.y(), 0, pt2.x(), pt2.y(), 0, pt3.x(), pt3.y(), 0, pt4.x(), pt4.y(), 0]) ## add 4 points
             faces.extend([4, count, count+1, count+2, count+3])
 
@@ -296,43 +334,27 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
             count += 4
     
     mesh = rasterToMesh(vertices, faces, colors)
+    if(b['displayValue'] is None):
+        b['displayValue'] = []
     b['displayValue'].append(mesh)
-
-    '''# testing, only for receiving layers
-    source_folder = selectedLayer.source().replace(selectedLayer.source().split('/')[len(selectedLayer.source().split('/'))-1],"")
-    epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
-    receiveRaster(project, source_folder, selectedLayer.name(), epsg, rasterDimensions,  rasterBandCount, rasterBandVals, reprojectedPt, rasterResXY)
-    '''
     return b
-'''
-class fakeNpArray(object):
-    def __init__(self, shape=None):
-        self.shape=shape
-	
+
+
 ### WORKING: Creating raster layer from the data. ISSUES: import numpy, save to local folder
 def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, rasterBandVals, pt, rasterResXY): 
     ## https://opensourceoptions.com/blog/pyqgis-create-raster/
     # creating file in temporary folder: https://stackoverflow.com/questions/56038742/creating-in-memory-qgsrasterlayer-from-the-rasterization-of-a-qgsvectorlayer-wit
     fn = source_folder + name + '_received_raster.tif'
     print(fn)
-    
+
     driver = gdal.GetDriverByName('GTiff')
     # create raster dataset
     ds = driver.Create(fn, xsize=rasterDimensions[0], ysize=rasterDimensions[1], bands=bands, eType=gdal.GDT_Float32)
 
     # Write data to raster band
     for i in range(bands):
-        #rasterband = np.zeros((10,10))
         rasterband = np.array(rasterBandVals[i])
         rasterband = np.reshape(rasterband,(rasterDimensions[1], rasterDimensions[0]))
-        rasterband = []
-        for k in range(rasterDimensions[0]):
-            row = []
-            for n in range(rasterDimensions[1]):
-                row.append(rasterBandVals[i][n+n*k])
-            rasterband.append(row)
-        print(rasterband)
-        #rasterband.shape = (rasterDimensions[1], rasterDimensions[0])
         ds.GetRasterBand(i+1).WriteArray(rasterband) # or "rasterband.T"
 
     # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
@@ -349,13 +371,13 @@ def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, r
     ds = None
     #add the new raster to the QGIS interface
     #rlayer = iface.addRasterLayer(fn)
-    raster_layer = QgsRasterLayer(fn, 'Layer_name', 'gdal')
+    raster_layer = QgsRasterLayer(fn, name, 'gdal')
     project.addMapLayer(raster_layer)
-'''
 
-class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 1000}, detachable={"Raster"}):
-    Raster: List[str] = None
 
+class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 1000, "BandNames": 100}, detachable={"Raster"}):
+    Raster: Optional[List[str]] = None
+    
     @ classmethod
     def from_list(cls, args: List[Any]) -> "RasterLayer":
         return cls(
@@ -363,4 +385,128 @@ class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunka
         )
 
     def to_list(self) -> List[Any]:
+        if(self.Raster is None):
+            raise Exception("This RasterLayer has no data set.")
         return self.Raster
+
+
+def featureToNative(feature: Base):
+    feat = QgsFeature()
+    speckle_geom = feature["geometry"]
+    if isinstance(speckle_geom, list):
+        qgsGeom = geometry.convertToNativeMulti(speckle_geom)
+    else:
+        qgsGeom = geometry.convertToNative(speckle_geom)
+    
+    if qgsGeom is not None:
+        feat.setGeometry(qgsGeom)
+    dynamicProps = feature.get_dynamic_member_names()
+    dynamicProps.remove("geometry")
+    fields = QgsFields()
+    for name in dynamicProps:
+        fields.append(QgsField(name))
+    feat.setFields(fields)
+    for prop in dynamicProps:
+        feat.setAttribute(prop, feature[prop])
+    return feat
+
+
+def layerToNative(layer: Layer) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+    layerType = type(layer.type)
+    if layer.type is None:
+        # Handle this case
+        return
+    elif layer.type.endswith("VectorLayer"):
+        return vectorLayerToNative(layer)
+    elif layer.type.endswith("RasterLayer"):
+        return rasterLayerToNative(layer)
+    return None
+
+
+def getLayerAttributes(layer: Layer):
+    names = {}
+    for feature in layer.features:
+        featNames = feature.get_member_names()
+        for n in featNames:
+            if n == "totalChildrenCount": 
+                continue
+            if not (n in names):
+                try:
+                    value = feature[n]
+                    variant = getVariantFromValue(value)
+                    if variant:
+                        names[n] = QgsField(n, variant)
+                except Exception as error:
+                    logger.log(str(error))
+    return [i for i in names.values()]
+
+def getVariantFromValue(value):
+    pairs = {
+        str: QVariant.String,
+        float: QVariant.Double,
+        int: QVariant.Int,
+        bool: QVariant.Bool
+    }
+    t = type(value)
+    return pairs[t]
+
+def vectorLayerToNative(layer: Layer):
+    vl = None
+    for lyr in QgsProject.instance().mapLayers().values():
+        if lyr.id() == layer.applicationId:
+            vl = lyr
+            vl.startEditing()
+            for feat in vl.getFeatures():
+                vl.deleteFeature(feat.id())
+            fets = [featureToNative(feature) for feature in layer.features]
+            pr = vl.dataProvider()
+            pr.addFeatures(fets)
+            vl.updateExtents()
+            vl.commitChanges()
+            return vl
+    if vl is None:
+        crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+        crsid = crs.authid()
+        vl = QgsVectorLayer(layer.geomType+"?crs="+crsid, layer.name, "memory")
+        QgsProject.instance().addMapLayer(vl)
+
+        pr = vl.dataProvider()
+        vl.startEditing()
+        vl.setCrs(crs)
+        attrs = getLayerAttributes(layer)
+        pr.addAttributes(attrs)
+        vl.updateFields()
+        vl.commitChanges()
+
+    vl.startEditing()
+    fets = [featureToNative(feature) for feature in layer.features]
+    pr = vl.dataProvider()
+    pr.addFeatures(fets)
+    vl.updateExtents()
+    vl.commitChanges()
+    return vl
+
+def rasterLayerToNative(layer: Layer):
+        # testing, only for receiving layers
+    source_folder = QgsProject.instance().absolutePath()
+    project = QgsProject.instance()
+    projectCRS = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+    epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
+    
+    feat = layer.features[0]
+    bandNames = feat["Band names"]
+    bandValues = [feat["@(10000)" + name + "_values"] for name in bandNames]
+
+    receiveRaster(project, source_folder, layer.name, epsg, [feat["X pixels"],feat["Y pixels"]],  feat["Band count"], bandValues, pointToNative(feat["displayValue"][0]), [feat["X resolution"],feat["Y resolution"]])
+    
+    return None
+
+def get_type(type_name):
+    try:
+        return getattr(__builtins__, type_name)
+    except AttributeError:
+        try:
+            obj = globals()[type_name]
+        except KeyError:
+            return None
+        return repr(obj) if isinstance(obj, type) else None

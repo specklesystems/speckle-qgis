@@ -15,39 +15,77 @@
 
 
 import os.path
+from types import FunctionType
+from typing import Any, Callable, List, Optional, Tuple
 
-from speckle.logging import logger
-
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
+from qgis.core import Qgis, QgsProject
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QDockWidget, QListWidget
 from qgis.core import Qgis, QgsProject, QgsRasterLayer
+from specklepy.api import operations
+from specklepy.api.client import SpeckleException
+from specklepy.api.credentials import StreamWrapper
+from specklepy.api.models import Stream
+from specklepy.objects import Base
+from specklepy.transports.server import ServerTransport
 
 # Initialize Qt resources from file resources.py
 from resources import *
+from speckle.converter.layers import (
+    Layer,
+    convertSelectedLayers,
+    getLayers,
+    layerToNative,
+    layerToSpeckle,
+)
+from speckle.logging import logger
+from ui.add_stream_modal import AddStreamModalDialog
 
 # Import the code for the dialog
 from ui.speckle_qgis_dialog import SpeckleQGISDialog
 
-from specklepy.api import operations
-from specklepy.api.client import SpeckleClient, SpeckleException
-from specklepy.api.credentials import Account, get_local_accounts, StreamWrapper, get_default_account
-from specklepy.transports.server import ServerTransport
-from specklepy.objects import Base
-from specklepy.api.models import Stream
-from speckle.logging import *
-from speckle.converter.geometry import *
-from speckle.converter.layers import convertSelectedLayers, getLayers
 
-from ui.add_stream_modal import AddStreamModalDialog
+def traverseObject(
+    base: Base,
+    callback: Optional[Callable[[Base], bool]],
+    check: Optional[Callable[[Base], bool]],
+):
+    if check and check(base):
+        res = callback(base) if callback else False
+        if res:
+            return
+    memberNames = base.get_member_names()
+    for name in memberNames:
+        try:
+            if ["id", "applicationId", "units", "speckle_type"].index(name):
+                continue
+        except:
+            # Do nothing
+            print()
+        traverseValue(base[name], callback, check)
+
+
+def traverseValue(
+    value: Any,
+    callback: Optional[Callable[[Base], bool]],
+    check: Optional[Callable[[Base], bool]],
+):
+    if isinstance(value, Base):
+        traverseObject(value, callback, check)
+    if isinstance(value, List):
+        for item in value:
+            traverseValue(item, callback, check)
+
+
 class SpeckleQGIS:
     """Speckle Connector Plugin for QGIS"""
 
-    dockwidget: QDockWidget = None
-    add_stream_modal: AddStreamModalDialog = None
-    current_streams: [(StreamWrapper, Stream)] = []
-    
-    active_stream: (StreamWrapper, Stream) = None
+    dockwidget: Optional[QDockWidget]
+    add_stream_modal: AddStreamModalDialog
+    current_streams: List[Tuple[StreamWrapper, Stream]] = []
+
+    active_stream: Optional[Tuple[StreamWrapper, Stream]]
 
     qgis_project: QgsProject
 
@@ -60,11 +98,9 @@ class SpeckleQGIS:
         :type iface: QgsInterface
         """
         # Save reference to the QGIS interface
-
+        self.dockwidget = None
         self.iface = iface
         self.qgis_project = QgsProject().instance()
-        self.qgis_project.fileNameChanged.connect(self.reloadUI)
-        self.qgis_project.homePathChanged.connect(self.reloadUI)
 
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
@@ -190,10 +226,9 @@ class SpeckleQGIS:
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
 
-        # print "** CLOSING FakePlugin"
-
         # disconnects
-        self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
+        if self.dockwidget:
+            self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
 
         # remove this statement if dockwidget is to remain
         # for reuse if plugin is reopened
@@ -210,6 +245,9 @@ class SpeckleQGIS:
             self.iface.removeToolBarIcon(action)
 
     def onSendButtonClicked(self):
+        """Handles action when Send button is pressed."""
+        if not self.dockwidget:
+            return
         # creating our parent base object
         project = QgsProject.instance()
         projectCRS = project.crs()
@@ -228,6 +266,12 @@ class SpeckleQGIS:
             logger.logToUser("Please enter a Stream Url/ID.", Qgis.Warning)
             return
 
+        if self.active_stream is None:
+            logger.logToUser(
+                "There is no active stream. Please select a stream from the list."
+            )
+            return
+
         # Get the stream wrapper
         streamWrapper = self.active_stream[0]
         streamId = streamWrapper.stream_id
@@ -235,7 +279,7 @@ class SpeckleQGIS:
         # Ensure the stream actually exists
         try:
             client.stream.get(streamId)
-        except Exception as error:
+        except SpeckleException as error:
             logger.logToUser(str(error), Qgis.Critical)
             return
 
@@ -244,9 +288,10 @@ class SpeckleQGIS:
 
         try:
             # this serialises the block and sends it to the transport
-            hash = operations.send(base=base_obj, transports=[transport])
-        except Exception as error:
+            objId = operations.send(base=base_obj, transports=[transport])
+        except SpeckleException as error:
             logger.logToUser("Error sending data", Qgis.Critical)
+            logger.log(error.message)
             return
 
         message = self.dockwidget.messageInput.text()
@@ -254,18 +299,82 @@ class SpeckleQGIS:
             # you can now create a commit on your stream with this object
             client.commit.create(
                 stream_id=streamId,
-                object_id=hash,
-                branch_name= self.dockwidget.streamBranchDropdown.currentText(),
-                message= "Sent objects from QGIS" if len(message) == 0 else message,
+                object_id=objId,
+                branch_name=self.dockwidget.streamBranchDropdown.currentText(),
+                message="Sent objects from QGIS" if len(message) == 0 else message,
                 source_application="QGIS",
             )
             logger.logToUser("Successfully sent data to stream: " + streamId)
             self.dockwidget.messageInput.setText("")
-        except Exception as e:
+        except SpeckleException as e:
             logger.logToUser("Error creating commit", Qgis.Critical)
 
+    def onReceiveButtonClicked(self):
+        """Handles action when the Receive button is pressed"""
+
+        if not self.dockwidget:
+            return
+
+        # Check if stream id/url is empty
+        if not self.dockwidget.streamIdField.text():
+            logger.logToUser("Please enter a Stream Url/ID.", Qgis.Warning)
+            return
+
+        if self.active_stream is None:
+            logger.logToUser(
+                "There is no active stream. Please select a stream from the list.",
+                Qgis.Error,
+            )
+            return
+
+        # Get the stream wrapper
+        streamWrapper = self.active_stream[0]
+        streamId = streamWrapper.stream_id
+        client = streamWrapper.get_client()
+        # Ensure the stream actually exists
+        try:
+            stream = client.stream.get(streamId)
+            if stream.branches is None:
+                return
+            branchName = self.dockwidget.streamBranchDropdown.currentText()
+            branch = None
+            for b in stream.branches.items:
+                if b.name == branchName:
+                    branch = b
+                    break
+            if branch is None or branch.commits is None:
+                return
+        except SpeckleException as error:
+            logger.logToUser(str(error), Qgis.Critical)
+            return
+
+        # next create a server transport - this is the vehicle through which you will send and receive
+        transport = ServerTransport(client=client, stream_id=streamId)
+
+        try:
+            commit = branch.commits.items[0]
+            objId = commit.referencedObject
+            if objId is None:
+                return
+            commitObj = operations.receive(objId, transport, None)
+            logger.log(f"Succesfully received {objId}")
+
+            check: Callable[[Base], bool] = lambda base: isinstance(base, Layer)
+
+            def callback(base: Base) -> bool:
+                if isinstance(base, Layer):
+                    layer = layerToNative(base)
+                    logger.log("Layer created: " + str(layer))
+                return True
+
+            traverseObject(commitObj, callback, check)
+        except SpeckleException as e:
+            logger.logToUser("Receive failed", Qgis.Error)
+            return
 
     def populateLayerDropdown(self):
+        if not self.dockwidget:
+            return
         # Fetch the currently loaded layers
         layers = QgsProject.instance().mapLayers().values()
 
@@ -283,23 +392,27 @@ class SpeckleQGIS:
         self.dockwidget.layersWidget.addItems(nameDisplay)
 
     def populateProjectStreams(self):
-        
+        if not self.dockwidget:
+            return
+
         self.dockwidget.streamList.clear()
-        self.dockwidget.streamList.addItems([
-            f"{stream[1].name} - {stream[1].id}" for stream in self.current_streams
-        ])
+        self.dockwidget.streamList.addItems(
+            [f"{stream[1].name} - {stream[1].id}" for stream in self.current_streams]
+        )
 
     def populateActiveStreamBranchDropdown(self):
-        logger.log("populating branch from stream")
-        self.dockwidget.streamBranchDropdown.clear()
-        if(self.active_stream is None):
+        if not self.dockwidget:
             return
-        self.dockwidget.streamBranchDropdown.addItems([
-            f"{branch.name}" for branch in self.active_stream[1].branches.items
-        ])
+        self.dockwidget.streamBranchDropdown.clear()
+        if self.active_stream is None or self.active_stream[1].branches is None:
+            return
+
+        self.dockwidget.streamBranchDropdown.addItems(
+            [f"{branch.name}" for branch in self.active_stream[1].branches.items]
+        )
 
     def reloadUI(self):
-        if(self.dockwidget is not None):
+        if self.dockwidget is not None:
             self.active_stream = None
             self.get_project_streams()
             self.populateLayerDropdown()
@@ -317,17 +430,26 @@ class SpeckleQGIS:
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
+                self.qgis_project.fileNameChanged.connect(self.reloadUI)
+                self.qgis_project.homePathChanged.connect(self.reloadUI)
 
             # Setup events on first load only!
             self.dockwidget.sendButton.clicked.connect(self.onSendButtonClicked)
+            self.dockwidget.receiveButton.clicked.connect(self.onReceiveButtonClicked)
             self.dockwidget.reloadButton.clicked.connect(self.reloadUI)
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
             # Connect streams section events
-            self.dockwidget.streams_add_button.clicked.connect(self.onStreamAddButtonClicked)
-            self.dockwidget.streams_remove_button.clicked.connect(self.onStreamRemoveButtonClicked)
-            self.dockwidget.streamList.itemSelectionChanged.connect(self.onActiveStreamChanged)
+            self.dockwidget.streams_add_button.clicked.connect(
+                self.onStreamAddButtonClicked
+            )
+            self.dockwidget.streams_remove_button.clicked.connect(
+                self.onStreamRemoveButtonClicked
+            )
+            self.dockwidget.streamList.itemSelectionChanged.connect(
+                self.onActiveStreamChanged
+            )
 
             self.get_project_streams()
 
@@ -345,13 +467,13 @@ class SpeckleQGIS:
             self.dockwidget.show()
 
     def onStreamAddButtonClicked(self):
-        logger.log("on stream add")
         self.add_stream_modal = AddStreamModalDialog(None)
         self.add_stream_modal.handleStreamAdd.connect(self.handleStreamAdd)
         self.add_stream_modal.show()
-    
+
     def onStreamRemoveButtonClicked(self):
-        logger.log("on stream remove")
+        if not self.dockwidget:
+            return
         index = self.dockwidget.streamList.currentIndex().row()
         self.current_streams.pop(index)
         self.active_stream = None
@@ -362,18 +484,20 @@ class SpeckleQGIS:
         self.populateProjectStreams()
 
     def onActiveStreamChanged(self):
-        logger.log("on active stream changed")
-        if(len(self.current_streams) == 0):
+        if not self.dockwidget:
+            return
+        if len(self.current_streams) == 0:
             return
         index = self.dockwidget.streamList.currentRow()
-        if(index == -1):
+        if index == -1:
             return
         self.active_stream = self.current_streams[index]
-        self.dockwidget.streamIdField.setText(self.dockwidget.streamList.currentItem().text())
+        self.dockwidget.streamIdField.setText(
+            self.dockwidget.streamList.currentItem().text()
+        )
         self.populateActiveStreamBranchDropdown()
 
     def handleStreamAdd(self, sw: StreamWrapper):
-        logger.log("handling stream addition")
         client = sw.get_client()
         stream = client.stream.get(sw.stream_id)
         self.current_streams.append((sw, stream))
@@ -396,9 +520,8 @@ class SpeckleQGIS:
                 try:
                     sw = StreamWrapper(url)
                     stream = sw.get_client().stream.get(sw.stream_id)
-                    temp.append((sw,stream))
+                    temp.append((sw, stream))
                 except SpeckleException as e:
                     logger.logToUser(e.message, Qgis.Warning)
 
             self.current_streams = temp
-
