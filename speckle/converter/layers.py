@@ -362,33 +362,13 @@ def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, r
     # create a spatial reference object
     srs = osr.SpatialReference()
     #  For the Universal Transverse Mercator the SetUTM(Zone, North=1 or South=2)
-    # Other methods can set the spatial reference from well-known text or EPSG code
-    #srs.SetUTM(12,1) 
-    #srs.SetWellKnownGeogCS('NAD83')
     srs.ImportFromEPSG(epsg) # from https://gis.stackexchange.com/questions/34082/creating-raster-layer-from-numpy-array-using-pyqgis
     ds.SetProjection(srs.ExportToWkt())
     # close the rater datasource by setting it equal to None
     ds = None
-    #add the new raster to the QGIS interface
-    #rlayer = iface.addRasterLayer(fn)
     raster_layer = QgsRasterLayer(fn, name, 'gdal')
     project.addMapLayer(raster_layer)
-
-
-class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 1000, "BandNames": 100}, detachable={"Raster"}):
-    Raster: Optional[List[str]] = None
-    
-    @ classmethod
-    def from_list(cls, args: List[Any]) -> "RasterLayer":
-        return cls(
-            Raster=args,
-        )
-
-    def to_list(self) -> List[Any]:
-        if(self.Raster is None):
-            raise Exception("This RasterLayer has no data set.")
-        return self.Raster
-
+    return raster_layer
 
 def featureToNative(feature: Base):
     feat = QgsFeature()
@@ -489,6 +469,11 @@ def vectorLayerToNative(layer: Layer):
 def rasterLayerToNative(layer: Layer):
         # testing, only for receiving layers
     source_folder = QgsProject.instance().absolutePath()
+
+    if(source_folder == ""):
+        logger.logToUser(f"Raster layers can only be received on an existing saved project. Layer {layer.name} will be ignored", Qgis.Warning)
+        return None
+
     project = QgsProject.instance()
     projectCRS = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
     epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])

@@ -15,13 +15,12 @@
 
 
 import os.path
-from types import FunctionType
 from typing import Any, Callable, List, Optional, Tuple
 
 from qgis.core import Qgis, QgsProject
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QDockWidget, QListWidget
+from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QSpacerItem, QSizePolicy, QPushButton
 from qgis.core import Qgis, QgsProject, QgsRasterLayer
 from specklepy.api import operations
 from specklepy.api.client import SpeckleException
@@ -29,6 +28,8 @@ from specklepy.api.credentials import StreamWrapper
 from specklepy.api.models import Stream
 from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
+from specklepy.api.credentials import get_local_accounts, StreamWrapper
+import webbrowser
 
 # Initialize Qt resources from file resources.py
 from resources import *
@@ -37,7 +38,6 @@ from speckle.converter.layers import (
     convertSelectedLayers,
     getLayers,
     layerToNative,
-    layerToSpeckle,
 )
 from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
@@ -364,7 +364,8 @@ class SpeckleQGIS:
             def callback(base: Base) -> bool:
                 if isinstance(base, Layer):
                     layer = layerToNative(base)
-                    logger.log("Layer created: " + str(layer))
+                    if layer is not None:
+                        logger.log("Layer created: " + layer.name())
                 return True
 
             traverseObject(commitObj, callback, check)
@@ -412,6 +413,7 @@ class SpeckleQGIS:
         )
 
     def reloadUI(self):
+        self.is_setup = self.check_for_accounts()
         if self.dockwidget is not None:
             self.active_stream = None
             self.get_project_streams()
@@ -419,14 +421,30 @@ class SpeckleQGIS:
             self.populateProjectStreams()
             self.dockwidget.streamIdField.clear()
             self.dockwidget.streamBranchDropdown.clear()
+            self.dockwidget.receiveButton.setEnabled(self.is_setup)
+            self.dockwidget.sendButton.setEnabled(self.is_setup)
+            self.dockwidget.streams_add_button.setEnabled(self.is_setup)
+            self.dockwidget.streams_remove_button.setEnabled(self.is_setup)
+            self.dockwidget.streamBranchDropdown.setEnabled(self.is_setup)
+    def check_for_accounts(self):
+        def go_to_manager():
+            webbrowser.open("https://speckle-releases.netlify.app/")
+        accounts = get_local_accounts()
+        if len(accounts) == 0:
+            logger.logToUserWithAction("No accounts were found. Please remember to install the Speckle Manager and setup at least one account","Download Manager", go_to_manager)
+            return False
+        return True
 
     def run(self):
         """Run method that performs all the real work"""
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-
-        if not self.pluginIsActive:
+        self.is_setup = self.check_for_accounts()
+            
+        if self.pluginIsActive:
+            self.reloadUI()
+        else:
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
@@ -464,6 +482,13 @@ class SpeckleQGIS:
 
             # show the dockwidget
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
+
+            self.dockwidget.receiveButton.setEnabled(self.is_setup)
+            self.dockwidget.sendButton.setEnabled(self.is_setup)
+            self.dockwidget.sendButton.setEnabled(self.is_setup)
+            self.dockwidget.streams_add_button.setEnabled(self.is_setup)
+            self.dockwidget.streams_remove_button.setEnabled(self.is_setup)
+            self.dockwidget.streamBranchDropdown.setEnabled(self.is_setup)
             self.dockwidget.show()
 
     def onStreamAddButtonClicked(self):
