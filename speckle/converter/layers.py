@@ -4,7 +4,7 @@ Contains all Layer related classes and methods.
 from typing import Any, List, Optional, Union
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
-    gdal)
+    gdal, osr)
 from qgis.core import (Qgis, QgsCoordinateTransform, QgsGeometry,
                        QgsPointXY, QgsRasterBandStats, QgsRasterLayer,
                        QgsVectorLayer, QgsProject, QgsLayerTree, QgsLayerTreeNode, QgsField, QgsFields, QgsFeature, QgsCoordinateReferenceSystem, QgsWkbTypes)
@@ -16,7 +16,7 @@ from speckle.converter.geometry.mesh import rasterToMesh
 from speckle.logging import logger
 from specklepy.objects import Base
 
-#import numpy as np
+import numpy as np
 
 
 class CRS(Base):
@@ -198,6 +198,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
 
     b = Base()
     # Try to extract geometry 
+    reprojectedPt = QgsGeometry.fromPointXY(QgsPointXY())
     try:
         reprojectedPt = rasterOriginPoint
         if selectedLayer.crs()!= projectCRS: reprojectedPt = transform.transform(rasterOriginPoint, selectedLayer.crs(), projectCRS)
@@ -332,27 +333,25 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
             count += 4
     
     mesh = rasterToMesh(vertices, faces, colors)
+    if(b['displayValue'] is None):
+        b['displayValue'] = []
     b['displayValue'].append(mesh)
 
-    '''# testing, only for receiving layers
+    # testing, only for receiving layers
     source_folder = selectedLayer.source().replace(selectedLayer.source().split('/')[len(selectedLayer.source().split('/'))-1],"")
     epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
-    receiveRaster(project, source_folder, selectedLayer.name(), epsg, rasterDimensions,  rasterBandCount, rasterBandVals, reprojectedPt, rasterResXY)
-    '''
+    #receiveRaster(project, source_folder, selectedLayer.name(), epsg, rasterDimensions,  rasterBandCount, rasterBandVals, reprojectedPt, rasterResXY)
+
     return b
 
-'''
-class fakeNpArray(object):
-    def __init__(self, shape=None):
-        self.shape=shape
-	
+
 ### WORKING: Creating raster layer from the data. ISSUES: import numpy, save to local folder
 def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, rasterBandVals, pt, rasterResXY): 
     ## https://opensourceoptions.com/blog/pyqgis-create-raster/
     # creating file in temporary folder: https://stackoverflow.com/questions/56038742/creating-in-memory-qgsrasterlayer-from-the-rasterization-of-a-qgsvectorlayer-wit
     fn = source_folder + name + '_received_raster.tif'
     print(fn)
-    
+
     driver = gdal.GetDriverByName('GTiff')
     # create raster dataset
     ds = driver.Create(fn, xsize=rasterDimensions[0], ysize=rasterDimensions[1], bands=bands, eType=gdal.GDT_Float32)
@@ -388,11 +387,12 @@ def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, r
     #rlayer = iface.addRasterLayer(fn)
     raster_layer = QgsRasterLayer(fn, 'Layer_name', 'gdal')
     project.addMapLayer(raster_layer)
-'''
+
 
 class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 1000}, detachable={"Raster"}):
     Raster: Optional[List[str]] = None
 
+    
     @ classmethod
     def from_list(cls, args: List[Any]) -> "RasterLayer":
         return cls(
@@ -406,7 +406,7 @@ class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunka
 
 
 def featureToNative(feature: Base):
-    feat = QgsFeature(feature["layerId"])
+    feat = QgsFeature()
     speckle_geom = feature["geometry"]
     if isinstance(speckle_geom, list):
         qgsGeom = geometry.convertToNativeMulti(speckle_geom)
@@ -417,7 +417,6 @@ def featureToNative(feature: Base):
         feat.setGeometry(qgsGeom)
     dynamicProps = feature.get_dynamic_member_names()
     dynamicProps.remove("geometry")
-    dynamicProps.remove("layerId")
     fields = QgsFields()
     for name in dynamicProps:
         fields.append(QgsField(name))
