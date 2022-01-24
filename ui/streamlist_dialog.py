@@ -14,5 +14,5 @@ class StreamListDialog(QtWidgets.QWidget, FORM_CLASS):
 
 
     def __init__(self, parent=None):
-        super(StreamList, self).__init__(parent)
+        super(StreamListDialog, self).__init__(parent)
         self.setupUi(self)

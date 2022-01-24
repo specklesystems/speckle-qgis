@@ -21,7 +21,7 @@ def setup():
         # just in case the included version is old
         subprocess_call([pythonExec, "-m", "pip", "install", "--upgrade", "pip"])
 
-    pkgVersion = "2.3.5"
+    pkgVersion = "2.5.2"
     pkgName = "specklepy"
     try:
         import specklepy

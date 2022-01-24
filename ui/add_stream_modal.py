@@ -39,7 +39,6 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         self.populate_accounts_dropdown()
 
     def onSearchClicked(self):
-        logger.log("search clicked")
         query = self.search_text_field.text()
         results = self.speckle_client.stream.search(query)
         self.stream_results = results
@@ -48,7 +47,7 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
     def populateResultsList(self):
         self.search_results_list.clear()
         self.search_results_list.addItems([
-            f"{stream.name} - {stream.id} (last updated at XXX by YY)" for stream in self.stream_results 
+            f"{stream.name} - {stream.id}" for stream in self.stream_results 
         ])
 
     def onOkClicked(self):
