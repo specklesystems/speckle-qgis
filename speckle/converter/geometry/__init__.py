@@ -20,7 +20,10 @@ from specklepy.objects.geometry import Line, Mesh, Point, Polyline
 def convertToSpeckle(feature) -> Union[Base, Sequence[Base], None]:
     """Converts the provided layer feature to Speckle objects"""
 
-    geom: QgsGeometry = feature.geometry()
+    try:
+        geom: QgsGeometry = feature.geometry()
+    except:
+        geom: QgsGeometry = feature
     geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
     geomType = geom.type()
 
