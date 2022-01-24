@@ -6,11 +6,26 @@
 name=Speckle
 qgisMinimumVersion=3.0
 description=Speckle 2.0 Connector for QGIS
-version=0.0.7
+version=0.1.0
 author=Speckle Systems
 email=hello@speckle.systems
 
-about=The plugin allows you to select several layers in your project, and send their geometry (as well as their contained metadata), to a Speckle server. Only vector and raster based layers are supported. Make sure you have a Speckle account and SpeckleManager installed from https://speckle.guide/user/manager 
+about=
+    The Speckle QGIS plugin allows you send and receive data from multiple sources to/from several layers in your project, and store their geometry (as well as their contained metadata), in a Speckle server. 
+    
+    Don't know what Speckle is? You're not alone! Find out more at https://speckle.systems
+    
+    Requirements:
+    - Speckle Manager: You can download the installer here -> https://speckle.guide/user/manager
+    - An account in a Speckle server. If you don't have one, feel free to use our public server https://speckle.xyz
+    - An account added in the Accounts section of the Speckle Manager
+    - Windows and Mac compatible
+    
+    If the requirements are not fullfilled, the plugin will load but will not have any functionality enabled.
+    
+    If you're having issues with this plugin, you can always reach us at https://speckle.community
+
+
 
 tracker=http://github.com/specklesystems/speckle-qgis/issues
 repository=http://github.com/specklesystems/speckle-qgis
