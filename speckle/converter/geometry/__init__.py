@@ -65,9 +65,6 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
 
     return converted
 
-
-
-
 def multiPointToNative(items: List[Point]):
     pts = QgsMultiPoint()
     for item in items:

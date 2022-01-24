@@ -13,6 +13,7 @@ from speckle.converter import geometry
 from speckle.converter.geometry import (convertToSpeckle,
                                         transform)
 from speckle.converter.geometry.mesh import rasterToMesh
+from speckle.converter.geometry.point import pointToNative
 from speckle.logging import logger
 from specklepy.objects import Base
 
@@ -336,12 +337,6 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
     if(b['displayValue'] is None):
         b['displayValue'] = []
     b['displayValue'].append(mesh)
-
-    # testing, only for receiving layers
-    source_folder = selectedLayer.source().replace(selectedLayer.source().split('/')[len(selectedLayer.source().split('/'))-1],"")
-    epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
-    receiveRaster(project, source_folder, selectedLayer.name(), epsg, rasterDimensions,  rasterBandCount, rasterBandVals, reprojectedPt, rasterResXY)
-
     return b
 
 
@@ -376,13 +371,12 @@ def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, r
     ds = None
     #add the new raster to the QGIS interface
     #rlayer = iface.addRasterLayer(fn)
-    raster_layer = QgsRasterLayer(fn, 'Layer_name', 'gdal')
+    raster_layer = QgsRasterLayer(fn, name, 'gdal')
     project.addMapLayer(raster_layer)
 
 
-class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 1000}, detachable={"Raster"}):
+class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunkable={"Raster": 1000, "BandNames": 100}, detachable={"Raster"}):
     Raster: Optional[List[str]] = None
-
     
     @ classmethod
     def from_list(cls, args: List[Any]) -> "RasterLayer":
@@ -493,8 +487,18 @@ def vectorLayerToNative(layer: Layer):
     return vl
 
 def rasterLayerToNative(layer: Layer):
-    rl = QgsRasterLayer("Speckle", layer.name, "memory", QgsRasterLayer.LayerOptions())
+        # testing, only for receiving layers
+    source_folder = QgsProject.instance().absolutePath()
+    project = QgsProject.instance()
+    projectCRS = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+    epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
+    
+    feat = layer.features[0]
+    bandNames = feat["Band names"]
+    bandValues = [feat["@(10000)" + name + "_values"] for name in bandNames]
 
+    receiveRaster(project, source_folder, layer.name, epsg, [feat["X pixels"],feat["Y pixels"]],  feat["Band count"], bandValues, pointToNative(feat["displayValue"][0]), [feat["X resolution"],feat["Y resolution"]])
+    
     return None
 
 def get_type(type_name):
