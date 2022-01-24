@@ -114,3 +114,5 @@ venv.bak/
 scratch.py
 settings.json
 **/.DS_Store
+zip_build
+.qt_for_python
