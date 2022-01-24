@@ -340,7 +340,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
     # testing, only for receiving layers
     source_folder = selectedLayer.source().replace(selectedLayer.source().split('/')[len(selectedLayer.source().split('/'))-1],"")
     epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
-    #receiveRaster(project, source_folder, selectedLayer.name(), epsg, rasterDimensions,  rasterBandCount, rasterBandVals, reprojectedPt, rasterResXY)
+    receiveRaster(project, source_folder, selectedLayer.name(), epsg, rasterDimensions,  rasterBandCount, rasterBandVals, reprojectedPt, rasterResXY)
 
     return b
 
@@ -358,17 +358,8 @@ def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, r
 
     # Write data to raster band
     for i in range(bands):
-        #rasterband = np.zeros((10,10))
         rasterband = np.array(rasterBandVals[i])
         rasterband = np.reshape(rasterband,(rasterDimensions[1], rasterDimensions[0]))
-        rasterband = []
-        for k in range(rasterDimensions[0]):
-            row = []
-            for n in range(rasterDimensions[1]):
-                row.append(rasterBandVals[i][n+n*k])
-            rasterband.append(row)
-        print(rasterband)
-        #rasterband.shape = (rasterDimensions[1], rasterDimensions[0])
         ds.GetRasterBand(i+1).WriteArray(rasterband) # or "rasterband.T"
 
     # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
