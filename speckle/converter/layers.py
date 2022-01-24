@@ -7,8 +7,9 @@ from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-pac
     gdal)
 from qgis.core import (Qgis, QgsCoordinateTransform, QgsGeometry,
                        QgsPointXY, QgsRasterBandStats, QgsRasterLayer,
-                       QgsVectorLayer, QgsProject, QgsLayerTree, QgsLayerTreeNode, QgsField, QgsCoordinateReferenceSystem)
+                       QgsVectorLayer, QgsProject, QgsLayerTree, QgsLayerTreeNode, QgsField, QgsFields, QgsFeature, QgsCoordinateReferenceSystem, QgsWkbTypes)
 from qgis.PyQt.QtCore import QVariant
+from speckle.converter import geometry
 from speckle.converter.geometry import (convertToSpeckle,
                                         transform)
 from speckle.converter.geometry.mesh import rasterToMesh
@@ -40,6 +41,7 @@ class Layer(Base, chunkable={"features": 100}):
         crs=None,
         features: List[Base] = [],
         layerType: str = None,
+        geomType: str = "None",
         **kwargs
     ) -> None:
         super().__init__(**kwargs)
@@ -47,6 +49,7 @@ class Layer(Base, chunkable={"features": 100}):
         self.crs = crs
         self.type = layerType
         self.features = features
+        self.geomType = geomType
 
 
 def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[QgsLayerTreeNode]:
@@ -103,6 +106,23 @@ def reprojectLayer(layer, targetCRS, project):
         return layer.layer()
 '''    
 
+def getLayerGeomType(layer: QgsVectorLayer):
+    if layer.wkbType()==QgsWkbTypes.Point:
+        return "Point"
+    if layer.wkbType()==QgsWkbTypes.MultiPoint:
+        return "Multipoint"
+    if layer.wkbType()== QgsWkbTypes.MultiLineString:
+        return "MultiLineString"
+    if layer.wkbType()==QgsWkbTypes.LineString:
+        return "LineString"
+    if layer.wkbType()==QgsWkbTypes.Polygon:
+        return "Polygon"
+    if layer.wkbType()==QgsWkbTypes.MultiPolygon:
+        return "Multipolygon"
+
+    return "None"
+
+
 def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     """Converts a given QGIS Layer to Speckle"""
     layerName = layer.name()
@@ -124,7 +144,7 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
             b = featureToSpeckle(fieldnames, f, crs, projectCRS, project)
             layerObjs.append(b)
         # Convert layer to speckle
-        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs)
+        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs, "VectorLayer", getLayerGeomType(selectedLayer))
         layerBase.applicationId = selectedLayer.id()
         return layerBase
 
@@ -133,7 +153,7 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
         b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project)
         layerObjs.append(b)
         # Convert layer to speckle
-        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs)
+        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs, "RasterLayer")
         layerBase.applicationId = selectedLayer.id()
         return layerBase
 
@@ -151,7 +171,7 @@ def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project):
     try:
         geom = convertToSpeckle(f)
         if geom is not None:
-            b["displayValue"] = geom
+            b["geometry"] = geom
     except Exception as error:
         logger.logToUser("Error converting geometry: " + str(error), Qgis.Critical)
 
@@ -387,7 +407,24 @@ class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunka
 
 
 def featureToNative(feature: Base):
-    return None
+    feat = QgsFeature()
+    speckle_geom = feature["geometry"]
+    if isinstance(speckle_geom, list):
+        qgsGeom = geometry.convertToNativeMulti(speckle_geom)
+    else:
+        qgsGeom = geometry.convertToNative(speckle_geom)
+    
+    if qgsGeom is not None:
+        feat.setGeometry(qgsGeom)
+    dynamicProps = feature.get_dynamic_member_names()
+    dynamicProps.remove("geometry")
+    fields = QgsFields()
+    for name in dynamicProps:
+        fields.append(QgsField(name))
+    feat.setFields(fields)
+    for prop in dynamicProps:
+        feat.setAttribute(prop, feature[prop])
+    return feat
 
 
 def layerToNative(layer: Layer) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
@@ -396,9 +433,9 @@ def layerToNative(layer: Layer) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
         # Handle this case
         return
     elif layer.type.endswith("VectorLayer"):
-        vectorLayerToNative(layer)
+        return vectorLayerToNative(layer)
     elif layer.type.endswith("RasterLayer"):
-        rasterLayerToNative(layer)
+        return rasterLayerToNative(layer)
     return None
 
 
@@ -407,6 +444,8 @@ def getLayerAttributes(layer: Layer):
     for feature in layer.features:
         featNames = feature.get_member_names()
         for n in featNames:
+            if n == "totalChildrenCount": 
+                continue
             if not (n in names):
                 try:
                     value = feature[n]
@@ -415,39 +454,45 @@ def getLayerAttributes(layer: Layer):
                         names[n] = QgsField(n, variant)
                 except Exception as error:
                     logger.log(str(error))
-    return names.values()
+    return [i for i in names.values()]
 
 def getVariantFromValue(value):
     pairs = {
         str: QVariant.String,
         float: QVariant.Double,
         int: QVariant.Int,
-        bool: QVariant.Bool,
+        bool: QVariant.Bool
     }
     t = type(value)
     return pairs[t]
 
 def vectorLayerToNative(layer: Layer):
-    opts = QgsVectorLayer.LayerOptions()
     vl = None
     for lyr in QgsProject.instance().mapLayers().values():
         if lyr.id() == layer.applicationId:
             vl = lyr
             break
     if vl is None:
-        vl = QgsVectorLayer("Speckle", layer.name, "memory", opts)
+        crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+        crsid = crs.authid()
+        vl = QgsVectorLayer(layer.geomType+"?crs="+crsid, layer.name, "memory")
+        QgsProject.instance().addMapLayer(vl)
+
         pr = vl.dataProvider()
         vl.startEditing()
+        vl.setCrs(crs)
         attrs = getLayerAttributes(layer)
         pr.addAttributes(attrs)
-        vl.setCrs(QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt))
+        vl.updateFields()
         vl.commitChanges()
+
     vl.startEditing()
-    # fets = [featureToNative(feature) for feature in layer.features]
-    # vl.addFeatures(fets)
+    fets = [featureToNative(feature) for feature in layer.features]
+    pr = vl.dataProvider()
+    pr.addFeatures(fets)
+    vl.updateExtents()
     vl.commitChanges()
-    QgsProject.instance().addMapLayer(vl)
-    return None
+    return vl
 
 def rasterLayerToNative(layer: Layer):
     rl = QgsRasterLayer("Speckle", layer.name, "memory", QgsRasterLayer.LayerOptions())

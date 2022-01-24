@@ -1,9 +1,10 @@
 """ This module contains all geometry conversion functionality To and From Speckle."""
 
+from numpy import isin
 from speckle.logging import logger
 from typing import List, Union
 
-from qgis.core import QgsGeometry, QgsWkbTypes
+from qgis.core import QgsGeometry, QgsWkbTypes, QgsMultiPoint, QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon
 from speckle.converter.geometry.mesh import meshToNative
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from speckle.converter.geometry.polygon import *
@@ -16,7 +17,7 @@ from specklepy.objects import Base
 from specklepy.objects.geometry import Line, Mesh, Point, Polyline
 
 
-def convertToSpeckle(feature) -> Union[Base, List[Base], None]:
+def convertToSpeckle(feature) -> Union[Base, Sequence[Base], None]:
     """Converts the provided layer feature to Speckle objects"""
 
     geom: QgsGeometry = feature.geometry()
@@ -60,3 +61,39 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
             break
 
     return converted
+
+
+
+
+def multiPointToNative(items: List[Point]):
+    pts = QgsMultiPoint()
+    for item in items:
+        g = pointToNative(item)
+        if g is not None:
+            pts.addGeometry(g)
+    return pts
+
+def multiPolylineToNative(items: List[Polyline]):
+    polys = QgsMultiLineString()
+    for item in items:
+        g = polylineToNative(item)
+        if g is not None:
+            polys.addGeometry(g)
+    return polys
+
+def multiPolygonToNative(items: List[Base]):
+    polygons = QgsMultiPolygon()
+    for item in items:
+        g = polygonToNative(item)
+        if g is not None:
+            polygons.addGeometry(g)
+    return polygons
+
+def convertToNativeMulti(items: List[Base]):
+    first = items[0]
+    if isinstance(first, Point):
+        return multiPointToNative(items)
+    elif isinstance(first, Line) or isinstance(first, Polyline):
+        return multiPolylineToNative(items)
+    elif first["boundary"] is not None and first["voids"] is not None:
+        return multiPolygonToNative(items)

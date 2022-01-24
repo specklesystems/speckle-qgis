@@ -363,7 +363,8 @@ class SpeckleQGIS:
 
             def callback(base: Base) -> bool:
                 if isinstance(base, Layer):
-                    layerToNative(base)
+                    layer = layerToNative(base)
+                    logger.log("Layer created: " + str(layer))
                 return True
 
             traverseObject(commitObj, callback, check)

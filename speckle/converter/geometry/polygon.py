@@ -3,6 +3,8 @@
 from qgis.core import (
     QgsPolygon,
 )
+from typing import Sequence
+
 from specklepy.objects import Base
 
 from speckle.converter.geometry.polyline import (
@@ -14,14 +16,16 @@ from speckle.converter.geometry.polyline import (
 def polygonToSpeckle(geom: QgsPolygon):
     """Converts a QgsPolygon to Speckle"""
     polygon = Base()
-    polygon.boundary = polylineFromVerticesToSpeckle(
+    boundary = polylineFromVerticesToSpeckle(
         geom.exteriorRing().vertices(), True
     )
     voids = []
     for i in range(geom.numInteriorRings()):
         intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True)
         voids.append(intRing)
+    polygon.boundary = boundary
     polygon.voids = voids
+    polygon.displayValue = [ boundary ] + voids
     return polygon
 
 
