@@ -132,7 +132,6 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
     if crs.isGeographic(): units = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
     layerObjs = []
     # Convert CRS to speckle, use the projectCRS
-    speckleCrs = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units) 
     speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units) 
 
     if isinstance(selectedLayer, QgsVectorLayer):
@@ -407,7 +406,7 @@ class RasterLayer(Base, speckle_type="Objects.Geometry." + "RasterLayer", chunka
 
 
 def featureToNative(feature: Base):
-    feat = QgsFeature()
+    feat = QgsFeature(feature["layerId"])
     speckle_geom = feature["geometry"]
     if isinstance(speckle_geom, list):
         qgsGeom = geometry.convertToNativeMulti(speckle_geom)
@@ -418,6 +417,7 @@ def featureToNative(feature: Base):
         feat.setGeometry(qgsGeom)
     dynamicProps = feature.get_dynamic_member_names()
     dynamicProps.remove("geometry")
+    dynamicProps.remove("layerId")
     fields = QgsFields()
     for name in dynamicProps:
         fields.append(QgsField(name))
@@ -471,7 +471,15 @@ def vectorLayerToNative(layer: Layer):
     for lyr in QgsProject.instance().mapLayers().values():
         if lyr.id() == layer.applicationId:
             vl = lyr
-            break
+            vl.startEditing()
+            for feat in vl.getFeatures():
+                vl.deleteFeature(feat.id())
+            fets = [featureToNative(feature) for feature in layer.features]
+            pr = vl.dataProvider()
+            pr.addFeatures(fets)
+            vl.updateExtents()
+            vl.commitChanges()
+            return vl
     if vl is None:
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
         crsid = crs.authid()
