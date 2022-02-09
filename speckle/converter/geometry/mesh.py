@@ -6,8 +6,5 @@ def meshToNative(mesh: Mesh):
     return None
 
 def rasterToMesh(vertices, faces, colors):
-    mesh = Mesh()
-    mesh.vertices = vertices
-    mesh.faces = faces
-    mesh.colors = colors
+    mesh = Mesh.create(vertices, faces, colors)
     return mesh
