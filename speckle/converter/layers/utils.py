@@ -6,17 +6,17 @@ from speckle.converter.layers import Layer
 
 
 def getLayerGeomType(layer: QgsVectorLayer):
-    if layer.wkbType()==QgsWkbTypes.Point:
+    if layer.wkbType()==QgsWkbTypes.Point or layer.wkbType()==1:
         return "Point"
-    if layer.wkbType()==QgsWkbTypes.MultiPoint:
+    if layer.wkbType()==QgsWkbTypes.MultiPoint or layer.wkbType()==4:
         return "Multipoint"
-    if layer.wkbType()== QgsWkbTypes.MultiLineString:
+    if layer.wkbType()== QgsWkbTypes.MultiLineString or layer.wkbType()==5:
         return "MultiLineString"
-    if layer.wkbType()==QgsWkbTypes.LineString:
+    if layer.wkbType()==QgsWkbTypes.LineString or layer.wkbType()==2:
         return "LineString"
-    if layer.wkbType()==QgsWkbTypes.Polygon:
+    if layer.wkbType()==QgsWkbTypes.Polygon or layer.wkbType()==3:
         return "Polygon"
-    if layer.wkbType()==QgsWkbTypes.MultiPolygon:
+    if layer.wkbType()==QgsWkbTypes.MultiPolygon or layer.wkbType()==6:
         return "Multipolygon"
 
     return "None"

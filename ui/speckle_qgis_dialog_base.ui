@@ -154,7 +154,7 @@
              <bool>true</bool>
             </property>
             <property name="text">
-             <string>Reload</string>
+             <string>Refresh</string>
             </property>
            </widget>
           </item>

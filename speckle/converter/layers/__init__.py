@@ -57,7 +57,7 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
 
         # write feature attributes
         for f in selectedLayer.getFeatures():
-            b = featureToSpeckle(fieldnames, f, crs, projectCRS, project)
+            b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer)
             layerObjs.append(b)
         # Convert layer to speckle
         layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs, "VectorLayer", getLayerGeomType(selectedLayer))
@@ -78,7 +78,7 @@ def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, r
     ## https://opensourceoptions.com/blog/pyqgis-create-raster/
     # creating file in temporary folder: https://stackoverflow.com/questions/56038742/creating-in-memory-qgsrasterlayer-from-the-rasterization-of-a-qgsvectorlayer-wit
     fn = source_folder + name + '_received_raster.tif'
-    print(fn)
+    #print(fn)
 
     driver = gdal.GetDriverByName('GTiff')
     # create raster dataset
@@ -118,21 +118,24 @@ def layerToNative(layer: Layer) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
 
 def vectorLayerToNative(layer: Layer):
     vl = None
+    crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
     for lyr in QgsProject.instance().mapLayers().values():
-        if lyr.id() == layer.applicationId:
+        if lyr.id() == layer.applicationId: # dangerous, because it rewrites the source file on the disk
             vl = lyr
             vl.startEditing()
             for feat in vl.getFeatures():
                 vl.deleteFeature(feat.id())
-            fets = [featureToNative(feature) for feature in layer.features]
+            fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
+            #list(filter(lambda a: a !="", fets))
             pr = vl.dataProvider()
             pr.addFeatures(fets)
+            vl.setCrs(crs)
             vl.updateExtents()
             vl.commitChanges()
             return vl
     if vl is None:
-        crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
         crsid = crs.authid()
+        #print(layer.geomType)
         vl = QgsVectorLayer(layer.geomType+"?crs="+crsid, layer.name, "memory")
         QgsProject.instance().addMapLayer(vl)
 
@@ -145,7 +148,9 @@ def vectorLayerToNative(layer: Layer):
         vl.commitChanges()
 
     vl.startEditing()
-    fets = [featureToNative(feature) for feature in layer.features]
+    fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
+    #list(filter(lambda a: a !="", fets))
+    print(fets)
     pr = vl.dataProvider()
     pr.addFeatures(fets)
     vl.updateExtents()

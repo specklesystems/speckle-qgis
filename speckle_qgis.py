@@ -21,7 +21,7 @@ from qgis.core import Qgis, QgsProject
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QDockWidget
-from qgis.core import Qgis, QgsProject, QgsRasterLayer
+from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsRasterLayer
 from specklepy.api import operations
 from specklepy.api.client import SpeckleException
 from specklepy.api.credentials import StreamWrapper
@@ -255,7 +255,7 @@ class SpeckleQGIS:
         layers = getLayers(layerTreeRoot, layerTreeRoot)
 
         selectedLayerNames = [
-            item.text().replace("(LARGE!) ","") for item in self.dockwidget.layersWidget.selectedItems()
+            item.text().replace(" !LARGE!","") for item in self.dockwidget.layersWidget.selectedItems()
         ]
 
         base_obj = Base()
@@ -382,13 +382,22 @@ class SpeckleQGIS:
         self.dockwidget.layersWidget.clear()
         # Populate the comboBox with names of all the loaded layers
         #self.dockwidget.layersWidget.addItems([layer.name() for layer in layers])
+        
         nameDisplay = []
         for layer in layers:
             if isinstance(layer, QgsRasterLayer):
                 if layer.width()*layer.height() > 1000000:
-                    nameDisplay.append("(LARGE!) " + layer.name())
+                    nameDisplay.append(layer.name() + " !LARGE!")
+                else: nameDisplay.append(layer.name())
+            elif isinstance(layer, QgsVectorLayer):
+                if layer.featureCount() > 20000:
+                    nameDisplay.append(layer.name() + " !LARGE!")
                 else: nameDisplay.append(layer.name())
             else: nameDisplay.append(layer.name())
+        print(nameDisplay)
+        #[x for _, x in sorted(zip(nameToSort, nameDisplay))]
+        nameDisplay.sort(key=lambda v: v.upper())
+        print(nameDisplay)
         self.dockwidget.layersWidget.addItems(nameDisplay)
 
     def populateProjectStreams(self):

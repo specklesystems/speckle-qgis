@@ -17,7 +17,7 @@ from specklepy.objects import Base
 from specklepy.objects.geometry import Line, Mesh, Point, Polyline
 
 
-def convertToSpeckle(feature) -> Union[Base, Sequence[Base], None]:
+def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
     """Converts the provided layer feature to Speckle objects"""
 
     try:
@@ -40,9 +40,9 @@ def convertToSpeckle(feature) -> Union[Base, Sequence[Base], None]:
             return [polylineToSpeckle(poly) for poly in geom.parts()]
     elif geomType == QgsWkbTypes.PolygonGeometry:
         if geomSingleType:
-            return polygonToSpeckle(geom)
+            return polygonToSpeckle(geom, feature, layer)
         else:
-            return [polygonToSpeckle(p) for p in geom.parts()]
+            return [polygonToSpeckle(p, feature, layer) for p in geom.parts()]
     else:
         logger.log("Unsupported or invalid geometry")
     return None

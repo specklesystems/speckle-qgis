@@ -9,7 +9,7 @@ from speckle.logging import logger
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 
-def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project):
+def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project, selectedLayer):
     b = Base()
 
     #apply transformation if needed
@@ -21,7 +21,8 @@ def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project):
 
     # Try to extract geometry
     try:
-        geom = convertToSpeckle(f)
+        geom = convertToSpeckle(f, selectedLayer)
+        #print(geom)
         if geom is not None:
             b["geometry"] = geom
     except Exception as error:
@@ -57,7 +58,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
         reprojectedPt = rasterOriginPoint
         if selectedLayer.crs()!= projectCRS: reprojectedPt = transform.transform(rasterOriginPoint, selectedLayer.crs(), projectCRS)
         pt = QgsGeometry.fromPointXY(reprojectedPt)
-        geom = convertToSpeckle(pt)
+        geom = convertToSpeckle(pt, selectedLayer)
         if (geom != None):
             b['displayValue'] = [geom]
     except Exception as error:
@@ -104,7 +105,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
     colors = []
     count = 0
     rendererType = selectedLayer.renderer().type()
-    print(rendererType)
+    #print(rendererType)
     # TODO identify symbology type and if Multiband, which band is which color
     for v in range(rasterDimensions[1] ): #each row, Y
         for h in range(rasterDimensions[0] ): #item in a row, X
@@ -195,20 +196,23 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
 
 def featureToNative(feature: Base):
     feat = QgsFeature()
-    speckle_geom = feature["geometry"]
-    if isinstance(speckle_geom, list):
-        qgsGeom = geometry.convertToNativeMulti(speckle_geom)
-    else:
-        qgsGeom = geometry.convertToNative(speckle_geom)
+    try: # ignore 'broken' geometry
+      speckle_geom = feature["geometry"]
+      if isinstance(speckle_geom, list):
+          qgsGeom = geometry.convertToNativeMulti(speckle_geom)
+      else:
+          qgsGeom = geometry.convertToNative(speckle_geom)
 
-    if qgsGeom is not None:
-        feat.setGeometry(qgsGeom)
-    dynamicProps = feature.get_dynamic_member_names()
-    dynamicProps.remove("geometry")
-    fields = QgsFields()
-    for name in dynamicProps:
-        fields.append(QgsField(name))
-    feat.setFields(fields)
-    for prop in dynamicProps:
-        feat.setAttribute(prop, feature[prop])
-    return feat
+      if qgsGeom is not None:
+          feat.setGeometry(qgsGeom)
+      dynamicProps = feature.get_dynamic_member_names()
+      dynamicProps.remove("geometry")
+      fields = QgsFields()
+      for name in dynamicProps:
+          fields.append(QgsField(name))
+      feat.setFields(fields)
+      for prop in dynamicProps:
+          feat.setAttribute(prop, feature[prop])
+      return feat
+    except:
+      return ""
