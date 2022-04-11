@@ -28,8 +28,8 @@ from specklepy.api.credentials import StreamWrapper
 from specklepy.api.models import Stream
 from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
-from specklepy.api.credentials import get_local_accounts, StreamWrapper
-#from specklepy.api.wrapper import StreamWrapper
+from specklepy.api.credentials import get_local_accounts#, StreamWrapper
+from specklepy.api.wrapper import StreamWrapper
 import webbrowser
 
 # Initialize Qt resources from file resources.py
@@ -395,7 +395,7 @@ class SpeckleQGIS:
                     nameDisplay.append(layer.name() + " !LARGE!")
                 else: nameDisplay.append(layer.name())
             else: nameDisplay.append(layer.name())
-        print(nameDisplay)
+        #print(nameDisplay)
         #[x for _, x in sorted(zip(nameToSort, nameDisplay))]
         nameDisplay.sort(key=lambda v: v.upper())
         print(nameDisplay)

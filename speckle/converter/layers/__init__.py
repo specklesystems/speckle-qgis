@@ -77,7 +77,8 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
 def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, rasterBandVals, pt, rasterResXY): 
     ## https://opensourceoptions.com/blog/pyqgis-create-raster/
     # creating file in temporary folder: https://stackoverflow.com/questions/56038742/creating-in-memory-qgsrasterlayer-from-the-rasterization-of-a-qgsvectorlayer-wit
-    fn = source_folder + name + '.tif' #'_received_raster.tif'
+    #print(source_folder)
+    fn = source_folder + '/' + name + '.tif' #'_received_raster.tif'
     #print(fn)
 
     driver = gdal.GetDriverByName('GTiff')
@@ -122,7 +123,7 @@ def vectorLayerToNative(layer: Layer, streamId: str):
     ## CREATE A GROUP "received blabla" with sublayers
     newName = f'{streamId}_latest_{layer.name}'
     for lyr in QgsProject.instance().mapLayers().values(): 
-        print(lyr.name())
+        #print(lyr.name())
         if lyr.name() == newName: #lyr.id() == layer.applicationId: # dangerous, because it rewrites the source file on the disk  ###### check by unique name
             vl = lyr
             vl.startEditing()

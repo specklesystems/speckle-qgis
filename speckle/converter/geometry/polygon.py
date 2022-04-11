@@ -32,6 +32,7 @@ def polygonToSpeckle(geom: QgsPolygon, feature: QgsFeature, layer: QgsVectorLaye
           voids.append(intRing)
       polygon.boundary = boundary
       polygon.voids = voids
+      #print(voids)
       polygon.displayValue = [ boundary ] + voids
       if len(voids) == 0: 
         # QgsLineString - LineStringZ
@@ -83,8 +84,21 @@ def polygonToNative(poly: Base) -> QgsPolygon:
     """Converts a Speckle Polygon base object to QgsPolygon.
     This object must have a 'boundary' and 'voids' properties.
     Each being a Speckle Polyline and List of polylines respectively."""
+    print(polylineToNative(poly["boundary"]))
+    
+    polygon = QgsPolygon()
+    polygon.setExteriorRing(polylineToNative(poly["boundary"]))
+    try:
+      for void in poly["voids"]: 
+        print(polylineToNative(void))
+        polygon.addInteriorRing(polylineToNative(void))
+    except:
+      pass
+    print(polygon)
+    print()
 
-    return QgsPolygon(
-        polylineToNative(poly["boundary"]),
-        [polylineToNative(void) for void in poly["voids"]],
-    )
+    #polygon = QgsPolygon(
+    #    polylineToNative(poly["boundary"]),
+    #    [polylineToNative(void) for void in poly["voids"]],
+    #)
+    return polygon
