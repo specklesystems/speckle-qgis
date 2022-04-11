@@ -90,12 +90,12 @@ def polygonToNative(poly: Base) -> QgsPolygon:
     polygon.setExteriorRing(polylineToNative(poly["boundary"]))
     try:
       for void in poly["voids"]: 
-        print(polylineToNative(void))
+        #print(polylineToNative(void))
         polygon.addInteriorRing(polylineToNative(void))
     except:
       pass
-    print(polygon)
-    print()
+    #print(polygon)
+    #print()
 
     #polygon = QgsPolygon(
     #    polylineToNative(poly["boundary"]),
