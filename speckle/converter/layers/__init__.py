@@ -77,7 +77,8 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
 def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, rasterBandVals, pt, rasterResXY): 
     ## https://opensourceoptions.com/blog/pyqgis-create-raster/
     # creating file in temporary folder: https://stackoverflow.com/questions/56038742/creating-in-memory-qgsrasterlayer-from-the-rasterization-of-a-qgsvectorlayer-wit
-    fn = source_folder + name + '_received_raster.tif'
+    #print(source_folder)
+    fn = source_folder + '/' + name + '.tif' #'_received_raster.tif'
     #print(fn)
 
     driver = gdal.GetDriverByName('GTiff')
@@ -104,23 +105,26 @@ def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, r
     return raster_layer
 
 
-def layerToNative(layer: Layer) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def layerToNative(layer: Layer, streamId: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
     layerType = type(layer.type)
     if layer.type is None:
         # Handle this case
         return
     elif layer.type.endswith("VectorLayer"):
-        return vectorLayerToNative(layer)
+        return vectorLayerToNative(layer, streamId)
     elif layer.type.endswith("RasterLayer"):
-        return rasterLayerToNative(layer)
+        return rasterLayerToNative(layer, streamId)
     return None
 
 
-def vectorLayerToNative(layer: Layer):
+def vectorLayerToNative(layer: Layer, streamId: str):
     vl = None
     crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
-    for lyr in QgsProject.instance().mapLayers().values():
-        if lyr.id() == layer.applicationId: # dangerous, because it rewrites the source file on the disk
+    ## CREATE A GROUP "received blabla" with sublayers
+    newName = f'{streamId}_latest_{layer.name}'
+    for lyr in QgsProject.instance().mapLayers().values(): 
+        #print(lyr.name())
+        if lyr.name() == newName: #lyr.id() == layer.applicationId: # dangerous, because it rewrites the source file on the disk  ###### check by unique name
             vl = lyr
             vl.startEditing()
             for feat in vl.getFeatures():
@@ -136,7 +140,7 @@ def vectorLayerToNative(layer: Layer):
     if vl is None:
         crsid = crs.authid()
         #print(layer.geomType)
-        vl = QgsVectorLayer(layer.geomType+"?crs="+crsid, layer.name, "memory")
+        vl = QgsVectorLayer(layer.geomType+"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
         QgsProject.instance().addMapLayer(vl)
 
         pr = vl.dataProvider()
@@ -150,7 +154,7 @@ def vectorLayerToNative(layer: Layer):
     vl.startEditing()
     fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
     #list(filter(lambda a: a !="", fets))
-    print(fets)
+    #print(fets)
     pr = vl.dataProvider()
     pr.addFeatures(fets)
     vl.updateExtents()
@@ -158,7 +162,7 @@ def vectorLayerToNative(layer: Layer):
     return vl
 
 
-def rasterLayerToNative(layer: Layer):
+def rasterLayerToNative(layer: Layer, streamId: str):
         # testing, only for receiving layers
     source_folder = QgsProject.instance().absolutePath()
 
@@ -174,7 +178,8 @@ def rasterLayerToNative(layer: Layer):
     bandNames = feat["Band names"]
     bandValues = [feat["@(10000)" + name + "_values"] for name in bandNames]
 
-    receiveRaster(project, source_folder, layer.name, epsg, [feat["X pixels"],feat["Y pixels"]],  feat["Band count"], bandValues, pointToNative(feat["displayValue"][0]), [feat["X resolution"],feat["Y resolution"]])
+    newName = f'{streamId}_latest_{layer.name}'
+    receiveRaster(project, source_folder, newName, epsg, [feat["X pixels"],feat["Y pixels"]],  feat["Band count"], bandValues, pointToNative(feat["displayValue"][0]), [feat["X resolution"],feat["Y resolution"]])
     
     return None
 

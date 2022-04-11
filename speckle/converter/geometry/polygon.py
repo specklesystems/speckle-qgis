@@ -19,12 +19,12 @@ import math
 def polygonToSpeckle(geom: QgsPolygon, feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsPolygon to Speckle"""
     try: 
-      print(geom)
+      #print(geom)
       polygon = Base()
       boundary = polylineFromVerticesToSpeckle(
           geom.exteriorRing().vertices(), True
       )
-      print(boundary)
+      #print(boundary)
       
       voids = []
       for i in range(geom.numInteriorRings()):
@@ -32,8 +32,9 @@ def polygonToSpeckle(geom: QgsPolygon, feature: QgsFeature, layer: QgsVectorLaye
           voids.append(intRing)
       polygon.boundary = boundary
       polygon.voids = voids
-      if len(voids) > 0: polygon.displayValue = [ boundary ] + voids
-      else:
+      #print(voids)
+      polygon.displayValue = [ boundary ] + voids
+      if len(voids) == 0: 
         # QgsLineString - LineStringZ
         vertices = []
         qgisVertices = []
@@ -53,8 +54,6 @@ def polygonToSpeckle(geom: QgsPolygon, feature: QgsFeature, layer: QgsVectorLaye
         if layer.renderer().type() == 'categorizedSymbol' or layer.renderer().type() == '25dRenderer' or layer.renderer().type() == 'invertedPolygonRenderer' or layer.renderer().type() == 'mergedFeatureRenderer' or layer.renderer().type() == 'RuleRenderer' or layer.renderer().type() == 'nullSymbol' or layer.renderer().type() == 'singleSymbol' or layer.renderer().type() == 'graduatedSymbol':
           #get color value
           if layer.renderer().type() == 'singleSymbol':
-            #print(layer.renderer().symbol())
-            #print(layer.renderer().symbol().color())
             color = layer.renderer().symbol().color()
           elif layer.renderer().type() == 'categorizedSymbol':
             category = layer.renderer().legendClassificationAttribute() # get the name of attribute used for classification
@@ -73,9 +72,8 @@ def polygonToSpeckle(geom: QgsPolygon, feature: QgsFeature, layer: QgsVectorLaye
             bVal = 0
           col =  (rVal<<16) + (gVal<<8) + bVal
           colors = [col for i in ran] 
-
-      mesh = rasterToMesh(vertices, faces, colors)
-      polygon.displayValue = mesh 
+        mesh = rasterToMesh(vertices, faces, colors)
+        #polygon.displayValue = mesh 
       return polygon
     except: 
       logger.logToUser("Some polygons might be invalid", Qgis.Warning)
@@ -86,8 +84,21 @@ def polygonToNative(poly: Base) -> QgsPolygon:
     """Converts a Speckle Polygon base object to QgsPolygon.
     This object must have a 'boundary' and 'voids' properties.
     Each being a Speckle Polyline and List of polylines respectively."""
+    print(polylineToNative(poly["boundary"]))
+    
+    polygon = QgsPolygon()
+    polygon.setExteriorRing(polylineToNative(poly["boundary"]))
+    try:
+      for void in poly["voids"]: 
+        #print(polylineToNative(void))
+        polygon.addInteriorRing(polylineToNative(void))
+    except:
+      pass
+    #print(polygon)
+    #print()
 
-    return QgsPolygon(
-        polylineToNative(poly["boundary"]),
-        [polylineToNative(void) for void in poly["voids"]],
-    )
+    #polygon = QgsPolygon(
+    #    polylineToNative(poly["boundary"]),
+    #    [polylineToNative(void) for void in poly["voids"]],
+    #)
+    return polygon

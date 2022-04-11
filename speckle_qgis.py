@@ -28,7 +28,8 @@ from specklepy.api.credentials import StreamWrapper
 from specklepy.api.models import Stream
 from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
-from specklepy.api.credentials import get_local_accounts, StreamWrapper
+from specklepy.api.credentials import get_local_accounts#, StreamWrapper
+from specklepy.api.wrapper import StreamWrapper
 import webbrowser
 
 # Initialize Qt resources from file resources.py
@@ -362,7 +363,7 @@ class SpeckleQGIS:
 
             def callback(base: Base) -> bool:
                 if isinstance(base, Layer):
-                    layer = layerToNative(base)
+                    layer = layerToNative(base, streamId)
                     if layer is not None:
                         logger.log("Layer created: " + layer.name())
                 return True
@@ -394,7 +395,7 @@ class SpeckleQGIS:
                     nameDisplay.append(layer.name() + " !LARGE!")
                 else: nameDisplay.append(layer.name())
             else: nameDisplay.append(layer.name())
-        print(nameDisplay)
+        #print(nameDisplay)
         #[x for _, x in sorted(zip(nameToSort, nameDisplay))]
         nameDisplay.sort(key=lambda v: v.upper())
         print(nameDisplay)
