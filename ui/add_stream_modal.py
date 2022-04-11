@@ -6,6 +6,7 @@ from specklepy.api.models import Stream
 from specklepy.api.client import SpeckleClient
 from speckle.utils import logger
 from specklepy.api.credentials import get_local_accounts, StreamWrapper
+#from specklepy.api.wrapper import StreamWrapper
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(

@@ -29,6 +29,7 @@ from specklepy.api.models import Stream
 from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
 from specklepy.api.credentials import get_local_accounts, StreamWrapper
+#from specklepy.api.wrapper import StreamWrapper
 import webbrowser
 
 # Initialize Qt resources from file resources.py
@@ -362,7 +363,7 @@ class SpeckleQGIS:
 
             def callback(base: Base) -> bool:
                 if isinstance(base, Layer):
-                    layer = layerToNative(base)
+                    layer = layerToNative(base, streamId)
                     if layer is not None:
                         logger.log("Layer created: " + layer.name())
                 return True

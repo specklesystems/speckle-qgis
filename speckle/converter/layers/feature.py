@@ -1,3 +1,4 @@
+from distutils.log import error
 from qgis._core import QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, QgsRasterBandStats, QgsFeature, QgsFields, \
     QgsField
 from specklepy.objects import Base
@@ -209,7 +210,10 @@ def featureToNative(feature: Base):
       dynamicProps.remove("geometry")
       fields = QgsFields()
       for name in dynamicProps:
-          fields.append(QgsField(name))
+          try:
+              fields.append(QgsField(name))
+          except:
+              print(error)
       feat.setFields(fields)
       for prop in dynamicProps:
           feat.setAttribute(prop, feature[prop])
