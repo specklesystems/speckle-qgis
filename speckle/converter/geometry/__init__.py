@@ -26,6 +26,7 @@ def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
         geom: QgsGeometry = feature
     geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
     geomType = geom.type()
+    #print(geomType)
 
     if geomType == QgsWkbTypes.PointGeometry:
         # the geometry type can be of single or multi type
@@ -56,10 +57,12 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
         (Line, lineToNative),
         (Polyline, polylineToNative),
         (Mesh, meshToNative),
+        (Base, polygonToNative), # temporary solution for polygons (Speckle has no type Polygon yet)
     ]
 
     for conversion in conversions:
         if isinstance(base, conversion[0]):
+            #print(conversion[0])
             converted = conversion[1](base)
             break
 

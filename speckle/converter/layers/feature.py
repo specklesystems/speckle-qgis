@@ -198,25 +198,27 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
 def featureToNative(feature: Base):
     feat = QgsFeature()
     try: # ignore 'broken' geometry
-      speckle_geom = feature["geometry"]
-      if isinstance(speckle_geom, list):
-          qgsGeom = geometry.convertToNativeMulti(speckle_geom)
-      else:
-          qgsGeom = geometry.convertToNative(speckle_geom)
+        speckle_geom = feature["geometry"]
+        if isinstance(speckle_geom, list):
+            qgsGeom = geometry.convertToNativeMulti(speckle_geom)
+        else:
+            qgsGeom = geometry.convertToNative(speckle_geom)
 
-      if qgsGeom is not None:
-          feat.setGeometry(qgsGeom)
-      dynamicProps = feature.get_dynamic_member_names()
-      dynamicProps.remove("geometry")
-      fields = QgsFields()
-      for name in dynamicProps:
-          try:
-              fields.append(QgsField(name))
-          except:
-              print(error)
-      feat.setFields(fields)
-      for prop in dynamicProps:
-          feat.setAttribute(prop, feature[prop])
-      return feat
+        if qgsGeom is not None:
+            feat.setGeometry(qgsGeom)
+        dynamicProps = feature.get_dynamic_member_names()
+        dynamicProps.remove("geometry")
+        fields = QgsFields()
+        for name in dynamicProps:
+            try:
+                fields.append(QgsField(name))
+            except:
+                dynamicProps.remove(name)
+                pass #print(error)
+        feat.setFields(fields)
+        for name in dynamicProps:
+            feat[name] = feature[name]
+            #feat.setAttribute(i, feature[dynamicProps[i]]) #https://qgis.org/pyqgis/master/core/QgsFeature.html#qgis.core.QgsFeature.setAttribute
+        return feat
     except:
-      return ""
+        return ""
