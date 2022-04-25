@@ -3,6 +3,7 @@ from qgis._core import QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, Qg
     QgsField
 from specklepy.objects import Base
 
+from PyQt5.QtCore import QVariant
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
 from speckle.converter.geometry.mesh import rasterToMesh
@@ -32,8 +33,9 @@ def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project, selectedLayer
     for name in fieldnames:
         corrected = name.replace("/", "_").replace(".", "-")
         if corrected == "id":
-            corrected == "applicationId"
-        b[corrected] = str(f[name])
+            corrected = "applicationId"
+        f_name = str(f[name])
+        b[corrected] = f_name
     return b
 
 
@@ -198,25 +200,36 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
 def featureToNative(feature: Base):
     feat = QgsFeature()
     try: # ignore 'broken' geometry
-      speckle_geom = feature["geometry"]
-      if isinstance(speckle_geom, list):
-          qgsGeom = geometry.convertToNativeMulti(speckle_geom)
-      else:
-          qgsGeom = geometry.convertToNative(speckle_geom)
+        speckle_geom = feature["geometry"]
+        if isinstance(speckle_geom, list):
+            qgsGeom = geometry.convertToNativeMulti(speckle_geom)
+        else:
+            qgsGeom = geometry.convertToNative(speckle_geom)
 
-      if qgsGeom is not None:
-          feat.setGeometry(qgsGeom)
-      dynamicProps = feature.get_dynamic_member_names()
-      dynamicProps.remove("geometry")
-      fields = QgsFields()
-      for name in dynamicProps:
-          try:
-              fields.append(QgsField(name))
-          except:
-              print(error)
-      feat.setFields(fields)
-      for prop in dynamicProps:
-          feat.setAttribute(prop, feature[prop])
-      return feat
+        if qgsGeom is not None:
+            feat.setGeometry(qgsGeom)
+        dynamicProps = feature.get_dynamic_member_names()
+        dynamicProps.remove("geometry")
+        if feature["applicationId"]: dynamicProps.append("id")
+        dynamicProps.sort()
+        fields = QgsFields()
+        for name in dynamicProps:
+            try: 
+                fields.append(QgsField(name)) 
+            except: 
+                dynamicProps.remove(name)
+                pass #print(error)
+        feat.setFields(fields)
+        for name in dynamicProps:
+            corrected = name
+            value = feature[name]
+            if corrected == "id": 
+                try:
+                    value = int(feature["applicationId"])
+                except:
+                    value = None
+            feat[corrected] = value
+            #https://qgis.org/pyqgis/master/core/QgsFeature.html#qgis.core.QgsFeature.setAttribute
+        return feat
     except:
-      return ""
+        return ""

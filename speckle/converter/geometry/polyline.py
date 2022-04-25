@@ -8,7 +8,11 @@ from qgis.core import (
 
 def polylineFromVerticesToSpeckle(vertices, closed):
     """Returns a Speckle Polyline given a list of QgsPoint instances and a boolean indicating if it's closed or not."""
-    specklePts = [pointToSpeckle(pt) for pt in vertices]
+    specklePts = [pointToSpeckle(pt) for pt in vertices] #breaks unexplainably
+    #specklePts = []
+    #for pt in vertices:
+    #    p = pointToSpeckle(pt)
+    #    specklePts.append(p)
     # TODO: Replace with `from_points` function when fix is pushed.
     polyline = Polyline()
     polyline.value = []

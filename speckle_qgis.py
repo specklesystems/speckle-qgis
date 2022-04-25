@@ -62,8 +62,7 @@ def traverseObject(
             if ["id", "applicationId", "units", "speckle_type"].index(name):
                 continue
         except:
-            # Do nothing
-            print()
+            pass
         traverseValue(base[name], callback, check)
 
 
@@ -398,7 +397,7 @@ class SpeckleQGIS:
         #print(nameDisplay)
         #[x for _, x in sorted(zip(nameToSort, nameDisplay))]
         nameDisplay.sort(key=lambda v: v.upper())
-        print(nameDisplay)
+        #print(nameDisplay)
         self.dockwidget.layersWidget.addItems(nameDisplay)
 
     def populateProjectStreams(self):

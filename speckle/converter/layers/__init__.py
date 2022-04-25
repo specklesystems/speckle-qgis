@@ -120,6 +120,7 @@ def layerToNative(layer: Layer, streamId: str) -> Union[QgsVectorLayer, QgsRaste
 def vectorLayerToNative(layer: Layer, streamId: str):
     vl = None
     crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
+
     ## CREATE A GROUP "received blabla" with sublayers
     newName = f'{streamId}_latest_{layer.name}'
     for lyr in QgsProject.instance().mapLayers().values(): 
@@ -129,7 +130,11 @@ def vectorLayerToNative(layer: Layer, streamId: str):
             vl.startEditing()
             for feat in vl.getFeatures():
                 vl.deleteFeature(feat.id())
-            fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
+            #fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
+            fets = []
+            for f in layer.features: 
+                new_feat = featureToNative(f)
+                if new_feat != "": fets.append(new_feat)
             #list(filter(lambda a: a !="", fets))
             pr = vl.dataProvider()
             pr.addFeatures(fets)
@@ -149,17 +154,18 @@ def vectorLayerToNative(layer: Layer, streamId: str):
         attrs = getLayerAttributes(layer)
         pr.addAttributes(attrs)
         vl.updateFields()
-        vl.commitChanges()
+        
+        fets = []
+        for f in layer.features: 
+            new_feat = featureToNative(f)
+            if new_feat != "": 
+                fets.append(new_feat)
 
-    vl.startEditing()
-    fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
-    #list(filter(lambda a: a !="", fets))
-    #print(fets)
-    pr = vl.dataProvider()
-    pr.addFeatures(fets)
-    vl.updateExtents()
-    vl.commitChanges()
-    return vl
+        pr = vl.dataProvider()
+        pr.addFeatures(fets)
+        vl.updateExtents()
+        vl.commitChanges()
+        return vl
 
 
 def rasterLayerToNative(layer: Layer, streamId: str):
