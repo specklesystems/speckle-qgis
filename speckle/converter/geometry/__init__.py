@@ -26,7 +26,7 @@ def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
         geom: QgsGeometry = feature
     geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
     geomType = geom.type()
-    #print(geomType)
+    #print(geom)
 
     if geomType == QgsWkbTypes.PointGeometry:
         # the geometry type can be of single or multi type

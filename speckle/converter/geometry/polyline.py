@@ -22,6 +22,8 @@ def polylineFromVerticesToSpeckle(vertices, closed):
         if closed and i == len(specklePts) - 1:
             continue
         polyline.value.extend([point.x, point.y, point.z])
+    #print(polyline)
+    #print(polyline.value)
     return polyline
 
 

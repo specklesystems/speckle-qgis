@@ -39,6 +39,7 @@ from speckle.converter.layers import (
     convertSelectedLayers,
     getLayers,
     layerToNative,
+    nonQgisToNative,
 )
 from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
@@ -358,11 +359,19 @@ class SpeckleQGIS:
             commitObj = operations.receive(objId, transport, None)
             logger.log(f"Succesfully received {objId}")
 
-            check: Callable[[Base], bool] = lambda base: isinstance(base, Layer)
+            #check: Callable[[Base], bool] = lambda base: isinstance(base, Layer)
+            check: Callable[[Base], bool] = lambda base: True
 
             def callback(base: Base) -> bool:
+                print(base)
                 if isinstance(base, Layer):
+                    print("it is Layer")
                     layer = layerToNative(base, streamId)
+                    if layer is not None:
+                        logger.log("Layer created: " + layer.name())
+                else:
+                    print("it is NOT a Layer")
+                    layer = nonQgisToNative(base, streamId)
                     if layer is not None:
                         logger.log("Layer created: " + layer.name())
                 return True
@@ -547,6 +556,7 @@ class SpeckleQGIS:
     def get_project_streams(self):
         proj = QgsProject().instance()
         saved_streams = proj.readEntry("speckle-qgis", "project_streams", "")
+        ######### need to check whether saved streams are available (account reachable)
         if saved_streams[1] and len(saved_streams[0]) != 0:
             temp = []
             for url in saved_streams[0].split(","):

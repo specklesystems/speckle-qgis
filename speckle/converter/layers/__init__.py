@@ -116,6 +116,12 @@ def layerToNative(layer: Layer, streamId: str) -> Union[QgsVectorLayer, QgsRaste
         return rasterLayerToNative(layer, streamId)
     return None
 
+def nonQgisToNative(layer: Layer, streamId: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+    layerType = type(layer.type)
+    if layer.type is None:
+        # Handle this case
+        return
+    return None
 
 def vectorLayerToNative(layer: Layer, streamId: str):
     vl = None
