@@ -359,8 +359,8 @@ class SpeckleQGIS:
             commitObj = operations.receive(objId, transport, None)
             logger.log(f"Succesfully received {objId}")
 
-            #check: Callable[[Base], bool] = lambda base: isinstance(base, Layer)
-            check: Callable[[Base], bool] = lambda base: True
+            check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) or isinstance(base, Base)
+            #check: Callable[[Base], bool] = lambda base: True
 
             def callback(base: Base) -> bool:
                 print(base)
@@ -370,10 +370,13 @@ class SpeckleQGIS:
                     if layer is not None:
                         logger.log("Layer created: " + layer.name())
                 else:
-                    print("it is NOT a Layer")
-                    layer = nonQgisToNative(base, streamId)
-                    if layer is not None:
-                        logger.log("Layer created: " + layer.name())
+                    print("it is a Base")
+                    print(base.get_dynamic_member_names())
+                    layerList = base.get_dynamic_member_names()
+                    for l in layerList:
+                        layer = nonQgisToNative(base[l], l, streamId)
+                        if layer is not None: 
+                            logger.log("Layer group created: " + layer.name())
                 return True
 
             traverseObject(commitObj, callback, check)

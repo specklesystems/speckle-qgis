@@ -13,6 +13,7 @@ from speckle.converter.layers.Layer import Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative
 from speckle.converter.layers.utils import getLayerGeomType, getVariantFromValue, getLayerAttributes
 from speckle.logging import logger
+from specklepy.objects import Base
 
 import numpy as np
 
@@ -116,18 +117,25 @@ def layerToNative(layer: Layer, streamId: str) -> Union[QgsVectorLayer, QgsRaste
         return rasterLayerToNative(layer, streamId)
     return None
 
-def nonQgisToNative(layer: Layer, streamId: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
-    layerType = type(layer.type)
-    if layer.type is None:
-        # Handle this case
-        return
+def nonQgisToNative(layerContentList:Base, layerName: str, streamId: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+    #layerType = QgsVectorLayer
+    #if layer.type is None:
+    #    # Handle this case
+    #    return
+    print(layerContentList)
+    #TODO: filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
+    recreateVectorLayer(layerContentList)
     return None
+
+def recreateVectorLayer(layerContentList): 
+    #TODO get Project CRS, use it by default for the new received layer
+    return
 
 def vectorLayerToNative(layer: Layer, streamId: str):
     vl = None
     crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
 
-    ## CREATE A GROUP "received blabla" with sublayers
+    #TODO CREATE A GROUP "received blabla" with sublayers
     newName = f'{streamId}_latest_{layer.name}'
     for lyr in QgsProject.instance().mapLayers().values(): 
         #print(lyr.name())
