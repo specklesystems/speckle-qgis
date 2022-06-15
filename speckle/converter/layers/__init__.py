@@ -6,7 +6,8 @@ from typing import List, Union
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 from qgis.core import (Qgis, QgsRasterLayer,
-                       QgsVectorLayer, QgsProject, QgsLayerTree, QgsLayerTreeNode, QgsCoordinateReferenceSystem)
+                       QgsVectorLayer, QgsProject, 
+                       QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsCoordinateReferenceSystem)
 from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import Layer
@@ -123,11 +124,24 @@ def nonQgisToNative(layerContentList:Base, layerName: str, streamId: str) -> Uni
     #    # Handle this case
     #    return
     print(layerContentList)
-    #TODO: filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
-    recreateVectorLayer(layerContentList)
+    geom_points = []
+    geom_polylines = []
+    geom_polygones = []
+    geom_meshes = []
+    #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
+    for geom in layerContentList:
+        print(geom)
+        if geom.speckle_type == "Objects.Geometry.Point": 
+            geom_points.append(geom)
+        if geom.speckle_type == "Objects.Geometry.Line" or geom.speckle_type == "Objects.Geometry.Polyline" or geom.speckle_type == "Objects.Geometry.Curve" or geom.speckle_type == "Objects.Geometry.Polycurve":
+            geom_polylines.append(geom)
+    
+    recreateVectorLayer(geom_points, layerName + "_Points", streamId)
+    recreateVectorLayer(geom_polylines, layerName + "_Polylines", streamId)
+
     return None
 
-def recreateVectorLayer(layerContentList): 
+def recreateVectorLayer(geomList, layerName: str, streamId: str): 
     #TODO get Project CRS, use it by default for the new received layer
     return
 
@@ -135,32 +149,55 @@ def vectorLayerToNative(layer: Layer, streamId: str):
     vl = None
     crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
 
-    #TODO CREATE A GROUP "received blabla" with sublayers
+    #CREATE A GROUP "received blabla" with sublayers
+    newGroupName = f'{streamId}_latest'
+
+    root = QgsProject.instance().layerTreeRoot()
+    layerGroup = QgsLayerTreeGroup(newGroupName)
+
+    print("creating groups")
+    groupExists = 0
+    if root.findGroup(newGroupName) is not None:
+        layerGroup = root.findGroup(newGroupName)
+    else:
+        root.addChildNode(layerGroup)
+    layerGroup.setExpanded(True)
+
+    #find ID of the layer with a matching name in the "latest" group 
     newName = f'{streamId}_latest_{layer.name}'
-    for lyr in QgsProject.instance().mapLayers().values(): 
-        #print(lyr.name())
-        if lyr.name() == newName: #lyr.id() == layer.applicationId: # dangerous, because it rewrites the source file on the disk  ###### check by unique name
-            vl = lyr
-            vl.startEditing()
-            for feat in vl.getFeatures():
-                vl.deleteFeature(feat.id())
-            #fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
-            fets = []
-            for f in layer.features: 
-                new_feat = featureToNative(f)
-                if new_feat != "": fets.append(new_feat)
-            #list(filter(lambda a: a !="", fets))
-            pr = vl.dataProvider()
-            pr.addFeatures(fets)
-            vl.setCrs(crs)
-            vl.updateExtents()
-            vl.commitChanges()
-            return vl
+    childId = None
+    for child in layerGroup.children(): 
+        if child.name() == newName: 
+            print(child.layerId())
+            childId = child.layerId()
+            print()
+            break
+          
+    # modify existing layer (if exists) 
+    if QgsProject.instance().mapLayer(childId) is not None:
+        vl = QgsProject.instance().mapLayer(childId)
+        vl.startEditing()
+        for feat in vl.getFeatures():
+            vl.deleteFeature(feat.id())
+        #fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
+        fets = []
+        for f in layer.features: 
+            new_feat = featureToNative(f)
+            if new_feat != "": fets.append(new_feat)
+        #list(filter(lambda a: a !="", fets))
+        pr = vl.dataProvider()
+        pr.addFeatures(fets)
+        vl.setCrs(crs)
+        vl.updateExtents()
+        vl.commitChanges()
+        return vl
+
+    #or create one from scratch
     if vl is None:
         crsid = crs.authid()
-        #print(layer.geomType)
+        print(layer.geomType)
         vl = QgsVectorLayer(layer.geomType+"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
-        QgsProject.instance().addMapLayer(vl)
+        QgsProject.instance().addMapLayer(vl, False)
 
         pr = vl.dataProvider()
         vl.startEditing()
@@ -179,15 +216,18 @@ def vectorLayerToNative(layer: Layer, streamId: str):
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
+        cloneLayer = vl.clone()
+        layerGroup.addLayer(vl)
+        print(vl)
+        #QgsProject.instance().removeMapLayer(vl.id())
         return vl
-
 
 def rasterLayerToNative(layer: Layer, streamId: str):
         # testing, only for receiving layers
     source_folder = QgsProject.instance().absolutePath()
 
     if(source_folder == ""):
-        logger.logToUser(f"Raster layers can only be received on an existing saved project. Layer {layer.name} will be ignored", Qgis.Warning)
+        logger.logToUser(f"Raster layers can only be received in an existing saved project. Layer {layer.name} will be ignored", Qgis.Warning)
         return None
 
     project = QgsProject.instance()

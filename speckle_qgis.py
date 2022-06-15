@@ -272,6 +272,11 @@ class SpeckleQGIS:
                 "There is no active stream. Please select a stream from the list."
             )
             return
+        
+        # Check if stream no layers are selected
+        if len(selectedLayerNames) == 0:
+            logger.logToUser("No layers selected", Qgis.Warning)
+            return
 
         # Get the stream wrapper
         streamWrapper = self.active_stream[0]
@@ -359,8 +364,7 @@ class SpeckleQGIS:
             commitObj = operations.receive(objId, transport, None)
             logger.log(f"Succesfully received {objId}")
 
-            check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) or isinstance(base, Base)
-            #check: Callable[[Base], bool] = lambda base: True
+            check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) #or isinstance(base, Base)
 
             def callback(base: Base) -> bool:
                 print(base)
@@ -374,9 +378,17 @@ class SpeckleQGIS:
                     print(base.get_dynamic_member_names())
                     layerList = base.get_dynamic_member_names()
                     for l in layerList:
-                        layer = nonQgisToNative(base[l], l, streamId)
-                        if layer is not None: 
-                            logger.log("Layer group created: " + layer.name())
+                        for geom in base[l]:
+                            print(geom)
+                            # if layer contains geometries (break after at least one found)
+                            try:
+                                if geom.speckle_type.startswith("Objects.Geometry."): 
+                                    layer = nonQgisToNative(base[l], l, streamId)
+                                    if layer is not None: 
+                                        logger.log("Layer group created: " + layer.name())
+                                    break
+                            except:
+                                pass
                 return True
 
             traverseObject(commitObj, callback, check)
