@@ -109,7 +109,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
     count = 0
     rendererType = selectedLayer.renderer().type()
     #print(rendererType)
-    # TODO identify symbology type and if Multiband, which band is which color
+    # identify symbology type and if Multiband, which band is which color
     for v in range(rasterDimensions[1] ): #each row, Y
         for h in range(rasterDimensions[0] ): #item in a row, X
             pt1 = QgsPointXY(rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1])
@@ -200,7 +200,9 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
 def featureToNative(feature: Base):
     feat = QgsFeature()
     try: # ignore 'broken' geometry
-        speckle_geom = feature["geometry"]
+        try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
+        except:  speckle_geom = feature # for created in other software
+
         if isinstance(speckle_geom, list):
             qgsGeom = geometry.convertToNativeMulti(speckle_geom)
         else:
@@ -209,7 +211,9 @@ def featureToNative(feature: Base):
         if qgsGeom is not None:
             feat.setGeometry(qgsGeom)
         dynamicProps = feature.get_dynamic_member_names()
-        dynamicProps.remove("geometry")
+        try: dynamicProps.remove("geometry")
+        except: pass
+
         if feature["applicationId"]: dynamicProps.append("id")
         dynamicProps.sort()
         fields = QgsFields()
@@ -219,6 +223,8 @@ def featureToNative(feature: Base):
             except: 
                 dynamicProps.remove(name)
                 pass #print(error)
+        #TODO return attribute values
+        '''
         feat.setFields(fields)
         for name in dynamicProps:
             corrected = name
@@ -230,6 +236,7 @@ def featureToNative(feature: Base):
                     value = None
             feat[corrected] = value
             #https://qgis.org/pyqgis/master/core/QgsFeature.html#qgis.core.QgsFeature.setAttribute
+        '''
         return feat
     except:
         return ""

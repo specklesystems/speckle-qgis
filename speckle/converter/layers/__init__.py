@@ -136,14 +136,65 @@ def nonQgisToNative(layerContentList:Base, layerName: str, streamId: str) -> Uni
         if geom.speckle_type == "Objects.Geometry.Line" or geom.speckle_type == "Objects.Geometry.Polyline" or geom.speckle_type == "Objects.Geometry.Curve" or geom.speckle_type == "Objects.Geometry.Polycurve":
             geom_polylines.append(geom)
     
-    recreateVectorLayer(geom_points, layerName + "_Points", streamId)
-    recreateVectorLayer(geom_polylines, layerName + "_Polylines", streamId)
+    layer_points = recreateVectorLayerToNative(geom_points, layerName, "Points", streamId)
+    layer_polylines = recreateVectorLayerToNative(geom_polylines, layerName, "Polylines", streamId)
 
-    return None
+    return [layer_points, layer_polylines]
 
-def recreateVectorLayer(geomList, layerName: str, streamId: str): 
-    #TODO get Project CRS, use it by default for the new received layer
-    return
+def recreateVectorLayerToNative(geomList, layerName: str, geomType: str, streamId: str): 
+    #get Project CRS, use it by default for the new received layer
+    vl = None
+    layerName = layerName + "_" + geomType
+    crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+
+    #CREATE A GROUP "received blabla" with sublayers
+    newGroupName = f'{streamId}_latest'
+    root = QgsProject.instance().layerTreeRoot()
+    layerGroup = QgsLayerTreeGroup(newGroupName)
+
+    if root.findGroup(newGroupName) is not None:
+        layerGroup = root.findGroup(newGroupName)
+    else:
+        root.addChildNode(layerGroup)
+    layerGroup.setExpanded(True)
+
+    #find ID of the layer with a matching name in the "latest" group 
+    newName = f'{streamId}_latest_{layerName}'
+    childId = None
+    for child in layerGroup.children(): 
+        if child.name() == newName: 
+            childId = child.layerId()
+            break
+    
+    #or create one from scratch
+    if vl is None and len(geomList) > 0:
+        crsid = crs.authid()
+        if geomType == "Points": geomType = "PointZ"
+        elif geomType == "Polylines": geomType = "LineStringZ"
+        vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+        QgsProject.instance().addMapLayer(vl, False)
+
+        pr = vl.dataProvider()
+        vl.startEditing()
+        vl.setCrs(crs)
+        attrs = [] #getLayerAttributes(layer)
+        pr.addAttributes(attrs)
+        vl.updateFields()
+        
+        fets = []
+        for f in geomList: #layer.features: 
+            new_feat = featureToNative(f)
+            if new_feat != "": 
+                fets.append(new_feat)
+
+        pr = vl.dataProvider()
+        pr.addFeatures(fets)
+        vl.updateExtents()
+        vl.commitChanges()
+        layerGroup.addLayer(vl)
+        #print(vl)
+        #QgsProject.instance().removeMapLayer(vl.id())
+        return vl
 
 def vectorLayerToNative(layer: Layer, streamId: str):
     vl = None
@@ -151,12 +202,9 @@ def vectorLayerToNative(layer: Layer, streamId: str):
 
     #CREATE A GROUP "received blabla" with sublayers
     newGroupName = f'{streamId}_latest'
-
     root = QgsProject.instance().layerTreeRoot()
     layerGroup = QgsLayerTreeGroup(newGroupName)
 
-    print("creating groups")
-    groupExists = 0
     if root.findGroup(newGroupName) is not None:
         layerGroup = root.findGroup(newGroupName)
     else:
@@ -168,11 +216,9 @@ def vectorLayerToNative(layer: Layer, streamId: str):
     childId = None
     for child in layerGroup.children(): 
         if child.name() == newName: 
-            print(child.layerId())
             childId = child.layerId()
-            print()
             break
-          
+
     # modify existing layer (if exists) 
     if QgsProject.instance().mapLayer(childId) is not None:
         vl = QgsProject.instance().mapLayer(childId)
@@ -195,7 +241,7 @@ def vectorLayerToNative(layer: Layer, streamId: str):
     #or create one from scratch
     if vl is None:
         crsid = crs.authid()
-        print(layer.geomType)
+        #print(layer.geomType)
         vl = QgsVectorLayer(layer.geomType+"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
         QgsProject.instance().addMapLayer(vl, False)
 
@@ -216,9 +262,8 @@ def vectorLayerToNative(layer: Layer, streamId: str):
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
-        cloneLayer = vl.clone()
         layerGroup.addLayer(vl)
-        print(vl)
+        #print(vl)
         #QgsProject.instance().removeMapLayer(vl.id())
         return vl
 

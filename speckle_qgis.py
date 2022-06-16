@@ -24,7 +24,7 @@ from qgis.PyQt.QtWidgets import QAction, QDockWidget
 from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsRasterLayer
 from specklepy.api import operations
 from specklepy.api.client import SpeckleException
-from specklepy.api.credentials import StreamWrapper
+#from specklepy.api.credentials import StreamWrapper
 from specklepy.api.models import Stream
 from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
@@ -359,12 +359,15 @@ class SpeckleQGIS:
         try:
             commit = branch.commits.items[0]
             objId = commit.referencedObject
+            commitDetailed = client.commit.get(streamId, commit.id)
+            app = commitDetailed.sourceApplication
             if objId is None:
                 return
             commitObj = operations.receive(objId, transport, None)
             logger.log(f"Succesfully received {objId}")
 
-            check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) #or isinstance(base, Base)
+            if app == "QGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) 
+            else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
 
             def callback(base: Base) -> bool:
                 print(base)
@@ -383,9 +386,12 @@ class SpeckleQGIS:
                             # if layer contains geometries (break after at least one found)
                             try:
                                 if geom.speckle_type.startswith("Objects.Geometry."): 
-                                    layer = nonQgisToNative(base[l], l, streamId)
-                                    if layer is not None: 
-                                        logger.log("Layer group created: " + layer.name())
+                                    if QgsProject.instance().crs().isGeographic() is True: 
+                                        logger.logToUser("Project CRS of Geographic type (e.g. EPSG 4326) cannot be used while receiving CAD geometry. Please set the project CRS to Projected type (e.g. EPSG:32631)", Qgis.Warning)
+                                    else:  
+                                        layers = nonQgisToNative(base[l], l, streamId)
+                                    if layers is not None: 
+                                        logger.log("Layer group created")
                                     break
                             except:
                                 pass
