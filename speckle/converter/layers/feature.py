@@ -214,7 +214,9 @@ def featureToNative(feature: Base):
         try: dynamicProps.remove("geometry")
         except: pass
 
-        if feature["applicationId"]: dynamicProps.append("id")
+        try: 
+          if feature["applicationId"]: dynamicProps.append("id")
+        except: pass
         dynamicProps.sort()
         fields = QgsFields()
         for name in dynamicProps:

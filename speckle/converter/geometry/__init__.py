@@ -11,10 +11,11 @@ from speckle.converter.geometry.polygon import *
 from speckle.converter.geometry.polyline import (
     lineToNative,
     polylineToNative,
+    curveToNative,
     polylineToSpeckle,
 )
 from specklepy.objects import Base
-from specklepy.objects.geometry import Line, Mesh, Point, Polyline
+from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve
 
 
 def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
@@ -56,6 +57,7 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
         (Point, pointToNative),
         (Line, lineToNative),
         (Polyline, polylineToNative),
+        (Curve, curveToNative),
         (Mesh, meshToNative),
         (Base, polygonToNative), # temporary solution for polygons (Speckle has no type Polygon yet)
     ]

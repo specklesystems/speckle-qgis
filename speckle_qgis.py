@@ -366,38 +366,56 @@ class SpeckleQGIS:
             commitObj = operations.receive(objId, transport, None)
             logger.log(f"Succesfully received {objId}")
 
+            if QgsProject.instance().crs().isGeographic() is True: 
+                logger.logToUser("Project CRS of Geographic type (e.g. EPSG 4326) cannot be used while receiving CAD geometry. Please set the project CRS to Projected type (e.g. EPSG:32631)", Qgis.Warning)
+                return
+
             if app == "QGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) 
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
 
             def callback(base: Base) -> bool:
-                print(base)
+                #print(base)
                 if isinstance(base, Layer):
-                    print("it is Layer")
-                    layer = layerToNative(base, streamId)
+                    #print("it is Layer")
+                    layer = layerToNative(base, streamId, branch.name)
                     if layer is not None:
                         logger.log("Layer created: " + layer.name())
                 else:
-                    print("it is a Base")
-                    print(base.get_dynamic_member_names())
-                    layerList = base.get_dynamic_member_names()
-                    for l in layerList:
-                        for geom in base[l]:
-                            print(geom)
-                            # if layer contains geometries (break after at least one found)
-                            try:
-                                if geom.speckle_type.startswith("Objects.Geometry."): 
-                                    if QgsProject.instance().crs().isGeographic() is True: 
-                                        logger.logToUser("Project CRS of Geographic type (e.g. EPSG 4326) cannot be used while receiving CAD geometry. Please set the project CRS to Projected type (e.g. EPSG:32631)", Qgis.Warning)
-                                    else:  
-                                        layers = nonQgisToNative(base[l], l, streamId)
-                                    if layers is not None: 
-                                        logger.log("Layer group created")
-                                    break
-                            except:
-                                pass
+                    loopObj(base, "")
                 return True
 
+            def loopObj(base: Base, baseName: str):
+                memberNames = base.get_member_names()
+                for name in memberNames:
+                    if name in ["id", "applicationId", "units", "speckle_type"]: continue
+                    #print(baseName + "_" + name)
+                    try: loopVal(base[name], baseName + "/" + name)
+                    except: pass
+
+            def loopVal(value, name): # "name" is the parent object/property/layer name
+                if isinstance(value, Base): 
+                    #print("BASE")
+                    #print(value)
+                    try: # dont go through parts of Speckle Geometry object
+                        if value.speckle_type.startswith("Objects.Geometry."): pass
+                        else: loopObj(value, name)
+                    except: loopObj(value, name)
+
+                if isinstance(value, List):
+                    #print("LIST")
+                    #print(value)
+                    for item in value:
+                        loopVal(item, name)
+                        try: # in case "speckle_type" not applicable
+                            if item.speckle_type.startswith("Objects.Geometry."): 
+                                pt, pl = nonQgisToNative(value, name, streamId, branch.name)
+                                if pt is not None: logger.log("Layer group created: " + pt.name())
+                                if pl is not None: logger.log("Layer group created: " + pl.name())
+                                break
+                        except: pass
+
             traverseObject(commitObj, callback, check)
+                
         except SpeckleException as e:
             logger.logToUser("Receive failed", Qgis.Error)
             return

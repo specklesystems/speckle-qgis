@@ -107,18 +107,18 @@ def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, r
     return raster_layer
 
 
-def layerToNative(layer: Layer, streamId: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def layerToNative(layer: Layer, streamId: str, branchName: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
     layerType = type(layer.type)
     if layer.type is None:
         # Handle this case
         return
     elif layer.type.endswith("VectorLayer"):
-        return vectorLayerToNative(layer, streamId)
+        return vectorLayerToNative(layer, streamId + "_" + branchName)
     elif layer.type.endswith("RasterLayer"):
-        return rasterLayerToNative(layer, streamId)
+        return rasterLayerToNative(layer, streamId + "_" + branchName)
     return None
 
-def nonQgisToNative(layerContentList:Base, layerName: str, streamId: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def nonQgisToNative(layerContentList:Base, layerName: str, streamId: str, branch: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
     #layerType = QgsVectorLayer
     #if layer.type is None:
     #    # Handle this case
@@ -136,19 +136,19 @@ def nonQgisToNative(layerContentList:Base, layerName: str, streamId: str) -> Uni
         if geom.speckle_type == "Objects.Geometry.Line" or geom.speckle_type == "Objects.Geometry.Polyline" or geom.speckle_type == "Objects.Geometry.Curve" or geom.speckle_type == "Objects.Geometry.Polycurve":
             geom_polylines.append(geom)
     
-    layer_points = recreateVectorLayerToNative(geom_points, layerName, "Points", streamId)
-    layer_polylines = recreateVectorLayerToNative(geom_polylines, layerName, "Polylines", streamId)
+    layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamId+"_"+branch)
+    layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamId+"_"+branch)
 
     return [layer_points, layer_polylines]
 
-def recreateVectorLayerToNative(geomList, layerName: str, geomType: str, streamId: str): 
+def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch: str): 
     #get Project CRS, use it by default for the new received layer
     vl = None
     layerName = layerName + "_" + geomType
     crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
 
     #CREATE A GROUP "received blabla" with sublayers
-    newGroupName = f'{streamId}_latest'
+    newGroupName = f'{streamBranch}_latest'
     root = QgsProject.instance().layerTreeRoot()
     layerGroup = QgsLayerTreeGroup(newGroupName)
 
@@ -159,13 +159,32 @@ def recreateVectorLayerToNative(geomList, layerName: str, geomType: str, streamI
     layerGroup.setExpanded(True)
 
     #find ID of the layer with a matching name in the "latest" group 
-    newName = f'{streamId}_latest_{layerName}'
+    newName = f'{streamBranch}_latest{layerName}'
     childId = None
     for child in layerGroup.children(): 
         if child.name() == newName: 
             childId = child.layerId()
             break
     
+    # modify existing layer (if exists) 
+    if QgsProject.instance().mapLayer(childId) is not None:
+        vl = QgsProject.instance().mapLayer(childId)
+        vl.startEditing()
+        for feat in vl.getFeatures():
+            vl.deleteFeature(feat.id())
+        #fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
+        fets = []
+        for f in geomList: 
+            new_feat = featureToNative(f)
+            if new_feat != "": fets.append(new_feat)
+        #list(filter(lambda a: a !="", fets))
+        pr = vl.dataProvider()
+        pr.addFeatures(fets)
+        vl.setCrs(crs)
+        vl.updateExtents()
+        vl.commitChanges()
+        return vl
+
     #or create one from scratch
     if vl is None and len(geomList) > 0:
         crsid = crs.authid()
@@ -184,24 +203,22 @@ def recreateVectorLayerToNative(geomList, layerName: str, geomType: str, streamI
         fets = []
         for f in geomList: #layer.features: 
             new_feat = featureToNative(f)
-            if new_feat != "": 
-                fets.append(new_feat)
+            if new_feat != "": fets.append(new_feat)
 
         pr = vl.dataProvider()
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
         layerGroup.addLayer(vl)
-        #print(vl)
-        #QgsProject.instance().removeMapLayer(vl.id())
+        
         return vl
 
-def vectorLayerToNative(layer: Layer, streamId: str):
+def vectorLayerToNative(layer: Layer, streamBranch: str):
     vl = None
     crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
 
     #CREATE A GROUP "received blabla" with sublayers
-    newGroupName = f'{streamId}_latest'
+    newGroupName = f'{streamBranch}_latest'
     root = QgsProject.instance().layerTreeRoot()
     layerGroup = QgsLayerTreeGroup(newGroupName)
 
@@ -212,7 +229,7 @@ def vectorLayerToNative(layer: Layer, streamId: str):
     layerGroup.setExpanded(True)
 
     #find ID of the layer with a matching name in the "latest" group 
-    newName = f'{streamId}_latest_{layer.name}'
+    newName = f'{streamBranch}_latest_{layer.name}'
     childId = None
     for child in layerGroup.children(): 
         if child.name() == newName: 
@@ -267,7 +284,7 @@ def vectorLayerToNative(layer: Layer, streamId: str):
         #QgsProject.instance().removeMapLayer(vl.id())
         return vl
 
-def rasterLayerToNative(layer: Layer, streamId: str):
+def rasterLayerToNative(layer: Layer, streamBranch: str):
         # testing, only for receiving layers
     source_folder = QgsProject.instance().absolutePath()
 
@@ -283,7 +300,7 @@ def rasterLayerToNative(layer: Layer, streamId: str):
     bandNames = feat["Band names"]
     bandValues = [feat["@(10000)" + name + "_values"] for name in bandNames]
 
-    newName = f'{streamId}_latest_{layer.name}'
+    newName = f'{streamBranch}_latest_{layer.name}'
     receiveRaster(project, source_folder, newName, epsg, [feat["X pixels"],feat["Y pixels"]],  feat["Band count"], bandValues, pointToNative(feat["displayValue"][0]), [feat["X resolution"],feat["Y resolution"]])
     
     return None
