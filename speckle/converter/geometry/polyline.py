@@ -40,8 +40,12 @@ def lineToNative(line: Line) -> QgsLineString:
 
 def polylineToNative(poly: Polyline) -> QgsLineString:
     """Converts a Speckle Polyline to QgsLineString"""
-
-    return QgsLineString([pointToNative(pt) for pt in poly.as_points()])
+    if poly.closed is False: 
+        return QgsLineString([pointToNative(pt) for pt in poly.as_points()])
+    else:
+        ptList = poly.as_points()
+        ptList.append(poly.as_points()[0])
+        return QgsLineString([pointToNative(pt) for pt in ptList])
 
 def curveToNative(poly: Polyline) -> QgsLineString:
     """Converts a Speckle Polyline to QgsLineString"""

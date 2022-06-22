@@ -7,11 +7,12 @@ from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-pac
     gdal, osr)
 from qgis.core import (Qgis, QgsRasterLayer,
                        QgsVectorLayer, QgsProject, 
-                       QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsCoordinateReferenceSystem)
+                       QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsCoordinateReferenceSystem,
+                       QgsFields)
 from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import Layer
-from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative
+from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative
 from speckle.converter.layers.utils import getLayerGeomType, getVariantFromValue, getLayerAttributes
 from speckle.logging import logger
 from specklepy.objects import Base
@@ -118,7 +119,7 @@ def layerToNative(layer: Layer, streamId: str, branchName: str) -> Union[QgsVect
         return rasterLayerToNative(layer, streamId + "_" + branchName)
     return None
 
-def nonQgisToNative(layerContentList:Base, layerName: str, streamId: str, branch: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def cadLayerToNative(layerContentList:Base, layerName: str, streamId: str, branch: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
     #layerType = QgsVectorLayer
     #if layer.type is None:
     #    # Handle this case
@@ -144,7 +145,7 @@ def nonQgisToNative(layerContentList:Base, layerName: str, streamId: str, branch
 def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch: str): 
     #get Project CRS, use it by default for the new received layer
     vl = None
-    layerName = layerName + "_" + geomType
+    layerName = layerName + "/" + geomType
     crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
 
     #CREATE A GROUP "received blabla" with sublayers
@@ -170,15 +171,26 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
     if QgsProject.instance().mapLayer(childId) is not None:
         vl = QgsProject.instance().mapLayer(childId)
         vl.startEditing()
+
+        attrs = QgsFields()
         for feat in vl.getFeatures():
+            attrs = feat.fields()
             vl.deleteFeature(feat.id())
+            #vl.commitChanges()
         #fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
         fets = []
-        for f in geomList: 
-            new_feat = featureToNative(f)
+        for f in geomList[:]: 
+            new_feat, newFields = cadFeatureToNative(f, attrs)
             if new_feat != "": fets.append(new_feat)
-        #list(filter(lambda a: a !="", fets))
+            #else: geomList.remove(f)
+        
+        # add Layer attribute fields
         pr = vl.dataProvider()
+        pr.addAttributes(newFields)
+        vl.updateFields()
+
+        #list(filter(lambda a: a !="", fets))
+        #pr = vl.dataProvider()
         pr.addFeatures(fets)
         vl.setCrs(crs)
         vl.updateExtents()
@@ -196,21 +208,25 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
         pr = vl.dataProvider()
         vl.startEditing()
         vl.setCrs(crs)
-        attrs = [] #getLayerAttributes(layer)
-        pr.addAttributes(attrs)
-        vl.updateFields()
+        #attrs = [] #getLayerAttributes(layer)
         
+        # create list of Features (fets) and list of Layer fields (fields)
+        attrs = QgsFields()
         fets = []
-        for f in geomList: #layer.features: 
-            new_feat = featureToNative(f)
+        for f in geomList[:]: 
+            new_feat, newFields = cadFeatureToNative(f, attrs)
             if new_feat != "": fets.append(new_feat)
+            #else: geomList.remove(f)
+        
+        # add Layer attribute fields
+        pr.addAttributes(newFields)
+        vl.updateFields()
 
         pr = vl.dataProvider()
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
         layerGroup.addLayer(vl)
-        
         return vl
 
 def vectorLayerToNative(layer: Layer, streamBranch: str):
@@ -229,7 +245,7 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
     layerGroup.setExpanded(True)
 
     #find ID of the layer with a matching name in the "latest" group 
-    newName = f'{streamBranch}_latest_{layer.name}'
+    newName = f'{streamBranch}_latest/{layer.name}'
     childId = None
     for child in layerGroup.children(): 
         if child.name() == newName: 
@@ -240,15 +256,20 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
     if QgsProject.instance().mapLayer(childId) is not None:
         vl = QgsProject.instance().mapLayer(childId)
         vl.startEditing()
+
         for feat in vl.getFeatures():
             vl.deleteFeature(feat.id())
-        #fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
+            
         fets = []
         for f in layer.features: 
-            new_feat = featureToNative(f)
+            new_feat, new_fields = featureToNative(f, [])
             if new_feat != "": fets.append(new_feat)
         #list(filter(lambda a: a !="", fets))
         pr = vl.dataProvider()
+        attrs = getLayerAttributes(layer)
+        pr.addAttributes(attrs)
+        vl.updateFields()
+
         pr.addFeatures(fets)
         vl.setCrs(crs)
         vl.updateExtents()
@@ -258,7 +279,6 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
     #or create one from scratch
     if vl is None:
         crsid = crs.authid()
-        #print(layer.geomType)
         vl = QgsVectorLayer(layer.geomType+"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
         QgsProject.instance().addMapLayer(vl, False)
 
@@ -271,7 +291,7 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
         
         fets = []
         for f in layer.features: 
-            new_feat = featureToNative(f)
+            new_feat, new_fields = featureToNative(f, [])
             if new_feat != "": 
                 fets.append(new_feat)
 
@@ -280,12 +300,10 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
         vl.updateExtents()
         vl.commitChanges()
         layerGroup.addLayer(vl)
-        #print(vl)
-        #QgsProject.instance().removeMapLayer(vl.id())
         return vl
 
 def rasterLayerToNative(layer: Layer, streamBranch: str):
-        # testing, only for receiving layers
+    # testing, only for receiving layers
     source_folder = QgsProject.instance().absolutePath()
 
     if(source_folder == ""):

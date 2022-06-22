@@ -39,7 +39,7 @@ from speckle.converter.layers import (
     convertSelectedLayers,
     getLayers,
     layerToNative,
-    nonQgisToNative,
+    cadLayerToNative,
 )
 from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
@@ -394,21 +394,17 @@ class SpeckleQGIS:
 
             def loopVal(value, name): # "name" is the parent object/property/layer name
                 if isinstance(value, Base): 
-                    #print("BASE")
-                    #print(value)
                     try: # dont go through parts of Speckle Geometry object
                         if value.speckle_type.startswith("Objects.Geometry."): pass
                         else: loopObj(value, name)
                     except: loopObj(value, name)
 
                 if isinstance(value, List):
-                    #print("LIST")
-                    #print(value)
                     for item in value:
                         loopVal(item, name)
                         try: # in case "speckle_type" not applicable
                             if item.speckle_type.startswith("Objects.Geometry."): 
-                                pt, pl = nonQgisToNative(value, name, streamId, branch.name)
+                                pt, pl = cadLayerToNative(value, name, streamId, branch.name)
                                 if pt is not None: logger.log("Layer group created: " + pt.name())
                                 if pl is not None: logger.log("Layer group created: " + pl.name())
                                 break
@@ -453,9 +449,11 @@ class SpeckleQGIS:
             return
 
         self.dockwidget.streamList.clear()
-        self.dockwidget.streamList.addItems(
-            [f"{stream[1].name} - {stream[1].id}" for stream in self.current_streams]
-        )
+        try:
+            self.dockwidget.streamList.addItems(
+                [f"{stream[1].name} - {stream[1].id}" for stream in self.current_streams]
+            )
+        except: return
 
     def populateActiveStreamBranchDropdown(self):
         if not self.dockwidget:
