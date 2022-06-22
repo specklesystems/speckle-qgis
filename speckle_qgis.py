@@ -366,8 +366,8 @@ class SpeckleQGIS:
             commitObj = operations.receive(objId, transport, None)
             logger.log(f"Succesfully received {objId}")
 
-            if QgsProject.instance().crs().isGeographic() is True: 
-                logger.logToUser("Project CRS of Geographic type (e.g. EPSG 4326) cannot be used while receiving CAD geometry. Please set the project CRS to Projected type (e.g. EPSG:32631)", Qgis.Warning)
+            if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
+                logger.logToUser("Unsupported Project CRS. CRS of Geographic type (e.g. EPSG 4326) cannot be used while receiving CAD geometry. Please set the project CRS to Projected type (e.g. EPSG:32631)", Qgis.Warning)
                 return
 
             if app == "QGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) 
