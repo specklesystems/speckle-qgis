@@ -124,17 +124,17 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamId: str, branc
     #if layer.type is None:
     #    # Handle this case
     #    return
-    print(layerContentList)
+    #print(layerContentList)
     geom_points = []
     geom_polylines = []
     geom_polygones = []
     geom_meshes = []
     #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
     for geom in layerContentList:
-        print(geom)
+        #print(geom)
         if geom.speckle_type == "Objects.Geometry.Point": 
             geom_points.append(geom)
-        if geom.speckle_type == "Objects.Geometry.Line" or geom.speckle_type == "Objects.Geometry.Polyline" or geom.speckle_type == "Objects.Geometry.Curve" or geom.speckle_type == "Objects.Geometry.Polycurve":
+        if geom.speckle_type == "Objects.Geometry.Line" or geom.speckle_type == "Objects.Geometry.Polyline" or geom.speckle_type == "Objects.Geometry.Curve" or geom.speckle_type == "Objects.Geometry.Arc" or geom.speckle_type == "Objects.Geometry.Circle" or geom.speckle_type == "Objects.Geometry.Polycurve":
             geom_polylines.append(geom)
     
     layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamId+"_"+branch)
@@ -147,6 +147,8 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
     vl = None
     layerName = layerName + "/" + geomType
     crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+    if crs.isGeographic is True: 
+        logger.logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", Qgis.Warning)
 
     #CREATE A GROUP "received blabla" with sublayers
     newGroupName = f'{streamBranch}_latest'

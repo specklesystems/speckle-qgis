@@ -289,21 +289,20 @@ def cadFeatureToNative(feature: Base, attrs: QgsFields):
         # add new field names from current geometry  
         # and make an attribute list to pass for layer creation
         for name in dynamicProps:
-            if name not in attrs.names(): 
+            if name not in attrs.names() and name not in ['displayStyle', 'id', 'renderMaterial', 'userDictionary', 'userStrings']: 
 
                 variant = getVariantFromValue(feature[name])
                 if variant: 
-                    if name == "id": fields.append( QgsField(name, QVariant.Int) )
+                    if name == "applicationId": fields.append( QgsField("id", QVariant.Int) )
                     else: fields.append( QgsField(name, variant) )
                 else: fields.append( QgsField(name, QVariant.String) )
 
         # assign fields and their values to the feature
         feat.setFields(fields)
         for f in fields.toList():
-        #for name in dynamicProps:
             try: value = feature[f.name()]
             except: value = None
-            if name == "id": 
+            if f.name() == "id": 
                 try: value = int(feature["applicationId"])
                 except: value = None
             feat[f.name()] = value

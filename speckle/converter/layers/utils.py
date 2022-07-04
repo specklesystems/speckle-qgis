@@ -1,7 +1,6 @@
 from PyQt5.QtCore import QVariant
-from qgis._core import QgsVectorLayer, QgsWkbTypes, QgsField
+from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes, QgsField
 from speckle.logging import logger
-
 from speckle.converter.layers import Layer
 
 
@@ -128,6 +127,7 @@ def getLayerGeomType(layer: QgsVectorLayer): #https://qgis.org/pyqgis/3.0/core/W
 
 
 def getVariantFromValue(value):
+    # TODO add Base object
     pairs = {
         str: QVariant.String,
         float: QVariant.Double,
@@ -135,7 +135,10 @@ def getVariantFromValue(value):
         bool: QVariant.Bool
     }
     t = type(value)
-    return pairs[t]
+    res = None
+    try: res = pairs[t]
+    except: pass
+    return res
 
 
 def get_type(type_name):
@@ -176,3 +179,26 @@ def getLayerAttributes(layer: Layer):
         if corrected == "applicationId": corrected = "id"
         vals.append(names[corrected])
     return vals 
+
+def get_scale_factor(units):
+    unit_scale = {
+    "meters": 1.0,
+    "centimeters": 0.01,
+    "millimeters": 0.001,
+    "inches": 0.0254,
+    "feet": 0.3048,
+    "kilometers": 1000.0,
+    "mm": 0.001,
+    "cm": 0.01,
+    "m": 1.0,
+    "km": 1000.0,
+    "in": 0.0254,
+    "ft": 0.3048,
+    "yd": 0.9144,
+    "mi": 1609.340,
+    }
+    if units.lower() in unit_scale.keys():
+        return unit_scale[units]
+    logger.logToUser(f"Units {units} are not supported.", Qgis.Warning)
+    return 1.0
+

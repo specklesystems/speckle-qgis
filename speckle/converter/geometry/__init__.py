@@ -4,7 +4,9 @@ from numpy import isin
 from speckle.logging import logger
 from typing import List, Union
 
-from qgis.core import QgsGeometry, QgsWkbTypes, QgsMultiPoint, QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon
+from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint, 
+    QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon,
+    QgsCircularString,)
 from speckle.converter.geometry.mesh import meshToNative
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from speckle.converter.geometry.polygon import *
@@ -13,9 +15,12 @@ from speckle.converter.geometry.polyline import (
     polylineToNative,
     curveToNative,
     polylineToSpeckle,
+    circleToNative,
+    arcToNative,
+    arcToSpeckle,
 )
 from specklepy.objects import Base
-from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve
+from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle
 
 
 def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
@@ -27,7 +32,6 @@ def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
         geom: QgsGeometry = feature
     geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
     geomType = geom.type()
-    #print(geom)
 
     if geomType == QgsWkbTypes.PointGeometry:
         # the geometry type can be of single or multi type
@@ -35,6 +39,7 @@ def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
             return pointToSpeckle(geom.constGet())
         else:
             return [pointToSpeckle(pt) for pt in geom.parts()]
+    
     elif geomType == QgsWkbTypes.LineGeometry:
         if geomSingleType:
             return polylineToSpeckle(geom)
@@ -58,6 +63,8 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
         (Line, lineToNative),
         (Polyline, polylineToNative),
         (Curve, curveToNative),
+        (Arc, arcToNative),
+        (Circle, circleToNative),
         (Mesh, meshToNative),
         (Base, polygonToNative), # temporary solution for polygons (Speckle has no type Polygon yet)
     ]

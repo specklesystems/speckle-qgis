@@ -6,6 +6,7 @@ from qgis.core import (
 )
 
 from specklepy.objects.geometry import Point
+from speckle.converter.layers.utils import get_scale_factor
 
 def pointToSpeckle(pt: QgsPoint or QgsPointXY):
     """Converts a QgsPoint to Speckle"""
@@ -24,5 +25,13 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY):
 
 def pointToNative(pt: Point) -> QgsPoint:
     """Converts a Speckle Point to QgsPoint"""
+    pt = scalePointToNative(pt, pt.units)
     return QgsPoint(pt.x, pt.y, pt.z)
 
+def scalePointToNative(pt: Point, units: str) -> Point:
+    """Scale point coordinates to meters"""
+    scaleFactor = get_scale_factor(units)
+    pt.x = pt.x * scaleFactor
+    pt.y = pt.y * scaleFactor
+    pt.z = 0 if math.isnan(pt.z) else pt.z * scaleFactor
+    return pt
