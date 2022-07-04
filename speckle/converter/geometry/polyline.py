@@ -26,10 +26,7 @@ def polylineFromVerticesToSpeckle(vertices, closed):
         if closed and i == len(specklePts) - 1:
             continue
         polyline.value.extend([point.x, point.y, point.z])
-    #print(polyline)
-    #print(polyline.value)
     return polyline
-
 
 def polylineToSpeckle(poly: QgsLineString):
     """Converts a QgsLineString to Speckle"""
@@ -41,8 +38,10 @@ def polylineToSpeckle(poly: QgsLineString):
         if vert_list and leng and len(vert_list) == 3 and leng!= dist:
             return arcToSpeckle(poly)
     except:
-        return polylineFromVerticesToSpeckle(poly.vertices(), False)
-    return polylineFromVerticesToSpeckle(poly.vertices(), False)
+        pass
+    try: closed = poly.isClosed()
+    except: closed = False
+    return polylineFromVerticesToSpeckle(poly.vertices(), closed)
 
 def arcToSpeckle(poly: QgsCircularString):
     """Converts a QgsCircularString to Speckle"""
@@ -51,7 +50,6 @@ def arcToSpeckle(poly: QgsCircularString):
     arc.startPoint = pointToSpeckle(vert_list[0])
     arc.midPoint = pointToSpeckle(vert_list[1])
     arc.endPoint = pointToSpeckle(vert_list[2])
-
     return arc
     
 

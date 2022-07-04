@@ -218,7 +218,8 @@ def featureToNative(feature: Base, attrs):
         except: pass
 
         try: 
-            if feature["applicationId"]: dynamicProps.append("id")
+            if feature["applicationId"] and "id" not in dynamicProps: dynamicProps.append("id")
+            dynamicProps.remove("applicationId")
         except: 
             pass
         dynamicProps.sort()

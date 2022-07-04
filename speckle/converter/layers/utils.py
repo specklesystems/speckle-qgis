@@ -156,9 +156,9 @@ def getLayerAttributes(layer: Layer):
     names = {}
     for feature in layer.features:
         featNames = feature.get_member_names()
-
+        #create empty attribute fields
         for n in featNames:
-            if n == "totalChildrenCount":
+            if n == "totalChildrenCount" or n == "applicationId":
                 continue
             if not (n in names):
                 try:
@@ -172,11 +172,11 @@ def getLayerAttributes(layer: Layer):
     vals = []
     sorted_names = list(names.keys())
     sorted_names.sort()
-    
+    #sort fields
     for i in sorted_names: #names.values():
         corrected = i
-        if corrected == "id": continue
-        if corrected == "applicationId": corrected = "id"
+        #if corrected == "id": continue
+        #if corrected == "applicationId": corrected = "id"
         vals.append(names[corrected])
     return vals 
 

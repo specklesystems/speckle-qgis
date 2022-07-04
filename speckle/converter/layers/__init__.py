@@ -7,11 +7,12 @@ from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-pac
     gdal, osr)
 from qgis.core import (Qgis, QgsRasterLayer,
                        QgsVectorLayer, QgsProject, 
-                       QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsCoordinateReferenceSystem,
-                       QgsFields)
+                       QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, 
+                       QgsCoordinateReferenceSystem, QgsCoordinateTransform,
+                       QgsFields, QgsRenderContext, QgsLayout, QgsFeatureRenderer)
 from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
-from speckle.converter.layers.Layer import Layer
+from speckle.converter.layers.Layer import Layer, RasterLayer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative
 from speckle.converter.layers.utils import getLayerGeomType, getVariantFromValue, getLayerAttributes
 from speckle.logging import logger
@@ -53,6 +54,7 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
     layerObjs = []
     # Convert CRS to speckle, use the projectCRS
     speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units) 
+    layerCRS = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units) 
 
     if isinstance(selectedLayer, QgsVectorLayer):
 
@@ -63,8 +65,22 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
             b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer)
             layerObjs.append(b)
         # Convert layer to speckle
-        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs, "VectorLayer", getLayerGeomType(selectedLayer))
+        layerBase = Layer(name=layerName, crs=speckleReprojectedCrs, features=layerObjs, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
         layerBase.applicationId = selectedLayer.id()
+
+        layerRenderer = selectedLayer.renderer()
+        layerRendererType = layerRenderer.type() #Polylines: "singleSymbol"
+        layerRendererLegendSymbolItemsList = layerRenderer.legendSymbolItems() #list
+
+        layout = QgsLayout(QgsProject.instance())
+        smth = layout.referenceMap()
+        mapContext = QgsRenderContext()
+        try: mapContext = QgsRenderContext.fromMapSettings(smth.mapSettings())
+        except: pass
+
+        layerLegendItems = [{'symbol': {'color':it.symbol().color(),'opacity':it.symbol().opacity(),'usedAttributes':it.symbol().usedAttributes(mapContext)}, 'label': it.label(), 'checkable': it.isCheckable()} for it in layerRendererLegendSymbolItemsList]
+
+        #layerBase.
         return layerBase
 
     if isinstance(selectedLayer, QgsRasterLayer):
@@ -72,40 +88,9 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
         b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project)
         layerObjs.append(b)
         # Convert layer to speckle
-        layerBase = Layer(layerName, speckleReprojectedCrs, layerObjs, "RasterLayer")
+        layerBase = RasterLayer(name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, features=layerObjs, type="RasterLayer")
         layerBase.applicationId = selectedLayer.id()
         return layerBase
-
-
-def receiveRaster(project, source_folder, name, epsg, rasterDimensions, bands, rasterBandVals, pt, rasterResXY): 
-    ## https://opensourceoptions.com/blog/pyqgis-create-raster/
-    # creating file in temporary folder: https://stackoverflow.com/questions/56038742/creating-in-memory-qgsrasterlayer-from-the-rasterization-of-a-qgsvectorlayer-wit
-    #print(source_folder)
-    fn = source_folder + '/' + name + '.tif' #'_received_raster.tif'
-    #print(fn)
-
-    driver = gdal.GetDriverByName('GTiff')
-    # create raster dataset
-    ds = driver.Create(fn, xsize=rasterDimensions[0], ysize=rasterDimensions[1], bands=bands, eType=gdal.GDT_Float32)
-
-    # Write data to raster band
-    for i in range(bands):
-        rasterband = np.array(rasterBandVals[i])
-        rasterband = np.reshape(rasterband,(rasterDimensions[1], rasterDimensions[0]))
-        ds.GetRasterBand(i+1).WriteArray(rasterband) # or "rasterband.T"
-
-    # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
-    ds.SetGeoTransform([pt.x(), rasterResXY[0], 0, pt.y(), 0, rasterResXY[1]])
-    # create a spatial reference object
-    srs = osr.SpatialReference()
-    #  For the Universal Transverse Mercator the SetUTM(Zone, North=1 or South=2)
-    srs.ImportFromEPSG(epsg) # from https://gis.stackexchange.com/questions/34082/creating-raster-layer-from-numpy-array-using-pyqgis
-    ds.SetProjection(srs.ExportToWkt())
-    # close the rater datasource by setting it equal to None
-    ds = None
-    raster_layer = QgsRasterLayer(fn, name, 'gdal')
-    project.addMapLayer(raster_layer)
-    return raster_layer
 
 
 def layerToNative(layer: Layer, streamId: str, branchName: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
@@ -302,10 +287,43 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
         vl.updateExtents()
         vl.commitChanges()
         layerGroup.addLayer(vl)
+
+        #renderer = vl.renderer()
+
         return vl
 
-def rasterLayerToNative(layer: Layer, streamBranch: str):
-    # testing, only for receiving layers
+def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
+
+    vl = None
+    crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
+    crsRaster = QgsCoordinateReferenceSystem.fromWkt(layer.rasterCrs.wkt) #moved up, because CRS of existing layer needs to be rewritten
+
+    #CREATE A GROUP "received blabla" with sublayers
+    newGroupName = f'{streamBranch}_latest'
+    root = QgsProject.instance().layerTreeRoot()
+    layerGroup = QgsLayerTreeGroup(newGroupName)
+
+    if root.findGroup(newGroupName) is not None:
+        layerGroup = root.findGroup(newGroupName)
+    else:
+        root.addChildNode(layerGroup)
+    layerGroup.setExpanded(True)
+
+    #find ID of the layer with a matching name in the "latest" group 
+    newName = f'{streamBranch}_latest/{layer.name}'
+    childId = None
+    for child in layerGroup.children(): 
+        if child.name() == newName: 
+            childId = child.layerId()
+            break
+    # modify existing layer (if exists) 
+    if QgsProject.instance().mapLayer(childId) is not None:
+        #existingRaster = QgsProject.instance().mapLayer(childId)
+        QgsProject.instance().removeMapLayer(childId)
+
+    
+
+    ######################## testing, only for receiving layers #################
     source_folder = QgsProject.instance().absolutePath()
 
     if(source_folder == ""):
@@ -314,16 +332,52 @@ def rasterLayerToNative(layer: Layer, streamBranch: str):
 
     project = QgsProject.instance()
     projectCRS = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-    epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
+    crsid = crsRaster.authid()
+    try: epsg = int(crsid.split(":")[1]) 
+    except: 
+        epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
+        logger.logToUser(f"CRS of the received raster cannot be identified. Project CRS will be used.", Qgis.Warning)
     
     feat = layer.features[0]
     bandNames = feat["Band names"]
     bandValues = [feat["@(10000)" + name + "_values"] for name in bandNames]
 
-    newName = f'{streamBranch}_latest_{layer.name}'
-    receiveRaster(project, source_folder, newName, epsg, [feat["X pixels"],feat["Y pixels"]],  feat["Band count"], bandValues, pointToNative(feat["displayValue"][0]), [feat["X resolution"],feat["Y resolution"]])
+    #newName = f'{streamBranch}_latest_{layer.name}'
+
+    ###########################################################################
+
+    ## https://opensourceoptions.com/blog/pyqgis-create-raster/
+    # creating file in temporary folder: https://stackoverflow.com/questions/56038742/creating-in-memory-qgsrasterlayer-from-the-rasterization-of-a-qgsvectorlayer-wit
+
+    fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
+    driver = gdal.GetDriverByName('GTiff')
+    # create raster dataset
+    ds = driver.Create(fn, xsize=feat["X pixels"], ysize=feat["Y pixels"], bands=feat["Band count"], eType=gdal.GDT_Float32)
+
+    # Write data to raster band
+    for i in range(feat["Band count"]):
+        rasterband = np.array(bandValues[i])
+        rasterband = np.reshape(rasterband,(feat["Y pixels"], feat["X pixels"]))
+        ds.GetRasterBand(i+1).WriteArray(rasterband) # or "rasterband.T"
+
+    # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
+    pt = pointToNative(feat["displayValue"][0])
+    xform = QgsCoordinateTransform(crs, crsRaster, project)
+    pt.transform(xform)
+    ds.SetGeoTransform([pt.x(), feat["X resolution"], 0, pt.y(), 0, feat["Y resolution"]])
+    # create a spatial reference object
+    srs = osr.SpatialReference()
+    #  For the Universal Transverse Mercator the SetUTM(Zone, North=1 or South=2)
+    srs.ImportFromEPSG(epsg) # from https://gis.stackexchange.com/questions/34082/creating-raster-layer-from-numpy-array-using-pyqgis
+    ds.SetProjection(srs.ExportToWkt())
+    # close the rater datasource by setting it equal to None
+    ds = None
+
+    raster_layer = QgsRasterLayer(fn, newName, 'gdal')
+    QgsProject.instance().addMapLayer(raster_layer, False)
+    layerGroup.addLayer(raster_layer)
     
-    return None
+    return raster_layer
 
 
 '''

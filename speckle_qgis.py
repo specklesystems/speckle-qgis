@@ -35,7 +35,7 @@ import webbrowser
 # Initialize Qt resources from file resources.py
 from resources import *
 from speckle.converter.layers import (
-    Layer,
+    Layer, RasterLayer,
     convertSelectedLayers,
     getLayers,
     layerToNative,
@@ -105,7 +105,7 @@ class SpeckleQGIS:
         # Save reference to the QGIS interface
         self.dockwidget = None
         self.iface = iface
-        self.qgis_project = QgsProject().instance()
+        self.qgis_project = QgsProject.instance()
 
         self.lat = 0.0
         self.lon = 0.0
@@ -394,11 +394,11 @@ class SpeckleQGIS:
                     return
             logger.log(f"Succesfully received {objId}")
 
-            if app == "QGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) 
+            if app == "QGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
 
             def callback(base: Base) -> bool:
-                if isinstance(base, Layer):
+                if isinstance(base, Layer) or isinstance(base, RasterLayer):
                     layer = layerToNative(base, streamId, branch.name)
                     if layer is not None:
                         logger.log("Layer created: " + layer.name())
