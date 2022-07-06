@@ -8,6 +8,7 @@ from qgis.core import (
 )
 
 from speckle.converter.layers.utils import get_scale_factor
+from typing import List, Union
 
 
 def polylineFromVerticesToSpeckle(vertices, closed):
@@ -28,9 +29,10 @@ def polylineFromVerticesToSpeckle(vertices, closed):
         polyline.value.extend([point.x, point.y, point.z])
     return polyline
 
-def polylineToSpeckle(poly: QgsLineString):
+def polylineToSpeckle(poly: Union[QgsLineString, QgsCircularString]):
     """Converts a QgsLineString to Speckle"""
-    # first check if it's circular
+    
+    '''# first check if it's circular
     try:
         vert_list = [pt for pt in poly.vertices()] 
         leng = poly.length()
@@ -39,6 +41,7 @@ def polylineToSpeckle(poly: QgsLineString):
             return arcToSpeckle(poly)
     except:
         pass
+    '''
     try: closed = poly.isClosed()
     except: closed = False
     return polylineFromVerticesToSpeckle(poly.vertices(), closed)

@@ -32,6 +32,7 @@ def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
         geom: QgsGeometry = feature
     geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
     geomType = geom.type()
+    type = geom.wkbType()
 
     if geomType == QgsWkbTypes.PointGeometry:
         # the geometry type can be of single or multi type
@@ -41,6 +42,12 @@ def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
             return [pointToSpeckle(pt) for pt in geom.parts()]
     
     elif geomType == QgsWkbTypes.LineGeometry:
+        if type == QgsWkbTypes.CircularString or type == QgsWkbTypes.CircularStringZ or type == QgsWkbTypes.CircularStringM or type == QgsWkbTypes.CircularStringZM: #Type (not GeometryType)
+            if geomSingleType:
+                return arcToSpeckle(geom)
+            else:
+                return [arcToSpeckle(poly) for poly in geom.parts()]
+
         if geomSingleType:
             return polylineToSpeckle(geom)
         else:

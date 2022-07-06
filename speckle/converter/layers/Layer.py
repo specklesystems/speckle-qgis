@@ -10,7 +10,7 @@ class Layer(Base, chunkable={"features": 100}):
         name=None,
         crs=None,
         features: List[Base] = [],
-        layerType: str = None,
+        layerType: str = "None",
         geomType: str = "None",
         renderer: dict = {},
         **kwargs
@@ -32,7 +32,7 @@ class RasterLayer(Base, chunkable={"features": 100}):
         crs=None,
         rasterCrs=None,
         features: List[Base] = [],
-        layerType: str = None,
+        layerType: str = "None",
         geomType: str = "None",
         renderer: dict = {},
         **kwargs

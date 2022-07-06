@@ -274,11 +274,14 @@ def cadFeatureToNative(feature: Base, attrs: QgsFields):
 
         #get object properties to add as attributes
         dynamicProps = feature.get_dynamic_member_names()
+        dynamicProps.append("_Speckle_ID")
+
         try: dynamicProps.remove("geometry")
         except: pass
 
-        try: 
-            if feature["applicationId"]: dynamicProps.append("id")
+        try:
+            if feature["applicationId"] and "id" not in dynamicProps: dynamicProps.append("id")
+            dynamicProps.remove("applicationId")
         except: pass
         dynamicProps.sort()
 
@@ -292,7 +295,9 @@ def cadFeatureToNative(feature: Base, attrs: QgsFields):
         for name in dynamicProps:
             if name not in attrs.names() and name not in ['displayStyle', 'id', 'renderMaterial', 'userDictionary', 'userStrings']: 
 
-                variant = getVariantFromValue(feature[name])
+                if name == '_Speckle_ID': variant = getVariantFromValue(feature['id'])
+                else: variant = getVariantFromValue(feature[name])
+
                 if variant: 
                     if name == "applicationId": fields.append( QgsField("id", QVariant.Int) )
                     else: fields.append( QgsField(name, variant) )
