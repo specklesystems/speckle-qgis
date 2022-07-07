@@ -423,13 +423,11 @@ class SpeckleQGIS:
                 if isinstance(value, List):
                     for item in value:
                         loopVal(item, name)
-                        try: # in case "speckle_type" not applicable
-                            if item.speckle_type.startswith("Objects.Geometry."): 
-                                pt, pl = cadLayerToNative(value, name, streamId, branch.name)
-                                if pt is not None: logger.log("Layer group created: " + pt.name())
-                                if pl is not None: logger.log("Layer group created: " + pl.name())
-                                break
-                        except: pass
+                        if item.speckle_type and item.speckle_type.startswith("Objects.Geometry."): 
+                            pt, pl = cadLayerToNative(value, name, streamId, branch.name)
+                            if pt is not None: logger.log("Layer group created: " + pt.name())
+                            if pl is not None: logger.log("Layer group created: " + pl.name())
+                            break
 
             traverseObject(commitObj, callback, check)
                 

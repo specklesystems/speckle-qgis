@@ -12,8 +12,10 @@ from speckle.converter.geometry.polyline import (
     polylineFromVerticesToSpeckle,
     polylineToNative,
 )
+from speckle.converter.geometry.transform import featureColorfromNativeRenderer
 from speckle.logging import logger
 import math
+from PyQt5.QtGui import QColor
 
 
 def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
@@ -27,11 +29,11 @@ def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
         except: 
             pt_iterator = geom.vertices()
         for pt in pt_iterator: pointList.append(pt) 
-        boundary = polylineFromVerticesToSpeckle(pointList, True) 
+        boundary = polylineFromVerticesToSpeckle(pointList, True, feature, layer) 
         voids = []
         try:
             for i in range(geom.numInteriorRings()):
-                intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True)
+                intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True, feature, layer)
                 voids.append(intRing)
         except:
             pass
@@ -55,28 +57,8 @@ def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
             faces = [total_vertices]
             faces.extend([i for i in ran])
 
-            # case with one color for the entire layer
-            if layer.renderer().type() == 'categorizedSymbol' or layer.renderer().type() == '25dRenderer' or layer.renderer().type() == 'invertedPolygonRenderer' or layer.renderer().type() == 'mergedFeatureRenderer' or layer.renderer().type() == 'RuleRenderer' or layer.renderer().type() == 'nullSymbol' or layer.renderer().type() == 'singleSymbol' or layer.renderer().type() == 'graduatedSymbol':
-                #get color value
-                if layer.renderer().type() == 'singleSymbol':
-                    color = layer.renderer().symbol().color()
-                elif layer.renderer().type() == 'categorizedSymbol':
-                    category = layer.renderer().legendClassificationAttribute() # get the name of attribute used for classification
-                    for obj in layer.renderer().categories():
-                        if obj.value() == feature.attribute( category ): 
-                            color = obj.symbol().color()
-                            break
-                # construct RGB color
-                try:
-                    rVal = color.red()
-                    gVal = color.green()
-                    bVal = color.blue()
-                except:
-                    rVal = 0
-                    gVal = 0
-                    bVal = 0
-                col =  (rVal<<16) + (gVal<<8) + bVal
-                colors = [col for i in ran] 
+            col = featureColorfromNativeRenderer(feature, layer)
+            colors = [col for i in ran] # apply same color for all vertices
             mesh = rasterToMesh(vertices, faces, colors)
             polygon.displayValue = mesh 
         return polygon

@@ -4,16 +4,18 @@ from speckle.converter.geometry.point import pointToNative, pointToSpeckle, scal
 from qgis.core import (
     QgsLineString, 
     QgsCircularString,
-    QgsCircle,
+    QgsCircle, QgsFeature, QgsVectorLayer
 )
 
 from speckle.converter.layers.utils import get_scale_factor
 from typing import List, Union
+from speckle.converter.geometry.transform import featureColorfromNativeRenderer
+#from PyQt5.QtGui import QColor
 
 
-def polylineFromVerticesToSpeckle(vertices, closed):
+def polylineFromVerticesToSpeckle(vertices, closed, feature: QgsFeature, layer: QgsVectorLayer):
     """Returns a Speckle Polyline given a list of QgsPoint instances and a boolean indicating if it's closed or not."""
-    specklePts = [pointToSpeckle(pt) for pt in vertices] #breaks unexplainably
+    specklePts = [pointToSpeckle(pt, feature, layer) for pt in vertices] #breaks unexplainably
     #specklePts = []
     #for pt in vertices:
     #    p = pointToSpeckle(pt)
@@ -27,52 +29,59 @@ def polylineFromVerticesToSpeckle(vertices, closed):
         if closed and i == len(specklePts) - 1:
             continue
         polyline.value.extend([point.x, point.y, point.z])
+    
+    col = featureColorfromNativeRenderer(feature, layer)
+    polyline['displayStyle'] = {}
+    polyline['displayStyle']['color'] = col
     return polyline
 
-def polylineToSpeckle(poly: Union[QgsLineString, QgsCircularString]):
+def polylineToSpeckle(poly: Union[QgsLineString, QgsCircularString], feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsLineString to Speckle"""
-    
-    '''# first check if it's circular
-    try:
-        vert_list = [pt for pt in poly.vertices()] 
-        leng = poly.length()
-        dist = ( vert_list[0].distance(vert_list[1]) + vert_list[2].distance(vert_list[1]))
-        if vert_list and leng and len(vert_list) == 3 and leng!= dist:
-            return arcToSpeckle(poly)
-    except:
-        pass
-    '''
     try: closed = poly.isClosed()
     except: closed = False
-    return polylineFromVerticesToSpeckle(poly.vertices(), closed)
 
-def arcToSpeckle(poly: QgsCircularString):
+    polyline = polylineFromVerticesToSpeckle(poly.vertices(), closed, feature, layer)
+    #col = featureColorfromNativeRenderer(QgsFeature(), QgsVectorLayer())
+    #polyline['displayStyle'] = {}
+    #polyline['displayStyle']['color'] = col
+    return polyline
+
+def arcToSpeckle(poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsCircularString to Speckle"""
     arc = Arc()
     vert_list = [pt for pt in poly.vertices()] 
-    arc.startPoint = pointToSpeckle(vert_list[0])
-    arc.midPoint = pointToSpeckle(vert_list[1])
-    arc.endPoint = pointToSpeckle(vert_list[2])
+    arc.startPoint = pointToSpeckle(vert_list[0], feature, layer)
+    arc.midPoint = pointToSpeckle(vert_list[1], feature, layer)
+    arc.endPoint = pointToSpeckle(vert_list[2], feature, layer)
+    
+    col = featureColorfromNativeRenderer(feature, layer)
+    arc['displayStyle'] = {}
+    arc['displayStyle']['color'] = col
     return arc
     
 
+
 def lineToNative(line: Line) -> QgsLineString:
     """Converts a Speckle Line to QgsLineString"""
-    return QgsLineString(pointToNative(line.start), pointToNative(line.end))
+    line = QgsLineString(pointToNative(line.start), pointToNative(line.end))
+    return line
 
 def polylineToNative(poly: Polyline) -> QgsLineString:
     """Converts a Speckle Polyline to QgsLineString"""
     if poly.closed is False: 
-        return QgsLineString([pointToNative(pt) for pt in poly.as_points()])
+        polyline = QgsLineString([pointToNative(pt) for pt in poly.as_points()])
+        return polyline
     else:
         ptList = poly.as_points()
         ptList.append(poly.as_points()[0])
-        return QgsLineString([pointToNative(pt) for pt in ptList])
+        polyline = QgsLineString([pointToNative(pt) for pt in ptList])
+        return polyline
 
 def curveToNative(poly: Curve) -> QgsLineString:
     """Converts a Speckle Curve to QgsLineString"""
     display = poly.displayValue
-    return polylineToNative(display) 
+    curve = polylineToNative(display) 
+    return curve
 
 def arcToNative(poly: Arc) -> QgsCircularString:
     """Converts a Speckle Arc to QgsCircularString"""

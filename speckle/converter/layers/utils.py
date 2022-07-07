@@ -131,7 +131,7 @@ def getVariantFromValue(value):
     pairs = {
         str: QVariant.String,
         float: QVariant.Double,
-        int: QVariant.Int,
+        int: QVariant.LongLong,
         bool: QVariant.Bool
     }
     t = type(value)

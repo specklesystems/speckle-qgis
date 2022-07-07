@@ -2,13 +2,15 @@ import math
 
 from qgis.core import (
     QgsPoint,
-    QgsPointXY
+    QgsPointXY, QgsFeature, QgsVectorLayer
 )
 
 from specklepy.objects.geometry import Point
 from speckle.converter.layers.utils import get_scale_factor
+from speckle.converter.geometry.transform import featureColorfromNativeRenderer
+#from PyQt5.QtGui import QColor
 
-def pointToSpeckle(pt: QgsPoint or QgsPointXY):
+def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsPoint to Speckle"""
     if isinstance(pt, QgsPointXY):
         pt = QgsPoint(pt)
@@ -20,6 +22,10 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY):
     specklePoint.x = x
     specklePoint.y = y
     specklePoint.z = z
+
+    col = featureColorfromNativeRenderer(feature, layer)
+    specklePoint['displayStyle'] = {}
+    specklePoint['displayStyle']['color'] = col
     return specklePoint
 
 

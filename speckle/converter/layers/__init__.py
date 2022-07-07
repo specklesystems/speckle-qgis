@@ -196,8 +196,8 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamId: str, branc
         if geom.speckle_type == "Objects.Geometry.Line" or geom.speckle_type == "Objects.Geometry.Polyline" or geom.speckle_type == "Objects.Geometry.Curve" or geom.speckle_type == "Objects.Geometry.Arc" or geom.speckle_type == "Objects.Geometry.Circle" or geom.speckle_type == "Objects.Geometry.Polycurve":
             geom_polylines.append(geom)
     
-    layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamId+"_"+branch)
-    layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamId+"_"+branch)
+    if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamId+"_"+branch)
+    if len(geom_polylines)>0: layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamId+"_"+branch)
 
     return [layer_points, layer_polylines]
 
@@ -215,76 +215,98 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
     layerGroup = QgsLayerTreeGroup(newGroupName)
 
     if root.findGroup(newGroupName) is not None:
-        layerGroup = root.findGroup(newGroupName)
+        layerGroup = root.findGroup(newGroupName) # -> QgsLayerTreeNode
     else:
         root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
+    layerGroup.setItemVisibilityChecked(True)
 
     #find ID of the layer with a matching name in the "latest" group 
     newName = f'{streamBranch}_latest{layerName}'
     childId = None
     for child in layerGroup.children(): 
-        if child.name() == newName: 
-            childId = child.layerId()
-            break
+        QgsProject.instance().removeMapLayer(child.layerId())
+        #if child.name() == newName: 
+        #    childId = child.layerId()
+         #   break
     
     # modify existing layer (if exists) 
-    if QgsProject.instance().mapLayer(childId) is not None:
-        vl = QgsProject.instance().mapLayer(childId)
-        vl.startEditing()
-
-        attrs = QgsFields()
-        for feat in vl.getFeatures():
-            attrs = feat.fields()
-            vl.deleteFeature(feat.id())
-        #fets = [featureToNative(feature) for feature in layer.features if featureToNative(feature) != ""]
-        fets = []
-        for f in geomList[:]: 
-            new_feat, newFields = cadFeatureToNative(f, attrs)
-            if new_feat != "": fets.append(new_feat)
-            #else: geomList.remove(f)
-        
-        # add Layer attribute fields
-        pr = vl.dataProvider()
-        pr.addAttributes(newFields)
-        vl.updateFields()
-
-        pr.addFeatures(fets)
-        vl.setCrs(crs)
-        vl.updateExtents()
-        vl.commitChanges()
-        return vl
+    #if QgsProject.instance().mapLayer(childId) is not None:
+    #    vl = QgsProject.instance().removeMapLayer(childId)
+    #    vl = None
 
     #or create one from scratch
-    if vl is None and len(geomList) > 0:
-        crsid = crs.authid()
-        if geomType == "Points": geomType = "PointZ"
-        elif geomType == "Polylines": geomType = "LineStringZ"
-        vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
-        QgsProject.instance().addMapLayer(vl, False)
+    crsid = crs.authid()
+    if geomType == "Points": geomType = "PointZ"
+    elif geomType == "Polylines": geomType = "LineStringZ"
+    vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    QgsProject.instance().addMapLayer(vl, False)
 
-        pr = vl.dataProvider()
-        vl.startEditing()
-        vl.setCrs(crs)
+    pr = vl.dataProvider()
+    vl.startEditing()
+    vl.setCrs(crs)
+    
+    # create list of Features (fets) and list of Layer fields (fields)
+    attrs = QgsFields()
+    fets = []
+    fetIds = []
+    fetColors = []
+    for f in geomList[:]: 
+        new_feat, newFields = cadFeatureToNative(f, attrs, newName)
+        # update attrs for the next feature (if more fields were added from previous feature)
         
-        # create list of Features (fets) and list of Layer fields (fields)
-        attrs = QgsFields()
-        fets = []
-        for f in geomList[:]: 
-            new_feat, newFields = cadFeatureToNative(f, attrs)
-            if new_feat != "": fets.append(new_feat)
-            #else: geomList.remove(f)
-        
-        # add Layer attribute fields
-        pr.addAttributes(newFields)
-        vl.updateFields()
+        if new_feat != "": 
+            fets.append(new_feat)
+            for a in newFields.toList(): 
+                #if a not in attrs.toList(): 
+                attrs.append(a) 
+            
+            pr.addAttributes(newFields) # add new attributes from the current object
+            fetIds.append(f.id)
+            try: fetColors.append(f.displayStyle.color), print(str(f.id)+ ': ' + str(f.displayStyle.color))
+            except: fetColors.append(None)
+        #else: geomList.remove(f)
+    
+    # add Layer attribute fields
+    pr.addAttributes(newFields)
+    vl.updateFields()
 
-        pr = vl.dataProvider()
-        pr.addFeatures(fets)
-        vl.updateExtents()
-        vl.commitChanges()
-        layerGroup.addLayer(vl)
-        return vl
+    #pr = vl.dataProvider()
+    pr.addFeatures(fets)
+    vl.updateExtents()
+    vl.commitChanges()
+    layerGroup.addLayer(vl)
+
+    ################################### RENDERER ###########################################
+    # only set up renderer if the layer is just created
+    attribute = '_Speckle_ID'
+    categories = []
+    for i in range(len(fets)):
+        rgb = fetColors[i]
+        if rgb:
+            r = (rgb & 0xFF0000) >> 16
+            g = (rgb & 0xFF00) >> 8
+            b = rgb & 0xFF 
+            print(r,g,b)
+            color = QColor.fromRgb(r, g, b)
+        else: color = QColor.fromRgb(0,0,0)
+
+        symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
+        symbol.setColor(color)
+        categories.append(QgsRendererCategory(fetIds[i], symbol, fetIds[i], True) )  
+    # create empty category for all other values
+    symbol2 = symbol.clone()
+    symbol2.setColor(QColor.fromRgb(0,0,0))
+    cat = QgsRendererCategory()
+    cat.setSymbol(symbol2)
+    cat.setLabel('Other')
+    categories.append(cat)        
+    rendererNew = QgsCategorizedSymbolRenderer(attribute, categories)
+
+    try: vl.setRenderer(rendererNew)
+    except: pass
+
+    return vl
 
 def vectorLayerToNative(layer: Layer, streamBranch: str):
     vl = None
@@ -300,90 +322,104 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
     else:
         root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
+    layerGroup.setItemVisibilityChecked(True)
 
     #find ID of the layer with a matching name in the "latest" group 
     newName = f'{streamBranch}_latest/{layer.name}'
     childId = None
     for child in layerGroup.children(): 
-        if child.name() == newName: 
-            childId = child.layerId()
-            break
-
-    # modify existing layer (if exists) 
-    if QgsProject.instance().mapLayer(childId) is not None:
-        vl = QgsProject.instance().mapLayer(childId)
-        vl.startEditing()
-
-        for feat in vl.getFeatures():
-            vl.deleteFeature(feat.id())
-            
-        fets = []
-        for f in layer.features: 
-            new_feat, new_fields = featureToNative(f, [])
-            if new_feat != "": fets.append(new_feat)
-        #list(filter(lambda a: a !="", fets))
-        pr = vl.dataProvider()
-        attrs = getLayerAttributes(layer)
-        pr.addAttributes(attrs)
-        vl.updateFields()
-
-        pr.addFeatures(fets)
-        vl.setCrs(crs)
-        vl.updateExtents()
-        vl.commitChanges()
-        return vl
-
+        QgsProject.instance().removeMapLayer(child.layerId())
+        #if child.name() == newName: 
+        #    childId = child.layerId()
+        #    break
+    
+    #in QGIS panel: 
+    '''
+root = QgsProject.instance().layerTreeRoot()
+print(root.layerOrder())
+layer = root.layerOrder()[0]
+cats = layer.renderer().categories()
+[print(str(i.label()) + ': ' + str(i.value())) for i in cats]   
+    '''
+    # delete existing layer (if exists) 
+    #if QgsProject.instance().mapLayer(childId) is not None:
+    #    vl = QgsProject.instance().removeMapLayer(childId)
+    #    vl = None
     #or create one from scratch
-    if vl is None:
-        crsid = crs.authid()
-        vl = QgsVectorLayer(layer.geomType+"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
-        QgsProject.instance().addMapLayer(vl, False)
+    crsid = crs.authid()
+    vl = QgsVectorLayer(layer.geomType+"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    QgsProject.instance().addMapLayer(vl, False)
 
-        pr = vl.dataProvider()
-        vl.startEditing()
-        vl.setCrs(crs)
-        attrs = getLayerAttributes(layer)
-        pr.addAttributes(attrs)
-        vl.updateFields()
-        
-        fets = []
-        for f in layer.features: 
-            new_feat, new_fields = featureToNative(f, [])
-            if new_feat != "": 
-                fets.append(new_feat)
+    pr = vl.dataProvider()
+    vl.startEditing()
+    vl.setCrs(crs)
+    #vl.updateFields()
 
-        pr = vl.dataProvider()
-        pr.addFeatures(fets)
-        vl.updateExtents()
-        vl.commitChanges()
-        layerGroup.addLayer(vl)
+    attrs = getLayerAttributes(layer)
+    print(attrs)
+    #pr.addAttributes(attrs)
+    vl.updateFields()
+    
+    fets = []
+    for f in layer.features: 
+        new_feat, newFields = featureToNative(f, attrs)
+        if new_feat != "": fets.append(new_feat)
 
+    # add Layer attribute fields
+    pr.addAttributes(newFields)
+    vl.updateFields()
+    
+    #print(pr.get
+    #pr = vl.dataProvider()
+    pr.addFeatures(fets)
+    vl.updateExtents()
+    vl.commitChanges()
+    layerGroup.addLayer(vl)
 
-        ################################### RENDERER ###########################################
-        # only set up renderer if the layer is just created
-        renderer = layer.renderer
-        if renderer['type'] == 'categorizedSymbol':
+    ################################### RENDERER ###########################################
+    # only set up renderer if the layer is just created
+    renderer = layer.renderer
+    if renderer and renderer['type']:
+        if renderer['type']  == 'categorizedSymbol':
             attribute = renderer['properties']['attribute']
             cats = renderer['properties']['categories']
 
             categories = []
+            noneVal = 0
             for i in range(len(cats)):
+                v = cats[i]['value'] 
+                if v is None: noneVal +=1
                 rgb = cats[i]['symbColor']
-                r   = (rgb >> 16)
-                g = (rgb >> 8) & 0xFF
-                b  =  rgb & 0xFF
+                r = (rgb & 0xFF0000) >> 16
+                g = (rgb & 0xFF00) >> 8
+                b = rgb & 0xFF 
                 color = QColor.fromRgb(r, g, b)
                 symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
+                # create an extra category for possible future feature
+                #if len(categories)==0: 
+                #    symbol.setColor(QColor.fromRgb(0,0,0))
+                #    categories.append(QgsRendererCategory())
+                #    categories[0].setSymbol(symbol)
+                #    categories[0].setLabel('Other')
 
                 symbol.setColor(color)
                 categories.append(QgsRendererCategory(cats[i]['value'], symbol, cats[i]['label'], True) )
+            # create empty category for all other values (if doesn't exist yet)
+            if noneVal == 0:
+                symbol2 = symbol.clone()
+                symbol2.setColor(QColor.fromRgb(0,0,0))
+                cat = QgsRendererCategory()
+                cat.setSymbol(symbol2)
+                cat.setLabel('Other')
+                categories.append(cat)
+            
             rendererNew = QgsCategorizedSymbolRenderer(attribute, categories)
 
         elif renderer['type'] == 'singleSymbol':
             rgb = renderer['properties']['symbol']['symbColor']
-            r   = (rgb >> 16)
-            g = (rgb >> 8) & 0xFF
-            b  =  rgb & 0xFF
+            r = (rgb & 0xFF0000) >> 16
+            g = (rgb & 0xFF00) >> 8
+            b = rgb & 0xFF 
             color = QColor.fromRgb(r, g, b)
             symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
             symbol.setColor(color)
@@ -408,19 +444,14 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
             c21,c22,c23,alpha2 = ramp['color2'].split(',')
             color2 = QColor.fromRgb(int(c21),int(c22),int(c23))
             discrete = int(ramp['discrete'])
-            newRamp = QgsGradientColorRamp()
-            newRamp.setColor1(color1)
-            newRamp.setColor1(color2)
-            newRamp.setDiscrete(discrete)
-            newRamp.setStops(stops)
             newRamp = QgsGradientColorRamp(color1,color2,discrete,stops)
 
             newRanges = []
             for i in range(len(ranges)):
                 rgb = ranges[i]['symbColor']
-                r   = (rgb >> 16)
-                g = (rgb >> 8) & 0xFF
-                b  =  rgb & 0xFF
+                r = (rgb & 0xFF0000) >> 16
+                g = (rgb & 0xFF00) >> 8
+                b = rgb & 0xFF 
                 color = QColor.fromRgb(r, g, b)
                 symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
                 symbol.setColor(color)
@@ -430,10 +461,10 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
             rendererNew.setSourceColorRamp(newRamp)
             rendererNew.setGraduatedMethod(gradMetod)
 
-        try: vl.setRenderer(rendererNew)
-        except: pass
-        
-        return vl
+    try: vl.setRenderer(rendererNew)
+    except: pass
+    
+    return vl
 
 def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
 
@@ -456,6 +487,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
     else:
         root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
+    layerGroup.setItemVisibilityChecked(True)
 
     #find ID of the layer with a matching name in the "latest" group 
     newName = f'{streamBranch}_latest/{layer.name}'
