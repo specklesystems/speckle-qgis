@@ -17,7 +17,9 @@
 import os.path
 from typing import Any, Callable, List, Optional, Tuple
 
-from qgis.core import Qgis, QgsProject, QgsExpressionContextUtils, QgsExpressionContextScope
+from qgis.core import (Qgis, QgsProject, QgsExpressionContextUtils, QgsExpressionContextScope,
+                      QgsCoordinateReferenceSystem, QgsPointXY, QgsLayerTreeGroup)
+from qgis.core import QgsCoordinateTransform
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QDockWidget
@@ -92,7 +94,6 @@ class SpeckleQGIS:
 
     lat: float
     lon: float
-    north: float
 
     def __init__(self, iface):
         """Constructor.
@@ -109,7 +110,6 @@ class SpeckleQGIS:
 
         self.lat = 0.0
         self.lon = 0.0
-        self.north = 0.0
 
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
@@ -272,6 +272,9 @@ class SpeckleQGIS:
             logger.logToUser("Please enter a Stream Url/ID.", Qgis.Warning)
             return
 
+        # Reset Survey point
+        self.populateSurveyPoint()
+
         if self.active_stream is None:
             logger.logToUser(
                 "There is no active stream. Please select a stream from the list."
@@ -339,8 +342,6 @@ class SpeckleQGIS:
                 Qgis.Error,
             )
             return
-        
-        self.set_project_points()
 
         # Get the stream wrapper
         streamWrapper = self.active_stream[0]
@@ -394,12 +395,21 @@ class SpeckleQGIS:
                     return
             logger.log(f"Succesfully received {objId}")
 
+            # Clear 'latest' group
+            streamBranch = streamId + "_" + branch.name
+            newGroupName = f'{streamBranch}_latest'
+            root = QgsProject.instance().layerTreeRoot()
+            if root.findGroup(newGroupName) is not None:
+                layerGroup = root.findGroup(newGroupName)
+                for child in layerGroup.children(): 
+                    QgsProject.instance().removeMapLayer(child.layerId())
+
             if app == "QGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
 
             def callback(base: Base) -> bool:
                 if isinstance(base, Layer) or isinstance(base, RasterLayer):
-                    layer = layerToNative(base, streamId, branch.name)
+                    layer = layerToNative(base, streamBranch)
                     if layer is not None:
                         logger.log("Layer created: " + layer.name())
                 else:
@@ -424,7 +434,7 @@ class SpeckleQGIS:
                     for item in value:
                         loopVal(item, name)
                         if item.speckle_type and item.speckle_type.startswith("Objects.Geometry."): 
-                            pt, pl = cadLayerToNative(value, name, streamId, branch.name)
+                            pt, pl = cadLayerToNative(value, name, streamBranch)
                             if pt is not None: logger.log("Layer group created: " + pt.name())
                             if pl is not None: logger.log("Layer group created: " + pl.name())
                             break
@@ -474,12 +484,14 @@ class SpeckleQGIS:
         )
         self.set_project_streams()
 
-    def populateProjectPoints(self):
+    def populateSurveyPoint(self):
         if not self.dockwidget:
             return
         try:
-            self.dockwidget.projectPoints.clear()
-            self.dockwidget.projectPoints.setText(str(self.lat)+", "+str(self.lon)+", "+str(self.north))
+            self.dockwidget.surveyPointLat.clear()
+            self.dockwidget.surveyPointLat.setText(str(self.lat))
+            self.dockwidget.surveyPointLon.clear()
+            self.dockwidget.surveyPointLon.setText(str(self.lon))
         except: return
 
     def populateActiveStreamBranchDropdown(self):
@@ -498,10 +510,10 @@ class SpeckleQGIS:
         if self.dockwidget is not None:
             self.active_stream = None
             self.get_project_streams()
-            self.get_project_points()
             self.populateLayerDropdown()
             self.populateProjectStreams()
-            self.populateProjectPoints()
+            self.get_survey_point()
+            self.populateSurveyPoint()
             self.dockwidget.streamIdField.clear()
             self.dockwidget.streamBranchDropdown.clear()
             self.dockwidget.receiveButton.setEnabled(self.is_setup)
@@ -538,6 +550,7 @@ class SpeckleQGIS:
             self.dockwidget.sendButton.clicked.connect(self.onSendButtonClicked)
             self.dockwidget.receiveButton.clicked.connect(self.onReceiveButtonClicked)
             self.dockwidget.reloadButton.clicked.connect(self.reloadUI)
+            self.dockwidget.saveSurveyPoint.clicked.connect(self.set_survey_point)
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
@@ -553,12 +566,12 @@ class SpeckleQGIS:
             )
 
             self.get_project_streams()
-            self.get_project_points()
 
             # Populate the UI dropdowns
             self.populateLayerDropdown()
             self.populateProjectStreams()
-            self.populateProjectPoints()
+            self.get_survey_point()
+            self.populateSurveyPoint()
 
             # Setup reload of UI dropdowns when layers change.
             layerRoot = QgsProject.instance()
@@ -656,10 +669,42 @@ class SpeckleQGIS:
 
             self.current_streams = temp
     
-    def set_project_points(self):
+    def set_survey_point(self):
+        # from widget (3 strings) to local vars AND memory (1 string)
         proj = QgsProject().instance()
-        value = "0.0, 0.0, 0.0" #",".join([stream[0].stream_url for stream in self.current_streams])
-        proj.writeEntry("speckle-qgis", "project_point", value)
+        vals =[self.dockwidget.surveyPointLat.text(),self.dockwidget.surveyPointLon.text()]
+        #if b:
+        try: 
+            self.lat, self.lon = [float(i) for i in vals]
+            pt = str(self.lat) + ";" + str(self.lon) 
+            proj.writeEntry("speckle-qgis", "survey_point", pt)
+
+            # Create CRS and apply to the project:
+
+            # https://gis.stackexchange.com/questions/379199/having-problem-with-proj-string-for-custom-coordinate-system
+            # https://proj.org/usage/projections.html
+            
+            testCrsString = "+proj=tmerc +datum=WGS84 +lon_0=-75 +k_0=0.9996 +x_0=0 +y_0=0"
+            testCrs = QgsCoordinateReferenceSystem().fromProj(testCrsString)
+
+            sPoint = QgsPointXY(self.lon, self.lat)
+            transformContext = QgsProject.instance().transformContext()
+            xform = QgsCoordinateTransform(QgsCoordinateReferenceSystem(4326), testCrs, transformContext)
+            newPoint = xform.transform(sPoint)
+            
+            newCrsString = "+proj=tmerc +datum=WGS84 +lon_0=-75 +k_0=0.9996 +x_0=" + str(-1*newPoint.x()) + " +y_0=" + str(-1*newPoint.y())
+            newCrs = QgsCoordinateReferenceSystem().fromProj(newCrsString)#fromWkt(newProjWkt)
+            validate = QgsCoordinateReferenceSystem().createFromProj(newCrsString)
+
+            if validate: 
+                QgsProject.instance().setCrs(newCrs)
+                logger.logToUser("Project CRS successfully applied", Qgis.Info)
+            else:
+                logger.logToUser("Custom CRS could not be created", Qgis.Warning)
+
+        except:
+            logger.logToUser("Custom CRS could not be created", Qgis.Warning)
+
         '''
             # add project variables
             
@@ -670,15 +715,11 @@ class SpeckleQGIS:
             #QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'speckle_project', (0,0,0))
         '''
 
-    def get_project_points(self):
+    def get_survey_point(self):
+        # get from saved project, set to local vars
         proj = QgsProject().instance()
-        saved_points, b = proj.readEntry("speckle-qgis", "project_point", "")
-        if len(saved_points)>0: saved_point_coords = saved_points.replace(" ","").split(",")
-        else: saved_point_coords = [0.0, 0.0, 0.0]
-        try: 
-            self.lat = saved_point_coords[0]
-            self.lon = saved_point_coords[1]
-            self.north = saved_point_coords[2]
-        except:
-            logger.logToUser("Please enter 3 numeric values separated by coma", Qgis.Warning)
-            return
+        points = proj.readEntry("speckle-qgis", "survey_point", "")
+        if points[1] and len(points[0])>0: 
+            vals = points[0].replace(" ","").split(";")[:2]
+            self.lat, self.lon = [float(i) for i in vals]
+        

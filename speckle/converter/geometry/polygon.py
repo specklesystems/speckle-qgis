@@ -41,26 +41,27 @@ def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
         polygon.voids = voids
         polygon.displayValue = [ boundary ] + voids
 
-        if len(voids) == 0: # if there is a mesh with no voids 
-            vertices = []
-            total_vertices = 0
-            for pt in pointList:
-                if isinstance(pt, QgsPointXY):
-                    pt = QgsPoint(pt)
-                x = pt.x()
-                y = pt.y()
-                z = 0 if math.isnan(pt.z()) else pt.z()
-                vertices.extend([x, y, z])
-                total_vertices += 1
+        #if len(voids) == 0: # if there is a mesh with no voids 
+        vertices = []
+        total_vertices = 0
+        for pt in pointList:
+            if isinstance(pt, QgsPointXY):
+                pt = QgsPoint(pt)
+            x = pt.x()
+            y = pt.y()
+            z = 0 if math.isnan(pt.z()) else pt.z()
+            vertices.extend([x, y, z])
+            total_vertices += 1
 
-            ran = range(0, total_vertices)
-            faces = [total_vertices]
-            faces.extend([i for i in ran])
+        ran = range(0, total_vertices)
+        faces = [total_vertices]
+        faces.extend([i for i in ran])
 
-            col = featureColorfromNativeRenderer(feature, layer)
-            colors = [col for i in ran] # apply same color for all vertices
-            mesh = rasterToMesh(vertices, faces, colors)
-            polygon.displayValue = mesh 
+        col = featureColorfromNativeRenderer(feature, layer)
+        colors = [col for i in ran] # apply same color for all vertices
+        mesh = rasterToMesh(vertices, faces, colors)
+        polygon.displayValue = mesh 
+        
         return polygon
     except: 
         logger.logToUser("Some polygons might be invalid", Qgis.Warning)

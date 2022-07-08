@@ -256,6 +256,7 @@ def featureToNative(feature: Base, attrs):
 def cadFeatureToNative(feature: Base, attrs: QgsFields, layerName: str):
     feat = QgsFeature()
     fields = QgsFields()
+    attrsToRemove = ['applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'userDictionary', 'userStrings','geometry']
     #try: # ignore 'broken' geometry
     try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
     except:  speckle_geom = feature # for created in other software
@@ -270,25 +271,26 @@ def cadFeatureToNative(feature: Base, attrs: QgsFields, layerName: str):
 
     #get object properties to add as attributes
     dynamicProps = feature.get_dynamic_member_names()
+    for att in attrsToRemove:
+        try: dynamicProps.remove(att)
+        except: pass
     if "_Speckle_ID" not in dynamicProps: dynamicProps.append("_Speckle_ID")
 
     # add existing fields
     for a in attrs.toList(): # should be QgsField
-        if a.name() not in dynamicProps: dynamicProps.append(a.name())
+        if a.name() not in dynamicProps and a.name() not in attrsToRemove: 
+            dynamicProps.append(a.name())
 
-    try: dynamicProps.remove("geometry")
-    except: pass
-
-    try:
-        if feature["applicationId"] and "id" not in dynamicProps: dynamicProps.append("id")
-        dynamicProps.remove("applicationId")
-    except: pass
+    #try:
+    #if feature["applicationId"] and "id" not in dynamicProps: 
+    #    if getVariantFromValue(feature['id']) == 10: dynamicProps.append("id") 
+    #except: pass
 
     dynamicProps.sort()
     # add new field names from current geometry  
     # and make an attribute list to pass for layer creation
     for name in dynamicProps:
-        if name not in ['bbox','displayStyle', 'id', 'renderMaterial', 'userDictionary', 'userStrings']: 
+        if name not in attrsToRemove: 
             if name == '_Speckle_ID': variant = getVariantFromValue(feature['id'])
             else: variant = getVariantFromValue(feature[name])
         #if attribute isn't created yet
@@ -310,9 +312,9 @@ def cadFeatureToNative(feature: Base, attrs: QgsFields, layerName: str):
         if fName == "_Speckle_ID": 
             try: value = feature["id"]
             except: value = None
-        elif fName == "id": 
-            try: value = int(feature["applicationId"])
-            except: value = None
+        #elif fName == "id": 
+        #    try: value = int(feature["applicationId"])
+        #    except: value = None
 
         ##### adapt value to the existing field type,  
         if f.type() == QVariant.LongLong: # 4

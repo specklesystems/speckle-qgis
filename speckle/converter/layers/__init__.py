@@ -74,7 +74,7 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
         symbol = renderer.symbol() # QgsLineSymbol
         symbType = symbol.symbolTypeToString(symbol.type()) #Line
         try: rgb = symbol.color().getRgb()
-        except: rgb = symbol.color().split(',')
+        except: [int(i) for i in symbol().color().replace(" ","").split(',')[:3] ]
         symbolColor = (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
         layerRenderer['properties'].update({'symbol':{'symbColor': symbolColor}, 'symbType':symbType})
 
@@ -83,6 +83,9 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
         attribute = renderer.classAttribute() # 'id'
         symbol = renderer.sourceSymbol()
         symbType = symbol.symbolTypeToString(symbol.type()) #Line
+        try: r, g, b = symbol.color().getRgb()[:3]
+        except: [int(i) for i in symbol.color().replace(" ","").split(',')[:3] ]
+        sourceSymbColor = (r<<16) + (g<<8) + b
 
         layerRenderer['properties'].update( {'attribute': attribute, 'symbType': symbType} )
         
@@ -90,12 +93,12 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
         layerRenderer['properties']['categories'] = []
         for i in categories:
             value = i.value()
-            try: rgb = i.symbol().color().getRgb()
-            except: rgb = i.symbol().color().split(',')
-            symbColor = (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
+            try: r, g, b = i.symbol().color().getRgb()[:3]
+            except: [int(i) for i in i.symbol().color().replace(" ","").split(',')[:3] ]
+            symbColor = (r<<16) + (g<<8) + b
             symbOpacity = i.symbol().opacity() # QgsSymbol.color()
             label = i.label() 
-            layerRenderer['properties']['categories'].append({'value':value,'symbColor':symbColor,'symbOpacity':symbOpacity,'label':label})
+            layerRenderer['properties']['categories'].append({'value':value,'symbColor':symbColor,'symbOpacity':symbOpacity, 'sourceSymbColor': sourceSymbColor,'label':label})
             
 
     elif rType == 'graduatedSymbol': 
@@ -104,8 +107,11 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
         attribute = renderer.legendClassificationAttribute() # 'id'
         symbol = renderer.sourceSymbol() # QgsLineSymbol
         symbType = symbol.symbolTypeToString(symbol.type()) #Line
+        try: r, g, b = symbol.color().getRgb()[:3]
+        except: r, g, b = [int(i) for i in symbol.color().replace(" ","").split(',')[:3] ]
+        sourceSymbColor = (r<<16) + (g<<8) + b
         gradMethod = renderer.graduatedMethod() # 0
-        layerRenderer['properties'].update( {'attribute': attribute, 'symbType': symbType, 'gradMethod': gradMethod} )
+        layerRenderer['properties'].update( {'attribute': attribute, 'symbType': symbType, 'gradMethod': gradMethod, 'sourceSymbColor': sourceSymbColor} )
 
         #if isinstance(rSymbol, QgsLineSymbol):
         #    width = rSymbol.width()
@@ -113,14 +119,17 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
 
         rRamp = renderer.sourceColorRamp() # QgsGradientColorRamp
         if isinstance(rRamp,QgsGradientColorRamp) : 
-            rgb = rRamp.color1().getRgb()
-            c1 = (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
-            rgb = rRamp.color2().getRgb()
-            c2 = (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
             props = rRamp.properties() # {'color1': '255,255,255,255', 'color2': '255,0,0,255', 'discrete': '0', 'rampType': 'gradient'}
             stops = rRamp.stops() #[]
+            stopsStr = []
+            for s in stops:
+                try: r, g, b = s.color.getRgb()[:3]
+                except: r, g, b = [int(i) for i in s.color.replace(" ","").split(',')[:3] ]
+                sColor = (r<<16) + (g<<8) + b
+                stopsStr.append({'color':sColor, 'offset':s.offset})
             rampType = rRamp.type() #'gradient'
             layerRenderer['properties']['ramp'] = props
+            layerRenderer['properties']['ramp'].update({'stops': stopsStr, 'rampType':rampType})
 
         rRanges = renderer.ranges() # [QgsRendererRange,...]
         layerRenderer['properties']['ranges'] = []
@@ -171,18 +180,18 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
         return layerBase
 
 
-def layerToNative(layer: Union[Layer, RasterLayer], streamId: str, branchName: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def layerToNative(layer: Union[Layer, RasterLayer], streamBranch: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
 
     if layer.type is None:
         # Handle this case
         return
     elif layer.type.endswith("VectorLayer"):
-        return vectorLayerToNative(layer, streamId + "_" + branchName)
+        return vectorLayerToNative(layer, streamBranch)
     elif layer.type.endswith("RasterLayer"):
-        return rasterLayerToNative(layer, streamId + "_" + branchName)
+        return rasterLayerToNative(layer, streamBranch)
     return None
 
-def cadLayerToNative(layerContentList:Base, layerName: str, streamId: str, branch: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
 
     geom_points = []
     geom_polylines = []
@@ -196,8 +205,8 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamId: str, branc
         if geom.speckle_type == "Objects.Geometry.Line" or geom.speckle_type == "Objects.Geometry.Polyline" or geom.speckle_type == "Objects.Geometry.Curve" or geom.speckle_type == "Objects.Geometry.Arc" or geom.speckle_type == "Objects.Geometry.Circle" or geom.speckle_type == "Objects.Geometry.Polycurve":
             geom_polylines.append(geom)
     
-    if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamId+"_"+branch)
-    if len(geom_polylines)>0: layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamId+"_"+branch)
+    if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch)
+    if len(geom_polylines)>0: layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch)
 
     return [layer_points, layer_polylines]
 
@@ -223,9 +232,9 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
 
     #find ID of the layer with a matching name in the "latest" group 
     newName = f'{streamBranch}_latest{layerName}'
-    childId = None
-    for child in layerGroup.children(): 
-        QgsProject.instance().removeMapLayer(child.layerId())
+    #childId = None
+    #for child in layerGroup.children(): 
+    #    QgsProject.instance().removeMapLayer(child.layerId())
         #if child.name() == newName: 
         #    childId = child.layerId()
          #   break
@@ -326,9 +335,9 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
 
     #find ID of the layer with a matching name in the "latest" group 
     newName = f'{streamBranch}_latest/{layer.name}'
-    childId = None
-    for child in layerGroup.children(): 
-        QgsProject.instance().removeMapLayer(child.layerId())
+    #childId = None
+    #for child in layerGroup.children(): 
+    #    QgsProject.instance().removeMapLayer(child.layerId())
         #if child.name() == newName: 
         #    childId = child.layerId()
         #    break
@@ -428,38 +437,65 @@ cats = layer.renderer().categories()
         elif renderer['type'] == 'graduatedSymbol':
             attribute = renderer['properties']['attribute']
             gradMetod = renderer['properties']['gradMethod'] # by color or by size
+            rgb = renderer['properties']['sourceSymbColor'] 
+            r = (rgb & 0xFF0000) >> 16
+            g = (rgb & 0xFF00) >> 8
+            b = rgb & 0xFF 
+            sourceSymbColor = QColor.fromRgb(r, g, b)
             
-            ramp = renderer['properties']['ramp'] # {color1, color2, discrete, rampType, stops}
-            ranges = renderer['properties']['ranges'] # []
-            #if ramp['rampType'] == 'gradient':
-            oldStops = ramp['stops'].split(':')
-            stops = []
-            for i in range(len(oldStops)):
-                c1,c2,c3,alpha = oldStops[i].split(';')[1].split(',')
-                s = QgsGradientStop(float(oldStops[i].split(';')[0]), QColor.fromRgb(int(c1),int(c2),int(c3)) )
-                stops.append(s)
+            if gradMetod == 0:
+                ramp = renderer['properties']['ramp'] # {discrete, rampType, stops}
+                ranges = renderer['properties']['ranges'] # []
+                #if ramp['rampType'] == 'gradient':
+                oldStops = ramp['stops']#.split(':')
+                stops = []
+                for i in range(len(oldStops)):
+                    #c1,c2,c3,alpha = oldStops[i].split(';')[1].split(',')
+                    #s = QgsGradientStop(float(oldStops[i].split(';')[0]), QColor.fromRgb(int(c1),int(c2),int(c3)) )
+                    rgb = oldStops[i]['color']
+                    r = (rgb & 0xFF0000) >> 16
+                    g = (rgb & 0xFF00) >> 8
+                    b = rgb & 0xFF 
+                    sColor = QColor.fromRgb(r, g, b)
+                    s = QgsGradientStop(oldStops[i]['offset'], sColor)
+                    stops.append(s)
             
-            c11,c12,c13,alpa1 = ramp['color1'].split(',')
-            color1 = QColor.fromRgb(int(c11),int(c12),int(c13))
-            c21,c22,c23,alpha2 = ramp['color2'].split(',')
-            color2 = QColor.fromRgb(int(c21),int(c22),int(c23))
-            discrete = int(ramp['discrete'])
-            newRamp = QgsGradientColorRamp(color1,color2,discrete,stops)
+                c11,c12,c13,alpa1 = ramp['color1'].split(',')
+                color1 = QColor.fromRgb(int(c11),int(c12),int(c13))
+                c21,c22,c23,alpha2 = ramp['color2'].split(',')
+                color2 = QColor.fromRgb(int(c21),int(c22),int(c23))
+                discrete = int(ramp['discrete'])
+                newRamp = QgsGradientColorRamp(color1,color2,discrete,stops)
 
-            newRanges = []
-            for i in range(len(ranges)):
-                rgb = ranges[i]['symbColor']
+                newRanges = []
+                for i in range(len(ranges)):
+                    rgb = ranges[i]['symbColor']
+                    r = (rgb & 0xFF0000) >> 16
+                    g = (rgb & 0xFF00) >> 8
+                    b = rgb & 0xFF 
+                    color = QColor.fromRgb(r, g, b)
+                    symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
+                    symbol.setColor(color)
+                    newRanges.append(QgsRendererRange(ranges[i]['lower'],ranges[i]['upper'],symbol,ranges[i]['label'],True) )
+                try: 
+                    rendererNew = QgsGraduatedSymbolRenderer(attribute, newRanges)
+                    rendererNew.setSourceColorRamp(newRamp)
+                    sourceSymbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
+                    sourceSymbol.setColor(sourceSymbColor)
+                    rendererNew.setSourceSymbol(sourceSymbol)
+                except: rendererNew = QgsGraduatedSymbolRenderer()
+                rendererNew.setGraduatedMethod(gradMetod)
+
+            else:
+                rgb = renderer['properties']['sourceSymbColor']
                 r = (rgb & 0xFF0000) >> 16
                 g = (rgb & 0xFF00) >> 8
                 b = rgb & 0xFF 
                 color = QColor.fromRgb(r, g, b)
                 symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
                 symbol.setColor(color)
-                newRanges.append(QgsRendererRange(ranges[i]['lower'],ranges[i]['upper'],symbol,ranges[i]['label'],True) )
-            
-            rendererNew = QgsGraduatedSymbolRenderer(attribute, newRanges)
-            rendererNew.setSourceColorRamp(newRamp)
-            rendererNew.setGraduatedMethod(gradMetod)
+                rendererNew = QgsSingleSymbolRenderer(symbol)
+          
 
     try: vl.setRenderer(rendererNew)
     except: pass
@@ -491,15 +527,15 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
 
     #find ID of the layer with a matching name in the "latest" group 
     newName = f'{streamBranch}_latest/{layer.name}'
-    childId = None
-    for child in layerGroup.children(): 
-        if child.name() == newName: 
-            childId = child.layerId()
-            break
+    #childId = None
+    #for child in layerGroup.children(): 
+    #    if child.name() == newName: 
+    #        childId = child.layerId()
+    #        break
     # modify existing layer (if exists) 
-    if QgsProject.instance().mapLayer(childId) is not None:
-        #existingRaster = QgsProject.instance().mapLayer(childId)
-        QgsProject.instance().removeMapLayer(childId)
+    #if QgsProject.instance().mapLayer(childId) is not None:
+    #    #existingRaster = QgsProject.instance().mapLayer(childId)
+    #    QgsProject.instance().removeMapLayer(childId)
 
     
 
