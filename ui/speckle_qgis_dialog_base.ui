@@ -119,24 +119,34 @@
          <widget class="QComboBox" name="streamBranchDropdown"/>
         </item>
         <item row="4" column="0">
+         <widget class="QLabel" name="commitLabel">
+          <property name="text">
+           <string>Commit</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QComboBox" name="commitDropdown"/>
+        </item>
+        <item row="5" column="0">
          <widget class="QLabel" name="layersLabel">
           <property name="text">
            <string>Layer</string>
           </property>
          </widget>
         </item>
-        <item row="4" column="1">
+        <item row="5" column="1">
          <widget class="QListWidget" name="layersWidget">
           <property name="selectionMode">
            <enum>QAbstractItemView::MultiSelection</enum>
           </property>
          </widget>
         </item>
-        
+
         <item row="6" column="0">
          <widget class="QLabel" name="surveyPointLabel">
           <property name="text">
-           <string>Survey Point (lat,lon)</string>
+           <string>Lat, Lon</string>
           </property>
          </widget>
         </item>
@@ -149,7 +159,6 @@
                 </property>
               </widget>
             </item>
-
             <item>
               <widget class="QLineEdit" name="surveyPointLon">
                 <property name="placeholderText">
@@ -157,36 +166,37 @@
                 </property>
               </widget>
             </item>
-            
+            <item>
+            <widget class="QPushButton" name="saveSurveyPoint">
+              <property name="enabled">
+                <bool>true</bool>
+              </property>
+              <property name="text">
+                <string>Create Custom CRS</string>
+              </property>
+            </widget>
+          </item>
+
           </layout>
         </item>
 
-        <item row="7" column="1">
-          <widget class="QPushButton" name="saveSurveyPoint">
-            <property name="enabled">
-            <bool>true</bool>
-            </property>
-            <property name="text">
-            <string>Create Custom Project CRS (based on Transverse Mercator)</string>
-            </property>
-          </widget>
-        </item>
+        
 
-        <item row="8" column="0">
+        <item row="7" column="0">
          <widget class="QLabel" name="messageLabel">
           <property name="text">
            <string>Message</string>
           </property>
          </widget>
         </item>
-        <item row="8" column="1">
+        <item row="7" column="1">
          <widget class="QLineEdit" name="messageInput">
           <property name="placeholderText">
            <string>Sent XXX objects from QGIS</string>
           </property>
          </widget>
         </item>
-        <item row="9" column="1">
+        <item row="8" column="1">
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
            <widget class="QPushButton" name="reloadButton">
@@ -217,6 +227,7 @@
           </item>
          </layout>
         </item>
+
        </layout>
       </item>
      </layout>

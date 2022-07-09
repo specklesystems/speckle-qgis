@@ -9,7 +9,7 @@ from qgis.core import (
 
 from speckle.converter.layers.utils import get_scale_factor
 from typing import List, Union
-from speckle.converter.geometry.transform import featureColorfromNativeRenderer
+from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 #from PyQt5.QtGui import QColor
 
 

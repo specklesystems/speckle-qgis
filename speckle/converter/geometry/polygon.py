@@ -12,7 +12,7 @@ from speckle.converter.geometry.polyline import (
     polylineFromVerticesToSpeckle,
     polylineToNative,
 )
-from speckle.converter.geometry.transform import featureColorfromNativeRenderer
+from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.logging import logger
 import math
 from PyQt5.QtGui import QColor
@@ -61,7 +61,7 @@ def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
         colors = [col for i in ran] # apply same color for all vertices
         mesh = rasterToMesh(vertices, faces, colors)
         polygon.displayValue = mesh 
-        
+
         return polygon
     except: 
         logger.logToUser("Some polygons might be invalid", Qgis.Warning)

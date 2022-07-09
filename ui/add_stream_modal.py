@@ -43,7 +43,7 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         query = self.search_text_field.text()
         results = self.speckle_client.stream.search(query)
         self.stream_results = results
-        print(results)
+        #print(results)
         self.populateResultsList()
     
     def populateResultsList(self):

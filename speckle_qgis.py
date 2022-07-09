@@ -370,6 +370,21 @@ class SpeckleQGIS:
             if len(branch.commits.items)==0:
                 logger.logToUser("Branch contains no commits", Qgis.Warning)
                 return
+            
+            commit = None
+            try: commitId = self.dockwidget.commitDropdown.currentText().split(" | ")[0]
+            except: logger.logToUser("Commit ID is not valid", Qgis.Warning)
+            for i in branch.commits.items:
+                if i.id == commitId:
+                    commit = i
+                    break
+            if commit is None:
+                try: 
+                    commit = branch.commits.items[0]
+                    logger.logToUser("Failed to find a commit. Receiving Latest", Qgis.Warning)
+                except: logger.logToUser("Failed to find a commit", Qgis.Warning)
+                return
+
         except SpeckleException as error:
             logger.logToUser(str(error), Qgis.Critical)
             return
@@ -381,7 +396,7 @@ class SpeckleQGIS:
             return
 
         try:
-            commit = branch.commits.items[0]
+            #commit = branch.commits.items[0]
             objId = commit.referencedObject
             commitDetailed = client.commit.get(streamId, commit.id)
             app = commitDetailed.sourceApplication
@@ -396,8 +411,8 @@ class SpeckleQGIS:
             logger.log(f"Succesfully received {objId}")
 
             # Clear 'latest' group
-            streamBranch = streamId + "_" + branch.name
-            newGroupName = f'{streamBranch}_latest'
+            streamBranch = streamId + "_" + branch.name + "_" + str(commit.id)
+            newGroupName = f'{streamBranch}'
             root = QgsProject.instance().layerTreeRoot()
             if root.findGroup(newGroupName) is not None:
                 layerGroup = root.findGroup(newGroupName)
@@ -500,9 +515,24 @@ class SpeckleQGIS:
         self.dockwidget.streamBranchDropdown.clear()
         if self.active_stream is None or self.active_stream[1] is None or self.active_stream[1].branches is None:
             return
-
         self.dockwidget.streamBranchDropdown.addItems(
             [f"{branch.name}" for branch in self.active_stream[1].branches.items]
+        )
+  
+    def populateActiveCommitDropdown(self):
+        if not self.dockwidget:
+            return
+        self.dockwidget.commitDropdown.clear()
+        if self.active_stream is None:
+            return
+        branchName = self.dockwidget.streamBranchDropdown.currentText()
+        branch = None
+        for b in self.active_stream[1].branches.items:
+            if b.name == branchName:
+                branch = b
+                break
+        self.dockwidget.commitDropdown.addItems(
+            [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]
         )
 
     def reloadUI(self):
@@ -516,11 +546,13 @@ class SpeckleQGIS:
             self.populateSurveyPoint()
             self.dockwidget.streamIdField.clear()
             self.dockwidget.streamBranchDropdown.clear()
+            self.dockwidget.commitDropdown.clear()
             self.dockwidget.receiveButton.setEnabled(self.is_setup)
             self.dockwidget.sendButton.setEnabled(self.is_setup)
             self.dockwidget.streams_add_button.setEnabled(self.is_setup)
             self.dockwidget.streams_remove_button.setEnabled(self.is_setup)
             self.dockwidget.streamBranchDropdown.setEnabled(self.is_setup)
+            self.dockwidget.commitDropdown.setEnabled(self.is_setup)
     def check_for_accounts(self):
         def go_to_manager():
             webbrowser.open("https://speckle-releases.netlify.app/")
@@ -587,6 +619,7 @@ class SpeckleQGIS:
             self.dockwidget.streams_add_button.setEnabled(self.is_setup)
             self.dockwidget.streams_remove_button.setEnabled(self.is_setup)
             self.dockwidget.streamBranchDropdown.setEnabled(self.is_setup)
+            self.dockwidget.commitDropdown.setEnabled(self.is_setup)
             self.dockwidget.show()
 
     def onStreamAddButtonClicked(self):
@@ -602,6 +635,7 @@ class SpeckleQGIS:
         self.current_streams.pop(index)
         self.active_stream = None
         self.dockwidget.streamBranchDropdown.clear()
+        self.dockwidget.commitDropdown.clear()
         self.dockwidget.streamIdField.setText("")
 
         self.set_project_streams()
@@ -621,6 +655,7 @@ class SpeckleQGIS:
             self.dockwidget.streamList.currentItem().text()
         )
         self.populateActiveStreamBranchDropdown()
+        self.populateActiveCommitDropdown()
 
     def tryGetStream (self, sw: StreamWrapper):
         client = sw.get_client()
@@ -684,7 +719,8 @@ class SpeckleQGIS:
             # https://gis.stackexchange.com/questions/379199/having-problem-with-proj-string-for-custom-coordinate-system
             # https://proj.org/usage/projections.html
             
-            testCrsString = "+proj=tmerc +datum=WGS84 +lon_0=-75 +k_0=0.9996 +x_0=0 +y_0=0"
+            #testCrsString = "+proj=tmerc +datum=WGS84 +lon_0=-75 +k_0=0.9996 +x_0=0 +y_0=0"
+            testCrsString = "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0=" + str(self.lon) + " +x_0=0 +y_0=0 +k_0=0.9996"
             testCrs = QgsCoordinateReferenceSystem().fromProj(testCrsString)
 
             sPoint = QgsPointXY(self.lon, self.lat)
@@ -692,28 +728,21 @@ class SpeckleQGIS:
             xform = QgsCoordinateTransform(QgsCoordinateReferenceSystem(4326), testCrs, transformContext)
             newPoint = xform.transform(sPoint)
             
-            newCrsString = "+proj=tmerc +datum=WGS84 +lon_0=-75 +k_0=0.9996 +x_0=" + str(-1*newPoint.x()) + " +y_0=" + str(-1*newPoint.y())
+            newCrsString = "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0=" + str(self.lon) + " +x_0=0 +y_0=" + str(-1*newPoint.y()) + " +k_0=0.9996"
             newCrs = QgsCoordinateReferenceSystem().fromProj(newCrsString)#fromWkt(newProjWkt)
             validate = QgsCoordinateReferenceSystem().createFromProj(newCrsString)
+            newId = 911911
 
             if validate: 
-                QgsProject.instance().setCrs(newCrs)
-                logger.logToUser("Project CRS successfully applied", Qgis.Info)
+                QgsProject.instance().setCrs(newCrs) 
+                #listCrs = QgsCoordinateReferenceSystem().validSrsIds()
+                #if exists == 0: newCrs.saveAsUserCrs("SpeckleCRS_lon=" + str(sPoint.x()) + "_lat=" + str(sPoint.y())) # srsid() #https://gis.stackexchange.com/questions/341500/creating-custom-crs-in-qgis
+                logger.logToUser("Custom project CRS successfully applied", Qgis.Info)
             else:
                 logger.logToUser("Custom CRS could not be created", Qgis.Warning)
 
         except:
             logger.logToUser("Custom CRS could not be created", Qgis.Warning)
-
-        '''
-            # add project variables
-            
-            # create Project properties with Origin coordinates
-            scope = QgsExpressionContextUtils.projectScope(QgsProject.instance())
-            if scope.hasVariable('speckle_project') is False:
-                scope.addVariable(QgsExpressionContextScope.StaticVariable('speckle_project', (0,0,0)))
-            #QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'speckle_project', (0,0,0))
-        '''
 
     def get_survey_point(self):
         # get from saved project, set to local vars

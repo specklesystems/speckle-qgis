@@ -7,7 +7,7 @@ from qgis.core import (
 
 from specklepy.objects.geometry import Point
 from speckle.converter.layers.utils import get_scale_factor
-from speckle.converter.geometry.transform import featureColorfromNativeRenderer
+from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 #from PyQt5.QtGui import QColor
 
 def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVectorLayer):
