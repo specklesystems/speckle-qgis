@@ -56,6 +56,7 @@ def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
         ran = range(0, total_vertices)
         faces = [total_vertices]
         faces.extend([i for i in ran])
+        # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
 
         col = featureColorfromNativeRenderer(feature, layer)
         colors = [col for i in ran] # apply same color for all vertices

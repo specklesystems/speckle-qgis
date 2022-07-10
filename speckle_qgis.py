@@ -406,7 +406,7 @@ class SpeckleQGIS:
             
             if app != "QGIS": 
                 if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
-                    logger.logToUser("Unsupported Project CRS. CRS of Geographic type (e.g. EPSG 4326) cannot be used while receiving CAD geometry. Please set the project CRS to Projected type (e.g. EPSG:32631)", Qgis.Warning)
+                    logger.logToUser("Please set the project CRS to Projected type to receive CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
                     return
             logger.log(f"Succesfully received {objId}")
 
@@ -719,19 +719,9 @@ class SpeckleQGIS:
             # https://gis.stackexchange.com/questions/379199/having-problem-with-proj-string-for-custom-coordinate-system
             # https://proj.org/usage/projections.html
             
-            #testCrsString = "+proj=tmerc +datum=WGS84 +lon_0=-75 +k_0=0.9996 +x_0=0 +y_0=0"
-            testCrsString = "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0=" + str(self.lon) + " +x_0=0 +y_0=0 +k_0=0.9996"
-            testCrs = QgsCoordinateReferenceSystem().fromProj(testCrsString)
-
-            sPoint = QgsPointXY(self.lon, self.lat)
-            transformContext = QgsProject.instance().transformContext()
-            xform = QgsCoordinateTransform(QgsCoordinateReferenceSystem(4326), testCrs, transformContext)
-            newPoint = xform.transform(sPoint)
-            
-            newCrsString = "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0=" + str(self.lon) + " +x_0=0 +y_0=" + str(-1*newPoint.y()) + " +k_0=0.9996"
+            newCrsString = "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0=" + str(self.lon) + " lat_0=" + str(self.lat) + " +x_0=0 +y_0=0 +k_0=1"
             newCrs = QgsCoordinateReferenceSystem().fromProj(newCrsString)#fromWkt(newProjWkt)
             validate = QgsCoordinateReferenceSystem().createFromProj(newCrsString)
-            newId = 911911
 
             if validate: 
                 QgsProject.instance().setCrs(newCrs) 
