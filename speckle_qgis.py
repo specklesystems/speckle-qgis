@@ -531,9 +531,11 @@ class SpeckleQGIS:
             if b.name == branchName:
                 branch = b
                 break
-        self.dockwidget.commitDropdown.addItems(
-            [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]
-        )
+        try:
+            self.dockwidget.commitDropdown.addItems(
+                [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]
+            )
+        except: pass
 
     def reloadUI(self):
         self.is_setup = self.check_for_accounts()
@@ -595,6 +597,9 @@ class SpeckleQGIS:
             )
             self.dockwidget.streamList.itemSelectionChanged.connect(
                 self.onActiveStreamChanged
+            )
+            self.dockwidget.streamBranchDropdown.currentIndexChanged.connect(
+                self.populateActiveCommitDropdown
             )
 
             self.get_project_streams()
