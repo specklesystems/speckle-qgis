@@ -333,7 +333,7 @@ def cadFeatureToNative(feature: Base, attrs: QgsFields, layerName: str):
                     feat[fName] = str(value) 
                     if len(str(value)) > 255: feat[fName] = str(value)[:255]
                 except: feat[fName] = None
-        elif f.type() == QVariant.Double:
+        elif f.type() == QVariant.Double: # 6
             if isinstance(value, float): feat[fName] = float(value)
             else:
                 logger.logToUser(f"Value of the attribute '{fName}' of the layer '{layerName}' might be skipped due to type discrepancies", Qgis.Warning)

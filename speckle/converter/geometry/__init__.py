@@ -18,9 +18,10 @@ from speckle.converter.geometry.polyline import (
     circleToNative,
     arcToNative,
     arcToSpeckle,
+    polycurveToNative,
 )
 from specklepy.objects import Base
-from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle
+from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Polycurve
 
 
 def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
@@ -73,6 +74,7 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
         (Arc, arcToNative),
         (Circle, circleToNative),
         (Mesh, meshToNative),
+        (Polycurve, polycurveToNative),
         (Base, polygonToNative), # temporary solution for polygons (Speckle has no type Polygon yet)
     ]
 

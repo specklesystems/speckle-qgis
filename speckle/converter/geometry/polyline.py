@@ -1,12 +1,17 @@
-from specklepy.objects.geometry import Line, Polyline, Curve, Arc, Circle
+from math import asin, cos, sin, atan
+import math
+from specklepy.objects.geometry import Point, Line, Polyline, Curve, Arc, Circle, Polycurve
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle, scalePointToNative
 
 from qgis.core import (
     QgsLineString, 
-    QgsCircularString,
+    QgsCircularString, QgsMultiLineString, 
     QgsCircle, QgsFeature, QgsVectorLayer
 )
 
+from qgis._core import Qgis
+
+from speckle.logging import logger
 from speckle.converter.layers.utils import get_scale_factor
 from typing import List, Union
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
@@ -95,3 +100,45 @@ def circleToNative(poly: Circle) -> QgsLineString:
     circ = circ.toLineString() # QgsCircle is not supported to be added as a feature 
     return circ
 
+def polycurveToNative(poly: Polycurve) -> QgsLineString:
+    points = []
+    curve = QgsMultiLineString()
+    try:
+        for segm in poly.segments: # Line, Polyline, Curve, Arc, Circle
+            if isinstance(segm,Line):  converted = lineToNative(segm) # QgsLineString
+            elif isinstance(segm,Polyline):  converted = polylineToNative(segm) # QgsLineString
+            elif isinstance(segm,Curve):  converted = curveToNative(segm) # QgsLineString
+            elif isinstance(segm,Circle):  converted = circleToNative(segm) # QgsLineString
+            elif isinstance(segm,Arc):  converted = arcToQgisPoints(segm) # QgsLineString
+            else: # either return a part of the curve, of skip this segment and try next
+                logger.logToUser(f"Part of the polycurve cannot be converted", Qgis.Warning)
+                return curve
+            if converted is not None: curve.addGeometry(converted)
+            else:
+                logger.logToUser(f"Part of the polycurve cannot be converted", Qgis.Warning)
+                return curve
+    except: curve = None
+    return curve
+
+def arcToQgisPoints(poly: Arc):
+    points = []
+    angle1 = atan( abs ((poly.startPoint.y - poly.plane.origin.y) / (poly.startPoint.x - poly.plane.origin.x) )) # between 0 and pi/2
+    if poly.plane.origin.x < poly.startPoint.x and poly.plane.origin.y > poly.startPoint.y: angle1 = 2*math.pi - angle1
+    if poly.plane.origin.x > poly.startPoint.x and poly.plane.origin.y > poly.startPoint.y: angle1 = math.pi + angle1
+    if poly.plane.origin.x > poly.startPoint.x and poly.plane.origin.y < poly.startPoint.y: angle1 = math.pi - angle1
+
+    try: 
+        pointsNum = math.floor( abs(poly.endAngle - poly.startAngle)) * 12
+        if pointsNum <4: pointsNum = 4
+        points.append(pointToNative(poly.startPoint))
+
+        for i in range(1, pointsNum + 1): 
+            k = i/pointsNum # to reset values from 1/10 to 1
+            angle = angle1 + k * ( poly.endAngle - poly.startAngle) * poly.plane.normal.z
+            pt = Point( x = poly.plane.origin.x + poly.radius * cos(angle), y = poly.plane.origin.y + poly.radius * sin(angle), z = 0) 
+            points.append(pointToNative(pt))
+        points.append(pointToNative(poly.endPoint))
+
+        curve = QgsLineString(points)
+        return curve
+    except: return None

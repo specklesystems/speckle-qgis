@@ -93,7 +93,7 @@ def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
 
             trianglator.triangulate()
             i = 0
-            print(trianglator.getNumTriangles())
+            #print(trianglator.getNumTriangles())
             while i < trianglator.getNumTriangles():
               tr = [trianglator.getTriangleV0(i),trianglator.getTriangleV1(i),trianglator.getTriangleV2(i)]
               faces.extend([3, tr[0], tr[1], tr[2]])
@@ -118,13 +118,14 @@ def polygonToNative(poly: Base) -> QgsPolygon:
     #print(polylineToNative(poly["boundary"]))
     
     polygon = QgsPolygon()
-    polygon.setExteriorRing(polylineToNative(poly["boundary"]))
+    try: # if it's indeed a polygon with QGIS properties
+        polygon.setExteriorRing(polylineToNative(poly["boundary"]))
+    except: return
     try:
-      for void in poly["voids"]: 
-        #print(polylineToNative(void))
-        polygon.addInteriorRing(polylineToNative(void))
-    except:
-      pass
+        for void in poly["voids"]: 
+            #print(polylineToNative(void))
+            polygon.addInteriorRing(polylineToNative(void))
+    except:pass
     #print(polygon)
     #print()
 

@@ -188,7 +188,7 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
             
             pr.addAttributes(newFields) # add new attributes from the current object
             fetIds.append(f.id)
-            try: fetColors.append(f.displayStyle.color), print(str(f.id)+ ': ' + str(f.displayStyle.color))
+            try: fetColors.append(f.displayStyle.color) #, print(str(f.id)+ ': ' + str(f.displayStyle.color))
             except: fetColors.append(None)
         #else: geomList.remove(f)
     
