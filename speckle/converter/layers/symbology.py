@@ -256,13 +256,17 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer):
     elif rType == 'categorizedSymbol': 
         layerRenderer['properties'] = {'attribute': "", 'symbType': ""} #{'symbol':{}, 'ramp':{}, 'ranges':{}, 'gradMethod':"", 'symbType':"", 'legendClassificationAttribute': ""}
         attribute = renderer.classAttribute() # 'id'
+        layerRenderer['properties']['attribute'] = attribute
         symbol = renderer.sourceSymbol()
-        symbType = symbol.symbolTypeToString(symbol.type()) #Line
-        try: r, g, b = symbol.color().getRgb()[:3]
-        except: [int(i) for i in symbol.color().replace(" ","").split(',')[:3] ]
-        sourceSymbColor = (r<<16) + (g<<8) + b
+        sourceSymbColor = (0<<16) + (0<<8) + 0
+        try:
+            symbType = symbol.symbolTypeToString(symbol.type()) #Line
+            try: r, g, b = symbol.color().getRgb()[:3]
+            except: [int(i) for i in symbol.color().replace(" ","").split(',')[:3] ]
+            sourceSymbColor = (r<<16) + (g<<8) + b
 
-        layerRenderer['properties'].update( {'attribute': attribute, 'symbType': symbType} )
+            layerRenderer['properties'].update( {'attribute': attribute, 'symbType': symbType} )
+        except: pass
         
         categories = renderer.categories() #<qgis._core.QgsRendererCategory object at 0x00000155E8786A60>
         layerRenderer['properties']['categories'] = []

@@ -102,7 +102,7 @@ def circleToNative(poly: Circle) -> QgsLineString:
 
 def polycurveToNative(poly: Polycurve) -> QgsLineString:
     points = []
-    curve = QgsMultiLineString()
+    curve = QgsLineString()
     try:
         for segm in poly.segments: # Line, Polyline, Curve, Arc, Circle
             if isinstance(segm,Line):  converted = lineToNative(segm) # QgsLineString
@@ -112,12 +112,19 @@ def polycurveToNative(poly: Polycurve) -> QgsLineString:
             elif isinstance(segm,Arc):  converted = arcToQgisPoints(segm) # QgsLineString
             else: # either return a part of the curve, of skip this segment and try next
                 logger.logToUser(f"Part of the polycurve cannot be converted", Qgis.Warning)
+                curve = QgsLineString(points)
                 return curve
-            if converted is not None: curve.addGeometry(converted)
+            if converted is not None: 
+                for pt in converted.vertices():
+                    if len(points)>0 and pt.x()== points[len(points)-1].x() and pt.y()== points[len(points)-1].y() and pt.z()== points[len(points)-1].z(): pass
+                    else: points.append(pt)
             else:
                 logger.logToUser(f"Part of the polycurve cannot be converted", Qgis.Warning)
+                curve = QgsLineString(points)
                 return curve
     except: curve = None
+
+    curve = QgsLineString(points)
     return curve
 
 def arcToQgisPoints(poly: Arc):
