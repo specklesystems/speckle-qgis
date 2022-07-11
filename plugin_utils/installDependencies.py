@@ -31,6 +31,16 @@ def setup():
             [pythonExec, "-m", "pip", "install", f"{pkgName}=={pkgVersion}"]
         )
 
+    pkgVersion = "1.10.11" #"2.5.3"
+    pkgName = "panda3d"
+    try:
+        import panda3d
+    except Exception as e:
+        logger.log("panda3d not installed")
+        subprocess_call(
+            [pythonExec, "-m", "pip", "install", f"{pkgName}=={pkgVersion}"]
+        )
+
     # Check if specklpy needs updating
     try:
         subprocess_call(
