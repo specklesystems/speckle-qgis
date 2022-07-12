@@ -21,7 +21,7 @@ def setup():
         # just in case the included version is old
         subprocess_call([pythonExec, "-m", "pip", "install", "--upgrade", "pip"])
 
-    pkgVersion = "2.6.4" #"2.5.3"
+    pkgVersion = "2.7.4"  # "2.5.3"
     pkgName = "specklepy"
     try:
         import specklepy
@@ -31,18 +31,9 @@ def setup():
             [pythonExec, "-m", "pip", "install", f"{pkgName}=={pkgVersion}"]
         )
 
-    pkgVersion = "1.10.11" #"2.5.3"
-    pkgName = "panda3d"
-    try:
-        import panda3d
-    except Exception as e:
-        logger.log("panda3d not installed")
-        subprocess_call(
-            [pythonExec, "-m", "pip", "install", f"{pkgName}=={pkgVersion}"]
-        )
-
     # Check if specklpy needs updating
     try:
+        logger.log(f"Attempting to update specklepy to {pkgVersion}")
         subprocess_call(
             [
                 pythonExec,
@@ -55,3 +46,13 @@ def setup():
         )
     except Exception as e:
         logger.logToUser(e.with_traceback)
+
+    pkgVersion = "1.10.11"  # "2.5.3"
+    pkgName = "panda3d"
+    try:
+        import panda3d
+    except Exception as e:
+        logger.log("panda3d not installed")
+        subprocess_call(
+            [pythonExec, "-m", "pip", "install", f"{pkgName}=={pkgVersion}"]
+        )
