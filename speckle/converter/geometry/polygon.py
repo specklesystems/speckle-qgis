@@ -6,14 +6,20 @@ from qgis.core import (
 from typing import Sequence
 
 from specklepy.objects import Base
+from specklepy.objects.geometry import Point
 
 from speckle.converter.geometry.mesh import rasterToMesh
 from speckle.converter.geometry.polyline import (
     polylineFromVerticesToSpeckle,
     polylineToNative,
 )
+from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.logging import logger
 import math
+
+from panda3d.core import Triangulator
+
+from PyQt5.QtGui import QColor
 
 
 def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
@@ -27,11 +33,11 @@ def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
         except: 
             pt_iterator = geom.vertices()
         for pt in pt_iterator: pointList.append(pt) 
-        boundary = polylineFromVerticesToSpeckle(pointList, True) 
+        boundary = polylineFromVerticesToSpeckle(pointList, True, feature, layer) 
         voids = []
         try:
             for i in range(geom.numInteriorRings()):
-                intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True)
+                intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True, feature, layer)
                 voids.append(intRing)
         except:
             pass
@@ -39,9 +45,10 @@ def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
         polygon.voids = voids
         polygon.displayValue = [ boundary ] + voids
 
-        if len(voids) == 0: # if there is a mesh with no voids 
-            vertices = []
-            total_vertices = 0
+        vertices = []
+        total_vertices = 0
+
+        if len(voids) == 0: # if there is a mesh with no voids
             for pt in pointList:
                 if isinstance(pt, QgsPointXY):
                     pt = QgsPoint(pt)
@@ -54,31 +61,50 @@ def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
             ran = range(0, total_vertices)
             faces = [total_vertices]
             faces.extend([i for i in ran])
+            # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
+        else:
+            trianglator = Triangulator()
+            faces = []
 
-            # case with one color for the entire layer
-            if layer.renderer().type() == 'categorizedSymbol' or layer.renderer().type() == '25dRenderer' or layer.renderer().type() == 'invertedPolygonRenderer' or layer.renderer().type() == 'mergedFeatureRenderer' or layer.renderer().type() == 'RuleRenderer' or layer.renderer().type() == 'nullSymbol' or layer.renderer().type() == 'singleSymbol' or layer.renderer().type() == 'graduatedSymbol':
-                #get color value
-                if layer.renderer().type() == 'singleSymbol':
-                    color = layer.renderer().symbol().color()
-                elif layer.renderer().type() == 'categorizedSymbol':
-                    category = layer.renderer().legendClassificationAttribute() # get the name of attribute used for classification
-                    for obj in layer.renderer().categories():
-                        if obj.value() == feature.attribute( category ): 
-                            color = obj.symbol().color()
-                            break
-                # construct RGB color
-                try:
-                    rVal = color.red()
-                    gVal = color.green()
-                    bVal = color.blue()
-                except:
-                    rVal = 0
-                    gVal = 0
-                    bVal = 0
-                col =  (rVal<<16) + (gVal<<8) + bVal
-                colors = [col for i in ran] 
-            mesh = rasterToMesh(vertices, faces, colors)
-            polygon.displayValue = mesh 
+            # add boundary points
+            polyBorder = boundary.as_points()
+            pt_count = 0
+            # add extra middle point for border
+            for pt in polyBorder:
+              if pt_count < len(polyBorder)-1: 
+                  pt2 = polyBorder[pt_count+1]
+              else: pt2 = polyBorder[0]
+              
+              trianglator.addPolygonVertex(trianglator.addVertex(pt.x, pt.y))
+              vertices.extend([pt.x, pt.y, pt.z])
+              trianglator.addPolygonVertex(trianglator.addVertex((pt.x+pt2.x)/2, (pt.y+pt2.y)/2))
+              vertices.extend([(pt.x+pt2.x)/2, (pt.y+pt2.y)/2, (pt.z+pt2.z)/2])
+              total_vertices += 2
+              pt_count += 1
+
+            #add void points
+            for i in range(len(voids)):
+              trianglator.beginHole()
+              pts = voids[i].as_points()
+              for pt in pts:
+                trianglator.addHoleVertex(trianglator.addVertex(pt.x, pt.y))
+                vertices.extend([pt.x, pt.y, pt.z])
+                total_vertices += 1
+
+            trianglator.triangulate()
+            i = 0
+            #print(trianglator.getNumTriangles())
+            while i < trianglator.getNumTriangles():
+              tr = [trianglator.getTriangleV0(i),trianglator.getTriangleV1(i),trianglator.getTriangleV2(i)]
+              faces.extend([3, tr[0], tr[1], tr[2]])
+              i+=1
+            ran = range(0, total_vertices)
+
+        col = featureColorfromNativeRenderer(feature, layer)
+        colors = [col for i in ran] # apply same color for all vertices
+        mesh = rasterToMesh(vertices, faces, colors)
+        polygon.displayValue = mesh 
+
         return polygon
     except: 
         logger.logToUser("Some polygons might be invalid", Qgis.Warning)
@@ -92,13 +118,14 @@ def polygonToNative(poly: Base) -> QgsPolygon:
     #print(polylineToNative(poly["boundary"]))
     
     polygon = QgsPolygon()
-    polygon.setExteriorRing(polylineToNative(poly["boundary"]))
+    try: # if it's indeed a polygon with QGIS properties
+        polygon.setExteriorRing(polylineToNative(poly["boundary"]))
+    except: return
     try:
-      for void in poly["voids"]: 
-        #print(polylineToNative(void))
-        polygon.addInteriorRing(polylineToNative(void))
-    except:
-      pass
+        for void in poly["voids"]: 
+            #print(polylineToNative(void))
+            polygon.addInteriorRing(polylineToNative(void))
+    except:pass
     #print(polygon)
     #print()
 

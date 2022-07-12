@@ -17,14 +17,16 @@
 import os.path
 from typing import Any, Callable, List, Optional, Tuple
 
-from qgis.core import Qgis, QgsProject
+from qgis.core import (Qgis, QgsProject, QgsExpressionContextUtils, QgsExpressionContextScope,
+                      QgsCoordinateReferenceSystem, QgsPointXY, QgsLayerTreeGroup)
+from qgis.core import QgsCoordinateTransform
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QDockWidget
 from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsRasterLayer
 from specklepy.api import operations
-from specklepy.api.client import SpeckleException
-from specklepy.api.credentials import StreamWrapper
+from specklepy.api.client import SpeckleException, GraphQLException
+#from specklepy.api.credentials import StreamWrapper
 from specklepy.api.models import Stream
 from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
@@ -35,10 +37,11 @@ import webbrowser
 # Initialize Qt resources from file resources.py
 from resources import *
 from speckle.converter.layers import (
-    Layer,
+    Layer, RasterLayer,
     convertSelectedLayers,
     getLayers,
     layerToNative,
+    cadLayerToNative,
 )
 from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
@@ -83,11 +86,14 @@ class SpeckleQGIS:
 
     dockwidget: Optional[QDockWidget]
     add_stream_modal: AddStreamModalDialog
-    current_streams: List[Tuple[StreamWrapper, Stream]] = []
+    current_streams: List[Tuple[StreamWrapper, Stream]] = [] #{id:(sw,st),id2:()}
 
     active_stream: Optional[Tuple[StreamWrapper, Stream]]
 
     qgis_project: QgsProject
+
+    lat: float
+    lon: float
 
     def __init__(self, iface):
         """Constructor.
@@ -100,7 +106,10 @@ class SpeckleQGIS:
         # Save reference to the QGIS interface
         self.dockwidget = None
         self.iface = iface
-        self.qgis_project = QgsProject().instance()
+        self.qgis_project = QgsProject.instance()
+
+        self.lat = 0.0
+        self.lon = 0.0
 
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
@@ -258,18 +267,23 @@ class SpeckleQGIS:
             item.text().replace(" !LARGE!","") for item in self.dockwidget.layersWidget.selectedItems()
         ]
 
-        base_obj = Base()
-        base_obj.layers = convertSelectedLayers(layers, selectedLayerNames, projectCRS, project)
-
         # Check if stream id/url is empty
         if not self.dockwidget.streamIdField.text():
             logger.logToUser("Please enter a Stream Url/ID.", Qgis.Warning)
             return
 
+        # Reset Survey point
+        self.populateSurveyPoint()
+
         if self.active_stream is None:
             logger.logToUser(
                 "There is no active stream. Please select a stream from the list."
             )
+            return
+        
+        # Check if stream no layers are selected
+        if len(selectedLayerNames) == 0:
+            logger.logToUser("No layers selected", Qgis.Warning)
             return
 
         # Get the stream wrapper
@@ -277,11 +291,14 @@ class SpeckleQGIS:
         streamId = streamWrapper.stream_id
         client = streamWrapper.get_client()
         # Ensure the stream actually exists
-        try:
-            client.stream.get(streamId)
-        except SpeckleException as error:
-            logger.logToUser(str(error), Qgis.Critical)
-            return
+        try: 
+            stream = self.tryGetStream(streamWrapper)
+        except SpeckleException as e:
+            logger.logToUser(e.message, Qgis.Warning)
+            return  
+
+        base_obj = Base()
+        base_obj.layers = convertSelectedLayers(layers, selectedLayerNames, projectCRS, project)
 
         # next create a server transport - this is the vehicle through which you will send and receive
         transport = ServerTransport(client=client, stream_id=streamId)
@@ -332,8 +349,14 @@ class SpeckleQGIS:
         client = streamWrapper.get_client()
         # Ensure the stream actually exists
         try:
-            stream = client.stream.get(streamId)
+            try: 
+                stream = self.tryGetStream(streamWrapper)
+            except SpeckleException as e:
+                logger.logToUser(e.message, Qgis.Warning)
+                return
+
             if stream.branches is None:
+                logger.logToUser("Stream has no branches", Qgis.Warning)
                 return
             branchName = self.dockwidget.streamBranchDropdown.currentText()
             branch = None
@@ -342,32 +365,97 @@ class SpeckleQGIS:
                     branch = b
                     break
             if branch is None or branch.commits is None:
+                logger.logToUser("Failed to find a branch", Qgis.Warning)
                 return
+            if len(branch.commits.items)==0:
+                logger.logToUser("Branch contains no commits", Qgis.Warning)
+                return
+            
+            commit = None
+            try: commitId = self.dockwidget.commitDropdown.currentText().split(" | ")[0]
+            except: logger.logToUser("Commit ID is not valid", Qgis.Warning)
+            for i in branch.commits.items:
+                if i.id == commitId:
+                    commit = i
+                    break
+            if commit is None:
+                try: 
+                    commit = branch.commits.items[0]
+                    logger.logToUser("Failed to find a commit. Receiving Latest", Qgis.Warning)
+                except: logger.logToUser("Failed to find a commit", Qgis.Warning)
+                return
+
         except SpeckleException as error:
             logger.logToUser(str(error), Qgis.Critical)
             return
 
         # next create a server transport - this is the vehicle through which you will send and receive
-        transport = ServerTransport(client=client, stream_id=streamId)
+        try: transport = ServerTransport(client=client, stream_id=streamId)
+        except: 
+            logger.logToUser("Make sure your account has access to the chosen stream", Qgis.Warning)
+            return
 
         try:
-            commit = branch.commits.items[0]
+            #commit = branch.commits.items[0]
             objId = commit.referencedObject
+            commitDetailed = client.commit.get(streamId, commit.id)
+            app = commitDetailed.sourceApplication
             if objId is None:
                 return
             commitObj = operations.receive(objId, transport, None)
+            
+            if app != "QGIS": 
+                if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
+                    logger.logToUser("Please set the project CRS to Projected type to receive CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
+                    return
             logger.log(f"Succesfully received {objId}")
 
-            check: Callable[[Base], bool] = lambda base: isinstance(base, Layer)
+            # Clear 'latest' group
+            streamBranch = streamId + "_" + branch.name + "_" + str(commit.id)
+            newGroupName = f'{streamBranch}'
+            root = QgsProject.instance().layerTreeRoot()
+            if root.findGroup(newGroupName) is not None:
+                layerGroup = root.findGroup(newGroupName)
+                for child in layerGroup.children(): 
+                    QgsProject.instance().removeMapLayer(child.layerId())
+
+            if app == "QGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) or isinstance(base, RasterLayer)
+            else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
 
             def callback(base: Base) -> bool:
-                if isinstance(base, Layer):
-                    layer = layerToNative(base, streamId)
+                if isinstance(base, Layer) or isinstance(base, RasterLayer):
+                    layer = layerToNative(base, streamBranch)
                     if layer is not None:
                         logger.log("Layer created: " + layer.name())
+                else:
+                    loopObj(base, "")
                 return True
 
+            def loopObj(base: Base, baseName: str):
+                memberNames = base.get_member_names()
+                for name in memberNames:
+                    if name in ["id", "applicationId", "units", "speckle_type"]: continue
+                    try: loopVal(base[name], baseName + "/" + name)
+                    except: pass
+
+            def loopVal(value, name): # "name" is the parent object/property/layer name
+                if isinstance(value, Base): 
+                    try: # dont go through parts of Speckle Geometry object
+                        if value.speckle_type.startswith("Objects.Geometry."): pass
+                        else: loopObj(value, name)
+                    except: loopObj(value, name)
+
+                if isinstance(value, List):
+                    for item in value:
+                        loopVal(item, name)
+                        if item.speckle_type and item.speckle_type.startswith("Objects.Geometry."): 
+                            pt, pl = cadLayerToNative(value, name, streamBranch)
+                            if pt is not None: logger.log("Layer group created: " + pt.name())
+                            if pl is not None: logger.log("Layer group created: " + pl.name())
+                            break
+
             traverseObject(commitObj, callback, check)
+                
         except SpeckleException as e:
             logger.logToUser("Receive failed", Qgis.Error)
             return
@@ -403,22 +491,51 @@ class SpeckleQGIS:
     def populateProjectStreams(self):
         if not self.dockwidget:
             return
-
+        #print(self.current_streams)
         self.dockwidget.streamList.clear()
+
         self.dockwidget.streamList.addItems(
-            [f"{stream[1].name} - {stream[1].id}" for stream in self.current_streams]
+            [f"Stream not accessible - {stream[0].stream_id}" if stream[1] is None else f"{stream[1].name} - {stream[1].id}" for stream in self.current_streams]
         )
+        self.set_project_streams()
+
+    def populateSurveyPoint(self):
+        if not self.dockwidget:
+            return
+        try:
+            self.dockwidget.surveyPointLat.clear()
+            self.dockwidget.surveyPointLat.setText(str(self.lat))
+            self.dockwidget.surveyPointLon.clear()
+            self.dockwidget.surveyPointLon.setText(str(self.lon))
+        except: return
 
     def populateActiveStreamBranchDropdown(self):
         if not self.dockwidget:
             return
         self.dockwidget.streamBranchDropdown.clear()
-        if self.active_stream is None or self.active_stream[1].branches is None:
+        if self.active_stream is None or self.active_stream[1] is None or self.active_stream[1].branches is None:
             return
-
         self.dockwidget.streamBranchDropdown.addItems(
             [f"{branch.name}" for branch in self.active_stream[1].branches.items]
         )
+  
+    def populateActiveCommitDropdown(self):
+        if not self.dockwidget:
+            return
+        self.dockwidget.commitDropdown.clear()
+        if self.active_stream is None:
+            return
+        branchName = self.dockwidget.streamBranchDropdown.currentText()
+        branch = None
+        for b in self.active_stream[1].branches.items:
+            if b.name == branchName:
+                branch = b
+                break
+        try:
+            self.dockwidget.commitDropdown.addItems(
+                [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]
+            )
+        except: pass
 
     def reloadUI(self):
         self.is_setup = self.check_for_accounts()
@@ -427,13 +544,17 @@ class SpeckleQGIS:
             self.get_project_streams()
             self.populateLayerDropdown()
             self.populateProjectStreams()
+            self.get_survey_point()
+            self.populateSurveyPoint()
             self.dockwidget.streamIdField.clear()
             self.dockwidget.streamBranchDropdown.clear()
+            self.dockwidget.commitDropdown.clear()
             self.dockwidget.receiveButton.setEnabled(self.is_setup)
             self.dockwidget.sendButton.setEnabled(self.is_setup)
             self.dockwidget.streams_add_button.setEnabled(self.is_setup)
             self.dockwidget.streams_remove_button.setEnabled(self.is_setup)
             self.dockwidget.streamBranchDropdown.setEnabled(self.is_setup)
+            self.dockwidget.commitDropdown.setEnabled(self.is_setup)
     def check_for_accounts(self):
         def go_to_manager():
             webbrowser.open("https://speckle-releases.netlify.app/")
@@ -463,6 +584,7 @@ class SpeckleQGIS:
             self.dockwidget.sendButton.clicked.connect(self.onSendButtonClicked)
             self.dockwidget.receiveButton.clicked.connect(self.onReceiveButtonClicked)
             self.dockwidget.reloadButton.clicked.connect(self.reloadUI)
+            self.dockwidget.saveSurveyPoint.clicked.connect(self.set_survey_point)
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
@@ -476,12 +598,17 @@ class SpeckleQGIS:
             self.dockwidget.streamList.itemSelectionChanged.connect(
                 self.onActiveStreamChanged
             )
+            self.dockwidget.streamBranchDropdown.currentIndexChanged.connect(
+                self.populateActiveCommitDropdown
+            )
 
             self.get_project_streams()
 
             # Populate the UI dropdowns
             self.populateLayerDropdown()
             self.populateProjectStreams()
+            self.get_survey_point()
+            self.populateSurveyPoint()
 
             # Setup reload of UI dropdowns when layers change.
             layerRoot = QgsProject.instance()
@@ -497,6 +624,7 @@ class SpeckleQGIS:
             self.dockwidget.streams_add_button.setEnabled(self.is_setup)
             self.dockwidget.streams_remove_button.setEnabled(self.is_setup)
             self.dockwidget.streamBranchDropdown.setEnabled(self.is_setup)
+            self.dockwidget.commitDropdown.setEnabled(self.is_setup)
             self.dockwidget.show()
 
     def onStreamAddButtonClicked(self):
@@ -508,9 +636,11 @@ class SpeckleQGIS:
         if not self.dockwidget:
             return
         index = self.dockwidget.streamList.currentIndex().row()
+        #if index == 0: 
         self.current_streams.pop(index)
         self.active_stream = None
         self.dockwidget.streamBranchDropdown.clear()
+        self.dockwidget.commitDropdown.clear()
         self.dockwidget.streamIdField.setText("")
 
         self.set_project_streams()
@@ -524,15 +654,27 @@ class SpeckleQGIS:
         index = self.dockwidget.streamList.currentRow()
         if index == -1:
             return
-        self.active_stream = self.current_streams[index]
+        try: self.active_stream = self.current_streams[index]
+        except: self.active_stream = None
         self.dockwidget.streamIdField.setText(
             self.dockwidget.streamList.currentItem().text()
         )
         self.populateActiveStreamBranchDropdown()
+        self.populateActiveCommitDropdown()
 
-    def handleStreamAdd(self, sw: StreamWrapper):
+    def tryGetStream (self, sw: StreamWrapper):
         client = sw.get_client()
         stream = client.stream.get(sw.stream_id)
+        if isinstance(stream, GraphQLException):
+            raise SpeckleException(stream.errors[0]['message'])
+        return stream
+
+    def handleStreamAdd(self, sw: StreamWrapper):
+        try: 
+            stream = self.tryGetStream(sw)
+        except SpeckleException as e:
+            logger.logToUser(e.message, Qgis.Warning)
+            stream = None
         self.current_streams.append((sw, stream))
         self.add_stream_modal.handleStreamAdd.disconnect(self.handleStreamAdd)
         self.set_project_streams()
@@ -547,14 +689,61 @@ class SpeckleQGIS:
     def get_project_streams(self):
         proj = QgsProject().instance()
         saved_streams = proj.readEntry("speckle-qgis", "project_streams", "")
+        ######### need to check whether saved streams are available (account reachable)
         if saved_streams[1] and len(saved_streams[0]) != 0:
             temp = []
             for url in saved_streams[0].split(","):
                 try:
                     sw = StreamWrapper(url)
-                    stream = sw.get_client().stream.get(sw.stream_id)
+                    try: 
+                        stream = self.tryGetStream(sw)
+                    except SpeckleException as e:
+                        logger.logToUser(e.message, Qgis.Warning)
+                        stream = None
+                    #strId = stream.id # will cause exception if invalid
                     temp.append((sw, stream))
                 except SpeckleException as e:
                     logger.logToUser(e.message, Qgis.Warning)
+                #except GraphQLException as e:
+                #    logger.logToUser(e.message, Qgis.Warning)
 
             self.current_streams = temp
+    
+    def set_survey_point(self):
+        # from widget (3 strings) to local vars AND memory (1 string)
+        proj = QgsProject().instance()
+        vals =[self.dockwidget.surveyPointLat.text(),self.dockwidget.surveyPointLon.text()]
+        #if b:
+        try: 
+            self.lat, self.lon = [float(i) for i in vals]
+            pt = str(self.lat) + ";" + str(self.lon) 
+            proj.writeEntry("speckle-qgis", "survey_point", pt)
+
+            # Create CRS and apply to the project:
+
+            # https://gis.stackexchange.com/questions/379199/having-problem-with-proj-string-for-custom-coordinate-system
+            # https://proj.org/usage/projections.html
+            
+            newCrsString = "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0=" + str(self.lon) + " lat_0=" + str(self.lat) + " +x_0=0 +y_0=0 +k_0=1"
+            newCrs = QgsCoordinateReferenceSystem().fromProj(newCrsString)#fromWkt(newProjWkt)
+            validate = QgsCoordinateReferenceSystem().createFromProj(newCrsString)
+
+            if validate: 
+                QgsProject.instance().setCrs(newCrs) 
+                #listCrs = QgsCoordinateReferenceSystem().validSrsIds()
+                #if exists == 0: newCrs.saveAsUserCrs("SpeckleCRS_lon=" + str(sPoint.x()) + "_lat=" + str(sPoint.y())) # srsid() #https://gis.stackexchange.com/questions/341500/creating-custom-crs-in-qgis
+                logger.logToUser("Custom project CRS successfully applied", Qgis.Info)
+            else:
+                logger.logToUser("Custom CRS could not be created", Qgis.Warning)
+
+        except:
+            logger.logToUser("Custom CRS could not be created", Qgis.Warning)
+
+    def get_survey_point(self):
+        # get from saved project, set to local vars
+        proj = QgsProject().instance()
+        points = proj.readEntry("speckle-qgis", "survey_point", "")
+        if points[1] and len(points[0])>0: 
+            vals = points[0].replace(" ","").split(";")[:2]
+            self.lat, self.lon = [float(i) for i in vals]
+        

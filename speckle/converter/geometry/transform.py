@@ -4,7 +4,11 @@ from qgis.core import (
     QgsCoordinateTransform,
     QgsPointXY,
     QgsProject,  QgsCoordinateReferenceSystem, QgsCoordinateTransform,
+    Qgis, QgsWkbTypes, QgsPolygon, QgsPointXY, QgsPoint, 
 )
+
+from PyQt5.QtGui import QColor
+
 
 def transform(
     src: QgsPointXY,

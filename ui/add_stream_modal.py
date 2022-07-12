@@ -43,6 +43,7 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         query = self.search_text_field.text()
         results = self.speckle_client.stream.search(query)
         self.stream_results = results
+        #print(results)
         self.populateResultsList()
     
     def populateResultsList(self):
@@ -64,7 +65,7 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
     def onAccountSelected(self, index):
         account = self.speckle_accounts[index]
         self.speckle_client = SpeckleClient(account.serverInfo.url, account.serverInfo.url.startswith("https"))
-        self.speckle_client.authenticate(token=account.token)
+        self.speckle_client.authenticate_with_token(token=account.token)
 
     def populate_accounts_dropdown(self):
         # Populate the accounts comboBox
