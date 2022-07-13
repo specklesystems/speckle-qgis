@@ -36,7 +36,7 @@ class SpeckleQGISDialogTest(unittest.TestCase):
 
     def test_dialog_ok(self):
         """Test we can click OK."""
-
+        assert self.dialog
         button = self.dialog.button_box.button(QDialogButtonBox.Ok)
         button.click()
         result = self.dialog.result()
@@ -44,6 +44,7 @@ class SpeckleQGISDialogTest(unittest.TestCase):
 
     def test_dialog_cancel(self):
         """Test we can click cancel."""
+        assert self.dialog
         button = self.dialog.button_box.button(QDialogButtonBox.Cancel)
         button.click()
         result = self.dialog.result()

@@ -8,17 +8,16 @@
 
 """
 
-__author__ = 'alan@speckle.systems'
-__date__ = '2021-08-04'
-__copyright__ = 'Copyright 2021, Speckle Systems'
+__author__ = "alan@speckle.systems"
+__date__ = "2021-08-04"
+__copyright__ = "Copyright 2021, Speckle Systems"
 
 import unittest
 
 from qgis.PyQt.QtGui import QIcon
 
 
-
-class SpeckleQGISDialogTest(unittest.TestCase):
+class SpeckleQGISResourcesTest(unittest.TestCase):
     """Test rerources work."""
 
     def setUp(self):
@@ -31,14 +30,12 @@ class SpeckleQGISDialogTest(unittest.TestCase):
 
     def test_icon_png(self):
         """Test we can click OK."""
-        path = ':/plugins/SpeckleQGIS/icon.png'
+        path = ":/plugins/SpeckleQGIS/icon.png"
         icon = QIcon(path)
         self.assertFalse(icon.isNull())
+
 
 if __name__ == "__main__":
     suite = unittest.makeSuite(SpeckleQGISResourcesTest)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
-
-
-

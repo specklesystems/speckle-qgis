@@ -1,11 +1,12 @@
 import os
+from typing import List
 import ui.speckle_qgis_dialog
 from qgis.PyQt import QtWidgets, uic, QtCore
 from qgis.PyQt.QtCore import pyqtSignal
 from specklepy.api.models import Stream
 from specklepy.api.client import SpeckleClient
 from speckle.utils import logger
-from specklepy.api.credentials import get_local_accounts#, StreamWrapper
+from specklepy.api.credentials import get_local_accounts  # , StreamWrapper
 from specklepy.api.wrapper import StreamWrapper
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
@@ -13,29 +14,36 @@ FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "add_stream_modal.ui")
 )
 
+
 class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
 
-    search_button: QtWidgets.QPushButton = None
-    search_text_field: QtWidgets.QLineEdit = None
-    search_results_list: QtWidgets.QListWidget = None
-    dialog_button_box: QtWidgets.QDialogButtonBox = None
+    search_button: QtWidgets.QPushButton
+    search_text_field: QtWidgets.QLineEdit
+    search_results_list: QtWidgets.QListWidget
+    dialog_button_box: QtWidgets.QDialogButtonBox
     accounts_dropdown: QtWidgets.QComboBox
 
-    stream_results: [Stream] = []
+    stream_results: List[Stream] = []
     speckle_client: SpeckleClient = None
 
-    #Events
+    # Events
     handleStreamAdd = pyqtSignal(StreamWrapper)
 
     def __init__(self, parent=None, speckle_client: SpeckleClient = None):
-        super(AddStreamModalDialog,self).__init__(parent,QtCore.Qt.WindowStaysOnTopHint)
+        super(AddStreamModalDialog, self).__init__(
+            parent, QtCore.Qt.WindowStaysOnTopHint
+        )
         self.speckle_client = speckle_client
         self.setupUi(self)
         self.setWindowTitle("Add Speckle stream")
 
         self.search_button.clicked.connect(self.onSearchClicked)
-        self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(self.onOkClicked)
-        self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(self.onCancelClicked)
+        self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(
+            self.onOkClicked
+        )
+        self.dialog_button_box.button(
+            QtWidgets.QDialogButtonBox.Cancel
+        ).clicked.connect(self.onCancelClicked)
         self.accounts_dropdown.currentIndexChanged.connect(self.onAccountSelected)
         self.populate_accounts_dropdown()
 
@@ -43,20 +51,24 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         query = self.search_text_field.text()
         results = self.speckle_client.stream.search(query)
         self.stream_results = results
-        #print(results)
+        # print(results)
         self.populateResultsList()
-    
+
     def populateResultsList(self):
         self.search_results_list.clear()
-        self.search_results_list.addItems([
-            f"{stream.name} - {stream.id}" for stream in self.stream_results 
-        ])
+        self.search_results_list.addItems(
+            [f"{stream.name} - {stream.id}" for stream in self.stream_results]
+        )
 
     def onOkClicked(self):
         index = self.search_results_list.currentIndex().row()
         stream = self.stream_results[index]
         acc = get_local_accounts()[self.accounts_dropdown.currentIndex()]
-        self.handleStreamAdd.emit(StreamWrapper(f"{acc.serverInfo.url}/streams/{stream.id}?u={acc.userInfo.id}"))
+        self.handleStreamAdd.emit(
+            StreamWrapper(
+                f"{acc.serverInfo.url}/streams/{stream.id}?u={acc.userInfo.id}"
+            )
+        )
         self.close()
 
     def onCancelClicked(self):
@@ -64,7 +76,9 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
 
     def onAccountSelected(self, index):
         account = self.speckle_accounts[index]
-        self.speckle_client = SpeckleClient(account.serverInfo.url, account.serverInfo.url.startswith("https"))
+        self.speckle_client = SpeckleClient(
+            account.serverInfo.url, account.serverInfo.url.startswith("https")
+        )
         self.speckle_client.authenticate_with_token(token=account.token)
 
     def populate_accounts_dropdown(self):
@@ -77,4 +91,3 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
                 for acc in self.speckle_accounts
             ]
         )
-

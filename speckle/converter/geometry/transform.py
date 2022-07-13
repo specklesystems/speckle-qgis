@@ -1,13 +1,9 @@
-
 from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsPointXY,
-    QgsProject,  QgsCoordinateReferenceSystem, QgsCoordinateTransform,
-    Qgis, QgsWkbTypes, QgsPolygon, QgsPointXY, QgsPoint, 
+    QgsProject,
 )
-
-from PyQt5.QtGui import QColor
 
 
 def transform(

@@ -1,5 +1,7 @@
-from typing import List
+from typing import Any, Dict, List, Optional
 from specklepy.objects.base import Base
+
+from speckle.converter.layers import CRS
 
 
 class Layer(Base, chunkable={"features": 100}):
@@ -7,12 +9,12 @@ class Layer(Base, chunkable={"features": 100}):
 
     def __init__(
         self,
-        name=None,
-        crs=None,
+        name: Optional[str] = None,
+        crs: Optional[CRS] = None,
         features: List[Base] = [],
         layerType: str = "None",
         geomType: str = "None",
-        renderer: dict = {},
+        renderer: Dict[str, Any] = {},
         **kwargs
     ) -> None:
         super().__init__(**kwargs)
@@ -21,20 +23,21 @@ class Layer(Base, chunkable={"features": 100}):
         self.type = layerType
         self.features = features
         self.geomType = geomType
-        self.renderer = renderer 
+        self.renderer = renderer
+
 
 class RasterLayer(Base, chunkable={"features": 100}):
     """A GIS Layer"""
 
     def __init__(
         self,
-        name=None,
-        crs=None,
-        rasterCrs=None,
+        name: Optional[str] = None,
+        crs: Optional[str] = None,
+        rasterCrs: Optional[str] = None,
         features: List[Base] = [],
         layerType: str = "None",
         geomType: str = "None",
-        renderer: dict = {},
+        renderer: Dict[str, Any] = {},
         **kwargs
     ) -> None:
         super().__init__(**kwargs)
@@ -44,4 +47,4 @@ class RasterLayer(Base, chunkable={"features": 100}):
         self.type = layerType
         self.features = features
         self.geomType = geomType
-        self.renderer = renderer 
+        self.renderer = renderer

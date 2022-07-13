@@ -1,12 +1,14 @@
 """ This module contains all geometry conversion functionality To and From Speckle."""
-
-from numpy import isin
 from speckle.logging import logger
 from typing import List, Union
 
-from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint, 
-    QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon,
-    QgsCircularString,)
+from qgis.core import (
+    QgsGeometry,
+    QgsWkbTypes,
+    QgsMultiPoint,
+    QgsMultiLineString,
+    QgsMultiPolygon,
+)
 from speckle.converter.geometry.mesh import meshToNative
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from speckle.converter.geometry.polygon import *
@@ -21,16 +23,31 @@ from speckle.converter.geometry.polyline import (
     polycurveToNative,
 )
 from specklepy.objects import Base
-from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Polycurve
+from specklepy.objects.geometry import (
+    Line,
+    Mesh,
+    Point,
+    Polyline,
+    Curve,
+    Arc,
+    Circle,
+    Polycurve,
+)
 
 
-def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
+def convertToSpeckle(
+    feature: QgsFeature, layer: QgsVectorLayer
+) -> Union[Base, List[Base], None]:
     """Converts the provided layer feature to Speckle objects"""
 
-    try:
-        geom: QgsGeometry = feature.geometry()
-    except:
-        geom: QgsGeometry = feature
+    if isinstance(feature, QgsGeometry):
+        geom = feature
+    else:
+        geom = feature.geometry()
+
+    if isinstance(geom, QgsFeature):
+        return
+
     geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
     geomType = geom.type()
     type = geom.wkbType()
@@ -41,9 +58,14 @@ def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
             return pointToSpeckle(geom.constGet(), feature, layer)
         else:
             return [pointToSpeckle(pt, feature, layer) for pt in geom.parts()]
-    
+
     elif geomType == QgsWkbTypes.LineGeometry:
-        if type == QgsWkbTypes.CircularString or type == QgsWkbTypes.CircularStringZ or type == QgsWkbTypes.CircularStringM or type == QgsWkbTypes.CircularStringZM: #Type (not GeometryType)
+        if (
+            type == QgsWkbTypes.CircularString
+            or type == QgsWkbTypes.CircularStringZ
+            or type == QgsWkbTypes.CircularStringM
+            or type == QgsWkbTypes.CircularStringZM
+        ):  # Type (not GeometryType)
             if geomSingleType:
                 return arcToSpeckle(geom, feature, layer)
             else:
@@ -75,16 +97,20 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
         (Circle, circleToNative),
         (Mesh, meshToNative),
         (Polycurve, polycurveToNative),
-        (Base, polygonToNative), # temporary solution for polygons (Speckle has no type Polygon yet)
+        (
+            Base,
+            polygonToNative,
+        ),  # temporary solution for polygons (Speckle has no type Polygon yet)
     ]
 
     for conversion in conversions:
         if isinstance(base, conversion[0]):
-            #print(conversion[0])
+            # print(conversion[0])
             converted = conversion[1](base)
             break
 
     return converted
+
 
 def multiPointToNative(items: List[Point]):
     pts = QgsMultiPoint()
@@ -94,6 +120,7 @@ def multiPointToNative(items: List[Point]):
             pts.addGeometry(g)
     return pts
 
+
 def multiPolylineToNative(items: List[Polyline]):
     polys = QgsMultiLineString()
     for item in items:
@@ -102,6 +129,7 @@ def multiPolylineToNative(items: List[Polyline]):
             polys.addGeometry(g)
     return polys
 
+
 def multiPolygonToNative(items: List[Base]):
     polygons = QgsMultiPolygon()
     for item in items:
@@ -109,6 +137,7 @@ def multiPolygonToNative(items: List[Base]):
         if g is not None:
             polygons.addGeometry(g)
     return polygons
+
 
 def convertToNativeMulti(items: List[Base]):
     first = items[0]

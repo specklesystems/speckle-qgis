@@ -1,10 +1,7 @@
 import sys
 import os
-import traceback
 import subprocess
 from qgis.core import QgsMessageLog, Qgis
-
-from speckle.logging import logger
 
 MESSAGE_CATEGORY = "Speckle"
 
@@ -44,7 +41,7 @@ def enable_remote_debugging():
         QgsMessageLog.logMessage(
             "Attached remote Debug for Visual Studio", MESSAGE_CATEGORY, Qgis.Success
         )
-    except Exception as e:
+    except Exception:
         QgsMessageLog.logMessage(
             "Failed to attach to PTVSD", MESSAGE_CATEGORY, Qgis.Info
         )
