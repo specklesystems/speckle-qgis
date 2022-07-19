@@ -19,7 +19,7 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import Layer, RasterLayer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative
-from speckle.converter.layers.utils import getLayerGeomType, getVariantFromValue, getLayerAttributes
+from speckle.converter.layers.utils import getLayerGeomType 
 from speckle.logging import logger
 from specklepy.objects import Base
 
@@ -250,56 +250,42 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
 
     #find ID of the layer with a matching name in the "latest" group 
     newName = f'{streamBranch}/{layer.name}'
-    #childId = None
-    #for child in layerGroup.children(): 
-    #    QgsProject.instance().removeMapLayer(child.layerId())
-        #if child.name() == newName: 
-        #    childId = child.layerId()
-        #    break
+
+    # particularly if the layer comes from ArcGIS
+    geomType = layer.geomType # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
+    if geomType =="Point": geomType = "Point"
+    elif geomType =="Polygon": geomType = "Multipolygon"
+    elif geomType =="Polyline": geomType = "MultiLineString"
+    elif geomType =="Multipoint": geomType = "Point"
     
-    #in QGIS panel: 
-    '''
-root = QgsProject.instance().layerTreeRoot()
-print(root.layerOrder())
-layer = root.layerOrder()[0]
-cats = layer.renderer().categories()
-[print(str(i.label()) + ': ' + str(i.value())) for i in cats]   
-    '''
-    # delete existing layer (if exists) 
-    #if QgsProject.instance().mapLayer(childId) is not None:
-    #    vl = QgsProject.instance().removeMapLayer(childId)
-    #    vl = None
-    #or create one from scratch
     crsid = crs.authid()
-    vl = QgsVectorLayer(layer.geomType+"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl = QgsVectorLayer(geomType+"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
     QgsProject.instance().addMapLayer(vl, False)
 
     pr = vl.dataProvider()
     vl.startEditing()
     vl.setCrs(crs)
-    #vl.updateFields()
 
-    attrs = getLayerAttributes(layer)
-    #pr.addAttributes(attrs)
-    vl.updateFields()
-    
     fets = []
+    newFields = QgsFields()
     for f in layer.features: 
-        new_feat, newFields = featureToNative(f, attrs)
+        new_feat, newFields = featureToNative(f)
         if new_feat != "": fets.append(new_feat)
 
     # add Layer attribute fields
-    pr.addAttributes(newFields)
+    print(newFields.names())
+    pr.addAttributes(newFields.toList())
     vl.updateFields()
-    
-    #print(pr.get
-    #pr = vl.dataProvider()
+
     pr.addFeatures(fets)
     vl.updateExtents()
     vl.commitChanges()
     layerGroup.addLayer(vl)
 
     rendererNew = vectorRendererToNative(layer)
+    if rendererNew is None:
+        symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
+        rendererNew = QgsSingleSymbolRenderer(symbol)
 
     try: vl.setRenderer(rendererNew)
     except: pass
@@ -316,7 +302,6 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
         crsRaster = crs
         logger.logToUser(f"Raster layer might have been sent from the older version of plugin. Try sending it again for more accurate results.", Qgis.Warning)
     
-
     #CREATE A GROUP "received blabla" with sublayers
     newGroupName = f'{streamBranch}'
     root = QgsProject.instance().layerTreeRoot()
@@ -331,17 +316,6 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
 
     #find ID of the layer with a matching name in the "latest" group 
     newName = f'{streamBranch}/{layer.name}'
-    #childId = None
-    #for child in layerGroup.children(): 
-    #    if child.name() == newName: 
-    #        childId = child.layerId()
-    #        break
-    # modify existing layer (if exists) 
-    #if QgsProject.instance().mapLayer(childId) is not None:
-    #    #existingRaster = QgsProject.instance().mapLayer(childId)
-    #    QgsProject.instance().removeMapLayer(childId)
-
-    
 
     ######################## testing, only for receiving layers #################
     source_folder = QgsProject.instance().absolutePath()

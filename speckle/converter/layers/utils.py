@@ -2,6 +2,7 @@ from PyQt5.QtCore import QVariant
 from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes, QgsField
 from speckle.logging import logger
 from speckle.converter.layers import Layer
+from typing import Any, List, Union
 
 
 def getLayerGeomType(layer: QgsVectorLayer): #https://qgis.org/pyqgis/3.0/core/Wkb/QgsWkbTypes.html 
@@ -126,7 +127,7 @@ def getLayerGeomType(layer: QgsVectorLayer): #https://qgis.org/pyqgis/3.0/core/W
     return "None"
 
 
-def getVariantFromValue(value):
+def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
     # TODO add Base object
     pairs = {
         str: QVariant.String,
@@ -138,6 +139,7 @@ def getVariantFromValue(value):
     res = None
     try: res = pairs[t]
     except: pass
+
     return res
 
 
@@ -152,7 +154,7 @@ def get_type(type_name):
         return repr(obj) if isinstance(obj, type) else None
 
 
-def getLayerAttributes(layer: Layer):
+def getLayerAttributes(layer: Layer) -> List[QgsField]:
     names = {}
     for feature in layer.features:
         featNames = feature.get_member_names()
@@ -167,17 +169,18 @@ def getLayerAttributes(layer: Layer):
                     if variant:
                         names[n] = QgsField(n, variant)
                         if n == "id": names[n] = QgsField(n, QVariant.Int)
+                    else: names[n] = QgsField(n, QVariant.String)
                 except Exception as error:
                     pass #print(error)
     vals = []
     sorted_names = list(names.keys())
     sorted_names.sort()
     #sort fields
-    for i in sorted_names: #names.values():
-        corrected = i
+    for n in sorted_names: #names.values():
+        corrected = n
         #if corrected == "id": continue
         #if corrected == "applicationId": corrected = "id"
-        vals.append(names[corrected])
+        vals.append(names[corrected]) # -> QgsField()
     return vals 
 
 def get_scale_factor(units):

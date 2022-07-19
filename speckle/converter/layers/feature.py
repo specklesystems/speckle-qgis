@@ -10,7 +10,7 @@ from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
 from speckle.converter.geometry.mesh import rasterToMesh
 from speckle.logging import logger
-from speckle.converter.layers.utils import getLayerGeomType, getVariantFromValue, getLayerAttributes
+from speckle.converter.layers.utils import getVariantFromValue
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 
@@ -37,7 +37,7 @@ def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project, selectedLayer
         corrected = name.replace("/", "_").replace(".", "-")
         if corrected == "id":
             corrected = "applicationId"
-        f_name = str(f[name])
+        f_name = f[name]
         b[corrected] = f_name
     return b
 
@@ -200,11 +200,11 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
     return b
 
 
-def featureToNative(feature: Base, attrs):
+def featureToNative(feature: Base):
     feat = QgsFeature()
     fields = QgsFields()
     #try: # ignore 'broken' geometry
-    try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
+    try: speckle_geom = feature["geometry"] # for created in QGIS / ArcGIS Layer type
     except:  speckle_geom = feature # for created in other software
 
     if isinstance(speckle_geom, list):
@@ -220,11 +220,10 @@ def featureToNative(feature: Base, attrs):
 
     
     # add existing fields
-    for a in attrs: # in QGIS-commits, attrs is a list of fields
-        if a not in fields.toList(): 
-          fields.append(a) 
-          if a.name() not in dynamicProps: dynamicProps.append(a.name())
-
+    #for a in attrs: # in QGIS-commits, attrs is a list of fields
+    #    if a not in fields.toList(): 
+    #        fields.append(a) 
+    #        if a.name() not in dynamicProps: dynamicProps.append(a.name())
 
     try: dynamicProps.remove("geometry")
     except: pass
@@ -235,18 +234,31 @@ def featureToNative(feature: Base, attrs):
     except: pass
     dynamicProps.sort()
 
+    #print(fields.toList())
+    #print(dynamicProps)
     # add field names from current geometry
+    variants = []
     for name in dynamicProps:
-        fields.append(QgsField(name)) 
         value = feature[name]
+        variant = getVariantFromValue(value)
+        if not variant: variant = QVariant.String
+        variants.append(variant)
+        if name not in fields.names(): fields.append(QgsField(name,variant)) 
+
+    for i, name in enumerate(dynamicProps):
+        value = feature[name]
+        if variants[i] == QVariant.String: value = str(feature[name]) 
+
         if name == "id": 
             try: value = int(feature["applicationId"])
-            except: value = None
-
+            except: value = None          
         try: feat[name] = value
-        except: 
-            feat.setFields(fields)
-            feat[name] = value
+        except: # if fields are not set yet
+            #try:
+                feat.setFields(fields)
+                feat[name] = value
+            #except: # if variant was not found and set to str
+            #    feat[name] = str(value)
         #https://qgis.org/pyqgis/master/core/QgsFeature.html#qgis.core.QgsFeature.setAttribute
     
     return feat, fields

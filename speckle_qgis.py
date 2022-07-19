@@ -404,7 +404,7 @@ class SpeckleQGIS:
                 return
             commitObj = operations.receive(objId, transport, None)
             
-            if app != "QGIS": 
+            if app != "QGIS" and app != "ArcGIS": 
                 if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
                     logger.logToUser("Please set the project CRS to Projected type to receive CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
                     return
@@ -419,7 +419,7 @@ class SpeckleQGIS:
                 for child in layerGroup.children(): 
                     QgsProject.instance().removeMapLayer(child.layerId())
 
-            if app == "QGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) or isinstance(base, RasterLayer)
+            if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
 
             def callback(base: Base) -> bool:
