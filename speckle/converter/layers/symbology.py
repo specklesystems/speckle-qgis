@@ -2,7 +2,7 @@
 from qgis.core import (
     QgsRasterRenderer, QgsFeatureRenderer, 
     QgsFeature, QgsVectorLayer,
-    QgsGradientColorRamp, QgsGradientStop, 
+    QgsGradientColorRamp, 
     QgsGradientStop, QgsRendererRange,
     QgsSingleBandGrayRenderer, 
     QgsPalettedRasterRenderer, QgsMultiBandColorRenderer,

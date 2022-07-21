@@ -1,6 +1,7 @@
 """
 Contains all Layer related classes and methods.
 """
+import enum
 from typing import List, Union
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
@@ -19,7 +20,7 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import Layer, RasterLayer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative
-from speckle.converter.layers.utils import getLayerGeomType 
+from speckle.converter.layers.utils import getLayerGeomType, getLayerAttributes
 from speckle.logging import logger
 from specklepy.objects import Base
 
@@ -81,7 +82,7 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
         layerBase.type="VectorLayer"
         layerBase.renderer = layerRenderer
         layerBase.applicationId = selectedLayer.id()
-
+        #print(layerBase.features)
         return layerBase
 
     if isinstance(selectedLayer, QgsRasterLayer):
@@ -148,17 +149,6 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
 
     #find ID of the layer with a matching name in the "latest" group 
     newName = f'{streamBranch}_{layerName}'
-    #childId = None
-    #for child in layerGroup.children(): 
-    #    QgsProject.instance().removeMapLayer(child.layerId())
-        #if child.name() == newName: 
-        #    childId = child.layerId()
-         #   break
-    
-    # modify existing layer (if exists) 
-    #if QgsProject.instance().mapLayer(childId) is not None:
-    #    vl = QgsProject.instance().removeMapLayer(childId)
-    #    vl = None
 
     #or create one from scratch
     crsid = crs.authid()
@@ -170,6 +160,8 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
     pr = vl.dataProvider()
     vl.startEditing()
     vl.setCrs(crs)
+
+    newFields = getLayerAttributes(geomList)
     
     # create list of Features (fets) and list of Layer fields (fields)
     attrs = QgsFields()
@@ -177,7 +169,7 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
     fetIds = []
     fetColors = []
     for f in geomList[:]: 
-        new_feat, newFields = cadFeatureToNative(f, attrs, newName)
+        new_feat = cadFeatureToNative(f, newFields)
         # update attrs for the next feature (if more fields were added from previous feature)
         
         if new_feat != "": 
@@ -204,7 +196,7 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
 
     ################################### RENDERER ###########################################
     # only set up renderer if the layer is just created
-    attribute = '_Speckle_ID'
+    attribute = 'Speckle_ID'
     categories = []
     for i in range(len(fets)):
         rgb = fetColors[i]
@@ -267,13 +259,12 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
     vl.setCrs(crs)
 
     fets = []
-    newFields = QgsFields()
+    newFields = getLayerAttributes(layer.features)
     for f in layer.features: 
-        new_feat, newFields = featureToNative(f)
+        new_feat = featureToNative(f, newFields)
         if new_feat != "": fets.append(new_feat)
 
     # add Layer attribute fields
-    print(newFields.names())
     pr.addAttributes(newFields.toList())
     vl.updateFields()
 
@@ -300,7 +291,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
     try: crsRaster = QgsCoordinateReferenceSystem.fromWkt(layer.rasterCrs.wkt) #moved up, because CRS of existing layer needs to be rewritten
     except: 
         crsRaster = crs
-        logger.logToUser(f"Raster layer might have been sent from the older version of plugin. Try sending it again for more accurate results.", Qgis.Warning)
+        logger.logToUser(f"Raster layer {layer.name} might have been sent from the older version of plugin. Try sending it again for more accurate results.", Qgis.Warning)
     
     #CREATE A GROUP "received blabla" with sublayers
     newGroupName = f'{streamBranch}'
