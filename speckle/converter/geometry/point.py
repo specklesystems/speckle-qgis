@@ -22,6 +22,7 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVe
     specklePoint.x = x
     specklePoint.y = y
     specklePoint.z = z
+    specklePoint.units = "m"
 
     col = featureColorfromNativeRenderer(feature, layer)
     specklePoint['displayStyle'] = {}

@@ -25,7 +25,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QDockWidget
 from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsRasterLayer
 from specklepy.api import operations
-from specklepy.api.client import SpeckleException, GraphQLException
+from specklepy.logging.exceptions import SpeckleException, GraphQLException
 #from specklepy.api.credentials import StreamWrapper
 from specklepy.api.models import Stream
 from specklepy.objects import Base
@@ -296,6 +296,19 @@ class SpeckleQGIS:
         except SpeckleException as e:
             logger.logToUser(e.message, Qgis.Warning)
             return  
+        # Ensure the branch exists
+        if stream.branches is None:
+            logger.logToUser("Stream has no branches", Qgis.Warning)
+            return
+        branchName = self.dockwidget.streamBranchDropdown.currentText()
+        branch = None
+        for b in stream.branches.items:
+            if b.name == branchName:
+                branch = b
+                break
+        if branch is None:
+            logger.logToUser("Failed to find a branch", Qgis.Warning)
+            return
 
         base_obj = Base()
         base_obj.layers = convertSelectedLayers(layers, selectedLayerNames, projectCRS, project)
@@ -404,7 +417,7 @@ class SpeckleQGIS:
                 return
             commitObj = operations.receive(objId, transport, None)
             
-            if app != "QGIS": 
+            if app != "QGIS" and app != "ArcGIS": 
                 if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
                     logger.logToUser("Please set the project CRS to Projected type to receive CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
                     return
@@ -419,7 +432,7 @@ class SpeckleQGIS:
                 for child in layerGroup.children(): 
                     QgsProject.instance().removeMapLayer(child.layerId())
 
-            if app == "QGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) or isinstance(base, RasterLayer)
+            if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
 
             def callback(base: Base) -> bool:
