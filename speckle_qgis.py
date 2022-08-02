@@ -451,10 +451,10 @@ class SpeckleQGIS:
                     try: loopVal(base[name], baseName + "/" + name)
                     except: pass
 
-            def loopVal(value, name): # "name" is the parent object/property/layer name
+            def loopVal(value: Any, name: str): # "name" is the parent object/property/layer name
                 if isinstance(value, Base): 
                     try: # dont go through parts of Speckle Geometry object
-                        if value.speckle_type.startswith("Objects.Geometry."): pass
+                        if value.speckle_type.startswith("Objects.Geometry."): pass #.Brep") or value.speckle_type.startswith("Objects.Geometry.Mesh") or value.speckle_type.startswith("Objects.Geometry.Surface") or value.speckle_type.startswith("Objects.Geometry.Extrusion"): pass
                         else: loopObj(value, name)
                     except: loopObj(value, name)
 

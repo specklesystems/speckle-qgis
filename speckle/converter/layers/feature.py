@@ -57,7 +57,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
     rasterBandMaxVal = []
     rasterBandVals = []
 
-    b = Base()
+    b = Base(units = "m")
     # Try to extract geometry
     reprojectedPt = QgsGeometry.fromPointXY(QgsPointXY())
     try:

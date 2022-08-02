@@ -9,6 +9,7 @@ class Layer(Base, chunkable={"features": 100}):
         self,
         name=None,
         crs=None,
+        units: str = "m",
         features: List[Base] = [],
         layerType: str = "None",
         geomType: str = "None",
@@ -18,6 +19,7 @@ class Layer(Base, chunkable={"features": 100}):
         super().__init__(**kwargs)
         self.name = name
         self.crs = crs
+        self.units = units
         self.type = layerType
         self.features = features
         self.geomType = geomType
@@ -30,6 +32,7 @@ class RasterLayer(Base, chunkable={"features": 100}):
         self,
         name=None,
         crs=None,
+        units: str = "m",
         rasterCrs=None,
         features: List[Base] = [],
         layerType: str = "None",
@@ -40,6 +43,7 @@ class RasterLayer(Base, chunkable={"features": 100}):
         super().__init__(**kwargs)
         self.name = name
         self.crs = crs
+        self.units = units
         self.rasterCrs = rasterCrs
         self.type = layerType
         self.features = features
