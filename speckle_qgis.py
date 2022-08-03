@@ -395,8 +395,9 @@ class SpeckleQGIS:
                 try: 
                     commit = branch.commits.items[0]
                     logger.logToUser("Failed to find a commit. Receiving Latest", Qgis.Warning)
-                except: logger.logToUser("Failed to find a commit", Qgis.Warning)
-                return
+                except: 
+                    logger.logToUser("Failed to find a commit", Qgis.Warning)
+                    return
 
         except SpeckleException as error:
             logger.logToUser(str(error), Qgis.Critical)
