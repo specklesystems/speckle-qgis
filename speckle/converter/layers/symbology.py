@@ -28,9 +28,14 @@ def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer):
                 color = renderer.sourceSymbol().color()
                 category = renderer.classAttribute() # get the name of attribute used for classification
                 for obj in renderer.categories():
-                    if str(obj.value()) == str(feature.attribute( category )): 
-                        color = obj.symbol().color()
-                        break
+                    try: 
+                        if float(obj.value()) == float(feature.attribute( category )):
+                            color = obj.symbol().color()
+                            break
+                    except:
+                        if str(obj.value()) == str(feature.attribute( category )): 
+                            color = obj.symbol().color()
+                            break
             elif renderer.type() == 'graduatedSymbol':
                 color = renderer.sourceSymbol().color()
                 category = renderer.legendClassificationAttribute() # get the name of attribute used for classification
