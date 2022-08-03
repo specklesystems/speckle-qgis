@@ -420,8 +420,8 @@ class SpeckleQGIS:
             
             if app != "QGIS" and app != "ArcGIS": 
                 if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
-                    logger.logToUser("Please set the project CRS to Projected type to receive CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
-                    return
+                    logger.logToUser("It is advisable to set the project CRS to Projected type before receiving CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
+                    #return
             logger.log(f"Succesfully received {objId}")
 
             # Clear 'latest' group
@@ -541,10 +541,11 @@ class SpeckleQGIS:
             return
         branchName = self.dockwidget.streamBranchDropdown.currentText()
         branch = None
-        for b in self.active_stream[1].branches.items:
-            if b.name == branchName:
-                branch = b
-                break
+        if self.active_stream[1]:
+            for b in self.active_stream[1].branches.items:
+                if b.name == branchName:
+                    branch = b
+                    break
         try:
             self.dockwidget.commitDropdown.addItems(
                 [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]
