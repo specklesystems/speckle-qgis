@@ -25,7 +25,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QDockWidget
 from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsRasterLayer
 from specklepy.api import operations
-from specklepy.api.client import SpeckleException, GraphQLException
+from specklepy.logging.exceptions import SpeckleException, GraphQLException
 #from specklepy.api.credentials import StreamWrapper
 from specklepy.api.models import Stream
 from specklepy.objects import Base
@@ -296,6 +296,19 @@ class SpeckleQGIS:
         except SpeckleException as e:
             logger.logToUser(e.message, Qgis.Warning)
             return  
+        # Ensure the branch exists
+        if stream.branches is None:
+            logger.logToUser("Stream has no branches", Qgis.Warning)
+            return
+        branchName = self.dockwidget.streamBranchDropdown.currentText()
+        branch = None
+        for b in stream.branches.items:
+            if b.name == branchName:
+                branch = b
+                break
+        if branch is None:
+            logger.logToUser("Failed to find a branch", Qgis.Warning)
+            return
 
         base_obj = Base()
         base_obj.layers = convertSelectedLayers(layers, selectedLayerNames, projectCRS, project)
@@ -382,8 +395,9 @@ class SpeckleQGIS:
                 try: 
                     commit = branch.commits.items[0]
                     logger.logToUser("Failed to find a commit. Receiving Latest", Qgis.Warning)
-                except: logger.logToUser("Failed to find a commit", Qgis.Warning)
-                return
+                except: 
+                    logger.logToUser("Failed to find a commit", Qgis.Warning)
+                    return
 
         except SpeckleException as error:
             logger.logToUser(str(error), Qgis.Critical)
@@ -404,10 +418,10 @@ class SpeckleQGIS:
                 return
             commitObj = operations.receive(objId, transport, None)
             
-            if app != "QGIS": 
+            if app != "QGIS" and app != "ArcGIS": 
                 if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
-                    logger.logToUser("Please set the project CRS to Projected type to receive CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
-                    return
+                    logger.logToUser("It is advisable to set the project CRS to Projected type before receiving CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
+                    #return
             logger.log(f"Succesfully received {objId}")
 
             # Clear 'latest' group
@@ -419,7 +433,7 @@ class SpeckleQGIS:
                 for child in layerGroup.children(): 
                     QgsProject.instance().removeMapLayer(child.layerId())
 
-            if app == "QGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) or isinstance(base, RasterLayer)
+            if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
 
             def callback(base: Base) -> bool:
@@ -438,10 +452,10 @@ class SpeckleQGIS:
                     try: loopVal(base[name], baseName + "/" + name)
                     except: pass
 
-            def loopVal(value, name): # "name" is the parent object/property/layer name
+            def loopVal(value: Any, name: str): # "name" is the parent object/property/layer name
                 if isinstance(value, Base): 
                     try: # dont go through parts of Speckle Geometry object
-                        if value.speckle_type.startswith("Objects.Geometry."): pass
+                        if value.speckle_type.startswith("Objects.Geometry."): pass #.Brep") or value.speckle_type.startswith("Objects.Geometry.Mesh") or value.speckle_type.startswith("Objects.Geometry.Surface") or value.speckle_type.startswith("Objects.Geometry.Extrusion"): pass
                         else: loopObj(value, name)
                     except: loopObj(value, name)
 
@@ -527,10 +541,11 @@ class SpeckleQGIS:
             return
         branchName = self.dockwidget.streamBranchDropdown.currentText()
         branch = None
-        for b in self.active_stream[1].branches.items:
-            if b.name == branchName:
-                branch = b
-                break
+        if self.active_stream[1]:
+            for b in self.active_stream[1].branches.items:
+                if b.name == branchName:
+                    branch = b
+                    break
         try:
             self.dockwidget.commitDropdown.addItems(
                 [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]

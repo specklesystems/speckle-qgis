@@ -5,12 +5,12 @@ from qgis._core import QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, Qg
     QgsField
 from specklepy.objects import Base
 
-from PyQt5.QtCore import QVariant
+from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
 from speckle.converter.geometry.mesh import rasterToMesh
 from speckle.logging import logger
-from speckle.converter.layers.utils import getLayerGeomType, getVariantFromValue, getLayerAttributes
+from speckle.converter.layers.utils import getVariantFromValue 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 
@@ -35,9 +35,9 @@ def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project, selectedLayer
 
     for name in fieldnames:
         corrected = name.replace("/", "_").replace(".", "-")
-        if corrected == "id":
-            corrected = "applicationId"
-        f_name = str(f[name])
+        if corrected == "id": corrected = "applicationId"
+        f_name = f[name]
+        if f_name == "NULL" or f_name is None or str(f_name) == "NULL": f_name = None
         b[corrected] = f_name
     return b
 
@@ -57,7 +57,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
     rasterBandMaxVal = []
     rasterBandVals = []
 
-    b = Base()
+    b = Base(units = "m")
     # Try to extract geometry
     reprojectedPt = QgsGeometry.fromPointXY(QgsPointXY())
     try:
@@ -200,11 +200,9 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
     return b
 
 
-def featureToNative(feature: Base, attrs):
+def featureToNative(feature: Base, fields: QgsFields):
     feat = QgsFeature()
-    fields = QgsFields()
-    #try: # ignore 'broken' geometry
-    try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
+    try: speckle_geom = feature["geometry"] # for created in QGIS / ArcGIS Layer type
     except:  speckle_geom = feature # for created in other software
 
     if isinstance(speckle_geom, list):
@@ -214,50 +212,34 @@ def featureToNative(feature: Base, attrs):
 
     if qgsGeom is not None:
         feat.setGeometry(qgsGeom)
-
-    #get object properties to add as attributes
-    dynamicProps = feature.get_dynamic_member_names()
-
-    
-    # add existing fields
-    for a in attrs: # in QGIS-commits, attrs is a list of fields
-        if a not in fields.toList(): 
-          fields.append(a) 
-          if a.name() not in dynamicProps: dynamicProps.append(a.name())
-
-
-    try: dynamicProps.remove("geometry")
-    except: pass
 
     try: 
-        if feature["applicationId"] and "id" not in dynamicProps: dynamicProps.append("id")
-        dynamicProps.remove("applicationId")
+        if "id" not in fields.names() and feature["applicationId"]: fields.append(QgsField("id", QVariant.String))
     except: pass
-    dynamicProps.sort()
-
-    # add field names from current geometry
-    for name in dynamicProps:
-        fields.append(QgsField(name)) 
-        value = feature[name]
-        if name == "id": 
-            try: value = int(feature["applicationId"])
-            except: value = None
-
-        try: feat[name] = value
-        except: 
-            feat.setFields(fields)
-            feat[name] = value
-        #https://qgis.org/pyqgis/master/core/QgsFeature.html#qgis.core.QgsFeature.setAttribute
     
-    return feat, fields
-    #except:
-    #    return "", QgsFields()
+    feat.setFields(fields)  
+    for field in fields:
+        name = field.name()
+        variant = field.type()
+        if name == "id": feat[name] = str(feature["applicationId"])
+        else: 
+            value = feature[name]
+            if variant == QVariant.String: value = str(feature[name]) 
+            
+            if isinstance(value, str) and variant == QVariant.Date:  # 14
+                y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]
+                value = QDate(int(y), int(m), int(d) ) 
+            elif isinstance(value, str) and variant == QVariant.DateTime: 
+                y,m,d,t1,t2 = value.split("(")[1].split(")")[0].split(",")[:5]
+                value = QDateTime(int(y), int(m), int(d), int(t1), int(t2) )
+            
+            if variant == getVariantFromValue(value) and value != "NULL" and value != "None": 
+                feat[name] = value
+        
+    return feat
 
-def cadFeatureToNative(feature: Base, attrs: QgsFields, layerName: str):
+def cadFeatureToNative(feature: Base, fields: QgsFields):
     feat = QgsFeature()
-    fields = QgsFields()
-    attrsToRemove = ['applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'userDictionary', 'userStrings','geometry']
-    #try: # ignore 'broken' geometry
     try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
     except:  speckle_geom = feature # for created in other software
 
@@ -268,90 +250,28 @@ def cadFeatureToNative(feature: Base, attrs: QgsFields, layerName: str):
 
     if qgsGeom is not None:
         feat.setGeometry(qgsGeom)
+    try: 
+        if "Speckle_ID" not in fields.names() and feature["id"]: fields.append(QgsField("Speckle_ID", QVariant.String))
+    except: pass
 
-    #get object properties to add as attributes
-    dynamicProps = feature.get_dynamic_member_names()
-    for att in attrsToRemove:
-        try: dynamicProps.remove(att)
-        except: pass
-    if "_Speckle_ID" not in dynamicProps: dynamicProps.append("_Speckle_ID")
-
-    # add existing fields
-    for a in attrs.toList(): # should be QgsField
-        if a.name() not in dynamicProps and a.name() not in attrsToRemove: 
-            dynamicProps.append(a.name())
-
-    #try:
-    #if feature["applicationId"] and "id" not in dynamicProps: 
-    #    if getVariantFromValue(feature['id']) == 10: dynamicProps.append("id") 
-    #except: pass
-
-    dynamicProps.sort()
-    # add new field names from current geometry  
-    # and make an attribute list to pass for layer creation
-    for name in dynamicProps:
-        if name not in attrsToRemove: 
-            if name == '_Speckle_ID': variant = getVariantFromValue(feature['id'])
-            else: variant = getVariantFromValue(feature[name])
-        #if attribute isn't created yet
-        if name not in attrs.names():
-            if variant: fields.append( QgsField(name, variant) )
-            else: fields.append( QgsField(name, QVariant.String) )
-        else: #else, add the existing field to list
-            for a in attrs:
-                if a.name() == name: fields.append(a); break
-
-    # assign fields and their values to the feature
-    feat.setFields(fields)
-    for f in fields.toList():
-        fName = f.name()
-        #QVariant().canConvert()
-        #QVariant(7524305913).canConvert() 
-        try: value = feature[fName]
-        except: value = None
-        if fName == "_Speckle_ID": 
-            try: value = feature["id"]
-            except: value = None
-        #elif fName == "id": 
-        #    try: value = int(feature["applicationId"])
-        #    except: value = None
-
-        ##### adapt value to the existing field type,  
-        if f.type() == QVariant.LongLong: # 4
-            if isinstance(value, int): feat[fName] = int(value)
-            else:
-                logger.logToUser(f"Value of the attribute '{fName}' of the layer '{layerName}' might be skipped due to type discrepancies", Qgis.Warning)
-                try: feat[fName] = int(value) #7524305913 is too big for Int
-                except: feat[fName] = None
-        elif f.type() == QVariant.String: # 10
-            if isinstance(value, str): 
-                feat[fName] = str(value) 
-                if len(str(value)) > 255: feat[fName] = str(value)[:255]
-            else:
-                logger.logToUser(f"Value of the attribute '{fName}' of the layer '{layerName}' might be skipped due to type discrepancies", Qgis.Warning)
-                try: 
-                    feat[fName] = str(value) 
-                    if len(str(value)) > 255: feat[fName] = str(value)[:255]
-                except: feat[fName] = None
-        elif f.type() == QVariant.Double: # 6
-            if isinstance(value, float): feat[fName] = float(value)
-            else:
-                logger.logToUser(f"Value of the attribute '{fName}' of the layer '{layerName}' might be skipped due to type discrepancies", Qgis.Warning)
-                try: feat[fName] = float(value) 
-                except: feat[fName] = None
-        elif f.type() == QVariant.Bool:
-            if isinstance(value, bool): feat[fName] = bool(value)
-            else:
-                logger.logToUser(f"Value of the attribute '{fName}' of the layer '{layerName}' might be skipped due to type discrepancies", Qgis.Warning)
-                try: feat[fName] = bool(value)
-                except: feat[fName] = None
-        else: feat[fName] = None
-        #https://qgis.org/pyqgis/master/core/QgsFeature.html#qgis.core.QgsFeature.setAttribute
+    feat.setFields(fields)  
+    for field in fields:
+        name = field.name()
+        variant = field.type()
+        if name == "Speckle_ID": feat[name] = str(feature["id"])
+        else: 
+            value = feature[name]
+            if variant == QVariant.String: value = str(feature[name]) 
+            
+            if isinstance(value, str) and variant == QVariant.Date:  # 14
+                y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]
+                value = QDate(int(y), int(m), int(d) ) 
+            elif isinstance(value, str) and variant == QVariant.DateTime: 
+                y,m,d,t1,t2 = value.split("(")[1].split(")")[0].split(",")[:5]
+                value = QDateTime(int(y), int(m), int(d), int(t1), int(t2) )
+            
+            if variant == getVariantFromValue(value) and value != "NULL" and value != "None": 
+                feat[name] = value
+           
+    return feat
     
-    newFields = QgsFields()
-    for f in fields.toList():
-        if f.name() not in attrs.names(): newFields.append(f)
-
-    return feat, newFields
-    #except:
-    #    return "", QgsFields()

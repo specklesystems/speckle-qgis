@@ -1,7 +1,9 @@
-from PyQt5.QtCore import QVariant
-from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes, QgsField
+from PyQt5.QtCore import QVariant, QDate, QDateTime
+from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes, QgsField, QgsFields
 from speckle.logging import logger
 from speckle.converter.layers import Layer
+from typing import Any, List, Union
+from specklepy.objects import Base
 
 
 def getLayerGeomType(layer: QgsVectorLayer): #https://qgis.org/pyqgis/3.0/core/Wkb/QgsWkbTypes.html 
@@ -126,20 +128,25 @@ def getLayerGeomType(layer: QgsVectorLayer): #https://qgis.org/pyqgis/3.0/core/W
     return "None"
 
 
-def getVariantFromValue(value):
+def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
     # TODO add Base object
     pairs = {
-        str: QVariant.String,
+        str: QVariant.String, # 10
         float: QVariant.Double,
         int: QVariant.LongLong,
-        bool: QVariant.Bool
+        bool: QVariant.Bool,
+        QDate: QVariant.Date,
+        QDateTime: QVariant.DateTime
     }
     t = type(value)
     res = None
     try: res = pairs[t]
     except: pass
-    return res
 
+    if isinstance(value, str) and "PyQt5.QtCore.QDate(" in value: res = QVariant.Date #14
+    elif isinstance(value, str) and "PyQt5.QtCore.QDateTime(" in value: res = QVariant.DateTime #16
+
+    return res
 
 def get_type(type_name):
     try:
@@ -152,35 +159,48 @@ def get_type(type_name):
         return repr(obj) if isinstance(obj, type) else None
 
 
-def getLayerAttributes(layer: Layer):
-    names = {}
-    for feature in layer.features:
-        featNames = feature.get_member_names()
-        #create empty attribute fields
-        for n in featNames:
-            if n == "totalChildrenCount" or n == "applicationId":
-                continue
-            if not (n in names):
-                try:
-                    value = feature[n]
-                    variant = getVariantFromValue(value)
-                    if variant:
-                        names[n] = QgsField(n, variant)
-                        if n == "id": names[n] = QgsField(n, QVariant.Int)
-                except Exception as error:
-                    pass #print(error)
-    vals = []
-    sorted_names = list(names.keys())
-    sorted_names.sort()
-    #sort fields
-    for i in sorted_names: #names.values():
-        corrected = i
-        #if corrected == "id": continue
-        #if corrected == "applicationId": corrected = "id"
-        vals.append(names[corrected])
-    return vals 
+def getLayerAttributes(features: List[Base]) -> QgsFields:
+    fields = QgsFields()
+    all_props = []
+    for feature in features: 
+        #get object properties to add as attributes
+        dynamicProps = feature.get_dynamic_member_names()
+        attrsToRemove = ['geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'userDictionary', 'userStrings','geometry']
+        for att in attrsToRemove:
+            try: dynamicProps.remove(att)
+            except: pass
 
-def get_scale_factor(units):
+        dynamicProps.sort()
+
+        # add field names and variands 
+        #variants = [] 
+        for name in dynamicProps:
+            if name not in all_props: all_props.append(name)
+
+            value = feature[name]
+            variant = getVariantFromValue(value)
+            if not variant: variant = None #LongLong #4 
+
+            # add a field if not existing yet AND if variant is known
+            if variant and (name not in fields.names()): 
+                fields.append(QgsField(name, variant)) 
+            
+            elif name in fields.names(): #check if the field was empty previously: 
+                nameIndex = fields.indexFromName(name)
+                oldType = fields[nameIndex].type()
+                # replace if new one is NOT LongLong or IS String
+                if oldType != QVariant.String and variant == QVariant.String: 
+                    fields.append(QgsField(name,variant)) 
+
+    # replace all empty ones wit String
+    for name in all_props:
+        if name not in fields.names(): 
+            fields.append(QgsField(name, QVariant.String)) 
+
+    return fields
+                
+
+def get_scale_factor(units: str) -> float:
     unit_scale = {
     "meters": 1.0,
     "centimeters": 0.01,
@@ -197,8 +217,8 @@ def get_scale_factor(units):
     "yd": 0.9144,
     "mi": 1609.340,
     }
-    if units.lower() in unit_scale.keys():
+    if units is not None and units.lower() in unit_scale.keys():
         return unit_scale[units]
-    logger.logToUser(f"Units {units} are not supported.", Qgis.Warning)
+    logger.logToUser(f"Units {units} are not supported. Meters will be applied by default.", Qgis.Warning)
     return 1.0
 

@@ -1,11 +1,12 @@
 from math import asin, cos, sin, atan
 import math
-from specklepy.objects.geometry import Point, Line, Polyline, Curve, Arc, Circle, Polycurve
-from speckle.converter.geometry.point import pointToNative, pointToSpeckle, scalePointToNative
+import numpy as np
+from specklepy.objects.geometry import Point, Line, Polyline, Curve, Arc, Circle, Polycurve, Plane, Vector
+from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 
 from qgis.core import (
     QgsLineString, 
-    QgsCircularString, QgsMultiLineString, 
+    QgsCircularString, 
     QgsCircle, QgsFeature, QgsVectorLayer
 )
 
@@ -13,7 +14,7 @@ from qgis._core import Qgis
 
 from speckle.logging import logger
 from speckle.converter.layers.utils import get_scale_factor
-from typing import List, Union
+from typing import List, Tuple, Union
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 #from PyQt5.QtGui import QColor
 
@@ -58,13 +59,32 @@ def arcToSpeckle(poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorL
     arc.startPoint = pointToSpeckle(vert_list[0], feature, layer)
     arc.midPoint = pointToSpeckle(vert_list[1], feature, layer)
     arc.endPoint = pointToSpeckle(vert_list[2], feature, layer)
+    center, radius = getArcCenter(arc.startPoint, arc.midPoint, arc.endPoint)
+    arc.plane = Plane()#.from_list(Point(), Vector(Point(0, 0, 1)), Vector(Point(0,1,0)), Vector(Point(-1,0,0)))
+    arc.plane.origin = Point.from_list(center)
+    arc.radius = radius
     
     col = featureColorfromNativeRenderer(feature, layer)
     arc['displayStyle'] = {}
     arc['displayStyle']['color'] = col
     return arc
     
-
+def getArcCenter(p1: Point, p2: Point, p3: Point) -> Tuple[Point, float]:
+    p1 = np.array(p1.to_list())
+    p2 = np.array(p2.to_list())
+    p3 = np.array(p3.to_list())
+    a = np.linalg.norm(p3 - p2)
+    b = np.linalg.norm(p3 - p1)
+    c = np.linalg.norm(p2 - p1)
+    s = (a + b + c) / 2
+    radius = a*b*c / 4 / np.sqrt(s * (s - a) * (s - b) * (s - c))
+    b1 = a*a * (b*b + c*c - a*a)
+    b2 = b*b * (a*a + c*c - b*b)
+    b3 = c*c * (a*a + b*b - c*c)
+    center = np.column_stack((p1, p2, p3)).dot(np.hstack((b1, b2, b3)))
+    center /= b1 + b2 + b3
+    center = center.tolist()
+    return center, radius
 
 def lineToNative(line: Line) -> QgsLineString:
     """Converts a Speckle Line to QgsLineString"""
@@ -143,6 +163,7 @@ def arcToQgisPoints(poly: Arc):
             k = i/pointsNum # to reset values from 1/10 to 1
             angle = angle1 + k * ( poly.endAngle - poly.startAngle) * poly.plane.normal.z
             pt = Point( x = poly.plane.origin.x + poly.radius * cos(angle), y = poly.plane.origin.y + poly.radius * sin(angle), z = 0) 
+            pt.units = poly.startPoint.units 
             points.append(pointToNative(pt))
         points.append(pointToNative(poly.endPoint))
 
