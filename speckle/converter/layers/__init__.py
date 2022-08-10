@@ -241,7 +241,7 @@ def vectorLayerToNative(layer: Layer, streamBranch: str):
     layerGroup.setItemVisibilityChecked(True)
 
     #find ID of the layer with a matching name in the "latest" group 
-    newName = f'{streamBranch}/{layer.name}'
+    newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layer.name}'
 
     # particularly if the layer comes from ArcGIS
     geomType = layer.geomType # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
@@ -306,7 +306,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
     layerGroup.setItemVisibilityChecked(True)
 
     #find ID of the layer with a matching name in the "latest" group 
-    newName = f'{streamBranch}/{layer.name}'
+    newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layer.name}'
 
     ######################## testing, only for receiving layers #################
     source_folder = QgsProject.instance().absolutePath()

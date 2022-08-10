@@ -213,13 +213,14 @@ def featureToNative(feature: Base, fields: QgsFields):
     if qgsGeom is not None:
         feat.setGeometry(qgsGeom)
 
-    try: 
-        if "id" not in fields.names() and feature["applicationId"]: fields.append(QgsField("id", QVariant.String))
-    except: pass
+    #try: 
+    #    if "id" not in fields.names() and feature["applicationId"]: fields.append(QgsField("id", QVariant.String))
+    #except: pass
     
     feat.setFields(fields)  
     for field in fields:
         name = field.name()
+        print(name)
         variant = field.type()
         if name == "id": feat[name] = str(feature["applicationId"])
         else: 

@@ -352,7 +352,7 @@ class SpeckleQGIS:
         if self.active_stream is None:
             logger.logToUser(
                 "There is no active stream. Please select a stream from the list.",
-                Qgis.Error,
+                Qgis.Critical,
             )
             return
 
@@ -471,7 +471,7 @@ class SpeckleQGIS:
             traverseObject(commitObj, callback, check)
                 
         except SpeckleException as e:
-            logger.logToUser("Receive failed", Qgis.Error)
+            logger.logToUser("Receive failed: "+ e.message, Qgis.Critical)
             return
 
     def populateLayerDropdown(self):

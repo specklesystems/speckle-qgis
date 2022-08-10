@@ -147,7 +147,7 @@ def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
     elif isinstance(value, str) and "PyQt5.QtCore.QDateTime(" in value: res = QVariant.DateTime #16
 
     return res
-
+r'''
 def get_type(type_name):
     try:
         return getattr(__builtins__, type_name)
@@ -157,7 +157,7 @@ def get_type(type_name):
         except KeyError:
             return None
         return repr(obj) if isinstance(obj, type) else None
-
+'''
 
 def getLayerAttributes(features: List[Base]) -> QgsFields:
     fields = QgsFields()
@@ -194,6 +194,7 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
 
     # replace all empty ones wit String
     for name in all_props:
+        #print(name)
         if name not in fields.names(): 
             fields.append(QgsField(name, QVariant.String)) 
 
