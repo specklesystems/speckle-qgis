@@ -6,7 +6,7 @@ from typing import List, Union
 
 from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint, 
     QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon,
-    QgsCircularString,)
+    QgsCircularString,QgsRasterLayer,QgsVectorLayer, QgsFeature)
 from speckle.converter.geometry.mesh import meshToNative
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from speckle.converter.geometry.polygon import *
@@ -24,7 +24,7 @@ from specklepy.objects import Base
 from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Polycurve
 
 
-def convertToSpeckle(feature, layer) -> Union[Base, Sequence[Base], None]:
+def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLayer) -> Union[Base, Sequence[Base], None]:
     """Converts the provided layer feature to Speckle objects"""
 
     try:
@@ -86,7 +86,7 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
 
     return converted
 
-def multiPointToNative(items: List[Point]):
+def multiPointToNative(items: List[Point]) -> QgsMultiPoint:
     pts = QgsMultiPoint()
     for item in items:
         g = pointToNative(item)
@@ -94,7 +94,7 @@ def multiPointToNative(items: List[Point]):
             pts.addGeometry(g)
     return pts
 
-def multiPolylineToNative(items: List[Polyline]):
+def multiPolylineToNative(items: List[Polyline]) -> QgsMultiLineString:
     polys = QgsMultiLineString()
     for item in items:
         g = polylineToNative(item)
@@ -102,7 +102,7 @@ def multiPolylineToNative(items: List[Polyline]):
             polys.addGeometry(g)
     return polys
 
-def multiPolygonToNative(items: List[Base]):
+def multiPolygonToNative(items: List[Base]) -> QgsMultiPolygon:
     polygons = QgsMultiPolygon()
     for item in items:
         g = polygonToNative(item)

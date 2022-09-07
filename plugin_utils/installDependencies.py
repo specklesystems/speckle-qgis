@@ -9,7 +9,7 @@ from speckle.utils import get_qgis_python_path
 
 def setup():
     plugin_dir = os.path.dirname(__file__)
-    pythonExec = get_qgis_python_path()
+    pythonExec = get_qgis_python_path() # import specklepy; import os; print(os.path.abspath(specklepy.__file__)) #### import sysconfig; sysconfig.get_paths()['data'] # import qgis; import os; print(os.path.abspath(qgis.__file__)) # C:\Program Files\ArcGIS\Pro\Resources\ArcPy\arcpy\__init__.py
 
     try:
         import pip

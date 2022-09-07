@@ -9,7 +9,7 @@ from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-pac
 from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes, QgsField
 from qgis.core import (Qgis, QgsRasterLayer,
                        QgsVectorLayer, QgsProject, 
-                       QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, 
+                       QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsLayerTreeLayer,
                        QgsCoordinateReferenceSystem, QgsCoordinateTransform,
                        QgsFields, QgsRenderContext, QgsLayout, 
                        QgsFeatureRenderer, QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
@@ -18,7 +18,7 @@ from qgis.core import (Qgis, QgsRasterLayer,
                        QgsApplication,QgsSymbolLayerRegistry, )
 from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
-from speckle.converter.layers.Layer import Layer, RasterLayer
+from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative
 from speckle.converter.layers.utils import getLayerGeomType, getLayerAttributes
 from speckle.logging import logger
@@ -31,7 +31,7 @@ from PyQt5.QtGui import QColor
 import numpy as np
 
 
-def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[QgsLayerTreeNode]:
+def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
 
     children = parent.children()
@@ -45,7 +45,7 @@ def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[QgsLayerTree
     return layers
 
 
-def convertSelectedLayers(layers, selectedLayerNames, projectCRS, project):
+def convertSelectedLayers(layers: List[QgsLayerTreeLayer], selectedLayerNames: List[str], projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> List[VectorLayer] or List[RasterLayer]:
     """Converts the current selected layers to Speckle"""
     result = []
     for layer in layers:
@@ -54,7 +54,7 @@ def convertSelectedLayers(layers, selectedLayerNames, projectCRS, project):
     return result
 
 
-def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
+def layerToSpeckle(layer: QgsLayerTreeLayer, projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> VectorLayer or RasterLayer: #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     """Converts a given QGIS Layer to Speckle"""
     layerName = layer.name()
     selectedLayer = layer.layer()
@@ -71,14 +71,14 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
     
     if isinstance(selectedLayer, QgsVectorLayer):
 
-        fieldnames = [field.name() for field in selectedLayer.fields()]
+        fieldnames = [str(field.name()) for field in selectedLayer.fields()]
 
         # write feature attributes
         for f in selectedLayer.getFeatures():
             b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer)
             layerObjs.append(b)
         # Convert layer to speckle
-        layerBase = Layer(name=layerName, crs=speckleReprojectedCrs, features=layerObjs, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
+        layerBase = VectorLayer(name=layerName, crs=speckleReprojectedCrs, features=layerObjs, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
         layerBase.type="VectorLayer"
         layerBase.renderer = layerRenderer
         layerBase.applicationId = selectedLayer.id()
@@ -97,7 +97,7 @@ def layerToSpeckle(layer, projectCRS, project): #now the input is QgsVectorLayer
         return layerBase
 
 
-def layerToNative(layer: Union[Layer, RasterLayer], streamBranch: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
 
     if layer.type is None:
         # Handle this case
@@ -108,12 +108,14 @@ def layerToNative(layer: Union[Layer, RasterLayer], streamBranch: str) -> Union[
         return rasterLayerToNative(layer, streamBranch)
     return None
 
-def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -> List[QgsVectorLayer or None]:
 
     geom_points = []
     geom_polylines = []
-    geom_polygones = []
     geom_meshes = []
+
+    layer_points = None
+    layer_polylines = None
     #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
     for geom in layerContentList:
         #print(geom)
@@ -124,13 +126,17 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -
     
     if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch)
     if len(geom_polylines)>0: layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch)
-
+    #print(layerName)
+    #print(layer_points)
+    #print(layer_polylines)
     return [layer_points, layer_polylines]
 
-def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch: str): 
+def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str) -> QgsVectorLayer: 
+    print("___________cadVectorLayerToNative")
     #get Project CRS, use it by default for the new received layer
     vl = None
     layerName = layerName + "/" + geomType
+    print(layerName)
     crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
     if crs.isGeographic is True: 
         logger.logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", Qgis.Warning)
@@ -148,7 +154,9 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
     layerGroup.setItemVisibilityChecked(True)
 
     #find ID of the layer with a matching name in the "latest" group 
-    newName = f'{streamBranch}_{layerName}'
+    #newName = f'{streamBranch}_{layerName}'
+    newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
+
 
     #or create one from scratch
     crsid = crs.authid()
@@ -171,7 +179,9 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
     for f in geomList[:]: 
         new_feat = cadFeatureToNative(f, newFields)
         # update attrs for the next feature (if more fields were added from previous feature)
-        
+
+        print("________cad feature to add")
+        print(new_feat)
         if new_feat != "": 
             fets.append(new_feat)
             for a in newFields.toList(): 
@@ -224,7 +234,7 @@ def cadVectorLayerToNative(geomList, layerName: str, geomType: str, streamBranch
 
     return vl
 
-def vectorLayerToNative(layer: Layer, streamBranch: str):
+def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
     vl = None
     crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
 

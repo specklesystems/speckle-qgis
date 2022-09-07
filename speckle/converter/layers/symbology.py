@@ -15,6 +15,8 @@ from qgis.core import (
 from speckle.converter.layers.Layer import Layer, RasterLayer
 from PyQt5.QtGui import QColor
 
+# TODO QML format: https://gis.stackexchange.com/questions/202230/loading-style-qml-file-to-layer-via-pyqgis 
+
 def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer):
     # case with one color for the entire layer
     renderer = layer.renderer()
@@ -244,6 +246,7 @@ def rasterRendererToNative(layer: RasterLayer, rInterface: QgsRasterDataProvider
     return rendererNew
     
 def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer):
+    print("___RENDERER TO SPECKLE___")
     rType = renderer.type() # 'singleSymbol','categorizedSymbol','graduatedSymbol',
     layerRenderer = {}
     layerRenderer['type'] = rType
@@ -251,7 +254,8 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer):
     if rType == 'singleSymbol': 
         layerRenderer['properties'] = {'symbol':{}, 'symbType':""}
 
-        symbol = renderer.symbol() # QgsLineSymbol
+        symbol = renderer.symbol() #singleSymbol # QgsLineSymbol
+        print(symbol)
         symbType = symbol.symbolTypeToString(symbol.type()) #Line
         try: rgb = symbol.color().getRgb()
         except: [int(i) for i in symbol().color().replace(" ","").split(',')[:3] ]

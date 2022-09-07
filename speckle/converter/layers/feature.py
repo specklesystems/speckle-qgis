@@ -2,19 +2,20 @@ from distutils.log import error
 from tokenize import String
 from typing import List
 from qgis._core import QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, QgsRasterBandStats, QgsFeature, QgsFields, \
-    QgsField
+    QgsField, QgsVectorLayer, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsProject
 from specklepy.objects import Base
 
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
 from speckle.converter.geometry.mesh import rasterToMesh
+from speckle.converter.layers.Layer import RasterLayer
 from speckle.logging import logger
-from speckle.converter.layers.utils import getVariantFromValue 
+from speckle.converter.layers.utils import getVariantFromValue, traverseDict 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 
-def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project, selectedLayer):
+def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer):
     b = Base()
 
     #apply transformation if needed
@@ -42,7 +43,7 @@ def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project, selectedLayer
     return b
 
 
-def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
+def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordinateReferenceSystem, project: QgsProject) -> Base:
     rasterBandCount = selectedLayer.bandCount()
     rasterBandNames = []
     rasterDimensions = [selectedLayer.width(), selectedLayer.height()]
@@ -219,7 +220,7 @@ def featureToNative(feature: Base, fields: QgsFields):
     
     feat.setFields(fields)  
     for field in fields:
-        name = field.name()
+        name = str(field.name())
         print(name)
         variant = field.type()
         if name == "id": feat[name] = str(feature["applicationId"])
@@ -240,6 +241,7 @@ def featureToNative(feature: Base, fields: QgsFields):
     return feat
 
 def cadFeatureToNative(feature: Base, fields: QgsFields):
+    print("______________cadFeatureToNative")
     feat = QgsFeature()
     try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
     except:  speckle_geom = feature # for created in other software
@@ -257,12 +259,20 @@ def cadFeatureToNative(feature: Base, fields: QgsFields):
 
     feat.setFields(fields)  
     for field in fields:
-        name = field.name()
+        print(str(field.name()))
+        name = str(field.name())
         variant = field.type()
         if name == "Speckle_ID": feat[name] = str(feature["id"])
         else: 
-            value = feature[name]
-            if variant == QVariant.String: value = str(feature[name]) 
+            # for values - normal or inside dictionaries: 
+            try: value = feature[name]
+            except:
+                rootName = name.split("_")[0]
+                newF, newVals = traverseDict({}, {}, rootName, feature[rootName][0])
+                for i, (k,v) in enumerate(newVals.items()):
+                    if k == name: value = v; break
+            # for all values: 
+            if variant == QVariant.String: value = str(value) 
             
             if isinstance(value, str) and variant == QVariant.Date:  # 14
                 y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]
