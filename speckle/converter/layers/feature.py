@@ -16,7 +16,7 @@ from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-pac
     gdal, osr)
 
 def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer):
-    b = Base()
+    b = Base(units = "m")
 
     #apply transformation if needed
     if sourceCRS != targetCRS:

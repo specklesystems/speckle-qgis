@@ -76,7 +76,7 @@ def layerToSpeckle(layer: QgsLayerTreeLayer, projectCRS: QgsCoordinateReferenceS
             b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer)
             layerObjs.append(b)
         # Convert layer to speckle
-        layerBase = VectorLayer(name=layerName, crs=speckleReprojectedCrs, features=layerObjs, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
+        layerBase = VectorLayer(units = "m", name=layerName, crs=speckleReprojectedCrs, features=layerObjs, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
         layerBase.type="VectorLayer"
         layerBase.renderer = layerRenderer
         layerBase.applicationId = selectedLayer.id()
@@ -88,7 +88,7 @@ def layerToSpeckle(layer: QgsLayerTreeLayer, projectCRS: QgsCoordinateReferenceS
         b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project)
         layerObjs.append(b)
         # Convert layer to speckle
-        layerBase = RasterLayer(name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, features=layerObjs, type="RasterLayer")
+        layerBase = RasterLayer(units = "m", name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, features=layerObjs, type="RasterLayer")
         layerBase.type="RasterLayer"
         layerBase.renderer = layerRenderer
         layerBase.applicationId = selectedLayer.id()

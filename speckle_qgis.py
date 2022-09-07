@@ -246,7 +246,7 @@ class SpeckleQGIS:
             logger.logToUser("No layers selected", Qgis.Warning)
             return
 
-        base_obj = Base()
+        base_obj = Base(units = "m")
         base_obj.layers = convertSelectedLayers(layers, selectedLayerNames, projectCRS, project)
 
         # Reset Survey point

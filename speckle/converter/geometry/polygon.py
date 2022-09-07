@@ -25,7 +25,7 @@ from PyQt5.QtGui import QColor
 def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsPolygon to Speckle"""
     try: 
-        polygon = Base()
+        polygon = Base(units = "m")
         pointList = []
         pt_iterator = []
         try: 
