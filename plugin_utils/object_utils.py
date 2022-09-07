@@ -1,5 +1,5 @@
 
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional 
 
 from speckle.logging import logger
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer

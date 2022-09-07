@@ -6,16 +6,15 @@ from typing import List, Union
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
-from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes, QgsField
+#from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
 from qgis.core import (Qgis, QgsRasterLayer,
-                       QgsVectorLayer, QgsProject, 
+                       QgsVectorLayer, QgsProject, QgsWkbTypes,
                        QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsLayerTreeLayer,
                        QgsCoordinateReferenceSystem, QgsCoordinateTransform,
-                       QgsFields, QgsRenderContext, QgsLayout, 
-                       QgsFeatureRenderer, QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
-                       QgsLineSymbol, QgsGraduatedSymbolRenderer, QgsRendererCategory,
-                       QgsGradientColorRamp, QgsRendererRange, QgsSymbol, QgsSymbolLayer, 
-                       QgsApplication,QgsSymbolLayerRegistry, )
+                       QgsFields, 
+                       QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
+                       QgsRendererCategory,
+                       QgsSymbol)
 from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
@@ -27,7 +26,6 @@ from specklepy.objects import Base
 from speckle.converter.layers.symbology import vectorRendererToNative, rasterRendererToNative, rendererToSpeckle
 
 from PyQt5.QtGui import QColor
-
 import numpy as np
 
 
@@ -283,7 +281,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
     vl.commitChanges()
     layerGroup.addLayer(vl)
 
-    rendererNew = vectorRendererToNative(layer)
+    rendererNew = vectorRendererToNative(layer, newFields)
     if rendererNew is None:
         symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
         rendererNew = QgsSingleSymbolRenderer(symbol)

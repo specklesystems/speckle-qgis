@@ -2,7 +2,7 @@ from PyQt5.QtCore import QVariant, QDate, QDateTime
 from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes, QgsField, QgsFields
 from speckle.logging import logger
 from speckle.converter.layers import Layer
-from typing import Any, List, Union
+from typing import Any, List, Tuple, Union
 from specklepy.objects import Base
 
 
@@ -147,17 +147,6 @@ def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
     elif isinstance(value, str) and "PyQt5.QtCore.QDateTime(" in value: res = QVariant.DateTime #16
 
     return res
-r'''
-def get_type(type_name):
-    try:
-        return getattr(__builtins__, type_name)
-    except AttributeError:
-        try:
-            obj = globals()[type_name]
-        except KeyError:
-            return None
-        return repr(obj) if isinstance(obj, type) else None
-'''
 
 def getLayerAttributes(features: List[Base]) -> QgsFields:
     print("___________getLayerAttributes")
@@ -181,9 +170,7 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
             variant = getVariantFromValue(value)
             if not variant: variant = None #LongLong #4 
 
-            # go thought inside of dictionary object
-            #print(value)
-            #print(type(value[0]))
+            # go thought the dictionary object
             if value and isinstance(value, list) and isinstance(value[0], dict) :
                 all_props.remove(name) # remove generic dict name
                 newF, newVals = traverseDict( {}, {}, name, value[0])
@@ -203,14 +190,13 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
 
     # replace all empty ones with String
     for name in all_props:
-        print(name)
         if name not in fields.names(): 
             fields.append(QgsField(name, QVariant.String)) 
     print("____ end of getLayerAttributes")
     return fields
 
  # go through dictionary 
-def traverseDict(newF, newVals, nam, val):
+def traverseDict(newF: dict[Any, Any], newVals: dict[Any, Any], nam: str, val: Any):
     #newF = {}
     if isinstance(val, dict):
         for i, (k,v) in enumerate(val.items()):
@@ -220,10 +206,7 @@ def traverseDict(newF, newVals, nam, val):
         if not var: var = None #LongLong #4 
         else: 
             newF.update({nam: var})
-            newVals.update({nam: val})
-            print(nam)
-            print(val)
-            print(var)    
+            newVals.update({nam: val})  
     return newF, newVals
 
 def get_scale_factor(units: str) -> float:

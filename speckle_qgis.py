@@ -17,9 +17,7 @@
 import os.path
 from typing import Any, Callable, List, Optional, Tuple
 
-from qgis.core import (Qgis, QgsProject, QgsExpressionContextUtils, QgsExpressionContextScope,
-                      QgsCoordinateReferenceSystem, QgsPointXY, QgsLayerTreeGroup,
-                      QgsLayerTreeLayer)
+from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QDockWidget
@@ -101,7 +99,7 @@ class SpeckleQGIS:
 
     # noinspection PyMethodMayBeStatic
 
-    def tr(self, message):
+    def tr(self, message: str):
         """Get the translation for a string using Qt translation API.
 
         We implement this ourselves since we do not inherit QObject.
@@ -117,7 +115,7 @@ class SpeckleQGIS:
 
     def add_action(
         self,
-        icon_path,
+        icon_path: str,
         text,
         callback,
         enabled_flag=True,
@@ -403,18 +401,10 @@ class SpeckleQGIS:
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
             # Connect streams section events
-            self.dockwidget.streams_add_button.clicked.connect(
-                self.onStreamAddButtonClicked
-            )
-            self.dockwidget.streams_remove_button.clicked.connect(
-                self.onStreamRemoveButtonClicked
-            )
-            self.dockwidget.streamList.itemSelectionChanged.connect(
-                self.onActiveStreamChanged
-            )
-            self.dockwidget.streamBranchDropdown.currentIndexChanged.connect(
-                self.populateActiveCommitDropdown
-            )
+            self.dockwidget.streams_add_button.clicked.connect( self.onStreamAddButtonClicked )
+            self.dockwidget.streams_remove_button.clicked.connect( self.onStreamRemoveButtonClicked )
+            self.dockwidget.streamList.itemSelectionChanged.connect( self.onActiveStreamChanged )
+            self.dockwidget.streamBranchDropdown.currentIndexChanged.connect( self.populateActiveCommitDropdown )
 
             get_project_streams(self)
 

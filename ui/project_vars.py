@@ -3,13 +3,11 @@
 # Persist added streams in project
 from speckle_qgis import SpeckleQGIS
 
-from specklepy.logging.exceptions import SpeckleException, GraphQLException
+from specklepy.logging.exceptions import SpeckleException 
 from specklepy.api.wrapper import StreamWrapper
 
 from speckle.logging import logger
-from qgis.core import (Qgis, QgsProject, QgsExpressionContextUtils, QgsExpressionContextScope,
-                      QgsCoordinateReferenceSystem, QgsPointXY, QgsLayerTreeGroup,
-                      QgsLayerTreeLayer)
+from qgis.core import (Qgis, QgsProject, QgsCoordinateReferenceSystem)
 from ui.validation import tryGetStream
 
 def get_project_streams(self: SpeckleQGIS):
@@ -51,8 +49,8 @@ def get_survey_point(self: SpeckleQGIS):
 def set_survey_point(self: SpeckleQGIS):
     # from widget (3 strings) to local vars AND memory (1 string)
     proj = QgsProject().instance()
-    vals =[self.dockwidget.surveyPointLat.text(),self.dockwidget.surveyPointLon.text()]
-    #if b:
+    vals =[ str(self.dockwidget.surveyPointLat.text()), str(self.dockwidget.surveyPointLon.text()) ]
+
     try: 
         self.lat, self.lon = [float(i) for i in vals]
         pt = str(self.lat) + ";" + str(self.lon) 

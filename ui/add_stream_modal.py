@@ -1,4 +1,5 @@
 import os
+from typing import List, Union
 import ui.speckle_qgis_dialog
 from qgis.PyQt import QtWidgets, uic, QtCore
 from qgis.PyQt.QtCore import pyqtSignal
@@ -21,8 +22,8 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
     dialog_button_box: QtWidgets.QDialogButtonBox = None
     accounts_dropdown: QtWidgets.QComboBox
 
-    stream_results: [Stream] = []
-    speckle_client: SpeckleClient = None
+    stream_results: List[Stream] = []
+    speckle_client: Union[SpeckleClient, None] = None
 
     #Events
     handleStreamAdd = pyqtSignal(StreamWrapper)

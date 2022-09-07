@@ -1,7 +1,4 @@
 
-
-
-
 from speckle_qgis import SpeckleQGIS
 from ui.add_stream_modal import AddStreamModalDialog
 from ui.dockwidget_populate import populateActiveCommitDropdown, populateActiveStreamBranchDropdown, populateLayerDropdown, populateProjectStreams, populateSurveyPoint

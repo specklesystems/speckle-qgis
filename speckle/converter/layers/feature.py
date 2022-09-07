@@ -52,7 +52,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 
     ds = gdal.Open(selectedLayer.source(), gdal.GA_ReadOnly)
     rasterOriginPoint = QgsPointXY(ds.GetGeoTransform()[0], ds.GetGeoTransform()[3])
-    rasterResXY = [ds.GetGeoTransform()[1],ds.GetGeoTransform()[5]]
+    rasterResXY = [float(ds.GetGeoTransform()[1]), float(ds.GetGeoTransform()[5])]
     rasterBandNoDataVal = []
     rasterBandMinVal = []
     rasterBandMaxVal = []
@@ -78,18 +78,6 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         valMax = selectedLayer.dataProvider().bandStatistics(index+1, QgsRasterBandStats.All).maximumValue
         bandVals = rb.ReadAsArray().tolist()
 
-        '''
-        ## reduce resolution if needed: 
-        if totalValues>max_values : 
-            bandVals_resized = [] #list of lists
-            factor = 1 #recalculate factor to reach max size
-            for i in range(1,20):
-                if totalValues/(i*i) <= max_values:
-                    factor = i
-                    break
-            for item in bandVals: #reduce each row and each column
-                bandVals_resized = [bandVals]
-        '''
         bandValsFlat = []
         [bandValsFlat.extend(item) for item in bandVals]
         #look at mesh chunking
@@ -134,9 +122,9 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             noValColor = selectedLayer.renderer().nodataColor().getRgb()
 
             if rendererType == "multibandcolor":
-                redBand = selectedLayer.renderer().redBand()
-                greenBand = selectedLayer.renderer().greenBand()
-                blueBand = selectedLayer.renderer().blueBand()
+                redBand = int(selectedLayer.renderer().redBand())
+                greenBand = int(selectedLayer.renderer().greenBand())
+                blueBand = int(selectedLayer.renderer().blueBand())
                 rVal = 0
                 gVal = 0
                 bVal = 0
@@ -211,17 +199,12 @@ def featureToNative(feature: Base, fields: QgsFields):
     else:
         qgsGeom = geometry.convertToNative(speckle_geom)
 
-    if qgsGeom is not None:
-        feat.setGeometry(qgsGeom)
+    if qgsGeom is not None: feat.setGeometry(qgsGeom)
 
-    #try: 
-    #    if "id" not in fields.names() and feature["applicationId"]: fields.append(QgsField("id", QVariant.String))
-    #except: pass
-    
     feat.setFields(fields)  
     for field in fields:
         name = str(field.name())
-        print(name)
+        #print(name)
         variant = field.type()
         if name == "id": feat[name] = str(feature["applicationId"])
         else: 

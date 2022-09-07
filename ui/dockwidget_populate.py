@@ -1,7 +1,6 @@
 
-
 from speckle_qgis import SpeckleQGIS
-from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsRasterLayer
+from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer
 from ui.project_vars import set_project_streams
 
 
@@ -28,8 +27,7 @@ def populateLayerDropdown(self: SpeckleQGIS):
                 nameDisplay.append(layer.name() + " !LARGE!")
             else: nameDisplay.append(layer.name())
         else: nameDisplay.append(str(layer.name()))
-    #print(nameDisplay)
-    #[x for _, x in sorted(zip(nameToSort, nameDisplay))]
+        
     nameDisplay.sort(key=lambda v: v.upper())
     #print(nameDisplay)
     self.dockwidget.layersWidget.addItems(nameDisplay)
@@ -38,14 +36,12 @@ def populateLayerDropdown(self: SpeckleQGIS):
 def populateProjectStreams(self: SpeckleQGIS):
     if not self.dockwidget:
         return
-    #print(self.current_streams)
     self.dockwidget.streamList.clear()
 
     self.dockwidget.streamList.addItems(
         [f"Stream not accessible - {stream[0].stream_id}" if stream[1] is None else f"{stream[1].name} - {stream[1].id}" for stream in self.current_streams]
     )
     set_project_streams(self)
-
 
 def populateSurveyPoint(self: SpeckleQGIS):
     if not self.dockwidget:
@@ -56,7 +52,6 @@ def populateSurveyPoint(self: SpeckleQGIS):
         self.dockwidget.surveyPointLon.clear()
         self.dockwidget.surveyPointLon.setText(str(self.lon))
     except: return
-
 
 def populateActiveStreamBranchDropdown(self: SpeckleQGIS):
     if not self.dockwidget:
