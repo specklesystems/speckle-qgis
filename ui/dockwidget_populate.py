@@ -1,4 +1,5 @@
 
+from speckle.converter.layers import getLayers
 from speckle_qgis import SpeckleQGIS
 from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer
 from ui.project_vars import set_project_streams
@@ -9,6 +10,10 @@ def populateLayerDropdown(self: SpeckleQGIS):
         return
     # Fetch the currently loaded layers
     layers = QgsProject.instance().mapLayers().values()
+    
+    project = QgsProject.instance()
+    layerTreeRoot = project.layerTreeRoot()
+    layers = getLayers(layerTreeRoot, layerTreeRoot) # List[QgsLayerTreeNode]
 
     # Clear the contents of the comboBox from previous runs
     self.dockwidget.layersWidget.clear()
@@ -16,19 +21,21 @@ def populateLayerDropdown(self: SpeckleQGIS):
     #self.dockwidget.layersWidget.addItems([layer.name() for layer in layers])
     
     nameDisplay = [] 
-    for layer in layers:
+    for i, layer in enumerate(layers):
+        layer = layer.layer() #QgsMapLayer
         if isinstance(layer, QgsRasterLayer):
             if layer.width()*layer.height() > 1000000:
-                nameDisplay.append(layer.name() + " !LARGE!")
-            else: nameDisplay.append(layer.name())
+                nameDisplay.append(str(i)+" - "+ layer.name() + " !LARGE!")
+            else: nameDisplay.append(str(i)+" - "+ layer.name())
         
         elif isinstance(layer, QgsVectorLayer):
             if layer.featureCount() > 20000:
-                nameDisplay.append(layer.name() + " !LARGE!")
-            else: nameDisplay.append(layer.name())
-        else: nameDisplay.append(str(layer.name()))
+                nameDisplay.append(str(i)+" - "+ layer.name() + " !LARGE!")
+            else: nameDisplay.append(str(i)+" - "+ layer.name())
+        else: nameDisplay.append(str(i)+" - "+ str(layer.name()))
         
-    nameDisplay.sort(key=lambda v: v.upper())
+    #nameDisplay.sort(key=lambda v: v.upper())
+    
     #print(nameDisplay)
     self.dockwidget.layersWidget.addItems(nameDisplay)
 

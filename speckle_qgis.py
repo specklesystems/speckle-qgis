@@ -231,6 +231,7 @@ class SpeckleQGIS:
         layers = getLayers(layerTreeRoot, layerTreeRoot) # List[QgsLayerTreeNode]
 
         selectedLayerNames = [ str(item.text()).replace(" !LARGE!","") for item in self.dockwidget.layersWidget.selectedItems() ]
+        selectedLayerIndex = [ int(str(item.text()).split(" - ")[0]) for item in self.dockwidget.layersWidget.selectedItems() ]
 
         # Check if stream id/url is empty
         if not self.dockwidget.streamIdField.text():
@@ -247,7 +248,7 @@ class SpeckleQGIS:
             return
 
         base_obj = Base(units = "m")
-        base_obj.layers = convertSelectedLayers(layers, selectedLayerNames, projectCRS, project)
+        base_obj.layers = convertSelectedLayers(layers, selectedLayerIndex, projectCRS, project)
 
         # Reset Survey point
         populateSurveyPoint(self)
