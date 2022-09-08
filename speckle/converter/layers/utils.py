@@ -195,7 +195,6 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
     print("____ end of getLayerAttributes")
     return fields
 
- # go through dictionary 
 def traverseDict(newF: dict[Any, Any], newVals: dict[Any, Any], nam: str, val: Any):
     #newF = {}
     if isinstance(val, dict):

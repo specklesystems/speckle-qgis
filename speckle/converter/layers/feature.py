@@ -234,18 +234,23 @@ def cadFeatureToNative(feature: Base, fields: QgsFields):
     else:
         qgsGeom = geometry.convertToNative(speckle_geom)
 
-    if qgsGeom is not None:
-        feat.setGeometry(qgsGeom)
+    if qgsGeom is not None: feat.setGeometry(qgsGeom)
+    else: return
+
     try: 
         if "Speckle_ID" not in fields.names() and feature["id"]: fields.append(QgsField("Speckle_ID", QVariant.String))
     except: pass
 
     feat.setFields(fields)  
+
+    #### setting attributes to feature
     for field in fields:
         print(str(field.name()))
         name = str(field.name())
         variant = field.type()
-        if name == "Speckle_ID": feat[name] = str(feature["id"])
+        if name == "Speckle_ID": 
+            value = str(feature["id"])
+            feat[name] = value
         else: 
             # for values - normal or inside dictionaries: 
             try: value = feature[name]
