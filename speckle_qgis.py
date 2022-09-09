@@ -15,7 +15,7 @@
 
 
 import os.path
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
@@ -43,7 +43,6 @@ from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
 
 # Import the code for the dialog
-from ui.speckle_qgis_dialog import SpeckleQGISDialog
 from ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
 
 class SpeckleQGIS:
@@ -53,7 +52,7 @@ class SpeckleQGIS:
     add_stream_modal: AddStreamModalDialog
     current_streams: List[Tuple[StreamWrapper, Stream]] = [] #{id:(sw,st),id2:()}
 
-    active_stream: Optional[Tuple[StreamWrapper, Stream]]
+    active_stream: Union[Tuple[StreamWrapper, Stream], None] = None 
 
     qgis_project: QgsProject
 
@@ -220,8 +219,6 @@ class SpeckleQGIS:
 
     def onSendButtonClicked(self):
         """Handles action when Send button is pressed."""
-        from ui.dockwidget_populate import populateSurveyPoint 
-
         if not self.dockwidget: return
 
         # creating our parent base object
@@ -251,7 +248,7 @@ class SpeckleQGIS:
         base_obj.layers = convertSelectedLayers(layers, selectedLayerIndex, projectCRS, project)
 
         # Reset Survey point
-        populateSurveyPoint(self)
+        self.dockwidget.populateSurveyPoint(self)
 
         # Get the stream wrapper
         streamWrapper = self.active_stream[0]
@@ -359,12 +356,22 @@ class SpeckleQGIS:
             return
 
     def reloadUI(self):
-        from ui.dockwidget_actions import reloadUi
+        
+        from ui.project_vars import get_project_streams, get_survey_point
 
         self.is_setup = self.check_for_accounts()
         if self.dockwidget is not None:
             self.active_stream = None
-            reloadUi(self)
+            get_project_streams(self)
+            get_survey_point(self)
+
+            self.dockwidget.populateLayerDropdown()
+            self.dockwidget.populateProjectStreams(self)
+            self.dockwidget.populateSurveyPoint(self)
+
+            self.dockwidget.clearDropdown()
+
+            self.dockwidget.enableElements(self)
 
     def check_for_accounts(self):
         def go_to_manager():
@@ -377,7 +384,7 @@ class SpeckleQGIS:
 
     def run(self):
         """Run method that performs all the real work"""
-        from ui.dockwidget_populate import populateLayerDropdown, populateProjectStreams, populateSurveyPoint 
+        from ui.speckle_qgis_dialog import SpeckleQGISDialog
         from ui.project_vars import get_project_streams, get_survey_point
 
         # Create the dialog with elements (after translation) and keep reference
@@ -393,27 +400,16 @@ class SpeckleQGIS:
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
 
-            # Setup events on first load only!
-            self.dockwidget.sendButton.clicked.connect(self.onSendButtonClicked)
-            self.dockwidget.receiveButton.clicked.connect(self.onReceiveButtonClicked)
-            self.dockwidget.reloadButton.clicked.connect(self.reloadUI)
-            self.dockwidget.saveSurveyPoint.clicked.connect(self.set_survey_point)
-            # connect to provide cleanup on closing of dockwidget
-            self.dockwidget.closingPlugin.connect(self.onClosePlugin)
+            get_project_streams(self)
+            get_survey_point(self)
 
+            # Setup events on first load only!
+            self.dockwidget.setupOnFirstLoad(self)
             # Connect streams section events
             self.dockwidget.streams_add_button.clicked.connect( self.onStreamAddButtonClicked )
-            self.dockwidget.streams_remove_button.clicked.connect( self.onStreamRemoveButtonClicked )
-            self.dockwidget.streamList.itemSelectionChanged.connect( self.onActiveStreamChanged )
-            self.dockwidget.streamBranchDropdown.currentIndexChanged.connect( self.populateActiveCommitDropdown )
-
-            get_project_streams(self)
-
+            self.dockwidget.completeStreamSection(self)
             # Populate the UI dropdowns
-            populateLayerDropdown(self)
-            populateProjectStreams(self)
-            get_survey_point(self)
-            populateSurveyPoint(self)
+            self.dockwidget.populateUI(self)
 
             # Setup reload of UI dropdowns when layers change.
             layerRoot = QgsProject.instance()
@@ -422,37 +418,21 @@ class SpeckleQGIS:
 
             # show the dockwidget
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
+            self.dockwidget.enableElements(self)
 
-            self.dockwidget.receiveButton.setEnabled(self.is_setup)
-            self.dockwidget.sendButton.setEnabled(self.is_setup)
-            self.dockwidget.streams_add_button.setEnabled(self.is_setup)
-            self.dockwidget.streams_remove_button.setEnabled(self.is_setup)
-            self.dockwidget.streamBranchDropdown.setEnabled(self.is_setup)
-            self.dockwidget.commitDropdown.setEnabled(self.is_setup)
-            self.dockwidget.show()
+    def onStreamAddButtonClicked(self):
+        self.add_stream_modal = AddStreamModalDialog(None)
+        self.add_stream_modal.handleStreamAdd.connect(self.handleStreamAdd)
+        self.add_stream_modal.show()
 
     def set_survey_point(self): 
         from ui.project_vars import set_survey_point
         set_survey_point(self)
-        
-    def populateActiveCommitDropdown(self): 
-        from ui.dockwidget_populate import populateActiveCommitDropdown
-        populateActiveCommitDropdown(self)
 
-    def onStreamAddButtonClicked(self):
-        from ui.dockwidget_actions import onStreamAddButtonClicked
-        onStreamAddButtonClicked(self)
-        
     def onStreamRemoveButtonClicked(self):
-        from ui.dockwidget_actions import onStreamRemoveButtonClicked
-        onStreamRemoveButtonClicked(self)
-        
-    def onActiveStreamChanged(self):
-        from ui.dockwidget_actions import onActiveStreamChanged
-        onActiveStreamChanged(self)
-      
+        self.dockwidget.onStreamRemoveButtonClicked(self)
+
     def handleStreamAdd(self, sw: StreamWrapper):
-        from ui.dockwidget_populate import populateProjectStreams 
         from ui.project_vars import set_project_streams
            
         streamExists = 0
@@ -463,7 +443,8 @@ class SpeckleQGIS:
         except SpeckleException as e:
             logger.logToUser(e.message, Qgis.Warning)
             stream = None
+        
         if streamExists == 0: self.current_streams.append((sw, stream))
         self.add_stream_modal.handleStreamAdd.disconnect(self.handleStreamAdd)
         set_project_streams(self)
-        populateProjectStreams(self)
+        self.dockwidget.populateProjectStreams(self)

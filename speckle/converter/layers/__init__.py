@@ -36,7 +36,7 @@ def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[ Union[QgsLa
     layers = []
     for node in children:
         if tree.isLayer(node):
-            if isinstance(layers, QgsVectorLayer) or isinstance(layers, QgsRasterLayer): layers.append(node)
+            if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): layers.append(node)
             continue
         if tree.isGroup(node):
             layers.extend( [ lyr for lyr in getLayers(tree, node) if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer) ] )
