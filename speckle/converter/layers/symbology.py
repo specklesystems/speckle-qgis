@@ -1,6 +1,7 @@
 
+from typing import Any, Union
 from qgis.core import (
-    QgsRasterRenderer, QgsFeatureRenderer, 
+    QgsRasterRenderer, QgsFeatureRenderer, QgsFields,
     QgsFeature, QgsVectorLayer,
     QgsGradientColorRamp, 
     QgsGradientStop, QgsRendererRange,
@@ -12,10 +13,12 @@ from qgis.core import (
     QgsGraduatedSymbolRenderer, QgsRasterDataProvider
 
 )
-from speckle.converter.layers.Layer import Layer, RasterLayer
+from speckle.converter.layers.Layer import Layer, RasterLayer, VectorLayer
 from PyQt5.QtGui import QColor
 
-def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer):
+# TODO QML format: https://gis.stackexchange.com/questions/202230/loading-style-qml-file-to-layer-via-pyqgis 
+
+def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer) -> int:
     # case with one color for the entire layer
     renderer = layer.renderer()
     try:
@@ -52,7 +55,7 @@ def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer):
         else: return (0<<16) + (0<<8) + 0
     except: return (0<<16) + (0<<8) + 0
 
-def gradientColorRampToSpeckle(rRamp: QgsGradientColorRamp):
+def gradientColorRampToSpeckle(rRamp: QgsGradientColorRamp) -> dict[str, Any]: 
     props = rRamp.properties() # {'color1': '255,255,255,255', 'color2': '255,0,0,255', 'discrete': '0', 'rampType': 'gradient'}
     stops = rRamp.stops() #[]
     stopsStr = []
@@ -67,7 +70,7 @@ def gradientColorRampToSpeckle(rRamp: QgsGradientColorRamp):
 
     return sourceRamp
 
-def gradientColorRampToNative(renderer):
+def gradientColorRampToNative(renderer: dict[str, Any]) -> QgsGradientColorRamp:
     ramp = renderer['properties']['ramp'] # {discrete, rampType, stops}
     newRamp = None
     try: # if it's not a random color ramp
@@ -91,19 +94,22 @@ def gradientColorRampToNative(renderer):
     except: pass
     return newRamp
 
-def vectorRendererToNative(layer: Layer):
+def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields ) -> Union[QgsSingleSymbolRenderer,QgsCategorizedSymbolRenderer, QgsGraduatedSymbolRenderer]:
     renderer = layer.renderer 
     rendererNew = None 
+    existingAttrs = fields.names()
     if renderer and renderer['type']:
         if renderer['type']  == 'categorizedSymbol':
             attribute = renderer['properties']['attribute']
             cats = renderer['properties']['categories']
-
+            if attribute not in existingAttrs: 
+                rendererNew = makeDefaultRenderer(renderer, layer)
+                return rendererNew
             categories = []
             noneVal = 0
             for i in range(len(cats)):
                 v = cats[i]['value'] 
-                if v is None: noneVal +=1
+                if v is None or v=="": noneVal +=1
                 rgb = cats[i]['symbColor']
                 r = (rgb & 0xFF0000) >> 16
                 g = (rgb & 0xFF00) >> 8
@@ -143,6 +149,10 @@ def vectorRendererToNative(layer: Layer):
         elif renderer['type'] == 'graduatedSymbol':
             attribute = renderer['properties']['attribute']
             gradMetod = renderer['properties']['gradMethod'] # by color or by size
+            if attribute not in existingAttrs: 
+                rendererNew = makeDefaultRenderer(renderer, layer)
+                return rendererNew
+
             rgb = renderer['properties']['sourceSymbColor'] 
             r = (rgb & 0xFF0000) >> 16
             g = (rgb & 0xFF00) >> 8
@@ -173,19 +183,24 @@ def vectorRendererToNative(layer: Layer):
                     rendererNew.setSourceSymbol(sourceSymbol)
                 except: rendererNew = QgsGraduatedSymbolRenderer()
                 rendererNew.setGraduatedMethod(gradMetod)
-
             else:
-                rgb = renderer['properties']['sourceSymbColor']
-                r = (rgb & 0xFF0000) >> 16
-                g = (rgb & 0xFF00) >> 8
-                b = rgb & 0xFF 
-                color = QColor.fromRgb(r, g, b)
-                symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
-                symbol.setColor(color)
-                rendererNew = QgsSingleSymbolRenderer(symbol)
+                rendererNew = makeDefaultRenderer(renderer, layer)
+
     return rendererNew
 
-def rasterRendererToNative(layer: RasterLayer, rInterface: QgsRasterDataProvider):
+def makeDefaultRenderer(renderer: dict[str, Any], layer: Union[Layer, VectorLayer]) -> QgsSingleSymbolRenderer:
+    try: rgb = renderer['properties']['sourceSymbColor']
+    except: rgb = (0<<16) + (0<<8) + 0
+    r = (rgb & 0xFF0000) >> 16
+    g = (rgb & 0xFF00) >> 8
+    b = rgb & 0xFF 
+    color = QColor.fromRgb(r, g, b)
+    symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
+    symbol.setColor(color)
+    rendererNew = QgsSingleSymbolRenderer(symbol)
+    return rendererNew
+
+def rasterRendererToNative(layer: RasterLayer, rInterface: QgsRasterDataProvider) -> Union[QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer]:
     renderer = layer.renderer
     rendererNew = None
     if renderer and renderer['type']:
@@ -229,7 +244,7 @@ def rasterRendererToNative(layer: RasterLayer, rInterface: QgsRasterDataProvider
         if renderer['type']  == 'paletted':
             band = renderer['properties']['band']
             classes = renderer['properties']['classes']
-            newRamp = gradientColorRampToNative(renderer) #QgsGradientColorRamp
+            #newRamp = gradientColorRampToNative(renderer) #QgsGradientColorRamp
             newClasses = []
             for i in classes:
                 rgb = i['color']
@@ -240,10 +255,10 @@ def rasterRendererToNative(layer: RasterLayer, rInterface: QgsRasterDataProvider
                 newClasses.append(QgsPalettedRasterRenderer.Class(float(i['value']),color,i['label']))
 
             rendererNew = QgsPalettedRasterRenderer(rInterface,int(band),newClasses)
-    
     return rendererNew
     
-def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer):
+def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict[str, Any]:
+    print("___RENDERER TO SPECKLE___")
     rType = renderer.type() # 'singleSymbol','categorizedSymbol','graduatedSymbol',
     layerRenderer = {}
     layerRenderer['type'] = rType
@@ -251,7 +266,8 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer):
     if rType == 'singleSymbol': 
         layerRenderer['properties'] = {'symbol':{}, 'symbType':""}
 
-        symbol = renderer.symbol() # QgsLineSymbol
+        symbol = renderer.symbol() #singleSymbol # QgsLineSymbol
+        print(symbol)
         symbType = symbol.symbolTypeToString(symbol.type()) #Line
         try: rgb = symbol.color().getRgb()
         except: [int(i) for i in symbol().color().replace(" ","").split(',')[:3] ]

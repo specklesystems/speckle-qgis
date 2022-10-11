@@ -2,7 +2,7 @@ from PyQt5.QtCore import QVariant, QDate, QDateTime
 from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes, QgsField, QgsFields
 from speckle.logging import logger
 from speckle.converter.layers import Layer
-from typing import Any, List, Union
+from typing import Any, List, Tuple, Union
 from specklepy.objects import Base
 
 
@@ -148,24 +148,14 @@ def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
 
     return res
 
-def get_type(type_name):
-    try:
-        return getattr(__builtins__, type_name)
-    except AttributeError:
-        try:
-            obj = globals()[type_name]
-        except KeyError:
-            return None
-        return repr(obj) if isinstance(obj, type) else None
-
-
 def getLayerAttributes(features: List[Base]) -> QgsFields:
+    print("___________getLayerAttributes")
     fields = QgsFields()
     all_props = []
     for feature in features: 
         #get object properties to add as attributes
         dynamicProps = feature.get_dynamic_member_names()
-        attrsToRemove = ['geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'userDictionary', 'userStrings','geometry']
+        attrsToRemove = ['geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'geometry'] 
         for att in attrsToRemove:
             try: dynamicProps.remove(att)
             except: pass
@@ -173,7 +163,6 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
         dynamicProps.sort()
 
         # add field names and variands 
-        #variants = [] 
         for name in dynamicProps:
             if name not in all_props: all_props.append(name)
 
@@ -181,8 +170,15 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
             variant = getVariantFromValue(value)
             if not variant: variant = None #LongLong #4 
 
-            # add a field if not existing yet AND if variant is known
-            if variant and (name not in fields.names()): 
+            # go thought the dictionary object
+            if value and isinstance(value, list) and isinstance(value[0], dict) :
+                all_props.remove(name) # remove generic dict name
+                newF, newVals = traverseDict( {}, {}, name, value[0])
+                for i, (k,v) in enumerate(newF.items()):
+                    fields.append(QgsField(k, v)) 
+                    if k not in all_props: all_props.append(k)
+
+            elif variant and (name not in fields.names()): 
                 fields.append(QgsField(name, variant)) 
             
             elif name in fields.names(): #check if the field was empty previously: 
@@ -192,13 +188,25 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
                 if oldType != QVariant.String and variant == QVariant.String: 
                     fields.append(QgsField(name,variant)) 
 
-    # replace all empty ones wit String
+    # replace all empty ones with String
     for name in all_props:
         if name not in fields.names(): 
             fields.append(QgsField(name, QVariant.String)) 
-
+    print("____ end of getLayerAttributes")
     return fields
-                
+
+def traverseDict(newF: dict[Any, Any], newVals: dict[Any, Any], nam: str, val: Any):
+    #newF = {}
+    if isinstance(val, dict):
+        for i, (k,v) in enumerate(val.items()):
+            traverseDict( newF, newVals, nam+"_"+k, v)
+    else: 
+        var = getVariantFromValue(val)
+        if not var: var = None #LongLong #4 
+        else: 
+            newF.update({nam: var})
+            newVals.update({nam: val})  
+    return newF, newVals
 
 def get_scale_factor(units: str) -> float:
     unit_scale = {

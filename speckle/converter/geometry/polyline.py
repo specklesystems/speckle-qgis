@@ -7,7 +7,8 @@ from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from qgis.core import (
     QgsLineString, 
     QgsCircularString, 
-    QgsCircle, QgsFeature, QgsVectorLayer
+    QgsCircle, QgsFeature, QgsVectorLayer,
+    QgsCompoundCurve, QgsVertexIterator
 )
 
 from qgis._core import Qgis
@@ -19,9 +20,10 @@ from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 #from PyQt5.QtGui import QColor
 
 
-def polylineFromVerticesToSpeckle(vertices, closed, feature: QgsFeature, layer: QgsVectorLayer):
+def polylineFromVerticesToSpeckle(vertices: Union[List[Point], QgsVertexIterator], closed: bool, feature: QgsFeature, layer: QgsVectorLayer):
     """Returns a Speckle Polyline given a list of QgsPoint instances and a boolean indicating if it's closed or not."""
-    specklePts = [pointToSpeckle(pt, feature, layer) for pt in vertices] #breaks unexplainably
+    if isinstance(vertices, list): specklePts = vertices
+    else: specklePts = [pointToSpeckle(pt, feature, layer) for pt in vertices] #breaks unexplainably
     #specklePts = []
     #for pt in vertices:
     #    p = pointToSpeckle(pt)
@@ -41,6 +43,30 @@ def polylineFromVerticesToSpeckle(vertices, closed, feature: QgsFeature, layer: 
     polyline['displayStyle']['color'] = col
     return polyline
 
+def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: QgsVectorLayer):
+    polycurve = Polycurve()
+    polycurve.segments = []
+    polycurve.closed = False
+    #vert = []
+    if "CircularString" in str(poly): 
+        all_pts = [pt for pt in poly.vertices()]
+        num_segm = (len(all_pts) - 1) / 2
+        startPt = all_pts[0]
+        if num_segm.is_integer(): # make sure the logic is [startPt, mid-end, mid-end etc]
+            for i in range(int(num_segm)):
+                segm = QgsCircularString(startPt, all_pts[1:][i*2], all_pts[1:][i*2 + 1] )
+                newArc = arcToSpeckle(segm, feature, layer)
+                polycurve.segments.append(newArc)
+                #vert.extend(speckleArcCircleToPoints(newArc))
+                startPt = all_pts[1:][i*2 + 1]
+    #polycurve = polylineFromVerticesToSpeckle(vert, False, feature, layer)
+    
+    col = featureColorfromNativeRenderer(feature, layer)
+    polycurve['displayStyle'] = {}
+    polycurve['displayStyle']['color'] = col
+
+    return polycurve 
+
 def polylineToSpeckle(poly: Union[QgsLineString, QgsCircularString], feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsLineString to Speckle"""
     try: closed = poly.isClosed()
@@ -54,6 +80,7 @@ def polylineToSpeckle(poly: Union[QgsLineString, QgsCircularString], feature: Qg
 
 def arcToSpeckle(poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsCircularString to Speckle"""
+    #print("____Arc to Speckle ___")
     arc = Arc()
     vert_list = [pt for pt in poly.vertices()] 
     arc.startPoint = pointToSpeckle(vert_list[0], feature, layer)
@@ -62,8 +89,12 @@ def arcToSpeckle(poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorL
     center, radius = getArcCenter(arc.startPoint, arc.midPoint, arc.endPoint)
     arc.plane = Plane()#.from_list(Point(), Vector(Point(0, 0, 1)), Vector(Point(0,1,0)), Vector(Point(-1,0,0)))
     arc.plane.origin = Point.from_list(center)
+    #arc.plane.xdir=Vector.from_list([1,0,0])
+    #arc.plane.ydir=Vector.from_list([0,1,0])
+    arc.plane.normal = getArcNormal(arc, arc.midPoint)
     arc.radius = radius
-    
+    arc.angleRadians, startAngle, endAngle = getArcRadianAngle(arc)
+
     col = featureColorfromNativeRenderer(feature, layer)
     arc['displayStyle'] = {}
     arc['displayStyle']['color'] = col
@@ -93,6 +124,13 @@ def lineToNative(line: Line) -> QgsLineString:
 
 def polylineToNative(poly: Polyline) -> QgsLineString:
     """Converts a Speckle Polyline to QgsLineString"""
+    if isinstance(poly, Polycurve): 
+        try: poly = poly["displayValue"]
+        except: poly = specklePolycurveToPoints(poly)
+    if isinstance(poly, Arc) or isinstance(poly, Circle): 
+        try: poly = poly["displayValue"]
+        except: poly = speckleArcCircleToPoints(poly)
+
     if poly.closed is False: 
         polyline = QgsLineString([pointToNative(pt) for pt in poly.as_points()])
         return polyline
@@ -128,8 +166,13 @@ def polycurveToNative(poly: Polycurve) -> QgsLineString:
             if isinstance(segm,Line):  converted = lineToNative(segm) # QgsLineString
             elif isinstance(segm,Polyline):  converted = polylineToNative(segm) # QgsLineString
             elif isinstance(segm,Curve):  converted = curveToNative(segm) # QgsLineString
-            elif isinstance(segm,Circle):  converted = circleToNative(segm) # QgsLineString
-            elif isinstance(segm,Arc):  converted = arcToQgisPoints(segm) # QgsLineString
+            elif isinstance(segm,Circle):  
+                pts = [pointToNative(pt) for pt in speckleArcCircleToPoints(segm)]
+                converted =  QgsLineString(pts) # QgsLineString
+                #converted = circleToNative(segm) # QgsLineString
+            elif isinstance(segm,Arc):  
+                pts = [pointToNative(pt) for pt in speckleArcCircleToPoints(segm)]
+                converted =  QgsLineString(pts) # QgsLineString
             else: # either return a part of the curve, of skip this segment and try next
                 logger.logToUser(f"Part of the polycurve cannot be converted", Qgis.Warning)
                 curve = QgsLineString(points)
@@ -147,6 +190,7 @@ def polycurveToNative(poly: Polycurve) -> QgsLineString:
     curve = QgsLineString(points)
     return curve
 
+r'''
 def arcToQgisPoints(poly: Arc):
     points = []
     angle1 = atan( abs ((poly.startPoint.y - poly.plane.origin.y) / (poly.startPoint.x - poly.plane.origin.x) )) # between 0 and pi/2
@@ -154,14 +198,23 @@ def arcToQgisPoints(poly: Arc):
     if poly.plane.origin.x > poly.startPoint.x and poly.plane.origin.y > poly.startPoint.y: angle1 = math.pi + angle1
     if poly.plane.origin.x > poly.startPoint.x and poly.plane.origin.y < poly.startPoint.y: angle1 = math.pi - angle1
 
+    angle2 = atan( abs ((poly.endPoint.y - poly.plane.origin.y) / (poly.endPoint.x - poly.plane.origin.x) )) # between 0 and pi/2
+    if poly.plane.origin.x < poly.endPoint.x and poly.plane.origin.y > poly.endPoint.y: angle2 = 2*math.pi - angle2
+    if poly.plane.origin.x > poly.endPoint.x and poly.plane.origin.y > poly.endPoint.y: angle2 = math.pi + angle2
+    if poly.plane.origin.x > poly.endPoint.x and poly.plane.origin.y < poly.endPoint.y: angle2 = math.pi - angle2
+
+    try: interval = (poly.endAngle - poly.startAngle)
+    except: interval = (angle2-angle1)
     try: 
-        pointsNum = math.floor( abs(poly.endAngle - poly.startAngle)) * 12
+        pointsNum = math.floor( abs(interval)) * 12
         if pointsNum <4: pointsNum = 4
         points.append(pointToNative(poly.startPoint))
 
         for i in range(1, pointsNum + 1): 
             k = i/pointsNum # to reset values from 1/10 to 1
-            angle = angle1 + k * ( poly.endAngle - poly.startAngle) * poly.plane.normal.z
+            if poly.plane.normal.z == 0: normal = 1
+            else: normal = poly.plane.normal.z
+            angle = angle1 + k * interval * normal
             pt = Point( x = poly.plane.origin.x + poly.radius * cos(angle), y = poly.plane.origin.y + poly.radius * sin(angle), z = 0) 
             pt.units = poly.startPoint.units 
             points.append(pointToNative(pt))
@@ -170,3 +223,126 @@ def arcToQgisPoints(poly: Arc):
         curve = QgsLineString(points)
         return curve
     except: return None
+'''
+
+
+def specklePolycurveToPoints(poly: Polycurve) -> List[Point]:
+    print("_____Speckle Polycurve to points____")
+    points = []
+    for segm in poly.segments:
+        print(segm)
+        if isinstance(segm, Arc) or isinstance(segm, Circle): # or isinstance(segm, Curve):
+            print("Arc or Curve")
+            pts: List[Point] = speckleArcCircleToPoints(segm) 
+        elif isinstance(segm, Line): 
+            print("Line")
+            pts: List[Point] = [segm.start, segm.end]
+        elif isinstance(segm, Polyline): 
+            print("Polyline")
+            pts: List[Point] = segm.as_points()
+
+        points.extend(pts)
+    return points
+
+
+def speckleArcCircleToPoints(poly: Union[Arc, Circle]) -> List[Point]: 
+    print("__Arc or Circle to Points___")
+    points = []
+    print(poly.plane) 
+    print(poly.plane.normal) 
+    if poly.plane is None or poly.plane.normal.z == 0: normal = 1 
+    else: normal = poly.plane.normal.z 
+
+    if isinstance(poly, Circle):
+        interval = 2*math.pi
+        range_start = 0
+        angle1 = 0
+
+    else: # if Arc
+        points.append(poly.startPoint)
+        range_start = 0 
+
+        #angle1, angle2 = getArcAngles(poly)
+        interval, angle1, angle2 = getArcRadianAngle(poly)
+
+        if (angle1 > angle2 and normal == -1) or (angle2 > angle1 and normal == 1): pass
+        if angle1 > angle2 and normal == 1: interval = abs( (2*math.pi-angle1) + angle2)
+        if angle2 > angle1 and normal == -1: interval = abs( (2*math.pi-angle2) + angle1)
+
+    pointsNum = math.floor( abs(interval)) * 12
+    if pointsNum <4: pointsNum = 4
+
+    for i in range(range_start, pointsNum + 1): 
+        k = i/pointsNum # to reset values from 1/10 to 1
+        angle = angle1 + k * interval * normal
+
+        pt = Point( x = poly.plane.origin.x + poly.radius * cos(angle), y = poly.plane.origin.y + poly.radius * sin(angle), z = 0) 
+        
+        pt.units = poly.plane.origin.units 
+        points.append(pt)
+
+    if isinstance(poly, Arc): points.append(poly.endPoint)
+    return points
+
+def getArcRadianAngle(arc: Arc) -> List[float]:
+
+    interval = None
+    normal = arc.plane.normal.z 
+    angle1, angle2 = getArcAngles(arc)
+    if angle1 is None or angle2 is  None: return None
+    interval = abs(angle2 - angle1)
+
+    if (angle1 > angle2 and normal == -1) or (angle2 > angle1 and normal == 1): pass
+    if angle1 > angle2 and normal == 1: interval = abs( (2*math.pi-angle1) + angle2)
+    if angle2 > angle1 and normal == -1: interval = abs( (2*math.pi-angle2) + angle1)
+    return interval, angle1, angle2
+
+def getArcAngles(poly: Arc) -> Tuple[float]: 
+    
+    if poly.startPoint.x == poly.plane.origin.x: angle1 = math.pi/2
+    else: angle1 = atan( abs ((poly.startPoint.y - poly.plane.origin.y) / (poly.startPoint.x - poly.plane.origin.x) )) # between 0 and pi/2
+    
+    if poly.plane.origin.x < poly.startPoint.x and poly.plane.origin.y > poly.startPoint.y: angle1 = 2*math.pi - angle1
+    if poly.plane.origin.x > poly.startPoint.x and poly.plane.origin.y > poly.startPoint.y: angle1 = math.pi + angle1
+    if poly.plane.origin.x > poly.startPoint.x and poly.plane.origin.y < poly.startPoint.y: angle1 = math.pi - angle1
+
+    if poly.endPoint.x == poly.plane.origin.x: angle2 = math.pi/2
+    else: angle2 = atan( abs ((poly.endPoint.y - poly.plane.origin.y) / (poly.endPoint.x - poly.plane.origin.x) )) # between 0 and pi/2
+
+    if poly.plane.origin.x < poly.endPoint.x and poly.plane.origin.y > poly.endPoint.y: angle2 = 2*math.pi - angle2
+    if poly.plane.origin.x > poly.endPoint.x and poly.plane.origin.y > poly.endPoint.y: angle2 = math.pi + angle2
+    if poly.plane.origin.x > poly.endPoint.x and poly.plane.origin.y < poly.endPoint.y: angle2 = math.pi - angle2
+
+    return angle1, angle2 
+
+
+def getArcNormal(poly: Arc, midPt: Point): 
+    print("____getArcNormal___")
+    angle1, angle2 = getArcAngles(poly)
+
+    if midPt.x == poly.plane.origin.x: angle = math.pi/2
+    else: angle = atan( abs ((midPt.y - poly.plane.origin.y) / (midPt.x - poly.plane.origin.x) )) # between 0 and pi/2
+    
+    if poly.plane.origin.x < midPt.x and poly.plane.origin.y > midPt.y: angle = 2*math.pi - angle
+    if poly.plane.origin.x > midPt.x and poly.plane.origin.y > midPt.y: angle = math.pi + angle
+    if poly.plane.origin.x > midPt.x and poly.plane.origin.y < midPt.y: angle = math.pi - angle
+
+    normal = Vector()
+    normal.x = normal.y = 0
+
+    if angle1 > angle > angle2: normal.z = -1  
+    if angle1 > angle2 > angle: normal.z = 1  
+
+    if angle2 > angle1 > angle: normal.z = -1  
+    if angle > angle1 > angle2: normal.z = 1  
+
+    if angle2 > angle > angle1: normal.z = 1  
+    if angle > angle2 > angle1: normal.z = -1  
+    
+    print(angle1)
+    print(angle)
+    print(angle2)
+    print(normal)
+
+    return normal
+

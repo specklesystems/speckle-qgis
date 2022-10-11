@@ -23,10 +23,19 @@
 """
 
 import os
+from speckle.converter.layers import getLayers
+#from speckle_qgis import SpeckleQGIS
 import ui.speckle_qgis_dialog
-
+from qgis.core import Qgis, QgsProject,QgsVectorLayer, QgsRasterLayer 
+from specklepy.logging.exceptions import SpeckleException
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
+from speckle.logging import logger
+from specklepy.api.credentials import get_local_accounts
+
+from specklepy.api.wrapper import StreamWrapper
+
+from ui.validation import tryGetStream
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(
@@ -50,6 +59,185 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
 
+    def clearDropdown(self):
+        self.streamIdField.clear()
+        self.streamBranchDropdown.clear()
+        self.commitDropdown.clear()
+
+    def reloadDialogUI(self, plugin):
+        self.populateLayerDropdown()
+        self.populateProjectStreams(plugin)
+        self.populateSurveyPoint(plugin)
+        self.clearDropdown()
+        self.enableElements(plugin)
+
+    def run(self, plugin): 
+        # Setup events on first load only!
+        self.setupOnFirstLoad(plugin)
+        # Connect streams section events
+        self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
+        self.completeStreamSection(plugin)
+        # Populate the UI dropdowns
+        self.populateUI(plugin) 
+
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
+
+    def setupOnFirstLoad(self, plugin):
+        self.sendButton.clicked.connect(plugin.onSendButtonClicked)
+        self.receiveButton.clicked.connect(plugin.onReceiveButtonClicked)
+        self.reloadButton.clicked.connect(plugin.reloadUI)
+        self.saveSurveyPoint.clicked.connect(plugin.set_survey_point)
+
+        self.closingPlugin.connect(plugin.onClosePlugin)
+        return 
+
+    def completeStreamSection(self, plugin):
+        self.streams_remove_button.clicked.connect( lambda: self.onStreamRemoveButtonClicked(plugin) )
+        self.streamList.itemSelectionChanged.connect( lambda: self.onActiveStreamChanged(plugin) )
+        self.streamBranchDropdown.currentIndexChanged.connect( lambda: self.populateActiveCommitDropdown(plugin) )
+        return
+
+    def populateUI(self, plugin):
+        self.populateLayerDropdown()
+        self.populateProjectStreams(plugin)
+        self.populateSurveyPoint(plugin)
+    
+    def populateLayerDropdown(self):
+        if not self: return
+        # Fetch the currently loaded layers
+        layers = QgsProject.instance().mapLayers().values()
+        project = QgsProject.instance()
+        layerTreeRoot = project.layerTreeRoot()
+        layers = getLayers(layerTreeRoot, layerTreeRoot) # List[QgsLayerTreeNode]
+        #print(layers)
+        # Clear the contents of the comboBox from previous runs
+        self.layersWidget.clear()
+        # Populate the comboBox with names of all the loaded layers
+        #self.dockwidget.layersWidget.addItems([layer.name() for layer in layers])
+        
+        nameDisplay = [] 
+        for i, layer in enumerate(layers):
+            layer = layer.layer() #QgsMapLayer
+            if isinstance(layer, QgsRasterLayer):
+                if layer.width()*layer.height() > 1000000:
+                    nameDisplay.append(str(i)+" - "+ layer.name() + " !LARGE!")
+                else: nameDisplay.append(str(i)+" - "+ layer.name())
+            
+            elif isinstance(layer, QgsVectorLayer):
+                if layer.featureCount() > 20000:
+                    nameDisplay.append(str(i)+" - "+ layer.name() + " !LARGE!")
+                else: nameDisplay.append(str(i)+" - "+ layer.name())
+            else: nameDisplay.append(str(i)+" - "+ str(layer.name()))
+        self.layersWidget.addItems(nameDisplay)
+
+    def populateSurveyPoint(self, plugin):
+        if not self:
+            return
+        try:
+            self.surveyPointLat.clear()
+            self.surveyPointLat.setText(str(plugin.lat))
+            self.surveyPointLon.clear()
+            self.surveyPointLon.setText(str(plugin.lon))
+        except: return
+
+    def enableElements(self, plugin):
+        self.receiveButton.setEnabled(plugin.is_setup)
+        self.sendButton.setEnabled(plugin.is_setup)
+        self.streams_add_button.setEnabled(plugin.is_setup)
+        self.streams_remove_button.setEnabled(plugin.is_setup)
+        self.streamBranchDropdown.setEnabled(plugin.is_setup)
+        self.commitDropdown.setEnabled(plugin.is_setup)
+        self.show()
+
+    def populateProjectStreams(self, plugin):
+        from ui.project_vars import set_project_streams
+        if not self: return
+        self.streamList.clear()
+        for stream in plugin.current_streams:
+            #if isinstance(stream, SpeckleException) or isinstance(stream[1], SpeckleException): 
+            #    logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+            #    plugin.current_streams.remove(stream)
+            #else: 
+            self.streamList.addItems(
+            [f"Stream not accessible - {stream[0].stream_id}" if stream[1] is None or isinstance(stream[1], SpeckleException) else f"{stream[1].name} - {stream[1].id}"]
+        )
+        #self.streamList.addItems(
+        #    [f"Stream not accessible - {stream[0].stream_id}" if stream[1] is None else f"{stream[1].name} - {stream[1].id}" for stream in plugin.current_streams]
+        #)
+        set_project_streams(plugin)
+
+    def onActiveStreamChanged(self, plugin):
+        print("populateActiveCommitDropdown")
+        print(plugin)
+        if not self: return
+        if len(plugin.current_streams) == 0:
+            return
+        index = self.streamList.currentRow()
+        if index == -1:
+            return
+        #print(plugin)
+        #print(plugin.active_stream)
+        #print(plugin.current_streams[index])
+
+        #if isinstance(plugin.current_streams[index][1], SpeckleException): 
+        #    try: plugin.current_streams[index][1] = tryGetStream(plugin.current_streams[0])
+        #    except: pass
+
+
+        try: plugin.active_stream = plugin.current_streams[index]
+        except: plugin.active_stream = None
+        self.streamIdField.setText(
+            self.streamList.currentItem().text()
+        )
+        self.populateActiveStreamBranchDropdown(plugin)
+        self.populateActiveCommitDropdown(plugin)
+
+    def populateActiveStreamBranchDropdown(self, plugin):
+        if not self: return
+        self.streamBranchDropdown.clear()
+        if isinstance(plugin.active_stream[1], SpeckleException): 
+            logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+            return
+        elif plugin.active_stream is None or plugin.active_stream[1] is None or plugin.active_stream[1].branches is None:
+            return
+        self.streamBranchDropdown.addItems(
+            [f"{branch.name}" for branch in plugin.active_stream[1].branches.items]
+        )
+
+    def populateActiveCommitDropdown(self, plugin):
+        if not self: return
+        self.commitDropdown.clear()
+        if plugin.active_stream is None:
+            return
+        branchName = self.streamBranchDropdown.currentText()
+        branch = None
+        if isinstance(plugin.active_stream[1], SpeckleException): 
+            logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+            return
+        elif plugin.active_stream[1]:
+            for b in plugin.active_stream[1].branches.items:
+                if b.name == branchName:
+                    branch = b
+                    break
+        try:
+            self.commitDropdown.addItems(
+                [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]
+            )
+        except: pass
+
+    def onStreamRemoveButtonClicked(self, plugin):
+        from ui.project_vars import set_project_streams
+        if not self: return
+        index = self.streamList.currentIndex().row()
+        #if index == 0: 
+        plugin.current_streams.pop(index)
+        plugin.active_stream = None
+        self.streamBranchDropdown.clear()
+        self.commitDropdown.clear()
+        self.streamIdField.setText("")
+
+        set_project_streams(plugin)
+        self.populateProjectStreams(plugin)
+

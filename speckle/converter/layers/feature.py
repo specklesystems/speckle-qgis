@@ -2,20 +2,21 @@ from distutils.log import error
 from tokenize import String
 from typing import List
 from qgis._core import QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, QgsRasterBandStats, QgsFeature, QgsFields, \
-    QgsField
+    QgsField, QgsVectorLayer, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsProject
 from specklepy.objects import Base
 
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
 from speckle.converter.geometry.mesh import rasterToMesh
+from speckle.converter.layers.Layer import RasterLayer
 from speckle.logging import logger
-from speckle.converter.layers.utils import getVariantFromValue 
+from speckle.converter.layers.utils import getVariantFromValue, traverseDict 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 
-def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project, selectedLayer):
-    b = Base()
+def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer):
+    b = Base(units = "m")
 
     #apply transformation if needed
     if sourceCRS != targetCRS:
@@ -42,7 +43,7 @@ def featureToSpeckle(fieldnames, f, sourceCRS, targetCRS, project, selectedLayer
     return b
 
 
-def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
+def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordinateReferenceSystem, project: QgsProject) -> Base:
     rasterBandCount = selectedLayer.bandCount()
     rasterBandNames = []
     rasterDimensions = [selectedLayer.width(), selectedLayer.height()]
@@ -51,7 +52,7 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
 
     ds = gdal.Open(selectedLayer.source(), gdal.GA_ReadOnly)
     rasterOriginPoint = QgsPointXY(ds.GetGeoTransform()[0], ds.GetGeoTransform()[3])
-    rasterResXY = [ds.GetGeoTransform()[1],ds.GetGeoTransform()[5]]
+    rasterResXY = [float(ds.GetGeoTransform()[1]), float(ds.GetGeoTransform()[5])]
     rasterBandNoDataVal = []
     rasterBandMinVal = []
     rasterBandMaxVal = []
@@ -77,18 +78,6 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
         valMax = selectedLayer.dataProvider().bandStatistics(index+1, QgsRasterBandStats.All).maximumValue
         bandVals = rb.ReadAsArray().tolist()
 
-        '''
-        ## reduce resolution if needed: 
-        if totalValues>max_values : 
-            bandVals_resized = [] #list of lists
-            factor = 1 #recalculate factor to reach max size
-            for i in range(1,20):
-                if totalValues/(i*i) <= max_values:
-                    factor = i
-                    break
-            for item in bandVals: #reduce each row and each column
-                bandVals_resized = [bandVals]
-        '''
         bandValsFlat = []
         [bandValsFlat.extend(item) for item in bandVals]
         #look at mesh chunking
@@ -133,9 +122,9 @@ def rasterFeatureToSpeckle(selectedLayer, projectCRS, project):
             noValColor = selectedLayer.renderer().nodataColor().getRgb()
 
             if rendererType == "multibandcolor":
-                redBand = selectedLayer.renderer().redBand()
-                greenBand = selectedLayer.renderer().greenBand()
-                blueBand = selectedLayer.renderer().blueBand()
+                redBand = int(selectedLayer.renderer().redBand())
+                greenBand = int(selectedLayer.renderer().greenBand())
+                blueBand = int(selectedLayer.renderer().blueBand())
                 rVal = 0
                 gVal = 0
                 bVal = 0
@@ -210,16 +199,12 @@ def featureToNative(feature: Base, fields: QgsFields):
     else:
         qgsGeom = geometry.convertToNative(speckle_geom)
 
-    if qgsGeom is not None:
-        feat.setGeometry(qgsGeom)
+    if qgsGeom is not None: feat.setGeometry(qgsGeom)
 
-    try: 
-        if "id" not in fields.names() and feature["applicationId"]: fields.append(QgsField("id", QVariant.String))
-    except: pass
-    
     feat.setFields(fields)  
     for field in fields:
-        name = field.name()
+        name = str(field.name())
+        #print(name)
         variant = field.type()
         if name == "id": feat[name] = str(feature["applicationId"])
         else: 
@@ -239,6 +224,7 @@ def featureToNative(feature: Base, fields: QgsFields):
     return feat
 
 def cadFeatureToNative(feature: Base, fields: QgsFields):
+    print("______________cadFeatureToNative")
     feat = QgsFeature()
     try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
     except:  speckle_geom = feature # for created in other software
@@ -248,20 +234,33 @@ def cadFeatureToNative(feature: Base, fields: QgsFields):
     else:
         qgsGeom = geometry.convertToNative(speckle_geom)
 
-    if qgsGeom is not None:
-        feat.setGeometry(qgsGeom)
+    if qgsGeom is not None: feat.setGeometry(qgsGeom)
+    else: return
+
     try: 
         if "Speckle_ID" not in fields.names() and feature["id"]: fields.append(QgsField("Speckle_ID", QVariant.String))
     except: pass
 
     feat.setFields(fields)  
+
+    #### setting attributes to feature
     for field in fields:
-        name = field.name()
+        print(str(field.name()))
+        name = str(field.name())
         variant = field.type()
-        if name == "Speckle_ID": feat[name] = str(feature["id"])
+        if name == "Speckle_ID": 
+            value = str(feature["id"])
+            feat[name] = value
         else: 
-            value = feature[name]
-            if variant == QVariant.String: value = str(feature[name]) 
+            # for values - normal or inside dictionaries: 
+            try: value = feature[name]
+            except:
+                rootName = name.split("_")[0]
+                newF, newVals = traverseDict({}, {}, rootName, feature[rootName][0])
+                for i, (k,v) in enumerate(newVals.items()):
+                    if k == name: value = v; break
+            # for all values: 
+            if variant == QVariant.String: value = str(value) 
             
             if isinstance(value, str) and variant == QVariant.Date:  # 14
                 y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]

@@ -1,7 +1,7 @@
 """ This module contains all geometry conversion functionality To and From Speckle."""
 
 from qgis.core import (
-    Qgis, QgsWkbTypes, QgsPolygon, QgsPointXY, QgsPoint, QgsFeature, QgsVectorLayer
+    Qgis, QgsGeometry, QgsPolygon, QgsPointXY, QgsPoint, QgsFeature, QgsVectorLayer
 )
 from typing import Sequence
 
@@ -22,10 +22,10 @@ from panda3d.core import Triangulator
 from PyQt5.QtGui import QColor
 
 
-def polygonToSpeckle(geom, feature: QgsFeature, layer: QgsVectorLayer):
+def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsPolygon to Speckle"""
     try: 
-        polygon = Base()
+        polygon = Base(units = "m")
         pointList = []
         pt_iterator = []
         try: 

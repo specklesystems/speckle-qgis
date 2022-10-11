@@ -1,11 +1,16 @@
 import os
+from typing import List, Union
 import ui.speckle_qgis_dialog
+from qgis.core import Qgis
+
+from speckle.logging import logger
 from qgis.PyQt import QtWidgets, uic, QtCore
 from qgis.PyQt.QtCore import pyqtSignal
 from specklepy.api.models import Stream
 from specklepy.api.client import SpeckleClient
+from specklepy.logging.exceptions import SpeckleException
 from speckle.utils import logger
-from specklepy.api.credentials import get_local_accounts#, StreamWrapper
+from specklepy.api.credentials import get_local_accounts #, StreamWrapper
 from specklepy.api.wrapper import StreamWrapper
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
@@ -21,8 +26,8 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
     dialog_button_box: QtWidgets.QDialogButtonBox = None
     accounts_dropdown: QtWidgets.QComboBox
 
-    stream_results: [Stream] = []
-    speckle_client: SpeckleClient = None
+    stream_results: List[Stream] = []
+    speckle_client: Union[SpeckleClient, None] = None
 
     #Events
     handleStreamAdd = pyqtSignal(StreamWrapper)
@@ -48,16 +53,31 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
     
     def populateResultsList(self):
         self.search_results_list.clear()
-        self.search_results_list.addItems([
-            f"{stream.name} - {stream.id}" for stream in self.stream_results 
-        ])
+        if isinstance(self.stream_results, SpeckleException): 
+            logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+            return 
+        for stream in self.stream_results:
+            if isinstance(stream, SpeckleException): 
+                logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+            else: 
+                self.search_results_list.addItems([
+                    f"{stream.name} - {stream.id}" #for stream in self.stream_results 
+                ])
 
     def onOkClicked(self):
-        index = self.search_results_list.currentIndex().row()
-        stream = self.stream_results[index]
-        acc = get_local_accounts()[self.accounts_dropdown.currentIndex()]
-        self.handleStreamAdd.emit(StreamWrapper(f"{acc.serverInfo.url}/streams/{stream.id}?u={acc.userInfo.id}"))
-        self.close()
+        if isinstance(self.stream_results, SpeckleException):
+            logger.logToUser("Selected stream cannot be accessed", Qgis.Warning)
+            return
+        else:
+            try:
+                index = self.search_results_list.currentIndex().row()
+                stream = self.stream_results[index]
+                acc = get_local_accounts()[self.accounts_dropdown.currentIndex()]
+                self.handleStreamAdd.emit(StreamWrapper(f"{acc.serverInfo.url}/streams/{stream.id}?u={acc.userInfo.id}"))
+                self.close()
+            except:
+                logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+                return 
 
     def onCancelClicked(self):
         self.close()
