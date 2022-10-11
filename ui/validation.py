@@ -23,6 +23,8 @@ def validateStream(streamWrapper: StreamWrapper) -> Union[Stream, None]:
         logger.logToUser(e.message, Qgis.Warning)
         return None
 
+    if isinstance(stream, SpeckleException): return None
+
     if stream.branches is None:
         logger.logToUser("Stream has no branches", Qgis.Warning)
         return None

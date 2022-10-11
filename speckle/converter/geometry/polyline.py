@@ -7,7 +7,8 @@ from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from qgis.core import (
     QgsLineString, 
     QgsCircularString, 
-    QgsCircle, QgsFeature, QgsVectorLayer
+    QgsCircle, QgsFeature, QgsVectorLayer,
+    QgsCompoundCurve, QgsVertexIterator
 )
 
 from qgis._core import Qgis
@@ -19,9 +20,10 @@ from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 #from PyQt5.QtGui import QColor
 
 
-def polylineFromVerticesToSpeckle(vertices, closed, feature: QgsFeature, layer: QgsVectorLayer):
+def polylineFromVerticesToSpeckle(vertices: Union[List[Point], QgsVertexIterator], closed: bool, feature: QgsFeature, layer: QgsVectorLayer):
     """Returns a Speckle Polyline given a list of QgsPoint instances and a boolean indicating if it's closed or not."""
-    specklePts = [pointToSpeckle(pt, feature, layer) for pt in vertices] #breaks unexplainably
+    if isinstance(vertices, list): specklePts = vertices
+    else: specklePts = [pointToSpeckle(pt, feature, layer) for pt in vertices] #breaks unexplainably
     #specklePts = []
     #for pt in vertices:
     #    p = pointToSpeckle(pt)
@@ -41,6 +43,30 @@ def polylineFromVerticesToSpeckle(vertices, closed, feature: QgsFeature, layer: 
     polyline['displayStyle']['color'] = col
     return polyline
 
+def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: QgsVectorLayer):
+    polycurve = Polycurve()
+    polycurve.segments = []
+    polycurve.closed = False
+    #vert = []
+    if "CircularString" in str(poly): 
+        all_pts = [pt for pt in poly.vertices()]
+        num_segm = (len(all_pts) - 1) / 2
+        startPt = all_pts[0]
+        if num_segm.is_integer(): # make sure the logic is [startPt, mid-end, mid-end etc]
+            for i in range(int(num_segm)):
+                segm = QgsCircularString(startPt, all_pts[1:][i*2], all_pts[1:][i*2 + 1] )
+                newArc = arcToSpeckle(segm, feature, layer)
+                polycurve.segments.append(newArc)
+                #vert.extend(speckleArcCircleToPoints(newArc))
+                startPt = all_pts[1:][i*2 + 1]
+    #polycurve = polylineFromVerticesToSpeckle(vert, False, feature, layer)
+    
+    col = featureColorfromNativeRenderer(feature, layer)
+    polycurve['displayStyle'] = {}
+    polycurve['displayStyle']['color'] = col
+
+    return polycurve 
+
 def polylineToSpeckle(poly: Union[QgsLineString, QgsCircularString], feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsLineString to Speckle"""
     try: closed = poly.isClosed()
@@ -54,6 +80,7 @@ def polylineToSpeckle(poly: Union[QgsLineString, QgsCircularString], feature: Qg
 
 def arcToSpeckle(poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsCircularString to Speckle"""
+    #print("____Arc to Speckle ___")
     arc = Arc()
     vert_list = [pt for pt in poly.vertices()] 
     arc.startPoint = pointToSpeckle(vert_list[0], feature, layer)
@@ -62,8 +89,12 @@ def arcToSpeckle(poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorL
     center, radius = getArcCenter(arc.startPoint, arc.midPoint, arc.endPoint)
     arc.plane = Plane()#.from_list(Point(), Vector(Point(0, 0, 1)), Vector(Point(0,1,0)), Vector(Point(-1,0,0)))
     arc.plane.origin = Point.from_list(center)
+    #arc.plane.xdir=Vector.from_list([1,0,0])
+    #arc.plane.ydir=Vector.from_list([0,1,0])
+    arc.plane.normal = getArcNormal(arc, arc.midPoint)
     arc.radius = radius
-    
+    arc.angleRadians, startAngle, endAngle = getArcRadianAngle(arc)
+
     col = featureColorfromNativeRenderer(feature, layer)
     arc['displayStyle'] = {}
     arc['displayStyle']['color'] = col
@@ -231,8 +262,8 @@ def speckleArcCircleToPoints(poly: Union[Arc, Circle]) -> List[Point]:
         points.append(poly.startPoint)
         range_start = 0 
 
-        angle1, angle2 = getArcAngles(poly)
-        interval = abs(angle2 - angle1)
+        #angle1, angle2 = getArcAngles(poly)
+        interval, angle1, angle2 = getArcRadianAngle(poly)
 
         if (angle1 > angle2 and normal == -1) or (angle2 > angle1 and normal == 1): pass
         if angle1 > angle2 and normal == 1: interval = abs( (2*math.pi-angle1) + angle2)
@@ -253,6 +284,18 @@ def speckleArcCircleToPoints(poly: Union[Arc, Circle]) -> List[Point]:
     if isinstance(poly, Arc): points.append(poly.endPoint)
     return points
 
+def getArcRadianAngle(arc: Arc) -> List[float]:
+
+    interval = None
+    normal = arc.plane.normal.z 
+    angle1, angle2 = getArcAngles(arc)
+    if angle1 is None or angle2 is  None: return None
+    interval = abs(angle2 - angle1)
+
+    if (angle1 > angle2 and normal == -1) or (angle2 > angle1 and normal == 1): pass
+    if angle1 > angle2 and normal == 1: interval = abs( (2*math.pi-angle1) + angle2)
+    if angle2 > angle1 and normal == -1: interval = abs( (2*math.pi-angle2) + angle1)
+    return interval, angle1, angle2
 
 def getArcAngles(poly: Arc) -> Tuple[float]: 
     

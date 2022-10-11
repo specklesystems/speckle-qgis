@@ -52,6 +52,18 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
 
+    def clearDropdown(self):
+        self.streamIdField.clear()
+        self.streamBranchDropdown.clear()
+        self.commitDropdown.clear()
+
+    def reloadDialogUI(self, plugin):
+        self.populateLayerDropdown()
+        self.populateProjectStreams(plugin)
+        self.populateSurveyPoint(plugin)
+        self.clearDropdown()
+        self.enableElements(plugin)
+        
     def run(self, plugin): 
         # Setup events on first load only!
         self.setupOnFirstLoad(plugin)
@@ -74,11 +86,6 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.closingPlugin.connect(plugin.onClosePlugin)
         return 
 
-    def clearDropdown(self):
-        self.streamIdField.clear()
-        self.streamBranchDropdown.clear()
-        self.commitDropdown.clear()
-
     def completeStreamSection(self, plugin):
         self.streams_remove_button.clicked.connect( lambda: self.onStreamRemoveButtonClicked(plugin) )
         self.streamList.itemSelectionChanged.connect( lambda: self.onActiveStreamChanged(plugin) )
@@ -90,23 +97,14 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.populateProjectStreams(plugin)
         self.populateSurveyPoint(plugin)
     
-    def reloadDialogUI(self, plugin):
-        
-        self.populateLayerDropdown()
-        self.populateProjectStreams(plugin)
-        self.populateSurveyPoint(plugin)
-        self.clearDropdown()
-        self.enableElements(plugin)
-
     def populateLayerDropdown(self):
         if not self: return
         # Fetch the currently loaded layers
         layers = QgsProject.instance().mapLayers().values()
-        
         project = QgsProject.instance()
         layerTreeRoot = project.layerTreeRoot()
         layers = getLayers(layerTreeRoot, layerTreeRoot) # List[QgsLayerTreeNode]
-        print(layers)
+        #print(layers)
         # Clear the contents of the comboBox from previous runs
         self.layersWidget.clear()
         # Populate the comboBox with names of all the loaded layers
