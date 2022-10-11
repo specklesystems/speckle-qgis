@@ -31,15 +31,19 @@ import numpy as np
 
 def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
-
+    print("___ get layers list ___")
     children = parent.children()
     layers = []
     for node in children:
+        print(node)
         if tree.isLayer(node):
+            print(node)
             if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): layers.append(node)
             continue
         if tree.isGroup(node):
-            layers.extend( [ lyr for lyr in getLayers(tree, node) if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer) ] )
+            print(node)
+            for lyr in getLayers(tree, node): print(lyr)
+            layers.extend( [ lyr for lyr in getLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
     return layers
 
 

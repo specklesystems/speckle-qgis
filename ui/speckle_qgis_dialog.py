@@ -52,6 +52,15 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
 
+    def run(self, plugin): 
+        # Setup events on first load only!
+        self.setupOnFirstLoad(plugin)
+        # Connect streams section events
+        self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
+        self.completeStreamSection(plugin)
+        # Populate the UI dropdowns
+        self.populateUI(plugin) 
+
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
@@ -80,6 +89,14 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.populateLayerDropdown()
         self.populateProjectStreams(plugin)
         self.populateSurveyPoint(plugin)
+    
+    def reloadDialogUI(self, plugin):
+        
+        self.populateLayerDropdown()
+        self.populateProjectStreams(plugin)
+        self.populateSurveyPoint(plugin)
+        self.clearDropdown()
+        self.enableElements(plugin)
 
     def populateLayerDropdown(self):
         if not self: return
@@ -137,9 +154,6 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.streamBranchDropdown.setEnabled(plugin.is_setup)
         self.commitDropdown.setEnabled(plugin.is_setup)
         self.show()
-
-
-
 
     def onActiveStreamChanged(self, plugin):
         print("populateActiveCommitDropdown")

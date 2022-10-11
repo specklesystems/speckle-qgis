@@ -17,7 +17,7 @@
 import os.path
 from typing import Any, Callable, List, Optional, Tuple, Union
 
-from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer)
+from qgis.core import Qgis, QgsProject, QgsLayerTreeLayer
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QDockWidget
@@ -37,7 +37,7 @@ from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.layers import (
     Layer, VectorLayer, RasterLayer,
     convertSelectedLayers,
-    getLayers 
+    getLayers
 )
 from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
@@ -74,7 +74,6 @@ class SpeckleQGIS:
 
         self.lat = 0.0
         self.lon = 0.0
-
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
@@ -331,6 +330,14 @@ class SpeckleQGIS:
             if branch.name is None or commit.id is None or objId is None: return 
 
             commitObj = operations.receive(objId, transport, None)
+
+            client.commit.received(
+            streamId,
+            commit.id,
+            source_application="QGIS",
+            message="Received commit in QGIS",
+            )
+
             
             if app != "QGIS" and app != "ArcGIS": 
                 if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
@@ -365,13 +372,7 @@ class SpeckleQGIS:
             get_project_streams(self)
             get_survey_point(self)
 
-            self.dockwidget.populateLayerDropdown()
-            self.dockwidget.populateProjectStreams(self)
-            self.dockwidget.populateSurveyPoint(self)
-
-            self.dockwidget.clearDropdown()
-
-            self.dockwidget.enableElements(self)
+            self.dockwidget.reloadDialogUI(self)
 
     def check_for_accounts(self):
         def go_to_manager():
@@ -403,13 +404,7 @@ class SpeckleQGIS:
             get_project_streams(self)
             get_survey_point(self)
 
-            # Setup events on first load only!
-            self.dockwidget.setupOnFirstLoad(self)
-            # Connect streams section events
-            self.dockwidget.streams_add_button.clicked.connect( self.onStreamAddButtonClicked )
-            self.dockwidget.completeStreamSection(self)
-            # Populate the UI dropdowns
-            self.dockwidget.populateUI(self)
+            self.dockwidget.run(self)
 
             # Setup reload of UI dropdowns when layers change.
             layerRoot = QgsProject.instance()
@@ -429,8 +424,8 @@ class SpeckleQGIS:
         from ui.project_vars import set_survey_point
         set_survey_point(self)
 
-    def onStreamRemoveButtonClicked(self):
-        self.dockwidget.onStreamRemoveButtonClicked(self)
+    #def onStreamRemoveButtonClicked(self):
+    #    self.dockwidget.onStreamRemoveButtonClicked(self)
 
     def handleStreamAdd(self, sw: StreamWrapper):
         from ui.project_vars import set_project_streams

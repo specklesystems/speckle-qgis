@@ -43,7 +43,7 @@ def get_survey_point(self: SpeckleQGIS):
     proj = QgsProject().instance()
     points = proj.readEntry("speckle-qgis", "survey_point", "")
     if points[1] and len(points[0])>0: 
-        vals = points[0].replace(" ","").split(";")[:2]
+        vals: list[str] = points[0].replace(" ","").split(";")[:2]
         self.lat, self.lon = [float(i) for i in vals]
     
 def set_survey_point(self: SpeckleQGIS):

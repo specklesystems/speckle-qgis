@@ -30,6 +30,8 @@ def validateStream(streamWrapper: StreamWrapper) -> Union[Stream, None]:
 
 def validateBranch(stream: Stream, branchName: str, checkCommits: bool) ->  Union[Branch, None]:
     branch = None
+    if not stream.branches or not stream.branches.items: 
+      return None
     for b in stream.branches.items:
         if b.name == branchName:
             branch = b
