@@ -28,7 +28,7 @@ from specklepy.api.models import Stream
 from specklepy.api.wrapper import StreamWrapper
 from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
-from specklepy.api.credentials import get_local_accounts#, StreamWrapper
+from specklepy.api.credentials import get_local_accounts #, StreamWrapper
 import webbrowser
 
 # Initialize Qt resources from file resources.py
@@ -431,15 +431,26 @@ class SpeckleQGIS:
         from ui.project_vars import set_project_streams
            
         streamExists = 0
+        index = 0
         try: 
             stream = tryGetStream(sw)
+            
             for st in self.current_streams: 
-                if st[1].id == stream.id: streamExists = 1; break 
+                #if isinstance(st[1], SpeckleException) or isinstance(stream, SpeckleException): pass 
+                if isinstance(stream, Stream) and st[0].stream_id == stream.id: 
+                    streamExists = 1; 
+                    break 
+                index += 1
         except SpeckleException as e:
             logger.logToUser(e.message, Qgis.Warning)
             stream = None
         
-        if streamExists == 0: self.current_streams.append((sw, stream))
-        self.add_stream_modal.handleStreamAdd.disconnect(self.handleStreamAdd)
+        if streamExists == 0: 
+            self.current_streams.insert(0,(sw, stream))
+        else: 
+            del self.current_streams[index]
+            self.current_streams.insert(0,(sw, stream))
+        try: self.add_stream_modal.handleStreamAdd.disconnect(self.handleStreamAdd)
+        except: pass 
         set_project_streams(self)
         self.dockwidget.populateProjectStreams(self)
