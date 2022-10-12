@@ -1,14 +1,14 @@
 from math import asin, cos, sin, atan
 import math
 import numpy as np
-from specklepy.objects.geometry import Point, Line, Polyline, Curve, Arc, Circle, Polycurve, Plane, Vector
+from specklepy.objects.geometry import Point, Line, Polyline, Curve, Arc, Circle, Ellipse, Polycurve, Plane, Vector
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 
 from qgis.core import (
     QgsLineString, QgsPointXY,
     QgsCircularString, 
     QgsCircle, QgsFeature, QgsVectorLayer,
-    QgsCompoundCurve, QgsVertexIterator, QgsGeometry, QgsCurvePolygon
+    QgsCompoundCurve, QgsVertexIterator, QgsGeometry, QgsCurvePolygon, QgsEllipse
 )
 
 from qgis._core import Qgis
@@ -78,7 +78,8 @@ def unknownLineToSpeckle(poly: QgsCompoundCurve, closed: bool, feature: QgsFeatu
     else: return polylineFromVerticesToSpeckle(poly.vertices(), closed, feature, layer) # initial method
 
 def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: QgsVectorLayer):
-
+    try: poly = poly.constGet()
+    except: pass
     poly = poly.curveToLine()
     return polylineToSpeckle(poly, feature, layer)
 
@@ -167,8 +168,12 @@ def polylineToNative(poly: Polyline) -> QgsLineString:
     # this function can be called from Multipolyline, hence extra check if the type of segment in not Polyline
     if isinstance(poly, Polycurve): 
         return polycurveToNative(poly)
-    if isinstance(poly, Arc) or isinstance(poly, Circle): 
+    if isinstance(poly, Arc): 
+        return arcToNative(poly)
+    if isinstance(poly, Circle): 
         return circleToNative(poly)
+    if isinstance(poly, Ellipse): 
+        return ellipseToNative(poly)
 
     if poly.closed is False: 
         polyline = QgsLineString([pointToNative(pt) for pt in poly.as_points()])
@@ -178,6 +183,15 @@ def polylineToNative(poly: Polyline) -> QgsLineString:
         ptList.append(poly.as_points()[0])
         polyline = QgsLineString([pointToNative(pt) for pt in ptList])
     return polyline
+
+def ellipseToNative(poly: Ellipse)-> QgsLineString:
+    """Converts a Speckle Ellipse to QgsLineString"""
+    try: angle = atan( poly.plane.xdir.y / poly.plane.xdir.x ) 
+    except: angle = math.pi / 2
+
+    ellipse = QgsEllipse(pointToNative(poly.plane.origin), poly.firstRadius, poly.secondRadius, angle)
+    ellipse = ellipse.toLineString()
+    return ellipse
 
 def curveToNative(poly: Curve) -> QgsLineString:
     """Converts a Speckle Curve to QgsLineString"""
@@ -222,6 +236,10 @@ def polycurveToNative(poly: Polycurve) -> QgsLineString:
                 #converted = circleToNative(segm) # QgsLineString
             elif isinstance(segm,Arc):  
                 pts = [pointToNative(pt) for pt in speckleArcCircleToPoints(segm)]
+                converted =  QgsLineString(pts) # QgsLineString
+                if singleSegm == 1: return arcToNative(segm)
+            elif isinstance(segm, Ellipse):  
+                pts = [pointToNative(pt) for pt in speckleEllipseToPoints(segm)]
                 converted =  QgsLineString(pts) # QgsLineString
                 if singleSegm == 1: return arcToNative(segm)
             else: # either return a part of the curve, of skip this segment and try next
@@ -295,6 +313,12 @@ def specklePolycurveToPoints(poly: Polycurve) -> List[Point]:
         points.extend(pts)
     return points
 
+def speckleEllipseToPoints(poly: Ellipse) -> List[Point]:
+    qgsLineStr = ellipseToNative(poly)
+    points = qgsLineStr.vertices()
+
+    specklePts = [pointToSpeckle(pt, None, None) for pt in points]
+    return specklePts
 
 def speckleArcCircleToPoints(poly: Union[Arc, Circle]) -> List[Point]: 
     #print("__Arc or Circle to Points___")

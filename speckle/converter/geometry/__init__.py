@@ -20,9 +20,10 @@ from speckle.converter.geometry.polyline import (
     arcToNative,
     arcToSpeckle,
     polycurveToNative,
+    ellipseToNative
 )
 from specklepy.objects import Base
-from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Polycurve
+from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Ellipse, Polycurve
 
 
 def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLayer) -> Union[Base, Sequence[Base], None]:
@@ -49,7 +50,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 return arcToSpeckle(geom, feature, layer)
             else: 
                 return [arcToSpeckle(poly, feature, layer) for poly in geom.parts()]
-        elif type == QgsWkbTypes.CompoundCurve: # 9
+        elif type == QgsWkbTypes.CompoundCurve or type == QgsWkbTypes.CompoundCurveZ or type == QgsWkbTypes.CompoundCurveM or type == QgsWkbTypes.CompoundCurveZM: # 9, 1009, 2009, 3009
             if "CircularString" in str(geom): 
                 all_pts = [pt for pt in geom.vertices()]
                 if len(all_pts) == 3: return arcToSpeckle(geom, feature, layer)
@@ -78,6 +79,7 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
         (Polyline, polylineToNative),
         (Curve, curveToNative),
         (Arc, arcToNative),
+        (Ellipse, ellipseToNative),
         (Circle, circleToNative),
         (Mesh, meshToNative),
         (Polycurve, polycurveToNative),
@@ -122,7 +124,7 @@ def convertToNativeMulti(items: List[Base]):
         return multiPointToNative(items)
     elif isinstance(first, Line) or isinstance(first, Polyline):
         return multiPolylineToNative(items)
-    elif isinstance(first, dict) or isinstance(first, Base): 
+    elif isinstance(first, Base): 
         try:
             if first["boundary"] is not None and first["voids"] is not None:
                 return multiPolygonToNative(items)

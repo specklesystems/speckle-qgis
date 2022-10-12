@@ -20,8 +20,8 @@ from PyQt5.QtGui import QColor
 
 def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer) -> int:
     # case with one color for the entire layer
-    renderer = layer.renderer()
     try:
+        renderer = layer.renderer()
         if renderer.type() == 'categorizedSymbol' or renderer.type() == '25dRenderer' or renderer.type() == 'invertedPolygonRenderer' or renderer.type() == 'mergedFeatureRenderer' or renderer.type() == 'RuleRenderer' or renderer.type() == 'nullSymbol' or renderer.type() == 'singleSymbol' or renderer.type() == 'graduatedSymbol':
             #get color value
             color = QColor.fromRgb(0,0,0)
