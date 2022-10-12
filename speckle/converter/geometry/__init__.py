@@ -20,9 +20,10 @@ from speckle.converter.geometry.polyline import (
     arcToNative,
     arcToSpeckle,
     polycurveToNative,
+    ellipseToNative
 )
 from specklepy.objects import Base
-from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Polycurve
+from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Ellipse, Polycurve
 
 
 def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLayer) -> Union[Base, Sequence[Base], None]:
@@ -43,23 +44,27 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
         else:
             return [pointToSpeckle(pt, feature, layer) for pt in geom.parts()]
     
-    elif geomType == QgsWkbTypes.LineGeometry: #1
+    elif geomType == QgsWkbTypes.LineGeometry: # 1
         if type == QgsWkbTypes.CircularString or type == QgsWkbTypes.CircularStringZ or type == QgsWkbTypes.CircularStringM or type == QgsWkbTypes.CircularStringZM: #Type (not GeometryType)
             if geomSingleType:
                 return arcToSpeckle(geom, feature, layer)
             else: 
                 return [arcToSpeckle(poly, feature, layer) for poly in geom.parts()]
-        elif type == QgsWkbTypes.CompoundCurve: # 9
-            return compoudCurveToSpeckle(geom, feature, layer)
-        elif geomSingleType:
+        elif type == QgsWkbTypes.CompoundCurve or type == QgsWkbTypes.CompoundCurveZ or type == QgsWkbTypes.CompoundCurveM or type == QgsWkbTypes.CompoundCurveZM: # 9, 1009, 2009, 3009
+            if "CircularString" in str(geom): 
+                all_pts = [pt for pt in geom.vertices()]
+                if len(all_pts) == 3: return arcToSpeckle(geom, feature, layer)
+                else: return compoudCurveToSpeckle(geom, feature, layer)
+            else: return None
+        elif geomSingleType: # type = 2
             return polylineToSpeckle(geom, feature, layer)
-        else: # e.g. CompoundCurve 
+        else: 
             return [polylineToSpeckle(poly, feature, layer) for poly in geom.parts()]
-    elif geomType == QgsWkbTypes.PolygonGeometry:
+    elif geomType == QgsWkbTypes.PolygonGeometry: # 2
         if geomSingleType:
             return polygonToSpeckle(geom, feature, layer)
         else:
-            return [polygonToSpeckle(p, feature, layer) for p in geom.parts()]
+            return [polygonToSpeckle(poly, feature, layer) for poly in geom.parts()]
     else:
         logger.log("Unsupported or invalid geometry")
     return None
@@ -74,6 +79,7 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
         (Polyline, polylineToNative),
         (Curve, curveToNative),
         (Arc, arcToNative),
+        (Ellipse, ellipseToNative),
         (Circle, circleToNative),
         (Mesh, meshToNative),
         (Polycurve, polycurveToNative),
@@ -118,5 +124,8 @@ def convertToNativeMulti(items: List[Base]):
         return multiPointToNative(items)
     elif isinstance(first, Line) or isinstance(first, Polyline):
         return multiPolylineToNative(items)
-    elif first["boundary"] is not None and first["voids"] is not None:
-        return multiPolygonToNative(items)
+    elif isinstance(first, Base): 
+        try:
+            if first["boundary"] is not None and first["voids"] is not None:
+                return multiPolygonToNative(items)
+        except: return None 

@@ -200,6 +200,7 @@ def featureToNative(feature: Base, fields: QgsFields):
         qgsGeom = geometry.convertToNative(speckle_geom)
 
     if qgsGeom is not None: feat.setGeometry(qgsGeom)
+    else: return None 
 
     feat.setFields(fields)  
     for field in fields:
@@ -224,7 +225,7 @@ def featureToNative(feature: Base, fields: QgsFields):
     return feat
 
 def cadFeatureToNative(feature: Base, fields: QgsFields):
-    print("______________cadFeatureToNative")
+    #print("______________cadFeatureToNative")
     feat = QgsFeature()
     try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
     except:  speckle_geom = feature # for created in other software
@@ -245,7 +246,7 @@ def cadFeatureToNative(feature: Base, fields: QgsFields):
 
     #### setting attributes to feature
     for field in fields:
-        print(str(field.name()))
+        #print(str(field.name()))
         name = str(field.name())
         variant = field.type()
         if name == "Speckle_ID": 

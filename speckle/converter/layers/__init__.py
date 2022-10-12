@@ -124,7 +124,7 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -
         #print(geom)
         if geom.speckle_type == "Objects.Geometry.Point": 
             geom_points.append(geom)
-        if geom.speckle_type == "Objects.Geometry.Line" or geom.speckle_type == "Objects.Geometry.Polyline" or geom.speckle_type == "Objects.Geometry.Curve" or geom.speckle_type == "Objects.Geometry.Arc" or geom.speckle_type == "Objects.Geometry.Circle" or geom.speckle_type == "Objects.Geometry.Polycurve":
+        if geom.speckle_type == "Objects.Geometry.Line" or geom.speckle_type == "Objects.Geometry.Polyline" or geom.speckle_type == "Objects.Geometry.Curve" or geom.speckle_type == "Objects.Geometry.Arc" or geom.speckle_type == "Objects.Geometry.Circle" or geom.speckle_type == "Objects.Geometry.Ellipse" or geom.speckle_type == "Objects.Geometry.Polycurve":
             geom_polylines.append(geom)
     
     if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch)
@@ -135,11 +135,11 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -
     return [layer_points, layer_polylines]
 
 def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str) -> QgsVectorLayer: 
-    print("___________cadVectorLayerToNative")
+    #print("___________cadVectorLayerToNative")
     #get Project CRS, use it by default for the new received layer
     vl = None
     layerName = layerName + "/" + geomType
-    print(layerName)
+    #print(layerName)
     crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
     if crs.isGeographic is True: 
         logger.logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", Qgis.Warning)
@@ -183,9 +183,9 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         new_feat = cadFeatureToNative(f, newFields)
         # update attrs for the next feature (if more fields were added from previous feature)
 
-        print("________cad feature to add")
-        print(new_feat)
-        if new_feat != "": 
+        #print("________cad feature to add")
+        #print(new_feat)
+        if new_feat is not None and new_feat != "": 
             fets.append(new_feat)
             for a in newFields.toList(): 
                 #if a not in attrs.toList(): 
@@ -275,7 +275,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
     newFields = getLayerAttributes(layer.features)
     for f in layer.features: 
         new_feat = featureToNative(f, newFields)
-        if new_feat != "": fets.append(new_feat)
+        if new_feat is not None and new_feat != "": fets.append(new_feat)
 
     # add Layer attribute fields
     pr.addAttributes(newFields.toList())

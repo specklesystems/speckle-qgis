@@ -20,15 +20,16 @@ from PyQt5.QtGui import QColor
 
 def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer) -> int:
     # case with one color for the entire layer
-    renderer = layer.renderer()
     try:
+        renderer = layer.renderer()
         if renderer.type() == 'categorizedSymbol' or renderer.type() == '25dRenderer' or renderer.type() == 'invertedPolygonRenderer' or renderer.type() == 'mergedFeatureRenderer' or renderer.type() == 'RuleRenderer' or renderer.type() == 'nullSymbol' or renderer.type() == 'singleSymbol' or renderer.type() == 'graduatedSymbol':
             #get color value
             color = QColor.fromRgb(0,0,0)
             if renderer.type() == 'singleSymbol':
                 color = renderer.symbol().color()
             elif renderer.type() == 'categorizedSymbol':
-                color = renderer.sourceSymbol().color()
+                sSymb = renderer.sourceSymbol()
+                color = sSymb.color()
                 category = renderer.classAttribute() # get the name of attribute used for classification
                 for obj in renderer.categories():
                     try: 
@@ -99,7 +100,17 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
     rendererNew = None 
     existingAttrs = fields.names()
     if renderer and renderer['type']:
+
         if renderer['type']  == 'categorizedSymbol':
+            r = g = b = 0
+            try: 
+                rgb = renderer['properties']['sourceSymbColor'] 
+                r = (rgb & 0xFF0000) >> 16
+                g = (rgb & 0xFF00) >> 8
+                b = rgb & 0xFF 
+            except: r = g = b = 0
+            sourceSymbColor = QColor.fromRgb(r, g, b)
+
             attribute = renderer['properties']['attribute']
             cats = renderer['properties']['categories']
             if attribute not in existingAttrs: 
@@ -135,6 +146,11 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
                 categories.append(cat)
             
             rendererNew = QgsCategorizedSymbolRenderer(attribute, categories)
+            try:
+                sourceSymbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
+                sourceSymbol.setColor(sourceSymbColor)
+                rendererNew.setSourceSymbol(sourceSymbol)
+            except: pass
 
         elif renderer['type'] == 'singleSymbol':
             rgb = renderer['properties']['symbol']['symbColor']
@@ -258,7 +274,7 @@ def rasterRendererToNative(layer: RasterLayer, rInterface: QgsRasterDataProvider
     return rendererNew
     
 def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict[str, Any]:
-    print("___RENDERER TO SPECKLE___")
+    #print("___RENDERER TO SPECKLE___")
     rType = renderer.type() # 'singleSymbol','categorizedSymbol','graduatedSymbol',
     layerRenderer = {}
     layerRenderer['type'] = rType
@@ -267,7 +283,7 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
         layerRenderer['properties'] = {'symbol':{}, 'symbType':""}
 
         symbol = renderer.symbol() #singleSymbol # QgsLineSymbol
-        print(symbol)
+        #print(symbol)
         symbType = symbol.symbolTypeToString(symbol.type()) #Line
         try: rgb = symbol.color().getRgb()
         except: [int(i) for i in symbol().color().replace(" ","").split(',')[:3] ]
@@ -283,10 +299,10 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
         try:
             symbType = symbol.symbolTypeToString(symbol.type()) #Line
             try: r, g, b = symbol.color().getRgb()[:3]
-            except: [int(i) for i in symbol.color().replace(" ","").split(',')[:3] ]
+            except: r,g,b = [int(i) for i in symbol.color().replace(" ","").split(',')[:3] ]
             sourceSymbColor = (r<<16) + (g<<8) + b
 
-            layerRenderer['properties'].update( {'attribute': attribute, 'symbType': symbType} )
+            layerRenderer['properties'].update( {'attribute': attribute, 'symbType': symbType, 'sourceSymbColor': sourceSymbColor} )
         except: pass
         
         categories = renderer.categories() #<qgis._core.QgsRendererCategory object at 0x00000155E8786A60>
@@ -294,7 +310,7 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
         for i in categories:
             value = i.value()
             try: r, g, b = i.symbol().color().getRgb()[:3]
-            except: [int(i) for i in i.symbol().color().replace(" ","").split(',')[:3] ]
+            except: r,g,b = [int(i) for i in i.symbol().color().replace(" ","").split(',')[:3] ]
             symbColor = (r<<16) + (g<<8) + b
             symbOpacity = i.symbol().opacity() # QgsSymbol.color()
             label = i.label() 

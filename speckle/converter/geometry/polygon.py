@@ -5,13 +5,18 @@ from qgis.core import (
 )
 from typing import Sequence
 
+from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve
 from specklepy.objects import Base
 from specklepy.objects.geometry import Point
 
 from speckle.converter.geometry.mesh import rasterToMesh
+from speckle.converter.geometry.point import pointToNative
 from speckle.converter.geometry.polyline import (
     polylineFromVerticesToSpeckle,
     polylineToNative,
+    speckleArcCircleToPoints,
+    specklePolycurveToPoints,
+    unknownLineToSpeckle
 )
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.logging import logger
@@ -28,19 +33,37 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         polygon = Base(units = "m")
         pointList = []
         pt_iterator = []
+        extRing = None
         try: 
-            pt_iterator = geom.exteriorRing().vertices()
+            extRing = geom.exteriorRing()
+            pt_iterator = extRing.vertices()
         except: 
-            pt_iterator = geom.vertices()
+            try:  
+                extRing = geom.constGet().exteriorRing()
+                pt_iterator = geom.vertices()
+            except: 
+                extRing = geom
+                pt_iterator = geom.vertices()
         for pt in pt_iterator: pointList.append(pt) 
-        boundary = polylineFromVerticesToSpeckle(pointList, True, feature, layer) 
+        if extRing is not None: 
+            boundary = unknownLineToSpeckle(extRing, True, feature, layer)
+        else: return None
+        #boundary = polylineFromVerticesToSpeckle(pointList, True, feature, layer) 
         voids = []
         try:
             for i in range(geom.numInteriorRings()):
-                intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True, feature, layer)
+                intRing = unknownLineToSpeckle(geom.interiorRing(i), True, feature, layer)
+                #intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True, feature, layer)
                 voids.append(intRing)
-        except:
-            pass
+        except: 
+            try:
+                geom = geom.constGet()
+                for i in range(geom.numInteriorRings()):
+                    intRing = unknownLineToSpeckle(geom.interiorRing(i), True, feature, layer)
+                    #intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True, feature, layer)
+                    voids.append(intRing)
+            except: pass
+
         polygon.boundary = boundary
         polygon.voids = voids
         polygon.displayValue = [ boundary ] + voids
@@ -48,10 +71,24 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         vertices = []
         total_vertices = 0
 
+        # add boundary points
+        polyBorder = []
+        if isinstance(boundary, Circle) or isinstance(boundary, Arc): 
+            polyBorder = speckleArcCircleToPoints(boundary) 
+        elif isinstance(boundary, Polycurve): 
+            polyBorder = specklePolycurveToPoints(boundary) 
+        elif isinstance(boundary, Line): pass
+        else: 
+            try: polyBorder = boundary.as_points()
+            except: pass # if Line
+        #polyBorder = boundary.as_points()
+
         if len(voids) == 0: # if there is a mesh with no voids
-            for pt in pointList:
+            for pt in polyBorder: #pointList:
                 if isinstance(pt, QgsPointXY):
                     pt = QgsPoint(pt)
+                if isinstance(pt,Point):
+                    pt = pointToNative(pt)
                 x = pt.x()
                 y = pt.y()
                 z = 0 if math.isnan(pt.z()) else pt.z()
@@ -62,12 +99,11 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
             faces = [total_vertices]
             faces.extend([i for i in ran])
             # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
-        else:
+        else: # if there are voids 
             trianglator = Triangulator()
             faces = []
 
-            # add boundary points
-            polyBorder = boundary.as_points()
+
             pt_count = 0
             # add extra middle point for border
             for pt in polyBorder:
@@ -85,7 +121,18 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
             #add void points
             for i in range(len(voids)):
               trianglator.beginHole()
-              pts = voids[i].as_points()
+
+              pts = []
+              if isinstance(voids[i], Circle) or isinstance(voids[i], Arc): 
+                  pts = speckleArcCircleToPoints(voids[i]) 
+              elif isinstance(voids[i], Polycurve): 
+                  pts = specklePolycurveToPoints(voids[i]) 
+              elif isinstance(voids[i], Line): pass
+              else: 
+                  try: pts = voids[i].as_points()
+                  except: pass # if Line
+
+              #pts = voids[i].as_points()
               for pt in pts:
                 trianglator.addHoleVertex(trianglator.addVertex(pt.x, pt.y))
                 vertices.extend([pt.x, pt.y, pt.z])
