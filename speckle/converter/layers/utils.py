@@ -149,7 +149,7 @@ def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
     return res
 
 def getLayerAttributes(features: List[Base]) -> QgsFields:
-    print("___________getLayerAttributes")
+    #print("___________getLayerAttributes")
     fields = QgsFields()
     all_props = []
     for feature in features: 
@@ -192,7 +192,7 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
     for name in all_props:
         if name not in fields.names(): 
             fields.append(QgsField(name, QVariant.String)) 
-    print("____ end of getLayerAttributes")
+    #print("____ end of getLayerAttributes")
     return fields
 
 def traverseDict(newF: dict[Any, Any], newVals: dict[Any, Any], nam: str, val: Any):

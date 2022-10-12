@@ -169,8 +169,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         set_project_streams(plugin)
 
     def onActiveStreamChanged(self, plugin):
-        print("populateActiveCommitDropdown")
-        print(plugin)
+        #print("populateActiveCommitDropdown")
+        #print(plugin)
         if not self: return
         if len(plugin.current_streams) == 0:
             return
