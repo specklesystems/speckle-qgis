@@ -2,6 +2,7 @@
 Contains all Layer related classes and methods.
 """
 import enum
+import math
 from typing import List, Union
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
@@ -301,8 +302,11 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
     vl = None
     crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
     # try, in case of older version "rasterCrs" will not exist 
-    try: crsRaster = QgsCoordinateReferenceSystem.fromWkt(layer.rasterCrs.wkt) #moved up, because CRS of existing layer needs to be rewritten
+    try: 
+        crsRasterWkt = str(layer.rasterCrs.wkt)
+        crsRaster = QgsCoordinateReferenceSystem.fromWkt(layer.rasterCrs.wkt) #moved up, because CRS of existing layer needs to be rewritten
     except: 
+        crsRasterWkt = str(layer.crs.wkt)
         crsRaster = crs
         logger.logToUser(f"Raster layer {layer.name} might have been sent from the older version of plugin. Try sending it again for more accurate results.", Qgis.Warning)
     
@@ -330,11 +334,11 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
 
     project = QgsProject.instance()
     projectCRS = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-    crsid = crsRaster.authid()
-    try: epsg = int(crsid.split(":")[1]) 
-    except: 
-        epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
-        logger.logToUser(f"CRS of the received raster cannot be identified. Project CRS will be used.", Qgis.Warning)
+    #crsid = crsRaster.authid()
+    #try: epsg = int(crsid.split(":")[1]) 
+    #except: 
+    #    epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
+    #    logger.logToUser(f"CRS of the received raster cannot be identified. Project CRS will be used.", Qgis.Warning)
     
     feat = layer.features[0]
     bandNames = feat["Band names"]
@@ -353,11 +357,23 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
     ds = driver.Create(fn, xsize=feat["X pixels"], ysize=feat["Y pixels"], bands=feat["Band count"], eType=gdal.GDT_Float32)
 
     # Write data to raster band
+    # No data issue: https://gis.stackexchange.com/questions/389587/qgis-set-raster-no-data-value
     for i in range(feat["Band count"]):
+
         rasterband = np.array(bandValues[i])
         rasterband = np.reshape(rasterband,(feat["Y pixels"], feat["X pixels"]))
-        ds.GetRasterBand(i+1).WriteArray(rasterband) # or "rasterband.T"
 
+        band = ds.GetRasterBand(i+1) # https://pcjericks.github.io/py-gdalogr-cookbook/raster_layers.html
+        
+        # get noDataVal or use default
+        try: 
+            noDataVal = float(feat["NoDataVal"][i]) # if value available
+            try: band.SetNoDataValue(noDataVal)
+            except: band.SetNoDataValue(float(noDataVal))
+        except: pass
+
+        band.WriteArray(rasterband) # or "rasterband.T"
+    
     # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
     pt = pointToNative(feat["displayValue"][0])
     xform = QgsCoordinateTransform(crs, crsRaster, project)
@@ -366,7 +382,9 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
     # create a spatial reference object
     srs = osr.SpatialReference()
     #  For the Universal Transverse Mercator the SetUTM(Zone, North=1 or South=2)
-    srs.ImportFromEPSG(epsg) # from https://gis.stackexchange.com/questions/34082/creating-raster-layer-from-numpy-array-using-pyqgis
+    srs.ImportFromWkt(crsRasterWkt)
+    #srs.ImportFromEPSG(epsg) # from https://gis.stackexchange.com/questions/34082/creating-raster-layer-from-numpy-array-using-pyqgis
+    #print(srs.ExportToWkt())
     ds.SetProjection(srs.ExportToWkt())
     # close the rater datasource by setting it equal to None
     ds = None

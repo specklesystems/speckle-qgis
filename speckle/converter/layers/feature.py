@@ -1,4 +1,5 @@
 from distutils.log import error
+import math
 from tokenize import String
 from typing import List
 from qgis._core import QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, QgsRasterBandStats, QgsFeature, QgsFields, \
@@ -81,18 +82,53 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         bandValsFlat = []
         [bandValsFlat.extend(item) for item in bandVals]
         #look at mesh chunking
-        b["@(10000)" + selectedLayer.bandName(index+1) + "_values"] = bandValsFlat #[0:int(max_values/rasterBandCount)]
+
+        const = float(-1* math.pow(10,30))
+        defaultNoData = rb.GetNoDataValue()
+        print(type(rb.GetNoDataValue()))
+
+        # check whether NA value is too small or raster has too small values
+        # assign min value of an actual list; re-assign NA val; replace list items to new NA val
+        try:
+            # create "safe" fake NA value; replace extreme values with it
+            fakeNA = max(bandValsFlat) + 1 
+            bandValsFlatFake = [fakeNA if val<=const else val for val in bandValsFlat] # replace all values corresponding to NoData value 
+            
+            #if default NA value is too small
+            if (isinstance(defaultNoData, float) or isinstance(defaultNoData, int)) and defaultNoData < const:
+                # find and rewrite min of actual band values; create new NA value
+                valMin = min(bandValsFlatFake)
+                noDataValNew = valMin - 1000 # use new adequate value
+                rasterBandNoDataVal.append(noDataValNew)
+                # replace fake NA with new NA
+                bandValsFlat = [noDataValNew if val == fakeNA else val for val in bandValsFlatFake] # replace all values corresponding to NoData value 
+            
+            # if default val unaccessible and minimum val is too small 
+            elif (isinstance(defaultNoData, str) or defaultNoData is None) and valMin < const: # if there are extremely small values but default NA unaccessible 
+                noDataValNew = valMin 
+                rasterBandNoDataVal.append(noDataValNew)
+                # replace fake NA with new NA
+                bandValsFlat = [noDataValNew if val == fakeNA else val for val in bandValsFlatFake] # replace all values corresponding to NoData value 
+                # last, change minValto actual one
+                valMin = min(bandValsFlatFake)
+
+            else: rasterBandNoDataVal.append(rb.GetNoDataValue())
+
+        except: rasterBandNoDataVal.append(rb.GetNoDataValue())
+
+        
         rasterBandVals.append(bandValsFlat)
-        rasterBandNoDataVal.append(rb.GetNoDataValue())
         rasterBandMinVal.append(valMin)
         rasterBandMaxVal.append(valMax)
-
+        
     b["X resolution"] = rasterResXY[0]
     b["Y resolution"] = rasterResXY[1]
     b["X pixels"] = rasterDimensions[0]
     b["Y pixels"] = rasterDimensions[1]
     b["Band count"] = rasterBandCount
     b["Band names"] = rasterBandNames
+    b["NoDataVal"] = rasterBandNoDataVal
+    b["@(10000)" + selectedLayer.bandName(index+1) + "_values"] = bandValsFlat #[0:int(max_values/rasterBandCount)]
 
     # creating a mesh
     vertices = []
@@ -129,12 +165,13 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 gVal = 0
                 bVal = 0
                 for k in range(rasterBandCount):
-                    #### REMAP band values to (0,255) range
-                    valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
-                    colorVal = int( (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / valRange * 255 )
-                    if k+1 == redBand: rVal = colorVal
-                    if k+1 == greenBand: gVal = colorVal
-                    if k+1 == blueBand: bVal = colorVal
+                    if rasterBandVals[k][int(count/4)] >= rasterBandMinVal[k]: 
+                        #### REMAP band values to (0,255) range
+                        valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
+                        colorVal = int( (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / valRange * 255 )
+                        if k+1 == redBand: rVal = colorVal
+                        if k+1 == greenBand: gVal = colorVal
+                        if k+1 == blueBand: bVal = colorVal
                 color =  (rVal<<16) + (gVal<<8) + bVal
                 # for missing values (check by 1st band)
                 if rasterBandVals[0][int(count/4)] != rasterBandVals[0][int(count/4)]:
@@ -174,10 +211,12 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         except: bandIndex = 0
                 else: # e.g. single band data
                     bandIndex = 0
-                # REMAP band values to (0,255) range
-                valRange = (rasterBandMaxVal[bandIndex] - rasterBandMinVal[bandIndex])
-                colorVal = int( (rasterBandVals[bandIndex][int(count/4)] - rasterBandMinVal[bandIndex]) / valRange * 255 )
-                color =  (colorVal<<16) + (colorVal<<8) + colorVal
+                
+                if rasterBandVals[bandIndex][int(count/4)] >= rasterBandMinVal[bandIndex]: 
+                    # REMAP band values to (0,255) range
+                    valRange = (rasterBandMaxVal[bandIndex] - rasterBandMinVal[bandIndex])
+                    colorVal = int( (rasterBandVals[bandIndex][int(count/4)] - rasterBandMinVal[bandIndex]) / valRange * 255 )
+                    color =  (colorVal<<16) + (colorVal<<8) + colorVal
 
             colors.extend([color,color,color,color])
             count += 4
