@@ -25,7 +25,7 @@
        <item row="1" column="0">
         <widget class="QLabel" name="search_label">
          <property name="text">
-          <string>Search Stream</string>
+          <string>Search Stream by name or URL</string>
          </property>
         </widget>
        </item>
