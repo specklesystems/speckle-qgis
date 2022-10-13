@@ -12,6 +12,7 @@ from specklepy.logging.exceptions import SpeckleException
 from speckle.utils import logger
 from specklepy.api.credentials import get_local_accounts #, StreamWrapper
 from specklepy.api.wrapper import StreamWrapper
+from gql import gql
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(
@@ -46,7 +47,18 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
 
     def onSearchClicked(self):
         query = self.search_text_field.text()
-        results = self.speckle_client.stream.search(query)
+        if "http" in query and len(query.split("/")) >= 3: # URL
+            steamId = query
+            try: steamId = query.split("/streams/")[1].split("/")[0] 
+            except: pass
+
+            stream = self.speckle_client.stream.get(steamId)
+            if isinstance(stream, Stream): results = [stream]
+            else: results = []
+           
+        else: 
+            results = self.speckle_client.stream.search(query)
+        
         self.stream_results = results
         #print(results)
         self.populateResultsList()
