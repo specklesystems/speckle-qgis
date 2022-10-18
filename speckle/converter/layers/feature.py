@@ -120,7 +120,8 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         rasterBandVals.append(bandValsFlat)
         rasterBandMinVal.append(valMin)
         rasterBandMaxVal.append(valMax)
-        
+        b["@(10000)" + selectedLayer.bandName(index+1) + "_values"] = bandValsFlat #[0:int(max_values/rasterBandCount)]
+
     b["X resolution"] = rasterResXY[0]
     b["Y resolution"] = rasterResXY[1]
     b["X pixels"] = rasterDimensions[0]
@@ -128,8 +129,6 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
     b["Band count"] = rasterBandCount
     b["Band names"] = rasterBandNames
     b["NoDataVal"] = rasterBandNoDataVal
-    b["@(10000)" + selectedLayer.bandName(index+1) + "_values"] = bandValsFlat #[0:int(max_values/rasterBandCount)]
-
     # creating a mesh
     vertices = []
     faces = []

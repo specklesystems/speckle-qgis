@@ -129,6 +129,7 @@ def arcToSpeckle(poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorL
     center, radius = getArcCenter(arc.startPoint, arc.midPoint, arc.endPoint)
     arc.plane = Plane()#.from_list(Point(), Vector(Point(0, 0, 1)), Vector(Point(0,1,0)), Vector(Point(-1,0,0)))
     arc.plane.origin = Point.from_list(center)
+    arc.units = "m"
     #arc.plane.xdir=Vector.from_list([1,0,0])
     #arc.plane.ydir=Vector.from_list([0,1,0])
     arc.plane.normal = getArcNormal(arc, arc.midPoint)
