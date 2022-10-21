@@ -6,7 +6,7 @@
 name=Speckle
 qgisMinimumVersion=3.20.2
 description=Speckle 2.0 Connector for QGIS
-version=2.7.0
+version=2.9.0
 author=Speckle Systems
 email=hello@speckle.systems
 
