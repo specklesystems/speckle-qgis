@@ -40,7 +40,7 @@ jobs:
                 root: ./
                 paths:
                   - speckle-sharp-ci-tools/Installers
-  package-and-deploy:
+  package:
     executor: python/default
     steps:
       - checkout
@@ -60,6 +60,15 @@ jobs:
           command: pb_tool zip
       - store_artifacts:
           path: zip_build/speckle-qgis.zip
+      - persist_to_workspace:
+          root: ./
+          paths:
+            -  zip_build
+  deploy-marketplace:
+    executor: python/default
+    steps:
+      - attach_workspace:
+          at: ./
       - run: 
           name: Push to marketplace
           command: python plugin_utils/plugin_upload.py -u $QGIS_USERNAME -w $QGIS_PASSWORD zip_build/speckle-qgis.zip
@@ -109,7 +118,10 @@ workflows: #happens with every PR to main
               only:
                 - main
                 - /ci\/.*/
-      - package-and-deploy
+      - package
+      - deploy-marketplace:
+          requires:
+            - package
       # - build-connector-win:
       #     requires:
       #       - get-ci-tools
@@ -121,13 +133,18 @@ workflows: #happens with every PR to main
 
   deploy: # build installers and deploy
     jobs:
-      - get-ci-tools:
+      - package-and-deploy:
           filters:
             tags:
               only: /.*/
             branches:
               ignore: /.*/
-      # - package-and-deploy
+      # - get-ci-tools:
+      #     filters:
+      #       tags:
+      #         only: /.*/
+      #       branches:
+      #         ignore: /.*/
       # - build-connector-win:
       #     name: build-deploy-connector-win
       #     slug: qgis
@@ -139,7 +156,6 @@ workflows: #happens with every PR to main
       #         only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
       #       branches:
       #         ignore: /.*/
-
       # - deploy-manager2:
       #     slug: qgis
       #     os: Win
