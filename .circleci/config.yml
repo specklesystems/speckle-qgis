@@ -50,7 +50,11 @@ jobs:
             pip install pb_tool pyqt5 future
       - run: 
           name: Update version if tag build
-          command: python patch_version.py $semver
+          command: |
+            TAG=$(if [ "${CIRCLE_TAG}" ]; then echo $CIRCLE_TAG; else echo "0.0.0"; fi;)
+            SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]+//')
+            VERSION=$(echo "$SEMVER" | sed -e 's/[a-zA-Z]*\///')
+            python patch_version.py $VERSION
       - run:
           name: ZIP plugin
           command: pb_tool zip
