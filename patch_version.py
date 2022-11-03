@@ -32,7 +32,7 @@ def patch_installer(tag):
                 break
         with open(metadata, "w") as file:
             file.writelines(lines)
-            print(f"Patched whl setup with connector v{tag} and specklepy ")
+            print(f"Patched metadata v{tag} ")
     file.close()
 
     r'''

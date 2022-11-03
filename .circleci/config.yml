@@ -59,7 +59,7 @@ jobs:
           name: ZIP plugin
           command: pb_tool zip
       - store_artifacts:
-          path: zip_build\speckle-qgis.zip
+          path: zip_build/speckle-qgis.zip
       # - run: 
       #     name: Push to marketplace
       #     command: python plugin_utils\plugin_upload.py -u $QGIS_USERNAME -w $QGIS_PASSWORD zip_build\speckle-qgis.zip
