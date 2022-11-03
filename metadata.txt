@@ -6,9 +6,9 @@
 name=Speckle
 qgisMinimumVersion=3.20.2
 description=Speckle 2.0 Connector for QGIS
-version=2.9.4
+version=2.0.99
 author=Speckle Systems
-email=hello@speckle.systems
+email=connectors@speckle.systems
 
 about=
     The Speckle QGIS plugin allows you send and receive data from multiple sources to/from several layers in your project, and store their geometry (as well as their contained metadata), in a Speckle server. 

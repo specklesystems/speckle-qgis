@@ -116,3 +116,5 @@ settings.json
 **/.DS_Store
 zip_build
 .qt_for_python
+speckle-sharp-ci-tools*
+zip-build*
