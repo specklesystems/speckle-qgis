@@ -67,6 +67,7 @@ jobs:
   deploy-marketplace:
     executor: python/default
     steps:
+      - checkout
       - attach_workspace:
           at: ./
       - run: 
