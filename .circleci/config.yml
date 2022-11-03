@@ -1,0 +1,184 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@1.3.2
+  # Using windows for builds
+  win: circleci/windows@2.4.0
+  # Upload artifacts to s3
+  aws-s3: circleci/aws-s3@2.0.0
+
+jobs:
+  build-connector-win: # Reusable job for basic connectors
+    executor:
+      name: win/default # comes with python 3.7.3
+      shell: cmd.exe
+    parameters:
+      slug:
+        type: string
+        default: "qgis"
+      installer:
+        type: boolean
+        default: false
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Patch
+          shell: powershell.exe
+          command:
+            | # If no tag, use 0.0.0.1 and don't make any YML (for testing only!)
+            $tag = if([string]::IsNullOrEmpty($env:CIRCLE_TAG)) { "0.0.0" } else { $env:CIRCLE_TAG }
+            $semver = if($tag.Contains('/')) {$tag.Split("/")[1] } else { $tag }
+            $ver = if($semver.Contains('-')) {$semver.Split("-")[0] } else { $semver }
+            $version = "$($ver).$($env:CIRCLE_BUILD_NUM)"
+            speckle-sharp-ci-tools\InnoSetup\ISCC.exe speckle-sharp-ci-tools\qgis.iss
+      - when:
+          condition: << parameters.installer >>
+          steps:
+            - persist_to_workspace:
+                root: ./
+                paths:
+                  - speckle-sharp-ci-tools/Installers
+  package:
+    executor: python/default
+    steps:
+      - checkout
+      - run: 
+          name: Install dependencies
+          command: |
+            pip install pb_tool pyqt5
+      - run: 
+          name: Update version if tag build
+          command: |
+            TAG=$(if [ "${CIRCLE_TAG}" ]; then echo $CIRCLE_TAG; else echo "2.0.99.$CIRCLE_BUILD_NUM"; fi;)
+            SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]+//')
+            VERSION=$(echo "$SEMVER" | sed -e 's/[a-zA-Z]*\///')
+            python patch_version.py $VERSION
+      - run:
+          name: ZIP plugin
+          command: pb_tool zip
+      - store_artifacts:
+          path: zip_build/speckle-qgis.zip
+      - persist_to_workspace:
+          root: ./
+          paths:
+            -  zip_build
+  deploy-marketplace:
+    executor: python/default
+    steps:
+      - checkout
+      - run: 
+          name: Install dependencies
+          command: |
+            pip install future
+      - attach_workspace:
+          at: ./
+      - run: 
+          name: Push to marketplace
+          command: python plugin_utils/plugin_upload.py -u $QGIS_USERNAME -w $QGIS_PASSWORD zip_build/speckle-qgis.zip
+
+
+  get-ci-tools: # Clones our ci tools and persists them to the workspace
+    docker:
+      - image: cimg/base:2021.01
+    steps:
+      - run: # Could not get ssh to work, so using a personal token
+          name: Clone
+          command: git clone https://$GITHUB_TOKEN@github.com/specklesystems/speckle-sharp-ci-tools.git speckle-sharp-ci-tools
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - speckle-sharp-ci-tools
+
+  deploy-manager2:
+    docker:
+      - image: mcr.microsoft.com/dotnet/sdk:6.0
+    parameters:
+      slug:
+        type: string
+      os:
+        type: string
+      extension:
+        type: string
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Install Manager Feed CLI
+          command: dotnet tool install --global Speckle.Manager.Feed
+      - run:
+          name: Upload new version
+          command: |
+            TAG=$(if [ "${CIRCLE_TAG}" ]; then echo $CIRCLE_TAG; else echo "0.0.0"; fi;)
+            SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]*//')
+            /root/.dotnet/tools/Speckle.Manager.Feed deploy -s << parameters.slug >> -v ${SEMVER} -u https://releases.speckle.dev/installers/<< parameters.slug >>/<< parameters.slug >>-${SEMVER}.<< parameters.extension >> -o << parameters.os >> -f speckle-sharp-ci-tools/Installers/<< parameters.slug >>/<< parameters.slug >>-${SEMVER}.<< parameters.extension >>
+workflows: #happens with every PR to main
+  build: # build the installers, but don't persist to workspace for deployment
+    jobs:
+      - get-ci-tools:
+          filters:
+            branches:
+              only:
+                - main
+                - /ci\/.*/
+      - package:
+          filters:
+            branches:
+              only:
+                - /ci\/.*/
+      # - build-connector-win:
+      #     requires:
+      #       - get-ci-tools
+      #     filters:
+      #       branches:
+      #         only:
+      #           - main
+      #           - /ci\/.*/
+
+  deploy: # build installers and deploy
+    jobs:
+      - package:
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+      - deploy-marketplace:
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+          requires:
+            - package
+      # - get-ci-tools:
+      #     filters:
+      #       tags:
+      #         only: /.*/
+      #       branches:
+      #         ignore: /.*/
+      # - build-connector-win:
+      #     name: build-deploy-connector-win
+      #     slug: qgis
+      #     installer: true
+      #     requires:
+      #       - get-ci-tools
+      #     filters:
+      #       tags:
+      #         only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
+      #       branches:
+      #         ignore: /.*/
+      # - deploy-manager2:
+      #     slug: qgis
+      #     os: Win
+      #     extension: exe
+      #     requires:
+      #       - get-ci-tools
+      #       - build-deploy-connector-win
+      #     filters:
+      #       tags:
+      #         only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
+      #       branches:
+      #         ignore: /.*/ # For testing only! /ci\/.*/
