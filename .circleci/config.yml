@@ -127,7 +127,7 @@ workflows: #happens with every PR to main
               only: /.*/
             branches:
               ignore: /.*/
-      - package-and-deploy
+      # - package-and-deploy
       # - build-connector-win:
       #     name: build-deploy-connector-win
       #     slug: qgis
