@@ -47,7 +47,7 @@ jobs:
       - run: 
           name: Install dependencies
           command: |
-            pip install pb_tool pyqt5 future
+            pip install pb_tool pyqt5
       - run: 
           name: Update version if tag build
           command: |
@@ -68,6 +68,10 @@ jobs:
     executor: python/default
     steps:
       - checkout
+      - run: 
+          name: Install dependencies
+          command: |
+            pip install future
       - attach_workspace:
           at: ./
       - run: 
