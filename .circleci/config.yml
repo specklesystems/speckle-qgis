@@ -51,7 +51,7 @@ jobs:
       - run: 
           name: Update version if tag build
           command: |
-            TAG=$(if [ "${CIRCLE_TAG}" ]; then echo $CIRCLE_TAG; else echo "2.0.99"; fi;)
+            TAG=$(if [ "${CIRCLE_TAG}" ]; then echo $CIRCLE_TAG; else echo "2.0.99.$CIRCLE_BUILD_NUM"; fi;)
             SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]+//')
             VERSION=$(echo "$SEMVER" | sed -e 's/[a-zA-Z]*\///')
             python patch_version.py $VERSION
@@ -60,9 +60,9 @@ jobs:
           command: pb_tool zip
       - store_artifacts:
           path: zip_build/speckle-qgis.zip
-      # - run: 
-      #     name: Push to marketplace
-      #     command: python plugin_utils\plugin_upload.py -u $QGIS_USERNAME -w $QGIS_PASSWORD zip_build\speckle-qgis.zip
+      - run: 
+          name: Push to marketplace
+          command: python plugin_utils\plugin_upload.py -u $QGIS_USERNAME -w $QGIS_PASSWORD zip_build\speckle-qgis.zip
 
 
   get-ci-tools: # Clones our ci tools and persists them to the workspace
