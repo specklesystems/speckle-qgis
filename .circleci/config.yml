@@ -15,7 +15,7 @@ jobs:
     parameters:
       slug:
         type: string
-        default: "arcgis"
+        default: "qgis"
       installer:
         type: boolean
         default: false
@@ -34,7 +34,9 @@ jobs:
             $version = "$($ver).$($env:CIRCLE_BUILD_NUM)"
             echo $semver
             python patch_version.py $semver
-            speckle-sharp-ci-tools\InnoSetup\ISCC.exe speckle-sharp-ci-tools\arcgis.iss
+            pb_tool zip
+            python plugin_utils\plugin_upload.py -u $env:QGIS_USERNAME -w $env:QGIS_PASSWORD zip_build\speckle-qgis.zip 
+            speckle-sharp-ci-tools\InnoSetup\ISCC.exe speckle-sharp-ci-tools\qgis.iss
       - when:
           condition: << parameters.installer >>
           steps:
@@ -107,7 +109,7 @@ workflows: #happens with every PR to main
 
       - build-connector-win:
           name: build-deploy-connector-win
-          slug: arcgis
+          slug: qgis
           installer: true
           requires:
             - get-ci-tools
@@ -118,7 +120,7 @@ workflows: #happens with every PR to main
               ignore: /.*/
 
       - deploy-manager2:
-          slug: arcgis
+          slug: qgis
           os: Win
           extension: exe
           requires:
