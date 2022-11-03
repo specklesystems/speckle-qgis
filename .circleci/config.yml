@@ -133,7 +133,7 @@ workflows: #happens with every PR to main
 
   deploy: # build installers and deploy
     jobs:
-      - package-and-deploy:
+      - package:
           filters:
             tags:
               only: /.*/
