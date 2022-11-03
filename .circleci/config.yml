@@ -123,10 +123,11 @@ workflows: #happens with every PR to main
               only:
                 - main
                 - /ci\/.*/
-      - package
-      - deploy-marketplace:
-          requires:
-            - package
+      - package:
+          filters:
+            branches:
+              only:
+                - /ci\/.*/
       # - build-connector-win:
       #     requires:
       #       - get-ci-tools
@@ -144,6 +145,14 @@ workflows: #happens with every PR to main
               only: /.*/
             branches:
               ignore: /.*/
+      - deploy-marketplace:
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+          requires:
+            - package
       # - get-ci-tools:
       #     filters:
       #       tags:
