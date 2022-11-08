@@ -135,6 +135,7 @@ workflows: #happens with every PR to main
       - build-connector-win:
           requires:
             - get-ci-tools 
+            - package
           filters:
             branches:
               only:
