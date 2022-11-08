@@ -10,18 +10,19 @@ def patch_installer(tag):
     #toolbox_manual_install_file = "speckle_arcgis_installer/toolbox_install_manual.py"
 
     #py_tag = get_specklepy_version()
-    
-    with open(iss_file, "r") as file:
-        lines = file.readlines()
-        for i, line in enumerate(lines):
-            if "#define AppVersion " in line: 
-                lines[i] = f'#define AppVersion "{tag.split("-")[0]}"\n'
-            if "#define AppInfoVersion " in line: 
-                lines[i] = f'#define AppInfoVersion "{tag}"\n'
-        with open(iss_file, "w") as file:
-            file.writelines(lines)
-            print(f"Patched installer with connector v{tag} ")
-    file.close()
+    try:
+        with open(iss_file, "r") as file:
+            lines = file.readlines()
+            for i, line in enumerate(lines):
+                if "#define AppVersion " in line: 
+                    lines[i] = f'#define AppVersion "{tag.split("-")[0]}"\n'
+                if "#define AppInfoVersion " in line: 
+                    lines[i] = f'#define AppInfoVersion "{tag}"\n'
+            with open(iss_file, "w") as file:
+                file.writelines(lines)
+                print(f"Patched installer with connector v{tag} ")
+        file.close()
+    except: pass
     
 
     with open(metadata, "r") as file:
