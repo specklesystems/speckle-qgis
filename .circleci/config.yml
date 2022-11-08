@@ -145,6 +145,8 @@ workflows: #happens with every PR to main
               only: /.*/
             branches:
               ignore: /.*/
+          requires:
+            - get-ci-tools 
       - deploy-marketplace:
           filters:
             tags:
