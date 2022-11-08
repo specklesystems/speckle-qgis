@@ -132,14 +132,14 @@ workflows: #happens with every PR to main
             branches:
               only:
                 - /ci\/.*/   
-      - build-connector-win:
-          requires:
-            - get-ci-tools 
-          filters:
-            branches:
-              only:
-                - main
-                - /ci\/.*/
+      #- build-connector-win:
+      #    requires:
+      #      - get-ci-tools 
+      #    filters:
+      #      branches:
+      #        only:
+      #          - main
+      #          - /ci\/.*/
 
   deploy: # build installers and deploy
     jobs:
@@ -165,26 +165,26 @@ workflows: #happens with every PR to main
               only: /.*/
             branches:
               ignore: /.*/
-      - build-connector-win:
-          name: build-deploy-connector-win
-          slug: qgis
-          installer: true
-          requires:
-            - get-ci-tools
-          filters:
-            tags:
-              only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
-            branches:
-              ignore: /.*/
-      - deploy-manager2:
-          slug: qgis
-          os: Win
-          extension: exe
-          requires:
-            - get-ci-tools
-            - build-deploy-connector-win
-          filters:
-            tags:
-              only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
-            branches:
-              ignore: /.*/ # For testing only! /ci\/.*/
+      #- build-connector-win:
+      #    name: build-deploy-connector-win
+      #    slug: qgis
+      #    installer: true
+      #    requires:
+      #      - get-ci-tools
+      #    filters:
+      #      tags:
+      #        only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
+      #      branches:
+      #        ignore: /.*/
+      #- deploy-manager2:
+      #    slug: qgis
+      #    os: Win
+      #    extension: exe
+      #    requires:
+      #      - get-ci-tools
+      #      - build-deploy-connector-win
+      #    filters:
+      #      tags:
+      #        only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
+      #      branches:
+      #        ignore: /.*/ # For testing only! /ci\/.*/
