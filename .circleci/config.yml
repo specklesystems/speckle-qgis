@@ -131,6 +131,7 @@ workflows: #happens with every PR to main
           filters:
             branches:
               only:
+                - main
                 - /ci\/.*/   
       - build-connector-win:
           requires:
