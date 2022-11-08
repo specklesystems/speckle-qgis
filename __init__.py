@@ -43,6 +43,7 @@ def classFactory(iface):  # pylint: disable=invalid-name
 
     # Set qgisInterface to enable logToUser notifications
     logger.qgisInterface = iface
+    iface.pluginToolBar().setVisible(True)
     
     # Ensure dependencies are installed in the machine
     from speckle.utils import enable_remote_debugging
