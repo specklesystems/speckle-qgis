@@ -29,7 +29,7 @@ def patch_installer(tag):
         lines = file.readlines()
         for i, line in enumerate(lines):
             if "version=" in line: 
-                lines[i] = f'version={tag.split("-")[0]}\n'
+                lines[i] = f'version={tag}\n'#.split("-")[0]
                 break
         with open(metadata, "w") as file:
             file.writelines(lines)
