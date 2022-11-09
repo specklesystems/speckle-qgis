@@ -15,7 +15,7 @@ def patch_installer(tag):
             lines = file.readlines()
             for i, line in enumerate(lines):
                 if "#define AppVersion " in line: 
-                    lines[i] = f'#define AppVersion "{tag.split("-")[0]}"\n'
+                    lines[i] = f'#define AppVersion "{tag}"\n' #.split("-")[0]
                 if "#define AppInfoVersion " in line: 
                     lines[i] = f'#define AppInfoVersion "{tag}"\n'
             with open(iss_file, "w") as file:
