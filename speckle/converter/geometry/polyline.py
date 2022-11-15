@@ -6,7 +6,7 @@ from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 
 from qgis.core import (
     QgsLineString, QgsPointXY,
-    QgsCircularString, 
+    QgsCircularString, QgsPoint,
     QgsCircle, QgsFeature, QgsVectorLayer,
     QgsCompoundCurve, QgsVertexIterator, QgsGeometry, QgsCurvePolygon, QgsEllipse
 )
@@ -80,12 +80,45 @@ def unknownLineToSpeckle(poly: QgsCompoundCurve, closed: bool, feature: QgsFeatu
 def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: QgsVectorLayer):
     try: poly = poly.constGet()
     except: pass
-    poly = poly.curveToLine()
-    return polylineToSpeckle(poly, feature, layer)
+    #poly = poly.curveToLine()
+    #return polylineToSpeckle(poly, feature, layer)
 
-    polycurve = Polycurve()
+    polycurve = Polycurve(units = "m")
     polycurve.segments = []
     polycurve.closed = False
+    
+    parts = str(poly).split("),")
+    pts = []
+    pt_len = 0
+    for p in parts:
+        if "CircularString" in p:
+            pt1 = poly.childPoint(pt_len)
+            pt2 = poly.childPoint(pt_len+1)
+            pt3 = poly.childPoint(pt_len+2)
+            print(pt1.z())
+            circString = QgsCircularString(QgsPoint(pt1.x(), pt1.y(), pt1.z()), QgsPoint(pt2.x(), pt2.y(), pt2.z()), QgsPoint(pt3.x(), pt3.y(), pt3.z()))
+            p = arcToSpeckle(circString, feature, layer)
+            if p is not None: pts.extend([poly.childPoint(pt_len), poly.childPoint(pt_len+1), poly.childPoint(pt_len+2)]) 
+            pt_len += 2 # because the 3rd point will be reused as n-point of the curve
+        else:
+            segment_pts = len(p.split(",")) 
+            st = pointToSpeckle(poly.childPoint(pt_len), feature, layer)
+            en = pointToSpeckle(poly.childPoint(pt_len+1), feature, layer)
+            print(poly.childPoint(pt_len+1))
+            print(type(poly.childPoint(pt_len+1).x()))
+            if "EMPTY" in str(poly.childPoint(pt_len+1)): 
+                en = en = pointToSpeckle(poly.childPoint(0), feature, layer)
+            p = Line(units = "m", start = st, end = en)
+            print(p)
+            pt_len += 1 # because the end point will be reused as n-point of the curve
+        polycurve.segments.append(p)
+
+    
+    col = featureColorfromNativeRenderer(feature, layer)
+    polycurve['displayStyle'] = {}
+    polycurve['displayStyle']['color'] = col
+
+    return polycurve
 
     if "CircularString" in str(poly): 
         all_pts = [pt for pt in poly.vertices()]
@@ -100,9 +133,6 @@ def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: Qg
                 startPt = all_pts[1:][i*2 + 1]
     #polycurve = polylineFromVerticesToSpeckle(vert, False, feature, layer)
     
-    col = featureColorfromNativeRenderer(feature, layer)
-    polycurve['displayStyle'] = {}
-    polycurve['displayStyle']['color'] = col
 
     return polycurve 
 
@@ -345,7 +375,7 @@ def speckleArcCircleToPoints(poly: Union[Arc, Circle]) -> List[Point]:
         if angle1 > angle2 and normal == 1: interval = abs( (2*math.pi-angle1) + angle2)
         if angle2 > angle1 and normal == -1: interval = abs( (2*math.pi-angle2) + angle1)
 
-    pointsNum = math.floor( abs(interval)) * 12
+    pointsNum = math.floor( abs(interval)) * 8
     if pointsNum <4: pointsNum = 4
 
     for i in range(range_start, pointsNum + 1): 

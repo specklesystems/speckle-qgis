@@ -87,7 +87,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         maxPoints = 5000
         if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
             
-        if len(voids) == 0: # if there is a mesh with no voids
+        if len(voids) == 0 and len(polyBorder)>= 150: # only if there is a mesh with no voids and large amount of points
             for k, ptt in enumerate(polyBorder): #pointList:
                 pt = polyBorder[k*coef]
                 if k < maxPoints:
