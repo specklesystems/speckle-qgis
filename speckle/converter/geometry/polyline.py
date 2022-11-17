@@ -27,7 +27,7 @@ def polylineFromVerticesToSpeckle(vertices: Union[List[Point], QgsVertexIterator
             specklePts = vertices
         else: specklePts = [pointToSpeckle(pt, feature, layer) for pt in vertices] #breaks unexplainably
     elif isinstance(vertices, QgsVertexIterator):
-        specklePts = [pointToSpeckle(pt, feature, layer) for pt in vertices]
+        specklePts: list[Point] = [pointToSpeckle(pt, feature, layer) for pt in vertices]
     else: return None
     #specklePts = []
     #for pt in vertices:
@@ -39,7 +39,7 @@ def polylineFromVerticesToSpeckle(vertices: Union[List[Point], QgsVertexIterator
     polyline.closed = closed
     polyline.units = specklePts[0].units
     for i, point in enumerate(specklePts):
-        if closed and i == len(specklePts) - 1:
+        if closed and i == len(specklePts)-1 and specklePts[0].x==specklePts[len(specklePts)-1].x and specklePts[0].y==specklePts[len(specklePts)-1].y and specklePts[0].z==specklePts[len(specklePts)-1].z:
             continue
         polyline.value.extend([point.x, point.y, point.z])
     
@@ -90,6 +90,8 @@ def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: Qg
     parts = str(poly).split("),")
     pts = []
     pt_len = 0
+    closed_segm = False
+
     for p in parts:
         if "CircularString" in p:
             pt1 = poly.childPoint(pt_len)
@@ -100,19 +102,34 @@ def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: Qg
             p = arcToSpeckle(circString, feature, layer)
             if p is not None: pts.extend([poly.childPoint(pt_len), poly.childPoint(pt_len+1), poly.childPoint(pt_len+2)]) 
             pt_len += 2 # because the 3rd point will be reused as n-point of the curve
-        else:
-            segment_pts = len(p.split(",")) 
-            st = pointToSpeckle(poly.childPoint(pt_len), feature, layer)
-            en = pointToSpeckle(poly.childPoint(pt_len+1), feature, layer)
-            print(poly.childPoint(pt_len+1))
-            print(type(poly.childPoint(pt_len+1).x()))
-            if "EMPTY" in str(poly.childPoint(pt_len+1)): 
-                en = en = pointToSpeckle(poly.childPoint(0), feature, layer)
-            p = Line(units = "m", start = st, end = en)
-            print(p)
-            pt_len += 1 # because the end point will be reused as n-point of the curve
+        else: 
+            segment_pts = p.replace("(","").replace(")","").split(",")
+            len_segment_pts = len(segment_pts)
+            if len_segment_pts ==2: 
+                st = pointToSpeckle(poly.childPoint(pt_len), feature, layer)
+                en = pointToSpeckle(poly.childPoint(pt_len+1), feature, layer)
+                print(poly.childPoint(pt_len+1))
+                print(type(poly.childPoint(pt_len+1).x()))
+                if "EMPTY" in str(poly.childPoint(pt_len+1)): 
+                    en = en = pointToSpeckle(poly.childPoint(0), feature, layer)
+                p = Line(units = "m", start = st, end = en)
+                print(p)
+                pt_len += 1 # because the end point will be reused as n-point of the curve
+            else:
+                actual_segment_pts = []
+                for k in range(len(segment_pts)):
+                    ptt = poly.childPoint(pt_len+k)
+                    actual_segment_pts.append(pointToSpeckle(ptt, feature, layer))
+
+                if actual_segment_pts[0].x == actual_segment_pts[len(actual_segment_pts)-1].x and actual_segment_pts[0].y == actual_segment_pts[len(actual_segment_pts)-1].y and actual_segment_pts[0].z == actual_segment_pts[len(actual_segment_pts)-1].z : 
+                    closed_segm = True # last point will not be included (if closed) when Polyline is created 
+                    p = polylineFromVerticesToSpeckle(actual_segment_pts, closed_segm, feature, layer)
+                    break
+                
+                p = polylineFromVerticesToSpeckle(actual_segment_pts, closed_segm, feature, layer)
         polycurve.segments.append(p)
 
+    if closed_segm: polycurve = p # take the last segment only
     
     col = featureColorfromNativeRenderer(feature, layer)
     polycurve['displayStyle'] = {}
@@ -329,19 +346,17 @@ def arcToQgisPoints(poly: Arc):
 def specklePolycurveToPoints(poly: Polycurve) -> List[Point]:
     #print("_____Speckle Polycurve to points____")
     points = []
-    for segm in poly.segments:
-        #print(segm)
+    for i, segm in enumerate(poly.segments):
+        pts = []
         if isinstance(segm, Arc) or isinstance(segm, Circle): # or isinstance(segm, Curve):
-            #print("Arc or Curve")
             pts: List[Point] = speckleArcCircleToPoints(segm) 
         elif isinstance(segm, Line): 
-            #print("Line")
             pts: List[Point] = [segm.start, segm.end]
         elif isinstance(segm, Polyline): 
-            #print("Polyline")
             pts: List[Point] = segm.as_points()
 
-        points.extend(pts)
+        if i==0: points.extend(pts)
+        else: points.extend(pts[1:])
     return points
 
 def speckleEllipseToPoints(poly: Ellipse) -> List[Point]:
@@ -375,7 +390,7 @@ def speckleArcCircleToPoints(poly: Union[Arc, Circle]) -> List[Point]:
         if angle1 > angle2 and normal == 1: interval = abs( (2*math.pi-angle1) + angle2)
         if angle2 > angle1 and normal == -1: interval = abs( (2*math.pi-angle2) + angle1)
 
-    pointsNum = math.floor( abs(interval)) * 8
+    pointsNum = math.floor( abs(interval)) * 12
     if pointsNum <4: pointsNum = 4
 
     for i in range(range_start, pointsNum + 1): 

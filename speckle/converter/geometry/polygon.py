@@ -87,7 +87,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         maxPoints = 5000
         if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
             
-        if len(voids) == 0 and len(polyBorder)>= 150: # only if there is a mesh with no voids and large amount of points
+        if len(voids) == 0: # only if there is a mesh with no voids and large amount of points
             for k, ptt in enumerate(polyBorder): #pointList:
                 pt = polyBorder[k*coef]
                 if k < maxPoints:
@@ -108,7 +108,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
             # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
         else: # if there are voids 
             # if its a large polygon with voids to be triangualted, lower the coef even more:
-            maxPoints = 150
+            maxPoints = 100
             if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
 
             trianglator = Triangulator()
