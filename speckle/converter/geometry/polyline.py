@@ -305,7 +305,7 @@ def polycurveToNative(poly: Polycurve) -> QgsLineString:
             elif isinstance(segm,Arc):  
                 pts = [pointToNative(pt) for pt in speckleArcCircleToPoints(segm)]
                 #pts_comp.extend(pts)
-                #converted = QgsLineString(pts) # arcToNative(segm) # QgsLineString
+                converted = QgsLineString(pts) # arcToNative(segm) # QgsLineString
                 #curve.addCurve(converted.childPoint(0),converted.childPoint(1),converted.childPoint(2))
 
                 if singleSegm == 1: return arcToNative(segm)
