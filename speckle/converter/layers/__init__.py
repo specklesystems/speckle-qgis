@@ -136,11 +136,11 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -
     return [layer_points, layer_polylines]
 
 def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str) -> QgsVectorLayer: 
-    #print("___________cadVectorLayerToNative")
+    print("___________cadVectorLayerToNative")
     #get Project CRS, use it by default for the new received layer
     vl = None
     layerName = layerName + "/" + geomType
-    #print(layerName)
+    print(layerName)
     crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
     if crs.isGeographic is True: 
         logger.logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", Qgis.Warning)
@@ -174,6 +174,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     vl.setCrs(crs)
 
     newFields = getLayerAttributes(geomList)
+    print(newFields)
     
     # create list of Features (fets) and list of Layer fields (fields)
     attrs = QgsFields()
@@ -207,6 +208,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     vl.updateExtents()
     vl.commitChanges()
     layerGroup.addLayer(vl)
+    print(vl)
 
     ################################### RENDERER ###########################################
     # only set up renderer if the layer is just created

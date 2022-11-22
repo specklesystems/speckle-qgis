@@ -198,7 +198,8 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
                     sourceSymbol.setColor(sourceSymbColor)
                     rendererNew.setSourceSymbol(sourceSymbol)
                 except: rendererNew = QgsGraduatedSymbolRenderer()
-                rendererNew.setGraduatedMethod(gradMetod)
+                try: rendererNew.setGraduatedMethod(gradMetod)
+                except:  rendererNew.setGraduatedMethod(QgsGraduatedSymbolRenderer.GraduatedMethod(gradMetod))
             else:
                 rendererNew = makeDefaultRenderer(renderer, layer)
 

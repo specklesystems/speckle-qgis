@@ -12,4 +12,5 @@ def subprocess_call(*args, **kwargs):
         startupinfo.wShowWindow = subprocess.SW_HIDE
         kwargs['startupinfo'] = startupinfo
     retcode = subprocess.call(*args, **kwargs)
+    print(retcode)
     return retcode
