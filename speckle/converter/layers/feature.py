@@ -6,6 +6,8 @@ from qgis._core import QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, Qg
     QgsField, QgsVectorLayer, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsProject
 from specklepy.objects import Base
 
+from typing import Dict, Any
+
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
@@ -42,6 +44,77 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         if f_name == "NULL" or f_name is None or str(f_name) == "NULL": f_name = None
         b[corrected] = f_name
     return b
+          
+def bimFeatureToNative(feature: Base, fields: dict, crs, path: str):
+    #print("04_________BIM Feature To Native____________")
+
+    feat = {}
+    try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
+    except:  speckle_geom = feature # for created in other software
+
+    feat.update({"arcGisGeomFromSpeckle": ""})
+
+    try: 
+        if "Speckle_ID" not in fields.keys() and feature["id"]: feat.update("Speckle_ID", "TEXT")
+    except: pass
+    feat_updated = updateFeat(feat, fields, feature)
+
+    return feat_updated
+
+
+def updateFeat(feat:dict, fields: dict, feature: Base) -> dict[str, Any]:
+    
+    for key, variant in fields.items(): 
+        try:
+            if key == "Speckle_ID": 
+                value = str(feature["id"])
+                if key != "parameters": print(value)
+                feat[key] = value 
+
+                if variant == "TEXT": value = str(value) 
+                if variant == getVariantFromValue(value) and value != "NULL" and value != "None": feat.update({key: value})   
+                elif variant == "TEXT" or variant == "FLOAT" or variant == "LONG" or variant == "SHORT": feat.update({key: None})
+
+            else:
+                try: 
+                    value = feature[key] 
+                    if variant == "TEXT": value = str(value) 
+                    if variant == getVariantFromValue(value) and value != "NULL" and value != "None": feat.update({key: value})   
+                    elif variant == "TEXT" or variant == "FLOAT" or variant == "LONG" or variant == "SHORT": feat.update({key: None})
+
+                except:
+                    value = None
+                    rootName = key.split("_")[0]
+                    #try: # if the root category exists
+                    # if its'a list 
+                    if isinstance(feature[rootName], list):
+                        for i in range(len(feature[rootName])):
+                            try:
+                                newF, newVals = traverseDict({}, {}, rootName + "_" + str(i), feature[rootName][i])
+                                for i, (key,value) in enumerate(newVals.items()):
+                                    for k, (x,y) in enumerate(newF.items()):
+                                        if key == x: variant = y; break
+                                    if variant == "TEXT": value = str(value) 
+                                    if variant == getVariantFromValue(value) and value != "NULL" and value != "None": feat.update({key: value})   
+                                    elif variant == "TEXT" or variant == "FLOAT" or variant == "LONG" or variant == "SHORT": feat.update({key: None})
+                            except Exception as e: print(e)
+                    #except: # if not a list
+                    else:
+                        try:
+                            newF, newVals = traverseDict({}, {}, rootName, feature[rootName])
+                            for i, (key,value) in enumerate(newVals.items()):
+                                for k, (x,y) in enumerate(newF.items()):
+                                    if key == x: variant = y; break
+                                #print(variant)
+                                if variant == "TEXT": value = str(value) 
+                                if variant == getVariantFromValue(value) and value != "NULL" and value != "None": feat.update({key: value})   
+                                elif variant == "TEXT" or variant == "FLOAT" or variant == "LONG" or variant == "SHORT": feat.update({key: None})
+                        except Exception as e: feat.update({key: None})
+        except Exception as e: 
+            feat.update({key: None})
+    feat_sorted = {k: v for k, v in sorted(feat.items(), key=lambda item: item[0])}
+    #print("_________________end of updating a feature_________________________")
+    return feat_sorted
 
 
 def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordinateReferenceSystem, project: QgsProject) -> Base:
