@@ -45,76 +45,70 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         b[corrected] = f_name
     return b
           
-def bimFeatureToNative(feature: Base, fields: dict, crs, path: str):
-    #print("04_________BIM Feature To Native____________")
+def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields, crs, path: str):
+    print("04_________BIM Feature To Native____________")
 
-    feat = {}
-    try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
-    except:  speckle_geom = feature # for created in other software
+    exist_feat.setFields(fields)  
 
-    feat.update({"arcGisGeomFromSpeckle": ""})
-
-    try: 
-        if "Speckle_ID" not in fields.keys() and feature["id"]: feat.update("Speckle_ID", "TEXT")
-    except: pass
-    feat_updated = updateFeat(feat, fields, feature)
+    feat_updated = updateFeat(exist_feat, fields, feature)
+    print(fields.toList())
 
     return feat_updated
 
-
-def updateFeat(feat:dict, fields: dict, feature: Base) -> dict[str, Any]:
+def addFeatVariant(key, variant, value, f: QgsFeature):
     
-    for key, variant in fields.items(): 
-        try:
-            if key == "Speckle_ID": 
-                value = str(feature["id"])
-                if key != "parameters": print(value)
-                feat[key] = value 
+    feat = f
+    if variant == 10: value = str(value) # string
+    if variant == getVariantFromValue(value) and value != "NULL" and value != "None": feat[key] = value
+    elif isinstance(variant, int): feat[key] = None
+    return feat 
 
-                if variant == "TEXT": value = str(value) 
-                if variant == getVariantFromValue(value) and value != "NULL" and value != "None": feat.update({key: value})   
-                elif variant == "TEXT" or variant == "FLOAT" or variant == "LONG" or variant == "SHORT": feat.update({key: None})
+def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, Any]:
+    try:
+        for i, key in enumerate(fields.names()): 
+            variant = fields.at(i).type()
+            try:
+                if key == "Speckle_ID": 
+                    value = str(feature["id"])
+                    if key != "parameters": print(value)
+                    feat[key] = value 
 
-            else:
-                try: 
-                    value = feature[key] 
-                    if variant == "TEXT": value = str(value) 
-                    if variant == getVariantFromValue(value) and value != "NULL" and value != "None": feat.update({key: value})   
-                    elif variant == "TEXT" or variant == "FLOAT" or variant == "LONG" or variant == "SHORT": feat.update({key: None})
+                    feat = addFeatVariant(key, variant, value, feat)
 
-                except:
-                    value = None
-                    rootName = key.split("_")[0]
-                    #try: # if the root category exists
-                    # if its'a list 
-                    if isinstance(feature[rootName], list):
-                        for i in range(len(feature[rootName])):
+                else:
+                    try: 
+                        value = feature[key] 
+                        feat = addFeatVariant(key, variant, value, feat)
+
+                    except:
+                        value = None
+                        rootName = key.split("_")[0]
+                        #try: # if the root category exists
+                        # if its'a list 
+                        if isinstance(feature[rootName], list):
+                            for i in range(len(feature[rootName])):
+                                try:
+                                    newF, newVals = traverseDict({}, {}, rootName + "_" + str(i), feature[rootName][i])
+                                    for i, (key,value) in enumerate(newVals.items()):
+                                        for k, (x,y) in enumerate(newF.items()):
+                                            if key == x: variant = y; break
+                                        feat = addFeatVariant(key, variant, value, feat)
+                                except Exception as e: print(e)
+                        #except: # if not a list
+                        else:
                             try:
-                                newF, newVals = traverseDict({}, {}, rootName + "_" + str(i), feature[rootName][i])
+                                newF, newVals = traverseDict({}, {}, rootName, feature[rootName])
                                 for i, (key,value) in enumerate(newVals.items()):
                                     for k, (x,y) in enumerate(newF.items()):
                                         if key == x: variant = y; break
-                                    if variant == "TEXT": value = str(value) 
-                                    if variant == getVariantFromValue(value) and value != "NULL" and value != "None": feat.update({key: value})   
-                                    elif variant == "TEXT" or variant == "FLOAT" or variant == "LONG" or variant == "SHORT": feat.update({key: None})
-                            except Exception as e: print(e)
-                    #except: # if not a list
-                    else:
-                        try:
-                            newF, newVals = traverseDict({}, {}, rootName, feature[rootName])
-                            for i, (key,value) in enumerate(newVals.items()):
-                                for k, (x,y) in enumerate(newF.items()):
-                                    if key == x: variant = y; break
-                                #print(variant)
-                                if variant == "TEXT": value = str(value) 
-                                if variant == getVariantFromValue(value) and value != "NULL" and value != "None": feat.update({key: value})   
-                                elif variant == "TEXT" or variant == "FLOAT" or variant == "LONG" or variant == "SHORT": feat.update({key: None})
-                        except Exception as e: feat.update({key: None})
-        except Exception as e: 
-            feat.update({key: None})
-    feat_sorted = {k: v for k, v in sorted(feat.items(), key=lambda item: item[0])}
-    #print("_________________end of updating a feature_________________________")
-    return feat_sorted
+                                    feat = addFeatVariant(key, variant, value, feat)
+                            except Exception as e: feat[key] = None
+            except Exception as e: 
+                feat[key] = None
+        #feat_sorted = {k: v for k, v in sorted(feat.items(), key=lambda item: item[0])}
+        #print("_________________end of updating a feature_________________________")
+    except Exception as e: print(e) 
+    return feat 
 
 
 def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordinateReferenceSystem, project: QgsProject) -> Base:
@@ -348,10 +342,6 @@ def cadFeatureToNative(feature: Base, fields: QgsFields):
 
     if qgsGeom is not None: feat.setGeometry(qgsGeom)
     else: return
-
-    try: 
-        if "Speckle_ID" not in fields.names() and feature["id"]: fields.append(QgsField("Speckle_ID", QVariant.String))
-    except: pass
 
     feat.setFields(fields)  
 

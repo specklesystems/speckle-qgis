@@ -125,29 +125,35 @@ def bimLayerToNative(layerContentList:Base, layerName: str, streamBranch: str):
 
     #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
     for geom in layerContentList:
-        #print(geom)
-        if geom.displayMesh and isinstance(geom.displayMesh, Mesh): 
-            geom_meshes.append(geom)
+        try: 
+            if geom.displayMesh: geom_meshes.append(geom)
+        except:
+            try: 
+                if geom.displayValue: geom_meshes.append(geom)
+            except: pass
     
-    if len(geom_meshes)>0: layer_meshes = bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch, project)
+    if len(geom_meshes)>0: layer_meshes = bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch)
 
     return True
 
-def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str) -> QgsVectorLayer: 
+def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str): 
     print("02_________BIM vector layer to native_____")
     #get Project CRS, use it by default for the new received layer
     vl = None
-    layerName = layerName + "/" + geomType
+    layerName = layerName + "_" + geomType
+    layerName = layerName.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
+    
     print(layerName)
 
     
     path = QgsProject.instance().absolutePath()
     if(path == ""):
-        logger.logToUser(f"Raster layers can only be received in an existing saved project. Layer {layer.name} will be ignored", Qgis.Warning)
+        logger.logToUser(f"Raster layers can only be received in an existing saved project. Layer {layerName} will be ignored", Qgis.Warning)
         return None
 
-    path_bim = path + "\\BIM_layers_speckle\\" + streamBranch+ "\\" + layerName + "\\" #arcpy.env.workspace + "\\" #
+    path_bim = path + "/BIM_layers_speckle/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #
     print(path_bim)
+    
     if not os.path.exists(path_bim): os.makedirs(path_bim)
     print(path)
 
@@ -170,15 +176,20 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     #find ID of the layer with a matching name in the "latest" group 
     #newName = f'{streamBranch}_{layerName}'
+    
     newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
 
-
-    #or create one from scratch
-    # 
     if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
 
-    crsid = crs.authid()
-    vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    #crsid = crs.authid()
+    
+    shp = meshToNative(geomList, path_bim + newName)
+    print("____ meshes saved___")
+    print(shp)
+
+    
+    
+    vl = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
     QgsProject.instance().addMapLayer(vl, False)
 
     pr = vl.dataProvider()
@@ -186,72 +197,68 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     vl.setCrs(crs)
 
     newFields = getLayerAttributes(geomList)
-    print(newFields)
-    
-    # create list of Features (fets) and list of Layer fields (fields)
-    attrs = QgsFields()
-    fets = []
-    fetIds = []
-    fetColors = []
+    print("___________Layer fields_____________")
+    print(newFields.toList())
 
-    
-    shp = meshToNative(geomList, path_bim + newName)
-    print("____ meshes saved___")
-    print(shp)
-    
-    for f in geomList[:]: 
-        new_feat = bimFeatureToNative(f, newFields, crs, path_bim)
-        # update attrs for the next feature (if more fields were added from previous feature)
-
-        #print("________cad feature to add")
-        #print(new_feat)
-        if new_feat is not None and new_feat != "": 
-            fets.append(new_feat)
-            for a in newFields.toList(): 
-                #if a not in attrs.toList(): 
-                attrs.append(a) 
-            
-            pr.addAttributes(newFields) # add new attributes from the current object
-            fetIds.append(f.id)
-            try: fetColors.append(f.displayStyle.color) #, print(str(f.id)+ ': ' + str(f.displayStyle.color))
-            except: fetColors.append(None)
-        #else: geomList.remove(f)
-    
     # add Layer attribute fields
     pr.addAttributes(newFields)
     vl.updateFields()
 
+    # create list of Features (fets) and list of Layer fields (fields)
+    #attrs = QgsFields()
+    fets = []
+    fetIds = []
+    fetColors = []
+    
+    for i,f in enumerate(geomList[:]): 
+        try:
+            exist_feat = vl.getFeature(i)
+            new_feat = bimFeatureToNative(exist_feat, f, newFields, crs, path_bim)
+            if new_feat is not None and new_feat != "": 
+                fets.append(new_feat)
+                
+                #pr.addAttributes(newFields) # add new attributes from the current object
+                fetIds.append(f.id)
+                try: fetColors.append(f.displayStyle.color) 
+                except: fetColors.append(None)
+            #else: geomList.remove(f)
+        except Exception as e: print(e)
+       
+
     #pr = vl.dataProvider()
-    pr.addFeatures(fets)
+    #pr.addFeatures(fets)
     vl.updateExtents()
     vl.commitChanges()
     layerGroup.addLayer(vl)
     print(vl)
 
-    ################################### RENDERER ###########################################
-    # only set up renderer if the layer is just created
-    attribute = 'Speckle_ID'
-    categories = []
-    for i in range(len(fets)):
-        rgb = fetColors[i]
-        if rgb:
-            r = (rgb & 0xFF0000) >> 16
-            g = (rgb & 0xFF00) >> 8
-            b = rgb & 0xFF 
-            color = QColor.fromRgb(r, g, b)
-        else: color = QColor.fromRgb(0,0,0)
+    
+    try:
+        ################################### RENDERER ###########################################
+        # only set up renderer if the layer is just created
+        attribute = 'Speckle_ID'
+        categories = []
+        for i in range(len(fets)):
+            rgb = fetColors[i]
+            if rgb:
+                r = (rgb & 0xFF0000) >> 16
+                g = (rgb & 0xFF00) >> 8
+                b = rgb & 0xFF 
+                color = QColor.fromRgb(r, g, b)
+            else: color = QColor.fromRgb(0,0,0)
 
-        symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
-        symbol.setColor(color)
-        categories.append(QgsRendererCategory(fetIds[i], symbol, fetIds[i], True) )  
-    # create empty category for all other values
-    symbol2 = symbol.clone()
-    symbol2.setColor(QColor.fromRgb(0,0,0))
-    cat = QgsRendererCategory()
-    cat.setSymbol(symbol2)
-    cat.setLabel('Other')
-    categories.append(cat)        
-    rendererNew = QgsCategorizedSymbolRenderer(attribute, categories)
+            symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
+            symbol.setColor(color)
+            categories.append(QgsRendererCategory(fetIds[i], symbol, fetIds[i], True) )  
+        # create empty category for all other values
+        symbol2 = symbol.clone()
+        symbol2.setColor(QColor.fromRgb(0,0,0))
+        cat = QgsRendererCategory()
+        cat.setSymbol(symbol2)
+        cat.setLabel('Other')
+        categories.append(cat)        
+        rendererNew = QgsCategorizedSymbolRenderer(attribute, categories)
+    except Exception as e: print(e)
 
     try: vl.setRenderer(rendererNew)
     except: pass

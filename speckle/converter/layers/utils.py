@@ -155,7 +155,7 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
     for feature in features: 
         #get object properties to add as attributes
         dynamicProps = feature.get_dynamic_member_names()
-        attrsToRemove = ['geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'geometry'] 
+        attrsToRemove = ['geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'geometry', 'displayMesh', 'displayValue'] 
         for att in attrsToRemove:
             try: dynamicProps.remove(att)
             except: pass
@@ -189,6 +189,7 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
                     fields.append(QgsField(name,variant)) 
 
     # replace all empty ones with String
+    all_props.append("Speckle_ID") 
     for name in all_props:
         if name not in fields.names(): 
             fields.append(QgsField(name, QVariant.String)) 
