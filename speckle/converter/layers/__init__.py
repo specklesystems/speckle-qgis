@@ -155,7 +155,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     print(path_bim)
     
     if not os.path.exists(path_bim): os.makedirs(path_bim)
-    print(path)
+    print(path_bim)
 
 
     crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
@@ -177,13 +177,14 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     #find ID of the layer with a matching name in the "latest" group 
     #newName = f'{streamBranch}_{layerName}'
     
-    newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
+    newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
+    newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
 
     if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
 
     crsid = crs.authid()
     
-    shp = meshToNative(geomList, path_bim + newName)
+    shp = meshToNative(geomList, path_bim + newName_shp)
     print("____ meshes saved___")
     print(shp)
 

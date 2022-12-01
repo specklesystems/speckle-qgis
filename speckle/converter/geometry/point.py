@@ -35,10 +35,11 @@ def pointToNative(pt: Point) -> QgsPoint:
     pt = scalePointToNative(pt, pt.units)
     return QgsPoint(pt.x, pt.y, pt.z)
 
-def scalePointToNative(pt: Point, units: str) -> Point:
+def scalePointToNative(point: Point, units: str) -> Point:
     """Scale point coordinates to meters"""
     scaleFactor = get_scale_factor(units)
-    pt.x = pt.x * scaleFactor
-    pt.y = pt.y * scaleFactor
-    pt.z = 0 if math.isnan(pt.z) else pt.z * scaleFactor
+    pt = Point(units = "m")
+    pt.x = point.x * scaleFactor
+    pt.y = point.y * scaleFactor
+    pt.z = 0 if math.isnan(point.z) else point.z * scaleFactor
     return pt
