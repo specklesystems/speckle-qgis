@@ -51,7 +51,7 @@ def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields,
     exist_feat.setFields(fields)  
 
     feat_updated = updateFeat(exist_feat, fields, feature)
-    print(fields.toList())
+    #print(fields.toList())
 
     return feat_updated
 

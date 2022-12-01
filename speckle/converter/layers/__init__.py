@@ -181,7 +181,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
 
-    #crsid = crs.authid()
+    crsid = crs.authid()
     
     shp = meshToNative(geomList, path_bim + newName)
     print("____ meshes saved___")
@@ -189,8 +189,14 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     
     
-    vl = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
+    vl_shp = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
+    vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
     QgsProject.instance().addMapLayer(vl, False)
+    try: 
+        vl_shp.deleteAttributes(vl.fields()) #if DisplayMesh exists 
+        vl_shp.commitChanges()
+    except: pass 
+    print(vl_shp.fields().names())
 
     pr = vl.dataProvider()
     vl.startEditing()
@@ -212,10 +218,12 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     
     for i,f in enumerate(geomList[:]): 
         try:
-            exist_feat = vl.getFeature(i)
-            new_feat = bimFeatureToNative(exist_feat, f, newFields, crs, path_bim)
+            exist_feat = vl_shp.getFeature(i)
+            new_feat = bimFeatureToNative(exist_feat, f, vl.fields(), crs, path_bim)
             if new_feat is not None and new_feat != "": 
                 fets.append(new_feat)
+                vl.addFeature(new_feat)
+                #vl.deleteFeature(0)
                 
                 #pr.addAttributes(newFields) # add new attributes from the current object
                 fetIds.append(f.id)
@@ -262,6 +270,13 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     try: vl.setRenderer(rendererNew)
     except: pass
+
+    try: 
+        rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
+        symb = QgsAbstract3DSymbol()
+        rend3d.setSymbol(symb)
+        vl.setRenderer3D(rend3d)
+    except: pass 
 
     return vl
 
