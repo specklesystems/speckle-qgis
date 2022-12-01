@@ -45,9 +45,9 @@ def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[ Union[QgsLa
             if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): layers.append(node)
             continue
         if tree.isGroup(node):
-            #print(node)
-            #for lyr in getLayers(tree, node): print(lyr)
-            layers.extend( [ lyr for lyr in getLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
+            for lyr in getLayers(tree, node):
+                if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer): layers.append(lyr) 
+            #layers.extend( [ lyr for lyr in getLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
     return layers
 
 
@@ -241,6 +241,21 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     print(vl)
 
     
+    try: 
+        ################################### RENDERER 3D ###########################################
+        #rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
+        #symb = QgsAbstract3DSymbol()
+        #rend3d.setSymbol(symb)
+        #vl.setRenderer3D(rend3d)
+        
+        plugin_dir = os.path.dirname(__file__)
+        renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
+        print(renderer3d)
+
+        vl.loadNamedStyle(renderer3d)
+        vl.triggerRepaint()
+    except: pass 
+    
     try:
         ################################### RENDERER ###########################################
         # only set up renderer if the layer is just created
@@ -270,13 +285,6 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     try: vl.setRenderer(rendererNew)
     except: pass
-
-    try: 
-        rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
-        symb = QgsAbstract3DSymbol()
-        rend3d.setSymbol(symb)
-        vl.setRenderer3D(rend3d)
-    except: pass 
 
     return vl
 
