@@ -313,6 +313,7 @@ def featureToNative(feature: Base, fields: QgsFields):
         #print(name)
         variant = field.type()
         if name == "id": feat[name] = str(feature["applicationId"])
+        if name == "Speckle_ID": feat[name] = str(feature["id"])
         else: 
             value = feature[name]
             if variant == QVariant.String: value = str(feature[name]) 
