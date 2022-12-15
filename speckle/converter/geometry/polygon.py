@@ -168,7 +168,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         col = featureColorfromNativeRenderer(feature, layer)
         colors = [col for i in ran] # apply same color for all vertices
         mesh = rasterToMesh(vertices, faces, colors)
-        polygon.displayValue = mesh 
+        polygon.displayValue = [ mesh ] 
 
         return polygon
     except: 
