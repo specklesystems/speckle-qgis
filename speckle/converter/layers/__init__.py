@@ -497,7 +497,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
     if root.findGroup(newGroupName) is not None:
         layerGroup = root.findGroup(newGroupName)
     else:
-        root.addChildNode(layerGroup)
+        layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
     layerGroup.setItemVisibilityChecked(True)
 
