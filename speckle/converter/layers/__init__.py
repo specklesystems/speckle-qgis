@@ -170,7 +170,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     if root.findGroup(newGroupName) is not None:
         layerGroup = root.findGroup(newGroupName) # -> QgsLayerTreeNode
     else:
-        root.addChildNode(layerGroup)
+        layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
     layerGroup.setItemVisibilityChecked(True)
 
@@ -330,7 +330,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     if root.findGroup(newGroupName) is not None:
         layerGroup = root.findGroup(newGroupName) # -> QgsLayerTreeNode
     else:
-        root.addChildNode(layerGroup)
+        layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
     layerGroup.setItemVisibilityChecked(True)
 
@@ -429,7 +429,8 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
     if root.findGroup(newGroupName) is not None:
         layerGroup = root.findGroup(newGroupName)
     else:
-        root.addChildNode(layerGroup)
+        layerGroup = root.insertGroup(0,newGroupName)
+        #root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
     layerGroup.setItemVisibilityChecked(True)
 

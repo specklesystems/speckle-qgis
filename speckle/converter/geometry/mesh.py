@@ -65,7 +65,7 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh):
         else: print("not triangulated mesh")
 
     except Exception as e: pass #; print(e)
-    print("mesh part written")
+    #print("mesh part written")
     return w
     
 def rasterToMesh(vertices, faces, colors):
