@@ -95,6 +95,15 @@ def gradientColorRampToNative(renderer: dict[str, Any]) -> QgsGradientColorRamp:
     except: pass
     return newRamp
 
+def get_r_g_b(rgb: int) -> tuple[int, int, int]:
+    r = g = b = 0
+    try: 
+        r = (rgb & 0xFF0000) >> 16
+        g = (rgb & 0xFF00) >> 8
+        b = rgb & 0xFF 
+    except: r = g = b = 0
+    return r,g,b 
+
 def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields ) -> Union[QgsSingleSymbolRenderer,QgsCategorizedSymbolRenderer, QgsGraduatedSymbolRenderer]:
     renderer = layer.renderer 
     rendererNew = None 
@@ -102,13 +111,7 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
     if renderer and renderer['type']:
 
         if renderer['type']  == 'categorizedSymbol':
-            r = g = b = 0
-            try: 
-                rgb = renderer['properties']['sourceSymbColor'] 
-                r = (rgb & 0xFF0000) >> 16
-                g = (rgb & 0xFF00) >> 8
-                b = rgb & 0xFF 
-            except: r = g = b = 0
+            r,g,b = get_r_g_b(renderer['properties']['sourceSymbColor']) 
             sourceSymbColor = QColor.fromRgb(r, g, b)
 
             attribute = renderer['properties']['attribute']
@@ -277,7 +280,7 @@ def rasterRendererToNative(layer: RasterLayer, rInterface: QgsRasterDataProvider
 def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict[str, Any]:
     #print("___RENDERER TO SPECKLE___")
     rType = renderer.type() # 'singleSymbol','categorizedSymbol','graduatedSymbol',
-    layerRenderer = {}
+    layerRenderer: dict[str, Any] = {}
     layerRenderer['type'] = rType
 
     if rType == 'singleSymbol': 
@@ -303,7 +306,7 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
             except: r,g,b = [int(i) for i in symbol.color().replace(" ","").split(',')[:3] ]
             sourceSymbColor = (r<<16) + (g<<8) + b
 
-            layerRenderer['properties'].update( {'attribute': attribute, 'symbType': symbType, 'sourceSymbColor': sourceSymbColor} )
+            layerRenderer['properties'].update( {'symbType': symbType, 'sourceSymbColor': sourceSymbColor} )
         except: pass
         
         categories = renderer.categories() #<qgis._core.QgsRendererCategory object at 0x00000155E8786A60>
@@ -354,7 +357,7 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
         contrast = renderer.contrastEnhancement().contrastEnhancementAlgorithm()
         mmin = renderer.contrastEnhancement().minimumValue()
         mmax = renderer.contrastEnhancement().maximumValue()
-        layerRenderer = {'type': 'singlebandgray', 'properties': {'max':mmax,'min':mmin,'band':band,'contrast':contrast}}
+        layerRenderer.update({'properties': {'max':mmax,'min':mmin,'band':band,'contrast':contrast}})
     elif rType == "multibandcolor":  
         redBand = renderer.redBand()
         greenBand = renderer.greenBand()
@@ -375,7 +378,7 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
             blueMin = renderer.blueContrastEnhancement().minimumValue()
             blueMax = renderer.blueContrastEnhancement().maximumValue()
         except: pass
-        layerRenderer = {'type': 'multibandcolor', 'properties': {'greenBand':greenBand,'blueBand':blueBand,'redBand':redBand}}
+        layerRenderer.update({'properties': {'greenBand':greenBand,'blueBand':blueBand,'redBand':redBand}})
         layerRenderer['properties'].update({'redContrast':redContrast,'redMin':redMin,'redMax':redMax})
         layerRenderer['properties'].update({'greenContrast':greenContrast,'greenMin':greenMin,'greenMax':greenMax})
         layerRenderer['properties'].update({'blueContrast':blueContrast,'blueMin':blueMin,'blueMax':blueMax})
@@ -394,7 +397,7 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
             rgb = i.color.getRgb()
             color =  (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
             classes.append({'color':color,'value':value,'label':i.label})
-        layerRenderer = {'type': 'paletted', 'properties': {'classes':classes,'ramp':sourceRamp,'band':band}}
+        layerRenderer.update({'properties': {'classes':classes,'ramp':sourceRamp,'band':band}})
         
     else: 
         layerRenderer = {'type': 'Other', 'properties': {}}

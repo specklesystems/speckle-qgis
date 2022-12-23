@@ -6,6 +6,8 @@ from qgis._core import QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, Qg
     QgsField, QgsVectorLayer, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsProject
 from specklepy.objects import Base
 
+from typing import Dict, Any
+
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
@@ -42,6 +44,71 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         if f_name == "NULL" or f_name is None or str(f_name) == "NULL": f_name = None
         b[corrected] = f_name
     return b
+          
+def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields, crs, path: str):
+    print("04_________BIM Feature To Native____________")
+
+    exist_feat.setFields(fields)  
+
+    feat_updated = updateFeat(exist_feat, fields, feature)
+    #print(fields.toList())
+
+    return feat_updated
+
+def addFeatVariant(key, variant, value, f: QgsFeature):
+    
+    feat = f
+    if variant == 10: value = str(value) # string
+    if variant == getVariantFromValue(value) and value != "NULL" and value != "None": feat[key] = value
+    elif isinstance(variant, int): feat[key] = None
+    return feat 
+
+def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, Any]:
+    try:
+        for i, key in enumerate(fields.names()): 
+            variant = fields.at(i).type()
+            try:
+                if key == "Speckle_ID": 
+                    value = str(feature["id"])
+                    if key != "parameters": print(value)
+                    feat[key] = value 
+
+                    feat = addFeatVariant(key, variant, value, feat)
+
+                else:
+                    try: 
+                        value = feature[key] 
+                        feat = addFeatVariant(key, variant, value, feat)
+
+                    except:
+                        value = None
+                        rootName = key.split("_")[0]
+                        #try: # if the root category exists
+                        # if its'a list 
+                        if isinstance(feature[rootName], list):
+                            for i in range(len(feature[rootName])):
+                                try:
+                                    newF, newVals = traverseDict({}, {}, rootName + "_" + str(i), feature[rootName][i])
+                                    for i, (key,value) in enumerate(newVals.items()):
+                                        for k, (x,y) in enumerate(newF.items()):
+                                            if key == x: variant = y; break
+                                        feat = addFeatVariant(key, variant, value, feat)
+                                except Exception as e: print(e)
+                        #except: # if not a list
+                        else:
+                            try:
+                                newF, newVals = traverseDict({}, {}, rootName, feature[rootName])
+                                for i, (key,value) in enumerate(newVals.items()):
+                                    for k, (x,y) in enumerate(newF.items()):
+                                        if key == x: variant = y; break
+                                    feat = addFeatVariant(key, variant, value, feat)
+                            except Exception as e: feat[key] = None
+            except Exception as e: 
+                feat[key] = None
+        #feat_sorted = {k: v for k, v in sorted(feat.items(), key=lambda item: item[0])}
+        #print("_________________end of updating a feature_________________________")
+    except Exception as e: print(e) 
+    return feat 
 
 
 def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordinateReferenceSystem, project: QgsProject) -> Base:
@@ -246,6 +313,7 @@ def featureToNative(feature: Base, fields: QgsFields):
         #print(name)
         variant = field.type()
         if name == "id": feat[name] = str(feature["applicationId"])
+        if name == "Speckle_ID": feat[name] = str(feature["id"])
         else: 
             value = feature[name]
             if variant == QVariant.String: value = str(feature[name]) 
@@ -275,10 +343,6 @@ def cadFeatureToNative(feature: Base, fields: QgsFields):
 
     if qgsGeom is not None: feat.setGeometry(qgsGeom)
     else: return
-
-    try: 
-        if "Speckle_ID" not in fields.names() and feature["id"]: fields.append(QgsField("Speckle_ID", QVariant.String))
-    except: pass
 
     feat.setFields(fields)  
 

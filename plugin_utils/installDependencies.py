@@ -47,12 +47,24 @@ def setup():
     except Exception as e:
         logger.logToUser(e.with_traceback)
 
+    #################################################
     pkgVersion = "1.10.11"  # "2.5.3"
     pkgName = "panda3d"
     try:
         import panda3d
     except Exception as e:
         logger.log("panda3d not installed")
+        subprocess_call(
+            [pythonExec, "-m", "pip", "install", f"{pkgName}=={pkgVersion}"]
+        )
+
+    ################################################# 
+    pkgVersion = "2.3.1"
+    pkgName = "pyshp"
+    try:
+        import shapefile
+    except Exception as e:
+        logger.log("shapefile not installed")
         subprocess_call(
             [pythonExec, "-m", "pip", "install", f"{pkgName}=={pkgVersion}"]
         )

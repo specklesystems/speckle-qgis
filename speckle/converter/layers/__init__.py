@@ -4,6 +4,9 @@ Contains all Layer related classes and methods.
 import enum
 import math
 from typing import List, Union
+from specklepy.objects import Base
+from specklepy.objects.geometry import Mesh
+import os
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
@@ -19,10 +22,10 @@ from qgis.core import (Qgis, QgsRasterLayer,
 from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
-from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative
+from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
 from speckle.converter.layers.utils import getLayerGeomType, getLayerAttributes
 from speckle.logging import logger
-from specklepy.objects import Base
+from speckle.converter.geometry.mesh import rasterToMesh, meshToNative
 
 from speckle.converter.layers.symbology import vectorRendererToNative, rasterRendererToNative, rendererToSpeckle
 
@@ -42,18 +45,21 @@ def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[ Union[QgsLa
             if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): layers.append(node)
             continue
         if tree.isGroup(node):
-            #print(node)
-            #for lyr in getLayers(tree, node): print(lyr)
-            layers.extend( [ lyr for lyr in getLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
+            for lyr in getLayers(tree, node):
+                if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer): layers.append(lyr) 
+            #layers.extend( [ lyr for lyr in getLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
     return layers
 
 
-def convertSelectedLayers(layers: List[QgsLayerTreeLayer], selectedLayerIndex: List[int], projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> List[Union[VectorLayer, RasterLayer]]:
+def convertSelectedLayers(layers: List[QgsLayerTreeLayer], selectedLayerIndex: List[int], selectedLayerNames: List[str], projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> List[Union[VectorLayer, RasterLayer]]:
     """Converts the current selected layers to Speckle"""
     result = []
     for i, layer in enumerate(layers):
         #if layer.name() in selectedLayerNames:
         if i in selectedLayerIndex:
+            if selectedLayerNames[i] != layer.layer().name():
+                logger.logToUser(f"Layers have changed. Pleash refresh Speckle Connector", Qgis.Critical)
+                return None
             result.append(layerToSpeckle(layer, projectCRS, project))
     return result
 
@@ -112,6 +118,180 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
         return rasterLayerToNative(layer, streamBranch)
     return None
 
+
+def bimLayerToNative(layerContentList:Base, layerName: str, streamBranch: str):
+    print("01______BIM layer to native")
+    print(layerName)
+
+    geom_meshes = []
+    layer_meshes = None
+
+    #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
+    for geom in layerContentList:
+        try: 
+            if geom.displayMesh: geom_meshes.append(geom)
+        except:
+            try: 
+                if geom.displayValue: geom_meshes.append(geom)
+            except: pass
+    
+    if len(geom_meshes)>0: layer_meshes = bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch)
+
+    return True
+
+def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str): 
+    print("02_________BIM vector layer to native_____")
+    #get Project CRS, use it by default for the new received layer
+    vl = None
+    layerName = layerName + "_" + geomType
+    layerName = layerName.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
+    
+    print(layerName)
+
+    
+    path = QgsProject.instance().absolutePath()
+    if(path == ""):
+        logger.logToUser(f"Raster layers can only be received in an existing saved project. Layer {layerName} will be ignored", Qgis.Warning)
+        return None
+
+    path_bim = path + "/BIM_layers_speckle/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #
+    print(path_bim)
+    
+    if not os.path.exists(path_bim): os.makedirs(path_bim)
+    print(path_bim)
+
+
+    crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+    if crs.isGeographic is True: 
+        logger.logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", Qgis.Warning)
+
+    #CREATE A GROUP "received blabla" with sublayers
+    newGroupName = f'{streamBranch}'
+    root = QgsProject.instance().layerTreeRoot()
+    layerGroup = QgsLayerTreeGroup(newGroupName)
+
+    if root.findGroup(newGroupName) is not None:
+        layerGroup = root.findGroup(newGroupName) # -> QgsLayerTreeNode
+    else:
+        layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
+    layerGroup.setExpanded(True)
+    layerGroup.setItemVisibilityChecked(True)
+
+    #find ID of the layer with a matching name in the "latest" group 
+    #newName = f'{streamBranch}_{layerName}'
+    
+    newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
+    newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
+
+    if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
+
+    crsid = crs.authid()
+    
+    shp = meshToNative(geomList, path_bim + newName_shp)
+    print("____ meshes saved___")
+    print(shp)
+
+    
+    
+    vl_shp = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
+    vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    QgsProject.instance().addMapLayer(vl, False)
+    try: 
+        vl_shp.deleteAttributes(vl.fields()) #if DisplayMesh exists 
+        vl_shp.commitChanges()
+    except: pass 
+    print(vl_shp.fields().names())
+
+    pr = vl.dataProvider()
+    vl.startEditing()
+    vl.setCrs(crs)
+
+    newFields = getLayerAttributes(geomList)
+    print("___________Layer fields_____________")
+    print(newFields.toList())
+
+    # add Layer attribute fields
+    pr.addAttributes(newFields)
+    vl.updateFields()
+
+    # create list of Features (fets) and list of Layer fields (fields)
+    #attrs = QgsFields()
+    fets = []
+    fetIds = []
+    fetColors = []
+    
+    for i,f in enumerate(geomList[:]): 
+        try:
+            exist_feat = vl_shp.getFeature(i)
+            new_feat = bimFeatureToNative(exist_feat, f, vl.fields(), crs, path_bim)
+            if new_feat is not None and new_feat != "": 
+                fets.append(new_feat)
+                vl.addFeature(new_feat)
+                #vl.deleteFeature(0)
+                
+                #pr.addAttributes(newFields) # add new attributes from the current object
+                fetIds.append(f.id)
+                try: fetColors.append(f.displayStyle.color) 
+                except: fetColors.append(None)
+            #else: geomList.remove(f)
+        except Exception as e: print(e)
+       
+
+    #pr = vl.dataProvider()
+    #pr.addFeatures(fets)
+    vl.updateExtents()
+    vl.commitChanges()
+    layerGroup.addLayer(vl)
+    print(vl)
+
+    
+    try: 
+        ################################### RENDERER 3D ###########################################
+        #rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
+        #symb = QgsAbstract3DSymbol()
+        #rend3d.setSymbol(symb)
+        #vl.setRenderer3D(rend3d)
+        
+        plugin_dir = os.path.dirname(__file__)
+        renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
+        print(renderer3d)
+
+        vl.loadNamedStyle(renderer3d)
+        vl.triggerRepaint()
+    except: pass 
+    
+    try:
+        ################################### RENDERER ###########################################
+        # only set up renderer if the layer is just created
+        attribute = 'Speckle_ID'
+        categories = []
+        for i in range(len(fets)):
+            rgb = fetColors[i]
+            if rgb:
+                r = (rgb & 0xFF0000) >> 16
+                g = (rgb & 0xFF00) >> 8
+                b = rgb & 0xFF 
+                color = QColor.fromRgb(r, g, b)
+            else: color = QColor.fromRgb(0,0,0)
+
+            symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
+            symbol.setColor(color)
+            categories.append(QgsRendererCategory(fetIds[i], symbol, fetIds[i], True) )  
+        # create empty category for all other values
+        symbol2 = symbol.clone()
+        symbol2.setColor(QColor.fromRgb(0,0,0))
+        cat = QgsRendererCategory()
+        cat.setSymbol(symbol2)
+        cat.setLabel('Other')
+        categories.append(cat)        
+        rendererNew = QgsCategorizedSymbolRenderer(attribute, categories)
+    except Exception as e: print(e)
+
+    try: vl.setRenderer(rendererNew)
+    except: pass
+
+    return vl
+
 def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -> List[QgsVectorLayer or None]:
 
     geom_points = []
@@ -153,7 +333,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     if root.findGroup(newGroupName) is not None:
         layerGroup = root.findGroup(newGroupName) # -> QgsLayerTreeNode
     else:
-        root.addChildNode(layerGroup)
+        layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
     layerGroup.setItemVisibilityChecked(True)
 
@@ -252,7 +432,8 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
     if root.findGroup(newGroupName) is not None:
         layerGroup = root.findGroup(newGroupName)
     else:
-        root.addChildNode(layerGroup)
+        layerGroup = root.insertGroup(0,newGroupName)
+        #root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
     layerGroup.setItemVisibilityChecked(True)
 
@@ -320,7 +501,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
     if root.findGroup(newGroupName) is not None:
         layerGroup = root.findGroup(newGroupName)
     else:
-        root.addChildNode(layerGroup)
+        layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
     layerGroup.setItemVisibilityChecked(True)
 

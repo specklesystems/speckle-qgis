@@ -3,7 +3,7 @@ from typing import Any, Callable, List, Optional
 
 from speckle.logging import logger
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
-from speckle.converter.layers import cadLayerToNative, layerToNative
+from speckle.converter.layers import bimLayerToNative, cadLayerToNative, layerToNative
 
 from specklepy.objects import Base
 
@@ -59,6 +59,8 @@ def loopObj(base: Base, baseName: str, streamBranch: str):
 
 def loopVal(value: Any, name: str, streamBranch: str): # "name" is the parent object/property/layer name
     #print(name)
+    if name.endswith('/displayValue'): return 
+            
     if isinstance(value, Base): 
         #print(value)
         try: # dont go through parts of Speckle Geometry object
@@ -67,11 +69,18 @@ def loopVal(value: Any, name: str, streamBranch: str): # "name" is the parent ob
         except: loopObj(value, name, streamBranch)
 
     if isinstance(value, List):
-        #print(value)
+        streamBranch = streamBranch.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
+    
         for item in value:
             loopVal(item, name, streamBranch)
             if item.speckle_type and item.speckle_type.startswith("Objects.Geometry."): 
                 pt, pl = cadLayerToNative(value, name, streamBranch)
                 if pt is not None: logger.log("Layer group created: " + str(pt.name()))
                 if pl is not None: logger.log("Layer group created: " + str(pl.name()))
+                break
+            
+            if item.speckle_type and item.speckle_type.startswith("Objects.BuiltElements."): # and "Revit" in item.speckle_type
+
+                msh_bool = bimLayerToNative(value, name, streamBranch)
+                #if msh is not None: print("Layer group created: " + msh.name())
                 break
