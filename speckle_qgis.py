@@ -226,7 +226,7 @@ class SpeckleQGIS:
         layerTreeRoot = project.layerTreeRoot()
         layers = getLayers(layerTreeRoot, layerTreeRoot) # List[QgsLayerTreeNode]
 
-        selectedLayerNames = [ str(item.text()).replace(" !LARGE!","") for item in self.dockwidget.layersWidget.selectedItems() ]
+        selectedLayerNames = [ str(item.text()).replace(" !LARGE!","").split(" - ")[1] for item in self.dockwidget.layersWidget.selectedItems() ]
         selectedLayerIndex = [ int(str(item.text()).split(" - ")[0]) for item in self.dockwidget.layersWidget.selectedItems() ]
 
         # Check if stream id/url is empty
@@ -244,7 +244,9 @@ class SpeckleQGIS:
             return
 
         base_obj = Base(units = "m")
-        base_obj.layers = convertSelectedLayers(layers, selectedLayerIndex, projectCRS, project)
+        base_obj.layers = convertSelectedLayers(layers, selectedLayerIndex, selectedLayerNames, projectCRS, project)
+        if base_obj.layers is None:
+            return 
 
         # Reset Survey point
         self.dockwidget.populateSurveyPoint(self)
@@ -408,8 +410,8 @@ class SpeckleQGIS:
 
             # Setup reload of UI dropdowns when layers change.
             layerRoot = QgsProject.instance()
-            layerRoot.layersAdded.connect(self.reloadUI)
-            layerRoot.layersRemoved.connect(self.reloadUI)
+            #layerRoot.layersAdded.connect(self.reloadUI)
+            #layerRoot.layersRemoved.connect(self.reloadUI)
 
             # show the dockwidget
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
