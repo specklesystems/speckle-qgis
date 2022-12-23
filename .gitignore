@@ -120,3 +120,6 @@ speckle-sharp-ci-tools*
 zip-build*
 
 /typings/*
+*.csv
+*.json 
+
