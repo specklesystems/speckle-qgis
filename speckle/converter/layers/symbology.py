@@ -108,6 +108,8 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
     renderer = layer.renderer 
     rendererNew = None 
     existingAttrs = fields.names()
+    geomType = layer.geomType
+    if "polyline" in geomType.lower(): geomType = 'LineString'
     if renderer and renderer['type']:
 
         if renderer['type']  == 'categorizedSymbol':
@@ -129,7 +131,7 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
                 g = (rgb & 0xFF00) >> 8
                 b = rgb & 0xFF 
                 color = QColor.fromRgb(r, g, b)
-                symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
+                symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
                 # create an extra category for possible future feature
                 #if len(categories)==0: 
                 #    symbol.setColor(QColor.fromRgb(0,0,0))
@@ -150,7 +152,7 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
             
             rendererNew = QgsCategorizedSymbolRenderer(attribute, categories)
             try:
-                sourceSymbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
+                sourceSymbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
                 sourceSymbol.setColor(sourceSymbColor)
                 rendererNew.setSourceSymbol(sourceSymbol)
             except: pass
@@ -161,7 +163,7 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
             g = (rgb & 0xFF00) >> 8
             b = rgb & 0xFF 
             color = QColor.fromRgb(r, g, b)
-            symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
+            symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
             symbol.setColor(color)
             rendererNew = QgsSingleSymbolRenderer(symbol)
         
@@ -191,13 +193,13 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
                     b = rgb & 0xFF 
                     color = QColor.fromRgb(r, g, b)
                     width = ranges[i]['symbColor']
-                    symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
+                    symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
                     symbol.setColor(color)
                     newRanges.append(QgsRendererRange(ranges[i]['lower'],ranges[i]['upper'],symbol,ranges[i]['label'],True) )
                 try: 
                     rendererNew = QgsGraduatedSymbolRenderer(attribute, newRanges)
                     rendererNew.setSourceColorRamp(newRamp)
-                    sourceSymbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
+                    sourceSymbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
                     sourceSymbol.setColor(sourceSymbColor)
                     rendererNew.setSourceSymbol(sourceSymbol)
                 except: rendererNew = QgsGraduatedSymbolRenderer()
@@ -209,13 +211,14 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
     return rendererNew
 
 def makeDefaultRenderer(renderer: dict[str, Any], layer: Union[Layer, VectorLayer]) -> QgsSingleSymbolRenderer:
+    geomType = layer.geomType
     try: rgb = renderer['properties']['sourceSymbColor']
     except: rgb = (0<<16) + (0<<8) + 0
     r = (rgb & 0xFF0000) >> 16
     g = (rgb & 0xFF00) >> 8
     b = rgb & 0xFF 
     color = QColor.fromRgb(r, g, b)
-    symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(layer.geomType)))
+    symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
     symbol.setColor(color)
     rendererNew = QgsSingleSymbolRenderer(symbol)
     return rendererNew
