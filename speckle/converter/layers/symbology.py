@@ -247,21 +247,21 @@ def rasterRendererToNative(layer: RasterLayer, rInterface: QgsRasterDataProvider
                 contrastR.setContrastEnhancementAlgorithm(int(renderer['properties']['redContrast']))
                 contrastR.setMaximumValue(float(renderer['properties']['redMax']))
                 contrastR.setMinimumValue(float(renderer['properties']['redMin']))
-                rendererNew.setRedContrastEnhancement(contrastR)
+                #rendererNew.setRedContrastEnhancement(contrastR)
             except: pass
             try:
                 contrastG = QgsContrastEnhancement()
                 contrastG.setContrastEnhancementAlgorithm(int(renderer['properties']['greenContrast']))
                 contrastG.setMaximumValue(float(renderer['properties']['greenMax']))
                 contrastG.setMinimumValue(float(renderer['properties']['greenMin']))
-                rendererNew.setGreenContrastEnhancement(contrastG)
+                #rendererNew.setGreenContrastEnhancement(contrastG)
             except: pass
             try:
                 contrastB = QgsContrastEnhancement()
                 contrastB.setContrastEnhancementAlgorithm(int(renderer['properties']['blueContrast']))
                 contrastB.setMaximumValue(float(renderer['properties']['blueMax']))
                 contrastB.setMinimumValue(float(renderer['properties']['blueMin']))
-                rendererNew.setBlueContrastEnhancement(contrastB)
+                #rendererNew.setBlueContrastEnhancement(contrastB)
             except: pass
 
         if renderer['type']  == 'paletted':
