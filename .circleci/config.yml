@@ -85,9 +85,18 @@ jobs:
     docker:
       - image: cimg/base:2021.01
     steps:
-      - run: # Could not get ssh to work, so using a personal token
+      - add_ssh_keys:
+          fingerprints:
+            - "03:2e:ee:4f:14:67:2b:88:32:e8:cc:f0:cb:df:92:29"
+      - run:
+          name: I know Github as a host
+          command: |
+            mkdir ~/.ssh
+            touch ~/.ssh/known_hosts
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
           name: Clone
-          command: git clone https://$GITHUB_TOKEN@github.com/specklesystems/speckle-sharp-ci-tools.git speckle-sharp-ci-tools 
+          command: git clone git@github.com:specklesystems/speckle-sharp-ci-tools.git speckle-sharp-ci-tools
       - persist_to_workspace:
           root: ./
           paths:
@@ -191,3 +200,4 @@ workflows: #happens with every PR to main
               only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
             branches:
               ignore: /.*/ # For testing only! /ci\/.*/
+          context: do-spaces-speckle-releases
