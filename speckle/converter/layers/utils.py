@@ -5,6 +5,7 @@ from speckle.converter.layers import Layer
 from typing import Any, List, Tuple, Union
 from specklepy.objects import Base
 
+ATTRS_REMOVE = ['speckleTyp','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
 
 def getLayerGeomType(layer: QgsVectorLayer): #https://qgis.org/pyqgis/3.0/core/Wkb/QgsWkbTypes.html 
     #print(layer.wkbType())
@@ -132,11 +133,11 @@ def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
     # TODO add Base object
     pairs = {
         str: QVariant.String, # 10
-        float: QVariant.Double,
-        int: QVariant.LongLong,
+        float: QVariant.Double, # 6
+        int: QVariant.LongLong, # 4
         bool: QVariant.Bool,
-        QDate: QVariant.Date,
-        QDateTime: QVariant.DateTime
+        QDate: QVariant.Date, # 14
+        QDateTime: QVariant.DateTime # 16
     }
     t = type(value)
     res = None
@@ -155,8 +156,8 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
     for feature in features: 
         #get object properties to add as attributes
         dynamicProps = feature.get_dynamic_member_names()
-        attrsToRemove = ['speckleTyp','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'geometry', 'displayMesh', 'displayValue'] 
-        for att in attrsToRemove:
+        #attrsToRemove = ['speckleTyp','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'geometry', 'displayMesh', 'displayValue'] 
+        for att in ATTRS_REMOVE:
             try: dynamicProps.remove(att)
             except: pass
 
@@ -164,49 +165,97 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
 
         # add field names and variands 
         for name in dynamicProps:
-            if name not in all_props: all_props.append(name)
+            #if name not in all_props: all_props.append(name)
 
             value = feature[name]
             variant = getVariantFromValue(value)
             if not variant: variant = None #LongLong #4 
 
             # go thought the dictionary object
-            if value and isinstance(value, list) and isinstance(value[0], dict) :
-                all_props.remove(name) # remove generic dict name
-                newF, newVals = traverseDict( {}, {}, name, value[0])
-                for i, (k,v) in enumerate(newF.items()):
-                    fields.append(QgsField(k, v)) 
-                    if k not in all_props: all_props.append(k)
+            if value and isinstance(value, list): # and isinstance(value[0], dict) :
 
-            elif variant and (name not in fields.names()): 
-                fields.append(QgsField(name, variant)) 
+                for i, val_item in enumerate(value):
+                    newF, newVals = traverseDict( {}, {}, name+"_"+str(i), val_item)
+
+                    for i, (k,v) in enumerate(newF.items()):
+                        if k not in all_props: all_props.append(k)
+                        if k not in fields.names(): fields.append(QgsField(k, v)) # fields.update({k: v}) 
+                        else: #check if the field was empty previously: 
+                            oldVariant = fields[k]
+                            # replace if new one is NOT Float (too large integers)
+                            #if oldVariant != "FLOAT" and v == "FLOAT": 
+                            #    fields.append(QgsField(k, v)) # fields.update({k: v}) 
+                            # replace if new one is NOT LongLong or IS String
+                            if oldVariant != QVariant.String and v == QVariant.String: 
+                                fields.append(QgsField(k, v)) # fields.update({k: v}) 
+
+                #all_props.remove(name) # remove generic dict name
+                #newF, newVals = traverseDict( {}, {}, name, value[0])
+                #for i, (k,v) in enumerate(newF.items()):
+                #    fields.append(QgsField(k, v)) 
+                #    if k not in all_props: all_props.append(k)
+                r'''
+                elif variant and (name not in fields.names()): 
+                    fields.append(QgsField(name, variant)) 
+                
+                elif name in fields.names(): #check if the field was empty previously: 
+                    nameIndex = fields.indexFromName(name)
+                    oldType = fields[nameIndex].type()
+                    # replace if new one is NOT LongLong or IS String
+                    if oldType != QVariant.String and variant == QVariant.String: 
+                        fields.append(QgsField(name,variant)) 
+                ''' 
             
-            elif name in fields.names(): #check if the field was empty previously: 
-                nameIndex = fields.indexFromName(name)
-                oldType = fields[nameIndex].type()
-                # replace if new one is NOT LongLong or IS String
-                if oldType != QVariant.String and variant == QVariant.String: 
-                    fields.append(QgsField(name,variant)) 
+            # add a field if not existing yet 
+            else: # if str, Base, etc
+                newF, newVals = traverseDict( {}, {}, name, value)
+                
+                for i, (k,v) in enumerate(newF.items()):
+                    if k not in all_props: all_props.append(k)
+                    if k not in fields.names(): fields.append(QgsField(k, v)) # fields.update({k: v}) #if variant is known
+                    else: #check if the field was empty previously: 
+                        oldVariant = fields[k]
+                        # replace if new one is NOT Float (too large integers)
+                        #if oldVariant != "FLOAT" and v == "FLOAT": 
+                        #    fields.append(QgsField(k, v)) # fields.update({k: v}) 
+                        # replace if new one is NOT LongLong or IS String
+                        if oldVariant != QVariant.String and v == QVariant.String: 
+                            fields.append(QgsField(k, v)) # fields.update({k: v}) 
 
     # replace all empty ones with String
     all_props.append("Speckle_ID") 
     for name in all_props:
         if name not in fields.names(): 
             fields.append(QgsField(name, QVariant.String)) 
-    #print("____ end of getLayerAttributes")
+    
     return fields
 
 def traverseDict(newF: dict[Any, Any], newVals: dict[Any, Any], nam: str, val: Any):
-    #newF = {}
+
     if isinstance(val, dict):
         for i, (k,v) in enumerate(val.items()):
-            traverseDict( newF, newVals, nam+"_"+k, v)
+            newF, newVals = traverseDict( newF, newVals, nam+"_"+k, v)
+    elif isinstance(val, Base):
+        dynamicProps = val.get_dynamic_member_names()
+        for att in ATTRS_REMOVE:
+            try: dynamicProps.remove(att)
+            except: pass
+        dynamicProps.sort()
+
+        item_dict = {} 
+        for prop in dynamicProps:
+            item_dict.update({prop: val[prop]})
+
+        for i, (k,v) in enumerate(item_dict.items()):
+            newF, newVals = traverseDict( newF, newVals, nam+"_"+k, v)
     else: 
         var = getVariantFromValue(val)
-        if not var: var = None #LongLong #4 
-        else: 
-            newF.update({nam: var})
-            newVals.update({nam: val})  
+        if var is None: 
+            var = QVariant.String #LongLong #4 
+            val = str(val)
+        #else: 
+        newF.update({nam: var})
+        newVals.update({nam: val})  
     return newF, newVals
 
 def get_scale_factor(units: str) -> float:

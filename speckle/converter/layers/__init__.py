@@ -119,7 +119,7 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
     return None
 
 
-def bimLayerToNative(layerContentList:Base, layerName: str, streamBranch: str):
+def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str):
     print("01______BIM layer to native")
     print(layerName)
 
@@ -129,11 +129,14 @@ def bimLayerToNative(layerContentList:Base, layerName: str, streamBranch: str):
     #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
     for geom in layerContentList:
         try: 
-            if geom.displayMesh: geom_meshes.append(geom)
+            if geom.displayValue: geom_meshes.append(geom)
         except:
             try: 
-                if geom.displayValue: geom_meshes.append(geom)
+                if geom.displayMesh: geom_meshes.append(geom)
             except: pass
+        
+        #if geom.speckle_type == 'Objects.BuiltElements.Alignment':
+
     
     if len(geom_meshes)>0: layer_meshes = bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch)
 
@@ -293,7 +296,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     return vl
 
 def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -> List[QgsVectorLayer or None]:
-
+    print("02_________ CAD vector layer to native_____")
     geom_points = []
     geom_polylines = []
     geom_meshes = []
@@ -354,7 +357,8 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     vl.setCrs(crs)
 
     newFields = getLayerAttributes(geomList)
-    print(newFields)
+    print(newFields.toList())
+    print(geomList)
     
     # create list of Features (fets) and list of Layer fields (fields)
     attrs = QgsFields()
@@ -365,7 +369,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         new_feat = cadFeatureToNative(f, newFields)
         # update attrs for the next feature (if more fields were added from previous feature)
 
-        #print("________cad feature to add")
+        print("________cad feature to add")
         #print(new_feat)
         if new_feat is not None and new_feat != "": 
             fets.append(new_feat)
