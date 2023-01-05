@@ -51,24 +51,36 @@ def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields,
     exist_feat.setFields(fields)  
 
     feat_updated = updateFeat(exist_feat, fields, feature)
-    #print(fields.toList())
+    print(fields.toList())
+    print(feature)
+    print(feat_updated)
 
     return feat_updated
 
 def addFeatVariant(key, variant, value, f: QgsFeature):
-    
+    #print("__________add variant")
     feat = f
+    
+    r'''
+    if isinstance(value, str) and variant == QVariant.Date:  # 14
+        y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]
+        value = QDate(int(y), int(m), int(d) ) 
+    elif isinstance(value, str) and variant == QVariant.DateTime: 
+        y,m,d,t1,t2 = value.split("(")[1].split(")")[0].split(",")[:5]
+        value = QDateTime(int(y), int(m), int(d), int(t1), int(t2) )
+    '''
     if variant == 10: value = str(value) # string
+
     if value != "NULL" and value != "None":
         if variant == getVariantFromValue(value): 
             feat[key] = value
+        elif isinstance(value, float) and variant == 4: #float, but expecting Long (integer)
+            feat[key] = int(value) 
+        elif isinstance(value, int) and variant == 6: #int (longlong), but expecting float 
+            feat[key] = float(value) 
         else: 
-            print(key)
-            print(type(value))
-            print(getVariantFromValue(value))
-            print(value)
             feat[key] = None 
-            print(key); print(value); print(variant); print(type(value))
+            print(key); print(value); print(type(value)); print(variant); print(getVariantFromValue(value))
     elif isinstance(variant, int): feat[key] = None
     return feat 
 
@@ -340,8 +352,8 @@ def featureToNative(feature: Base, fields: QgsFields):
     return feat
 
 def cadFeatureToNative(feature: Base, fields: QgsFields):
-    #print("______________cadFeatureToNative")
-    feat = QgsFeature()
+    print("______________cadFeatureToNative")
+    exist_feat = QgsFeature()
     try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
     except:  speckle_geom = feature # for created in other software
 
@@ -350,12 +362,18 @@ def cadFeatureToNative(feature: Base, fields: QgsFields):
     else:
         qgsGeom = geometry.convertToNative(speckle_geom)
 
-    if qgsGeom is not None: feat.setGeometry(qgsGeom)
+    if qgsGeom is not None: exist_feat.setGeometry(qgsGeom)
     else: return
 
-    feat.setFields(fields)  
+    exist_feat.setFields(fields)  
+
+    feat_updated = updateFeat(exist_feat, fields, feature)
+    print(fields.toList())
+    print(feature)
+    print(feat_updated)
 
     #### setting attributes to feature
+    r'''
     for field in fields:
         #print(str(field.name()))
         name = str(field.name())
@@ -374,15 +392,9 @@ def cadFeatureToNative(feature: Base, fields: QgsFields):
             # for all values: 
             if variant == QVariant.String: value = str(value) 
             
-            if isinstance(value, str) and variant == QVariant.Date:  # 14
-                y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]
-                value = QDate(int(y), int(m), int(d) ) 
-            elif isinstance(value, str) and variant == QVariant.DateTime: 
-                y,m,d,t1,t2 = value.split("(")[1].split(")")[0].split(",")[:5]
-                value = QDateTime(int(y), int(m), int(d), int(t1), int(t2) )
             
             if variant == getVariantFromValue(value) and value != "NULL" and value != "None": 
                 feat[name] = value
-           
-    return feat
+    '''       
+    return feat_updated
     

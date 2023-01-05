@@ -73,7 +73,7 @@ def loopVal(value: Any, name: str, streamBranch: str): # "name" is the parent ob
     
         for item in value:
             loopVal(item, name, streamBranch)
-            if item.speckle_type and item.speckle_type.startswith("Objects.Geometry."): 
+            if item.speckle_type and item.speckle_type.startswith("Objects.Geometry."): # or item.speckle_type == 'Objects.BuiltElements.Alignment'): 
                 pt, pl = cadLayerToNative(value, name, streamBranch)
                 if pt is not None: logger.log("Layer group created: " + str(pt.name()))
                 if pl is not None: logger.log("Layer group created: " + str(pl.name()))

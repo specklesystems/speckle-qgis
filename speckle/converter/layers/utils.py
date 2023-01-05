@@ -133,11 +133,11 @@ def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
     # TODO add Base object
     pairs = {
         str: QVariant.String, # 10
-        float: QVariant.Double,
-        int: QVariant.LongLong,
+        float: QVariant.Double, # 6
+        int: QVariant.LongLong, # 4
         bool: QVariant.Bool,
-        QDate: QVariant.Date,
-        QDateTime: QVariant.DateTime
+        QDate: QVariant.Date, # 14
+        QDateTime: QVariant.DateTime # 16
     }
     t = type(value)
     res = None

@@ -228,7 +228,7 @@ def polylineToNative(poly: Polyline) -> QgsLineString:
         #return polyline
     else:
         ptList = poly.as_points()
-        ptList.append(poly.as_points()[0])
+        ptList.append(ptList[0])
         polyline = QgsLineString([pointToNative(pt) for pt in ptList])
     return polyline
 
