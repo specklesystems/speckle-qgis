@@ -59,7 +59,16 @@ def addFeatVariant(key, variant, value, f: QgsFeature):
     
     feat = f
     if variant == 10: value = str(value) # string
-    if variant == getVariantFromValue(value) and value != "NULL" and value != "None": feat[key] = value
+    if value != "NULL" and value != "None":
+        if variant == getVariantFromValue(value): 
+            feat[key] = value
+        else: 
+            print(key)
+            print(type(value))
+            print(getVariantFromValue(value))
+            print(value)
+            feat[key] = None 
+            print(key); print(value); print(variant); print(type(value))
     elif isinstance(variant, int): feat[key] = None
     return feat 
 
@@ -102,7 +111,7 @@ def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, 
                                     for k, (x,y) in enumerate(newF.items()):
                                         if key == x: variant = y; break
                                     feat = addFeatVariant(key, variant, value, feat)
-                            except Exception as e: feat[key] = None
+                            except Exception as e: feat.update({key: None})
             except Exception as e: 
                 feat[key] = None
         #feat_sorted = {k: v for k, v in sorted(feat.items(), key=lambda item: item[0])}
