@@ -87,7 +87,7 @@ jobs:
     steps:
       - add_ssh_keys:
           fingerprints:
-            - "03:2e:ee:4f:14:67:2b:88:32:e8:cc:f0:cb:df:92:29"
+            - "d1:d5:96:4d:ed:58:6e:7f:58:cc:21:5f:94:20:76:49"
       - run:
           name: I know Github as a host
           command: |
