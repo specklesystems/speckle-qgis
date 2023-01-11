@@ -331,23 +331,27 @@ def featureToNative(feature: Base, fields: QgsFields):
     feat.setFields(fields)  
     for field in fields:
         name = str(field.name())
-        #print(name)
         variant = field.type()
-        if name == "id": feat[name] = str(feature["applicationId"])
-        if name == "Speckle_ID": feat[name] = str(feature["id"])
-        else: 
-            value = feature[name]
-            if variant == QVariant.String: value = str(feature[name]) 
-            
-            if isinstance(value, str) and variant == QVariant.Date:  # 14
-                y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]
-                value = QDate(int(y), int(m), int(d) ) 
-            elif isinstance(value, str) and variant == QVariant.DateTime: 
-                y,m,d,t1,t2 = value.split("(")[1].split(")")[0].split(",")[:5]
-                value = QDateTime(int(y), int(m), int(d), int(t1), int(t2) )
-            
-            if variant == getVariantFromValue(value) and value != "NULL" and value != "None": 
-                feat[name] = value
+        #if name == "id": feat[name] = str(feature["applicationId"])
+
+        try: value = feature[name]
+        except: 
+            if name == "Speckle_ID": value = str(feature["id"])
+            else: 
+                logger.logToUser(f"Field {name} not found", Qgis.Warning)
+                return None
+        
+        if variant == QVariant.String: value = str(value) 
+        
+        if isinstance(value, str) and variant == QVariant.Date:  # 14
+            y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]
+            value = QDate(int(y), int(m), int(d) ) 
+        elif isinstance(value, str) and variant == QVariant.DateTime: 
+            y,m,d,t1,t2 = value.split("(")[1].split(")")[0].split(",")[:5]
+            value = QDateTime(int(y), int(m), int(d), int(t1), int(t2) )
+        
+        if variant == getVariantFromValue(value) and value != "NULL" and value != "None": 
+            feat[name] = value
         
     return feat
 
