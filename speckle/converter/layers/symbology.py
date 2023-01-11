@@ -113,7 +113,8 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
     if renderer and renderer['type']:
 
         if renderer['type']  == 'categorizedSymbol':
-            r,g,b = get_r_g_b(renderer['properties']['sourceSymbColor']) 
+            try: r,g,b = get_r_g_b(renderer['properties']['sourceSymbColor']) 
+            except: r = g = b = 100 
             sourceSymbColor = QColor.fromRgb(r, g, b)
 
             attribute = renderer['properties']['attribute']

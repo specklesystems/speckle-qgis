@@ -331,13 +331,17 @@ def featureToNative(feature: Base, fields: QgsFields):
     feat.setFields(fields)  
     for field in fields:
         name = str(field.name())
-        #print(name)
         variant = field.type()
-        if name == "id": feat[name] = str(feature["applicationId"])
-        if name == "Speckle_ID": feat[name] = str(feature["id"])
-        else: 
-            value = feature[name]
-            if variant == QVariant.String: value = str(feature[name]) 
+        #if name == "id": feat[name] = str(feature["applicationId"])
+
+        value = None
+        try: value = feature[name]
+        except: 
+            if name == "Speckle_ID": value = str(feature["id"])
+            else: logger.logToUser(f"Field {name} not found", Qgis.Warning)
+        
+        if value is not None: 
+            if variant == QVariant.String: value = str(value) 
             
             if isinstance(value, str) and variant == QVariant.Date:  # 14
                 y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]
