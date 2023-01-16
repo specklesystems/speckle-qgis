@@ -65,7 +65,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.commitDropdown.clear()
 
     def reloadDialogUI(self, plugin):
-        self.populateLayerDropdown()
+        self.populateLayerDropdown(plugin)
         self.populateProjectStreams(plugin)
         self.populateSurveyPoint(plugin)
         self.clearDropdown()
@@ -100,17 +100,17 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         return
 
     def populateUI(self, plugin):
-        self.populateLayerDropdown()
+        self.populateLayerDropdown(plugin)
         self.populateProjectStreams(plugin)
         self.populateSurveyPoint(plugin)
     
-    def populateLayerDropdown(self):
+    def populateLayerDropdown(self, plugin):
         if not self: return
         # Fetch the currently loaded layers
         layers = QgsProject.instance().mapLayers().values()
         project = QgsProject.instance()
         layerTreeRoot = project.layerTreeRoot()
-        layers = getLayers(layerTreeRoot, layerTreeRoot) # List[QgsLayerTreeNode]
+        layers = getLayers(plugin, layerTreeRoot, layerTreeRoot) # List[QgsLayerTreeNode]
         #print(layers)
         # Clear the contents of the comboBox from previous runs
         self.layersWidget.clear()
@@ -119,7 +119,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         
         nameDisplay = [] 
         for i, layer in enumerate(layers):
-            layer = layer.layer() #QgsMapLayer
+            #try: layer = layer.layer() #QgsMapLayer
+            #except: pass
             if isinstance(layer, QgsRasterLayer):
                 if layer.width()*layer.height() > 1000000:
                     nameDisplay.append(str(i)+" - "+ layer.name() + " !LARGE!")

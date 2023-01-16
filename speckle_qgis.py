@@ -224,7 +224,7 @@ class SpeckleQGIS:
         project = QgsProject.instance()
         projectCRS = project.crs()
         layerTreeRoot = project.layerTreeRoot()
-        layers = getLayers(layerTreeRoot, layerTreeRoot) # List[QgsLayerTreeNode]
+        layers = getLayers(self, layerTreeRoot, layerTreeRoot) # List[QgsLayerTreeNode]
 
         selectedLayerNames = [ str(item.text()).replace(" !LARGE!","").split(" - ")[1] for item in self.dockwidget.layersWidget.selectedItems() ]
         selectedLayerIndex = [ int(str(item.text()).split(" - ")[0]) for item in self.dockwidget.layersWidget.selectedItems() ]
@@ -239,7 +239,7 @@ class SpeckleQGIS:
             return
         
         # Check if no layers are selected
-        if len(selectedLayerNames) == 0:
+        if len(layers) == 0: #len(selectedLayerNames) == 0:
             logger.logToUser("No layers selected", Qgis.Warning)
             return
 
