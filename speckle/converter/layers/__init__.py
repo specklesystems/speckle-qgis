@@ -54,13 +54,13 @@ def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[ Union[QgsLa
 def convertSelectedLayers(layers: List[QgsLayerTreeLayer], selectedLayerIndex: List[int], selectedLayerNames: List[str], projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> List[Union[VectorLayer, RasterLayer]]:
     """Converts the current selected layers to Speckle"""
     result = []
-    for i, layer in enumerate(layers):
-        #if layer.name() in selectedLayerNames:
-        if i in selectedLayerIndex:
-            if selectedLayerNames[i] != layer.layer().name():
-                logger.logToUser(f"Layers have changed. Pleash refresh Speckle Connector", Qgis.Critical)
-                return None
-            result.append(layerToSpeckle(layer, projectCRS, project))
+    for i, index in enumerate(selectedLayerIndex):
+        #for k, layer in enumerate(layers):
+        selected_name = selectedLayerNames[i]
+        if selected_name != layers[index].layer().name():
+            logger.logToUser(f"Layers have changed. Pleash refresh Speckle Connector", Qgis.Critical)
+            return None
+        result.append(layerToSpeckle(layers[index], projectCRS, project))
     return result
 
 
