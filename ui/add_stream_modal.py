@@ -80,6 +80,9 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         if isinstance(self.stream_results, SpeckleException):
             logger.logToUser("Selected stream cannot be accessed", Qgis.Warning)
             return
+        elif index == -1 or len(self.stream_results) == 0:
+            logger.logToUser("Select stream from \"Search Results\". No stream selected", Qgis.Warning)
+            return 
         else:
             try:
                 index = self.search_results_list.currentIndex().row()
@@ -87,8 +90,8 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
                 acc = get_local_accounts()[self.accounts_dropdown.currentIndex()]
                 self.handleStreamAdd.emit(StreamWrapper(f"{acc.serverInfo.url}/streams/{stream.id}?u={acc.userInfo.id}"))
                 self.close()
-            except:
-                logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+            except Exception as e:
+                logger.logToUser("Some streams cannot be accessed: " + str(e), Qgis.Warning)
                 return 
 
     def onCancelClicked(self):
