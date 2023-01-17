@@ -29,8 +29,10 @@ import ui.speckle_qgis_dialog
 from qgis.core import Qgis, QgsProject,QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
 from specklepy.logging.exceptions import SpeckleException
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt import QtGui
+from qgis.PyQt.QtGui import QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QListWidgetItem 
+from qgis.PyQt import QtCore
 from qgis.PyQt.QtCore import pyqtSignal 
 from speckle.logging import logger
 from specklepy.api.credentials import get_local_accounts
@@ -44,6 +46,18 @@ FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "speckle_qgis_dialog_base.ui")
 )
 SPECKLE_COLOR = (59,130,246)
+ICON_LOGO = os.path.dirname(os.path.abspath(__file__)) + "/logo-slab-white@0.5x.png"
+ICON_DELETE = os.path.dirname(os.path.abspath(__file__)) + "/delete.png"
+ICON_DELETE_BLUE = os.path.dirname(os.path.abspath(__file__)) + "/delete-blue.png"
+
+ICON_SEND = os.path.dirname(os.path.abspath(__file__)) + "/cube-send.png"
+ICON_RECEIVE = os.path.dirname(os.path.abspath(__file__)) + "/cube-receive.png"
+
+ICON_SEND_BLACK = os.path.dirname(os.path.abspath(__file__)) + "/cube-send-black.png"
+ICON_RECEIVE_BLACK = os.path.dirname(os.path.abspath(__file__)) + "/cube-receive-black.png"
+
+ICON_SEND_BLUE = os.path.dirname(os.path.abspath(__file__)) + "/cube-send-blue.png"
+ICON_RECEIVE_BLUE = os.path.dirname(os.path.abspath(__file__)) + "/cube-receive-blue.png"
 
 class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
@@ -68,25 +82,61 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.streams_add_button.setFlat(True)
+        self.streams_remove_button.setFlat(True)
+        self.saveSurveyPoint.setFlat(True)
+        self.saveLayerSelection.setFlat(True)
+        self.reloadButton.setFlat(True)
+        self.closeButton.setFlat(True)
 
-        self.streamList.setStyleSheet(#"border: 0px;"
-                                        #"color: white;" 
-                                        "background: white;"
-                                        #"padding: 10px;"
-                                        )
+        # https://stackoverflow.com/questions/67585501/pyqt-how-to-use-hover-in-button-stylesheet
+        color = f"color: rgb{str(SPECKLE_COLOR)};"
+        backgr_image = f"border-image: url({ICON_DELETE_BLUE});"
+        self.streams_add_button.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{color}" + " }")
+        self.streams_remove_button.setIcon(QIcon(ICON_DELETE))
+        self.streams_remove_button.setMaximumWidth(30)
+        self.streams_remove_button.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{backgr_image}" + f"{color}" + " }")
+
+        self.saveLayerSelection.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{color}" + " }")
+        self.saveSurveyPoint.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{color}" + " }")
+        self.reloadButton.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{color}" + " }")
+        self.closeButton.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{color}" + " }")
+
+
+        label = QtWidgets.QPushButton("SPECKLE for QGIS")
+        label.setStyleSheet("border: 0px;"
+                            "color: white;"
+                            f"background-color: rgb{str(SPECKLE_COLOR)};"
+                            "padding: 20px;"
+                            "top-margin: 40 px;"
+                            "font-size: 15px;"
+                            "height: 15px;"
+                            "text-align: left;"
+                            )
+        label.setMinimumSize(QtCore.QSize(100, 40))
+        exitIcon = QPixmap(ICON_LOGO)
+        scaledExitIcon = exitIcon.scaled(QtCore.QSize(100, 31))
+        exitActIcon = QIcon(scaledExitIcon)
+
+        #label.setIcon(exitActIcon)
+        self.setTitleBarWidget(label)
 
         self.sendModeButton.setStyleSheet("border: 0px;"
                                         f"color: rgb{str(SPECKLE_COLOR)};"
                                         "padding: 10px;")
-        self.receiveModeButton.setStyleSheet("border: 0px;"
-                                            "padding: 10px;")
-        self.runButton.setStyleSheet("color: black;" 
+        self.receiveModeButton.setFlat(True)
+        self.receiveModeButton.setStyleSheet("QPushButton {padding: 10px; border: 0px;} ") #QPushButton:hover { " + f"{backgr_color}" + " }
+        
+        self.sendModeButton.setIcon(QIcon(ICON_SEND_BLUE))
+        self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLACK))
+
+        self.runButton.setStyleSheet("color: white;" 
                                     f"background-color: rgb{str(SPECKLE_COLOR)};"
                                     "border: 0px;"
                                     "border-radius: 15px;"
                                     "padding: 10px;" )
         
-        #self.sendModeButton.setAutoFillBackground(True)
+        self.runButton.setIcon(QIcon(ICON_SEND))
 
     def clearDropdown(self):
         #self.streamIdField.clear()
@@ -95,11 +145,14 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         #self.layerSendModeDropdown.clear()
 
     def reloadDialogUI(self, plugin):
+        self.clearDropdown()
         self.populateLayerDropdown(plugin)
         self.populateLayerSendModeDropdown()
         self.populateProjectStreams(plugin)
+        #self.onActiveStreamChanged(plugin)
+        #self.populateActiveStreamBranchDropdown(plugin)
+        #self.populateActiveCommitDropdown(plugin)
         self.populateSurveyPoint(plugin)
-        self.clearDropdown()
         self.enableElements(plugin)
 
     def run(self, plugin): 
@@ -120,6 +173,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def setupOnFirstLoad(self, plugin):
         self.runButton.clicked.connect(plugin.onRunButtonClicked)
         self.reloadButton.clicked.connect(plugin.reloadUI)
+        self.closeButton.clicked.connect(plugin.onClosePlugin)
         self.saveSurveyPoint.clicked.connect(plugin.set_survey_point)
         self.saveLayerSelection.clicked.connect(lambda: self.populateLayerDropdown(plugin, True))
         self.sendModeButton.clicked.connect(lambda: self.setSendMode(plugin))
@@ -130,32 +184,49 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def setSendMode(self, plugin):
         plugin.btnAction = 0 # send 
+        color = f"color: rgb{str(SPECKLE_COLOR)};"
         self.sendModeButton.setStyleSheet("border: 0px;"
                                     f"color: rgb{str(SPECKLE_COLOR)};"
                                     "padding: 10px;")
+        self.sendModeButton.setIcon(QIcon(ICON_SEND_BLUE))
+        self.sendModeButton.setFlat(False)
+        self.receiveModeButton.setFlat(True)
         self.receiveModeButton.setStyleSheet("border: 0px;"
                                     f"color: black;"
-                                    "padding: 10px;")
+                                    "padding: 10px;"
+                                    "QPushButton:hover { " + f"{color}" + " };")
+        self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLACK))
         #self.receiveModeButton.setFlat(True)
-        self.runButton.setProperty("text", "SEND")
-        #self.layerSendModeChange(plugin, 0)
-        self.layersWidget.setEnabled(True)
-        self.saveLayerSelection.setEnabled(True)
+        self.runButton.setProperty("text", " SEND")
+        self.runButton.setIcon(QIcon(ICON_SEND))
+
+        # enable sections only if in "saved streams" mode 
+        if self.layerSendModeDropdown.currentIndex() == 1: self.layersWidget.setEnabled(True)
+        if self.layerSendModeDropdown.currentIndex() == 1: self.saveLayerSelection.setEnabled(True)
+        self.messageInput.setEnabled(True)
         self.layerSendModeDropdown.setEnabled(True)
         return
     
     def setReceiveMode(self, plugin):
         plugin.btnAction = 1 # receive 
+        color = f"color: rgb{str(SPECKLE_COLOR)};"
         self.receiveModeButton.setStyleSheet("border: 0px;"
                                     f"color: rgb{str(SPECKLE_COLOR)};"
                                     "padding: 10px;")
+        self.sendModeButton.setIcon(QIcon(ICON_SEND_BLACK))
         self.sendModeButton.setStyleSheet("border: 0px;"
                                     f"color: black;"
-                                    "padding: 10px;")
+                                    "padding: 10px;"
+                                    "QPushButton:hover { " + f"{color}" + " };")
+        self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLUE))
+        self.sendModeButton.setFlat(True)
+        self.receiveModeButton.setFlat(False)
         #self.sendModeButton.setFlat(True)
-        self.runButton.setProperty("text", "RECEIVE")
+        self.runButton.setProperty("text", " RECEIVE")
+        self.runButton.setIcon(QIcon(ICON_RECEIVE))
         #self.layerSendModeChange(plugin, 1)
         self.layersWidget.setEnabled(False)
+        self.messageInput.setEnabled(False)
         self.saveLayerSelection.setEnabled(False)
         self.layerSendModeDropdown.setEnabled(False)
         return
@@ -170,6 +241,9 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.populateLayerDropdown(plugin)
         self.populateLayerSendModeDropdown()
         self.populateProjectStreams(plugin)
+        #self.onActiveStreamChanged(plugin)
+        #self.populateActiveStreamBranchDropdown(plugin)
+        #self.populateActiveCommitDropdown(plugin)
         self.populateSurveyPoint(plugin)
     
     r'''
@@ -193,11 +267,15 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         if self.layerSendModeDropdown.currentIndex() == 0 or runMode == 1: # by manual selection OR receive mode
             self.current_layers = []
             self.layersWidget.clear()
+            self.layersWidget.setEnabled(False)
+            #self.messageInput.setEnabled(False)
             self.saveLayerSelection.setEnabled(False)
         elif self.layerSendModeDropdown.currentIndex() == 1 and (runMode == 0 or runMode is None): # by saved AND when Send mode
             bySelection = False
             get_project_layer_selection(plugin)
             self.populateLayerDropdown(plugin, bySelection)
+            self.layersWidget.setEnabled(True)
+            #self.messageInput.setEnabled(True)
             self.saveLayerSelection.setEnabled(True)
 
     def populateLayerDropdown(self, plugin, bySelection: bool = False):
@@ -285,23 +363,16 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         if index == -1: self.streams_remove_button.setEnabled(False)
         else: self.streams_remove_button.setEnabled(True)
 
+        if len(plugin.current_streams)>0: plugin.active_stream = plugin.current_streams[0]
+
     def onActiveStreamChanged(self, plugin):
-        #print("populateActiveCommitDropdown")
-        #print(plugin)
+
         if not self: return
         if len(plugin.current_streams) == 0:
             return
         index = self.streamList.currentIndex()
         if index == -1:
             return
-        #print(plugin)
-        #print(plugin.active_stream)
-        #print(plugin.current_streams[index])
-
-        #if isinstance(plugin.current_streams[index][1], SpeckleException): 
-        #    try: plugin.current_streams[index][1] = tryGetStream(plugin.current_streams[0])
-        #    except: pass
-
 
         try: plugin.active_stream = plugin.current_streams[index]
         except: plugin.active_stream = None
@@ -318,6 +389,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def populateActiveStreamBranchDropdown(self, plugin):
         if not self: return
+        if plugin.active_stream is None: return
         self.streamBranchDropdown.clear()
         if isinstance(plugin.active_stream[1], SpeckleException): 
             logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
@@ -331,8 +403,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def populateActiveCommitDropdown(self, plugin):
         if not self: return
         self.commitDropdown.clear()
-        if plugin.active_stream is None:
-            return
+        if plugin.active_stream is None: return
         branchName = self.streamBranchDropdown.currentText()
         branch = None
         if isinstance(plugin.active_stream[1], SpeckleException): 

@@ -204,7 +204,8 @@ class SpeckleQGIS:
 
         # disconnects
         if self.dockwidget:
-            self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
+            try: self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
+            except: pass 
 
         # remove this statement if dockwidget is to remain
         # for reuse if plugin is reopened
@@ -213,6 +214,7 @@ class SpeckleQGIS:
         # self.dockwidget = None
 
         self.pluginIsActive = False
+        self.dockwidget.close()
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -242,7 +244,7 @@ class SpeckleQGIS:
 
         # Check if stream id/url is empty
         if self.active_stream is None:
-            logger.logToUser( "Please select a stream from the list." )
+            logger.logToUser("Please select a stream from the list.", Qgis.Critical )
             return
         
         # Check if no layers are selected

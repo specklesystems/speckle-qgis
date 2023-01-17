@@ -10,9 +10,7 @@
     <height>651</height>
    </rect>
   </property>
-  <property name="windowTitle">
-   <string>SpeckleQGIS</string>
-  </property>
+
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
@@ -39,48 +37,67 @@
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="QComboBox" name="streamList"/>
-        </item>
-        <item row="1" column="1">
-
-        <layout class="QFormLayout" name="formLayout">
-          <property name="leftMargin">
-          <number>0</number>
-          </property>
-          <property name="topMargin">
-          <number>0</number>
-          </property>
-          <property name="rightMargin">
-          <number>0</number>
-          </property>
-          <property name="bottomMargin">
-          <number>0</number>
-          </property>
-          <item row="0" column="0">
-
-
-            <layout class="QHBoxLayout" name="streamListButtons">
-              <item>
-              <widget class="QPushButton" name="streams_add_button">
-                <property name="text">
-                <string>+</string>
-                </property>
-              </widget>
-              </item>
-              <item>
+          <layout class="QHBoxLayout" name="streamListButtons" stretch="20,1">
+            <item>
+              <widget class="QComboBox" name="streamList"/>
+            </item>
+            <item>
               <widget class="QPushButton" name="streams_remove_button">
                 <property name="text">
-                <string>-</string>
+                <string> </string>
                 </property>
+                <property name="geometry">
+                  <rect>
+                    <x>0</x>
+                    <y>0</y>
+                    <width>10</width>
+                    <height>10</height>
+                  </rect>
+                  </property>
               </widget>
-              </item>
-            </layout>
-          </item>
+            </item>
+          </layout>
+        </item>
 
-          <item row="0" column="1">
-            
-            <layout class="QHBoxLayout" name="refrBtn">
-              <item>
+        <item row="1" column="1">
+              <layout class="QHBoxLayout" name="streamListButtons">
+                <item>
+                <widget class="QPushButton" name="streams_add_button">
+                  <property name="text">
+                  <string>Add stream</string>
+                  </property>
+                </widget>
+                </item>
+                
+
+              </layout>
+        </item>
+
+
+        <item row="2" column="0">
+         <widget class="QLabel" name="streamBranchLabel">
+          <property name="text">
+           <string>Branch</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QComboBox" name="streamBranchDropdown"/>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="commitLabel">
+          <property name="text">
+           <string>Commit</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QComboBox" name="commitDropdown"/>
+        </item>
+        
+        <item row="4" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout">
+            <item>
               <widget class="QPushButton" name="reloadButton">
                 <property name="enabled">
                 <bool>true</bool>
@@ -89,34 +106,9 @@
                 <string>Refresh</string>
                 </property>
               </widget>
-              </item>
-            </layout>
-          </item>
-
+            </item>
          </layout>
         </item>
-
-        <item row="3" column="0">
-         <widget class="QLabel" name="streamBranchLabel">
-          <property name="text">
-           <string>Branch</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QComboBox" name="streamBranchDropdown"/>
-        </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="commitLabel">
-          <property name="text">
-           <string>Commit</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QComboBox" name="commitDropdown"/>
-        </item>
-        
 
         
         <item row="5" column="1">
@@ -146,22 +138,8 @@
         </item>
 
 
-        <item row="7" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout">
-            <item>
-              <widget class="QPushButton" name="saveLayerSelection">
-                <property name="enabled">
-                  <bool>true</bool>
-                </property>
-                <property name="text">
-                  <string>Save new selection</string>
-                </property>
-              </widget>
-            </item>
-          </layout>
-        </item>
 
-        <item row="8" column="1">
+        <item row="7" column="1">
          <widget class="QListWidget" name="layersWidget">
           <property name="selectionMode">
            <enum>QAbstractItemView::NoSelection</enum>
@@ -185,6 +163,20 @@
         </item>
 
 
+        <item row="8" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout">
+            <item>
+              <widget class="QPushButton" name="saveLayerSelection">
+                <property name="enabled">
+                  <bool>true</bool>
+                </property>
+                <property name="text">
+                  <string>Save selected layers</string>
+                </property>
+              </widget>
+            </item>
+          </layout>
+        </item>
 
         <item row="9" column="0">
          <widget class="QLabel" name="messageLabel">
@@ -208,7 +200,7 @@
           <item>
            <widget class="QPushButton" name="runButton">
             <property name="text">
-             <string>SEND</string>
+             <string> SEND</string>
             </property>
            </widget>
           </item>
@@ -238,19 +230,39 @@
                 </property>
               </widget>
             </item>
+
             <item>
-            <widget class="QPushButton" name="saveSurveyPoint">
-              <property name="enabled">
-                <bool>true</bool>
-              </property>
-              <property name="text">
-                <string>Create Custom CRS</string>
-              </property>
-            </widget>
-          </item>
+              <widget class="QPushButton" name="saveSurveyPoint">
+                <property name="enabled">
+                  <bool>true</bool>
+                </property>
+                <property name="text">
+                  <string>Create Custom CRS</string>
+                </property>
+              </widget>
+            </item>
+
+          </layout>
+        </item>
+        
+        <item row="12" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout">
+            
+            <item>
+              <widget class="QPushButton" name="closeButton">
+                <property name="enabled">
+                  <bool>true</bool>
+                </property>
+                <property name="text">
+                  <string>Close</string>
+                </property>
+              </widget>
+            </item>
+
           </layout>
         </item>
 
+        
 
        </layout>
       </item>
