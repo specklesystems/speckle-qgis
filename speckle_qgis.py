@@ -238,12 +238,8 @@ class SpeckleQGIS:
         selectedLayerIndex = [ int(str(item.text()).split(" - ")[0]) for item in self.dockwidget.layersWidget.selectedItems() ]
 
         # Check if stream id/url is empty
-        if not self.dockwidget.streamIdField.text():
-            logger.logToUser("Please enter a Stream Url/ID.", Qgis.Warning)
-            return
-
         if self.active_stream is None:
-            logger.logToUser( "There is no active stream. Please select a stream from the list." )
+            logger.logToUser( "Please select a stream from the list." )
             return
         
         # Check if no layers are selected
@@ -301,7 +297,7 @@ class SpeckleQGIS:
         if not self.dockwidget: return
 
         # Check if stream id/url is empty
-        if not self.dockwidget.streamIdField.text():
+        if not self.active_stream is None:
             logger.logToUser("Please enter a Stream Url/ID.", Qgis.Warning)
             return
 

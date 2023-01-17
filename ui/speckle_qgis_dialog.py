@@ -47,8 +47,8 @@ FORM_CLASS, _ = uic.loadUiType(
 class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
-    streamList: QtWidgets.QListWidget
-    streamIdField: QtWidgets.QLineEdit
+    streamList: QtWidgets.QComboBox
+    #streamIdField: QtWidgets.QLineEdit
     streamBranchDropdown: QtWidgets.QComboBox
     layerSendModeDropdown: QtWidgets.QComboBox
     commitDropdown: QtWidgets.QComboBox
@@ -66,7 +66,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.setupUi(self)
 
     def clearDropdown(self):
-        self.streamIdField.clear()
+        #self.streamIdField.clear()
         self.streamBranchDropdown.clear()
         self.commitDropdown.clear()
         self.layerSendModeDropdown.clear()
@@ -106,7 +106,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def completeStreamSection(self, plugin):
         self.streams_remove_button.clicked.connect( lambda: self.onStreamRemoveButtonClicked(plugin) )
-        self.streamList.itemSelectionChanged.connect( lambda: self.onActiveStreamChanged(plugin) )
+        self.streamList.currentIndexChanged.connect( lambda: self.onActiveStreamChanged(plugin) )
         self.streamBranchDropdown.currentIndexChanged.connect( lambda: self.populateActiveCommitDropdown(plugin) )
         return
 
@@ -238,7 +238,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         if not self: return
         if len(plugin.current_streams) == 0:
             return
-        index = self.streamList.currentRow()
+        index = self.streamList.currentIndex()
         if index == -1:
             return
         #print(plugin)
@@ -252,9 +252,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
         try: plugin.active_stream = plugin.current_streams[index]
         except: plugin.active_stream = None
-        self.streamIdField.setText(
-            self.streamList.currentItem().text()
-        )
+
         self.populateActiveStreamBranchDropdown(plugin)
         self.populateActiveCommitDropdown(plugin)
 
@@ -301,13 +299,13 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def onStreamRemoveButtonClicked(self, plugin):
         from ui.project_vars import set_project_streams
         if not self: return
-        index = self.streamList.currentIndex().row()
+        index = self.streamList.currentIndex()
         #if index == 0: 
         plugin.current_streams.pop(index)
         plugin.active_stream = None
         self.streamBranchDropdown.clear()
         self.commitDropdown.clear()
-        self.streamIdField.setText("")
+        #self.streamIdField.setText("")
 
         set_project_streams(plugin)
         self.populateProjectStreams(plugin)
