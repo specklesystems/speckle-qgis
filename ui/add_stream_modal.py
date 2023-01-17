@@ -39,11 +39,19 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         self.setupUi(self)
         self.setWindowTitle("Add Speckle stream")
 
+        self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(False) 
+
         self.search_button.clicked.connect(self.onSearchClicked)
+        self.search_results_list.currentItemChanged.connect( self.searchResultChanged )
         self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(self.onOkClicked)
         self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(self.onCancelClicked)
         self.accounts_dropdown.currentIndexChanged.connect(self.onAccountSelected)
         self.populate_accounts_dropdown()
+
+    def searchResultChanged(self):
+        index = self.search_results_list.currentIndex().row()
+        if index == -1: self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(False) 
+        else: self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(True) 
 
     def onSearchClicked(self):
         query = self.search_text_field.text()
@@ -80,9 +88,9 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         if isinstance(self.stream_results, SpeckleException):
             logger.logToUser("Selected stream cannot be accessed", Qgis.Warning)
             return
-        elif index == -1 or len(self.stream_results) == 0:
-            logger.logToUser("Select stream from \"Search Results\". No stream selected", Qgis.Warning)
-            return 
+        #elif index == -1 or len(self.stream_results) == 0:
+        #    logger.logToUser("Select stream from \"Search Results\". No stream selected", Qgis.Warning)
+        #    return 
         else:
             try:
                 index = self.search_results_list.currentIndex().row()

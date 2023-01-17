@@ -95,7 +95,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         event.accept()
 
     def setupOnFirstLoad(self, plugin):
-        self.sendButton.clicked.connect(plugin.onSendButtonClicked)
+        self.runButton.clicked.connect(plugin.onRunButtonClicked)
         self.receiveButton.clicked.connect(plugin.onReceiveButtonClicked)
         self.reloadButton.clicked.connect(plugin.reloadUI)
         self.saveSurveyPoint.clicked.connect(plugin.set_survey_point)
@@ -207,7 +207,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def enableElements(self, plugin):
         self.receiveButton.setEnabled(plugin.is_setup)
-        self.sendButton.setEnabled(plugin.is_setup)
+        self.runButton.setEnabled(plugin.is_setup)
         self.streams_add_button.setEnabled(plugin.is_setup)
         self.streams_remove_button.setEnabled(plugin.is_setup)
         self.streamBranchDropdown.setEnabled(plugin.is_setup)

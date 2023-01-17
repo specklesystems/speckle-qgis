@@ -218,7 +218,10 @@ class SpeckleQGIS:
             self.iface.removePluginWebMenu(self.tr("&SpeckleQGIS"), action)
             self.iface.removeToolBarIcon(action)
 
-    def onSendButtonClicked(self):
+    def onRunButtonClicked(self):
+        if True: self.onSend()
+
+    def onSend(self):
         """Handles action when Send button is pressed."""
         if not self.dockwidget: return
 
