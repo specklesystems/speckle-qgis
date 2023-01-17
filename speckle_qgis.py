@@ -17,7 +17,8 @@
 import os.path
 from typing import Any, Callable, List, Optional, Tuple, Union
 
-from qgis.core import Qgis, QgsProject, QgsLayerTreeLayer
+from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
+                       QgsRasterLayer, QgsVectorLayer)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QDockWidget
@@ -51,6 +52,7 @@ class SpeckleQGIS:
     dockwidget: Optional[QDockWidget]
     add_stream_modal: AddStreamModalDialog
     current_streams: List[Tuple[StreamWrapper, Stream]] = [] #{id:(sw,st),id2:()}
+    current_layers: List[Tuple[str, Union[QgsVectorLayer, QgsRasterLayer]]] = []
 
     active_stream: Union[Tuple[StreamWrapper, Stream], None] = None 
 
@@ -224,7 +226,10 @@ class SpeckleQGIS:
         project = QgsProject.instance()
         projectCRS = project.crs()
         layerTreeRoot = project.layerTreeRoot()
-        layers = getLayers(self, layerTreeRoot, layerTreeRoot) # List[QgsLayerTreeNode]
+
+        bySelection = True
+        if self.dockwidget.layerSendModeDropdown.currentIndex() == 1: bySelection = False 
+        layers = getLayers(self, bySelection) # List[QgsLayerTreeNode]
 
         selectedLayerNames = [ str(item.text()).replace(" !LARGE!","").split(" - ")[1] for item in self.dockwidget.layersWidget.selectedItems() ]
         selectedLayerIndex = [ int(str(item.text()).split(" - ")[0]) for item in self.dockwidget.layersWidget.selectedItems() ]
@@ -366,13 +371,14 @@ class SpeckleQGIS:
 
     def reloadUI(self):
         
-        from ui.project_vars import get_project_streams, get_survey_point
+        from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection
 
         self.is_setup = self.check_for_accounts()
         if self.dockwidget is not None:
             self.active_stream = None
             get_project_streams(self)
             get_survey_point(self)
+            get_project_layer_selection(self)
 
             self.dockwidget.reloadDialogUI(self)
 
@@ -388,7 +394,7 @@ class SpeckleQGIS:
     def run(self):
         """Run method that performs all the real work"""
         from ui.speckle_qgis_dialog import SpeckleQGISDialog
-        from ui.project_vars import get_project_streams, get_survey_point
+        from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
@@ -405,6 +411,7 @@ class SpeckleQGIS:
 
             get_project_streams(self)
             get_survey_point(self)
+            get_project_layer_selection(self)
 
             self.dockwidget.run(self)
 

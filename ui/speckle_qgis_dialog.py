@@ -26,10 +26,12 @@ import os
 from speckle.converter.layers import getLayers
 #from speckle_qgis import SpeckleQGIS
 import ui.speckle_qgis_dialog
-from qgis.core import Qgis, QgsProject,QgsVectorLayer, QgsRasterLayer 
+from qgis.core import Qgis, QgsProject,QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
 from specklepy.logging.exceptions import SpeckleException
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QListWidgetItem 
+from qgis.PyQt.QtCore import pyqtSignal 
 from speckle.logging import logger
 from specklepy.api.credentials import get_local_accounts
 
@@ -48,6 +50,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     streamList: QtWidgets.QListWidget
     streamIdField: QtWidgets.QLineEdit
     streamBranchDropdown: QtWidgets.QComboBox
+    layerSendModeDropdown: QtWidgets.QComboBox
+    commitDropdown: QtWidgets.QComboBox
+    layersWidget: QtWidgets.QListWidget
+    saveLayerSelection: QtWidgets.QPushButton
     
     def __init__(self, parent=None):
         """Constructor."""
@@ -63,9 +69,11 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.streamIdField.clear()
         self.streamBranchDropdown.clear()
         self.commitDropdown.clear()
+        self.layerSendModeDropdown.clear()
 
     def reloadDialogUI(self, plugin):
         self.populateLayerDropdown(plugin)
+        self.populateLayerSendModeDropdown()
         self.populateProjectStreams(plugin)
         self.populateSurveyPoint(plugin)
         self.clearDropdown()
@@ -77,6 +85,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         # Connect streams section events
         self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
         self.completeStreamSection(plugin)
+
+        self.layerSendModeDropdown.currentIndexChanged.connect( lambda: self.layerSendModeChange(plugin) )
         # Populate the UI dropdowns
         self.populateUI(plugin) 
 
@@ -89,6 +99,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.receiveButton.clicked.connect(plugin.onReceiveButtonClicked)
         self.reloadButton.clicked.connect(plugin.reloadUI)
         self.saveSurveyPoint.clicked.connect(plugin.set_survey_point)
+        self.saveLayerSelection.clicked.connect(lambda: self.populateLayerDropdown(plugin, True))
 
         self.closingPlugin.connect(plugin.onClosePlugin)
         return 
@@ -101,37 +112,88 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def populateUI(self, plugin):
         self.populateLayerDropdown(plugin)
+        self.populateLayerSendModeDropdown()
         self.populateProjectStreams(plugin)
         self.populateSurveyPoint(plugin)
     
-    def populateLayerDropdown(self, plugin):
+    r'''
+    def selectSavedLayers(self, plugin): 
         if not self: return
-        # Fetch the currently loaded layers
-        layers = QgsProject.instance().mapLayers().values()
+
         project = QgsProject.instance()
+        all_layers_ids = [l.id() for l in project.mapLayers().values()]
+        selectedLayerIds = [ str(item.text()).replace(" !LARGE!","").split(" - ")[1] for item in self.dockwidget.layersWidget.selectedItems() ]
+        for item in selectedLayerIds:
+            if item in all_layers_ids
+            QgsProject().instance().mapLayersByName(name)[0]
+
         layerTreeRoot = project.layerTreeRoot()
         layers = getLayers(plugin, layerTreeRoot, layerTreeRoot) # List[QgsLayerTreeNode]
-        #print(layers)
-        # Clear the contents of the comboBox from previous runs
-        self.layersWidget.clear()
-        # Populate the comboBox with names of all the loaded layers
-        #self.dockwidget.layersWidget.addItems([layer.name() for layer in layers])
+    '''    
+
+    def layerSendModeChange(self, plugin):
+        from ui.project_vars import get_project_layer_selection
+        bySelection = True
+        if self.layerSendModeDropdown.currentIndex() == 0: # by manual selection
+            self.current_layers = []
+            self.layersWidget.clear()
+            self.saveLayerSelection.setEnabled(False)
+        else: # by saved
+            bySelection = False
+            get_project_layer_selection(plugin)
+            self.populateLayerDropdown(plugin, bySelection)
+            self.saveLayerSelection.setEnabled(True)
+
+    def populateLayerDropdown(self, plugin, bySelection: bool = False):
         
+        if not self: return
+        from ui.project_vars import set_project_layer_selection
+        
+        self.layersWidget.clear()
         nameDisplay = [] 
-        for i, layer in enumerate(layers):
-            #try: layer = layer.layer() #QgsMapLayer
-            #except: pass
-            if isinstance(layer, QgsRasterLayer):
-                if layer.width()*layer.height() > 1000000:
-                    nameDisplay.append(str(i)+" - "+ layer.name() + " !LARGE!")
-                else: nameDisplay.append(str(i)+" - "+ layer.name())
-            
-            elif isinstance(layer, QgsVectorLayer):
-                if layer.featureCount() > 20000:
-                    nameDisplay.append(str(i)+" - "+ layer.name() + " !LARGE!")
-                else: nameDisplay.append(str(i)+" - "+ layer.name())
-            else: nameDisplay.append(str(i)+" - "+ str(layer.name()))
-        self.layersWidget.addItems(nameDisplay)
+        project = QgsProject.instance()
+
+        if bySelection is False: # read from project data 
+            for layer_tuple in plugin.current_layers:
+                all_layers_ids = [l.id() for l in project.mapLayers().values()]
+                if layer_tuple[1].id() in all_layers_ids: 
+                    listItem = self.fillLayerList(layer_tuple[1]) 
+                self.layersWidget.addItem(listItem)
+
+        if bySelection is True:
+            # Fetch selected layers
+            #layerTreeRoot = project.layerTreeRoot()
+            plugin.current_layers = []
+            layers = getLayers(plugin, bySelection) # List[QgsLayerTreeNode]
+            for i, layer in enumerate(layers):
+                plugin.current_layers.append((layer.name(), layer)) 
+                listItem = self.fillLayerList(layer)
+                self.layersWidget.addItem(listItem)
+
+            set_project_layer_selection(plugin)
+
+    def fillLayerList(self, layer):
+        
+        icon_xxl = os.path.dirname(os.path.abspath(__file__)) + "/size-xxl.png"
+        listItem = QListWidgetItem(layer.name()) 
+
+        if isinstance(layer, QgsRasterLayer) and layer.width()*layer.height() > 1000000:
+                listItem.setIcon(QIcon(icon_xxl))
+        
+        elif isinstance(layer, QgsVectorLayer) and layer.featureCount() > 20000:
+                listItem.setIcon(QIcon(icon_xxl))
+
+        else: 
+            icon = QgsIconUtils().iconForLayer(layer)
+            listItem.setIcon(icon)
+        
+        newSize = listItem.sizeHint()
+        height = listItem.sizeHint().height()
+        newSize.setHeight(0.5)
+        listItem.setSizeHint(newSize)
+        
+        return listItem
+
 
     def populateSurveyPoint(self, plugin):
         if not self:
@@ -149,6 +211,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.streams_add_button.setEnabled(plugin.is_setup)
         self.streams_remove_button.setEnabled(plugin.is_setup)
         self.streamBranchDropdown.setEnabled(plugin.is_setup)
+        self.layerSendModeDropdown.setEnabled(plugin.is_setup)
         self.commitDropdown.setEnabled(plugin.is_setup)
         self.show()
 
@@ -194,6 +257,13 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         )
         self.populateActiveStreamBranchDropdown(plugin)
         self.populateActiveCommitDropdown(plugin)
+
+    def populateLayerSendModeDropdown(self):
+        if not self: return
+        self.layerSendModeDropdown.clear()
+        self.layerSendModeDropdown.addItems(
+            ["Send selected layers", "Send saved layers"]
+        )
 
     def populateActiveStreamBranchDropdown(self, plugin):
         if not self: return

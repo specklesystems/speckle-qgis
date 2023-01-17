@@ -33,13 +33,33 @@ from PyQt5.QtGui import QColor
 import numpy as np
 
 
-def getLayers(plugin, tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
     #print("___ get layers list ___")
-    children = parent.children()
+    self = plugin.dockwidget
     layers = []
-    layers = plugin.iface.layerTreeView().selectedLayers()
+    if bySelection is True: 
+        layers = plugin.iface.layerTreeView().selectedLayers()
+    else: # from project data 
+        project = QgsProject.instance()
+        #all_layers_ids = [l.id() for l in project.mapLayers().values()]
+        for item in plugin.current_layers:
+            try: 
+                id = item[1].id()
+            except:
+                logger.logToUser(f'Saved layer not found: "{item[0]}"', Qgis.Warning)
+                continue
+            found = 0
+            for l in project.mapLayers().values():
+                if id == l.id():
+                    layers.append(l)
+                    found += 1
+                    break 
+            if found == 0: 
+                logger.logToUser(f'Saved layer not found: "{item[0]}"', Qgis.Warning)
+    
     r'''
+    children = parent.children()
     for node in children:
         #print(node)
         if tree.isLayer(node):
