@@ -34,7 +34,7 @@
         <item row="0" column="0">
          <widget class="QLabel" name="streamListLabel">
           <property name="text">
-           <string>Project Streams</string>
+           <string>Stream</string>
           </property>
          </widget>
         </item>
@@ -78,6 +78,7 @@
           </item>
 
           <item row="0" column="1">
+            
             <layout class="QHBoxLayout" name="refrBtn">
               <item>
               <widget class="QPushButton" name="reloadButton">
@@ -205,19 +206,9 @@
         <item row="10" column="1">
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
-           <widget class="QPushButton" name="receiveButton">
-            <property name="enabled">
-             <bool>true</bool>
-            </property>
-            <property name="text">
-             <string>Receive</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QPushButton" name="runButton">
             <property name="text">
-             <string>Send</string>
+             <string>SEND</string>
             </property>
            </widget>
           </item>

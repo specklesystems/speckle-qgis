@@ -74,6 +74,8 @@ class SpeckleQGIS:
         self.iface = iface
         self.qgis_project = QgsProject.instance()
 
+        self.btnAction = 0
+
         self.lat = 0.0
         self.lon = 0.0
         # initialize plugin directory
@@ -219,7 +221,8 @@ class SpeckleQGIS:
             self.iface.removeToolBarIcon(action)
 
     def onRunButtonClicked(self):
-        if True: self.onSend()
+        if self.btnAction == 0: self.onSend()
+        elif self.btnAction == 1: self.onReceive()
 
     def onSend(self):
         """Handles action when Send button is pressed."""
@@ -291,18 +294,14 @@ class SpeckleQGIS:
         except SpeckleException as e:
             logger.logToUser("Error creating commit", Qgis.Critical)
 
-    def onReceiveButtonClicked(self):
+    def onReceive(self):
         """Handles action when the Receive button is pressed"""
 
         if not self.dockwidget: return
 
         # Check if stream id/url is empty
-        if not self.active_stream is None:
-            logger.logToUser("Please enter a Stream Url/ID.", Qgis.Warning)
-            return
-
         if self.active_stream is None:
-            logger.logToUser("There is no active stream. Please select a stream from the list.", Qgis.Critical)
+            logger.logToUser("Please select a stream from the list.", Qgis.Critical)
             return
 
         # Get the stream wrapper
