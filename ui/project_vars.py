@@ -58,7 +58,8 @@ def get_project_layer_selection(self: SpeckleQGIS):
 
 def set_project_layer_selection(self: SpeckleQGIS):
     proj = QgsProject().instance() 
-    value = ",".join([x.id() for x in self.iface.layerTreeView().selectedLayers()]) #'points_qgis2_b22ed3d0_0ff9_40d2_97f2_bd17a350d698' <qgis._core.QgsVectorDataProvider object at 0x000002627D9D4790>
+    #value = ",".join([x.id() for x in self.iface.layerTreeView().selectedLayers()]) #'points_qgis2_b22ed3d0_0ff9_40d2_97f2_bd17a350d698' <qgis._core.QgsVectorDataProvider object at 0x000002627D9D4790>
+    value = ",".join([x[1].id() for x in self.current_layers]) 
     proj.writeEntry("speckle-qgis", "project_layer_selection", value)
 
 def get_survey_point(self: SpeckleQGIS):

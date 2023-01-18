@@ -38,7 +38,7 @@ def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, Qg
     #print("___ get layers list ___")
     self = plugin.dockwidget
     layers = []
-    if bySelection is True: 
+    if bySelection is True: # by selection 
         layers = plugin.iface.layerTreeView().selectedLayers()
     else: # from project data 
         project = QgsProject.instance()
