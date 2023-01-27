@@ -187,9 +187,8 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         logger.logToUser(f"Raster layers can only be received in an existing saved project. Layer {layerName} will be ignored", Qgis.Warning)
         return None
 
-    path_bim = path + "/BIM_layers_speckle/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #
-    print(path_bim)
-    
+    path_bim = path + "/Layers_Speckle/BIM_layers/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #
+
     if not os.path.exists(path_bim): os.makedirs(path_bim)
     print(path_bim)
 
@@ -567,8 +566,12 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
 
     ## https://opensourceoptions.com/blog/pyqgis-create-raster/
     # creating file in temporary folder: https://stackoverflow.com/questions/56038742/creating-in-memory-qgsrasterlayer-from-the-rasterization-of-a-qgsvectorlayer-wit
+    
+    path_fn = source_folder + "/Layers_Speckle/raster_layers/" + streamBranch+ "/" 
+    if not os.path.exists(path_fn): os.makedirs(path_fn)
 
-    fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
+    fn = path_fn + layer.name + ".tif" #arcpy.env.workspace + "\\" #
+    #fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
     driver = gdal.GetDriverByName('GTiff')
     # create raster dataset
     ds = driver.Create(fn, xsize=feat["X pixels"], ysize=feat["Y pixels"], bands=feat["Band count"], eType=gdal.GDT_Float32)
