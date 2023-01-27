@@ -11,7 +11,7 @@ from qgis.core import Qgis
   
 def tryGetStream (sw: StreamWrapper) -> Stream:
     client = sw.get_client()
-    stream = client.stream.get(sw.stream_id)
+    stream = client.stream.get(id = sw.stream_id, branch_limit = 100, commit_limit = 100)
     if isinstance(stream, GraphQLException):
         raise SpeckleException(stream.errors[0]['message'])
     return stream

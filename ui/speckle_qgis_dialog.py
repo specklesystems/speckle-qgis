@@ -82,6 +82,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+
+        self.streamBranchDropdown.setMaxCount(100)
+        self.commitDropdown.setMaxCount(100)
+
         self.streams_add_button.setFlat(True)
         self.streams_remove_button.setFlat(True)
         self.saveSurveyPoint.setFlat(True)
