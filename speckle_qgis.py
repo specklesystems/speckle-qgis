@@ -19,9 +19,12 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsRasterLayer, QgsVectorLayer)
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QDockWidget
+from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget
+from qgis.PyQt import QtWidgets
+from qgis import PyQt
+import sip
 from specklepy.api import operations
 from specklepy.logging.exceptions import SpeckleException, GraphQLException
 #from specklepy.api.credentials import StreamWrapper
@@ -45,6 +48,10 @@ from ui.add_stream_modal import AddStreamModalDialog
 
 # Import the code for the dialog
 from ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
+
+
+SPECKLE_COLOR = (59,130,246)
+SPECKLE_COLOR_LIGHT = (69,140,255)
 
 class SpeckleQGIS:
     """Speckle Connector Plugin for QGIS"""
@@ -262,6 +269,7 @@ class SpeckleQGIS:
 
         # Get the stream wrapper
         streamWrapper = self.active_stream[0]
+        streamName = self.active_stream[1].name
         streamId = streamWrapper.stream_id
         client = streamWrapper.get_client()
 
@@ -284,7 +292,7 @@ class SpeckleQGIS:
         message = str(self.dockwidget.messageInput.text())
         try:
             # you can now create a commit on your stream with this object
-            client.commit.create(
+            commit_id = client.commit.create(
                 stream_id=streamId,
                 object_id=objId,
                 branch_name=branchName,
@@ -293,8 +301,37 @@ class SpeckleQGIS:
             )
             logger.logToUser("Successfully sent data to stream: " + streamId)
             self.dockwidget.messageInput.setText("")
+            url = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
+
+            # create a temporary floating button 
+            width = self.dockwidget.frameSize().width()
+            height = self.dockwidget.frameSize().height()
+            backgr_color = f"background-color: rgb{str(SPECKLE_COLOR)};"
+            backgr_color_light = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
+            commit_link_btn = QtWidgets.QPushButton(f"👌 Data sent \n Sent to '{streamName}', view it online")
+            commit_link_btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 30px;text-align: left;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
+            #commit_link_btn.setGeometry(0, 0, width, 70)
+
+            widget = QWidget()
+            widget.setAccessibleName("commit_link")
+            connect_box = QVBoxLayout(widget)
+            connect_box.addWidget(commit_link_btn) #, alignment=Qt.AlignCenter) 
+            connect_box.setContentsMargins(0, 0, 0, 0)
+            connect_box.setAlignment(Qt.AlignBottom)  
+            widget.setGeometry(0, 0, width, height)
+            self.dockwidget.layout().addWidget(widget)
+            
+            commit_link_btn.clicked.connect(lambda: self.openLink(url, widget))
+
+
         except SpeckleException as e:
             logger.logToUser("Error creating commit", Qgis.Critical)
+    
+    def openLink(self, url, widget):
+        webbrowser.open(url, new=0, autoraise=True)
+        self.dockwidget.layout().removeWidget(widget)
+        sip.delete(widget)
+        widget = None
 
     def onReceive(self):
         """Handles action when the Receive button is pressed"""

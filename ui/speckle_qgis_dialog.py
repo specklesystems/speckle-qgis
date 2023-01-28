@@ -33,7 +33,7 @@ from qgis.PyQt import QtGui
 from qgis.PyQt.QtGui import QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QListWidgetItem 
 from qgis.PyQt import QtCore
-from qgis.PyQt.QtCore import pyqtSignal 
+from qgis.PyQt.QtCore import pyqtSignal, Qt 
 from speckle.logging import logger
 from specklepy.api.credentials import get_local_accounts
 
@@ -137,13 +137,9 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.sendModeButton.setIcon(QIcon(ICON_SEND_BLUE))
         self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLACK))
 
-        self.runButton.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 15px;padding: 10px;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
-        #                            "color: white;" 
-        #                            f"background-color: rgb{str(SPECKLE_COLOR)};"
-        #                            "border: 0px;"
-        #                            "border-radius: 15px;"
-        #                            "padding: 10px;" )
-        
+        self.runButton.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 10px;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
+        #self.runButton.setGeometry(0, 0, 150, 30)
+        self.runButton.setMaximumWidth(200)
         self.runButton.setIcon(QIcon(ICON_SEND))
 
     def clearDropdown(self):
