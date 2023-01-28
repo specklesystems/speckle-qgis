@@ -310,7 +310,6 @@ class SpeckleQGIS:
             backgr_color_light = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
             commit_link_btn = QtWidgets.QPushButton(f"👌 Data sent \n Sent to '{streamName}', view it online")
             commit_link_btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 30px;text-align: left;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
-            #commit_link_btn.setGeometry(0, 0, width, 70)
 
             widget = QWidget()
             widget.setAccessibleName("commit_link")
@@ -319,19 +318,24 @@ class SpeckleQGIS:
             connect_box.setContentsMargins(0, 0, 0, 0)
             connect_box.setAlignment(Qt.AlignBottom)  
             widget.setGeometry(0, 0, width, height)
-            self.dockwidget.layout().addWidget(widget)
+            widget.mouseReleaseEvent = lambda event: self.closeWidget()
+            self.dockwidget.link = widget 
             
-            commit_link_btn.clicked.connect(lambda: self.openLink(url, widget))
-
+            self.dockwidget.layout().addWidget(widget)
+            commit_link_btn.clicked.connect(lambda: self.openLink(url))
 
         except SpeckleException as e:
             logger.logToUser("Error creating commit", Qgis.Critical)
     
-    def openLink(self, url, widget):
+    def openLink(self, url):
         webbrowser.open(url, new=0, autoraise=True)
-        self.dockwidget.layout().removeWidget(widget)
-        sip.delete(widget)
-        widget = None
+        self.closeWidget()
+
+    def closeWidget(self):
+        # https://stackoverflow.com/questions/5899826/pyqt-how-to-remove-a-widget 
+        self.dockwidget.layout().removeWidget(self.dockwidget.link)
+        sip.delete(self.dockwidget.link)
+        self.dockwidget.link = None
 
     def onReceive(self):
         """Handles action when the Receive button is pressed"""

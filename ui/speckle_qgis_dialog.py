@@ -72,6 +72,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     layersWidget: QtWidgets.QListWidget
     saveLayerSelection: QtWidgets.QPushButton
     runButton: QtWidgets.QPushButton
+    link = None
     
     def __init__(self, parent=None):
         """Constructor."""
