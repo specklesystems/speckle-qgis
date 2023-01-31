@@ -338,8 +338,9 @@ def featureToNative(feature: Base, fields: QgsFields):
         except: 
             if name == "Speckle_ID": value = str(feature["id"])
             else: 
-                logger.logToUser(f"Field {name} not found", Qgis.Warning)
-                return None
+                value = None 
+                #logger.logToUser(f"Field {name} not found", Qgis.Warning)
+                #return None
         
         if variant == QVariant.String: value = str(value) 
         
