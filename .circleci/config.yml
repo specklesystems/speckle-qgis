@@ -147,7 +147,6 @@ workflows: #happens with every PR to main
                 - /ci\/.*/   
       - build-connector-win:
           requires:
-            - get-ci-tools 
             - package
           filters:
             branches:
@@ -191,7 +190,6 @@ workflows: #happens with every PR to main
             branches:
               ignore: /.*/
           requires:
-            - package
             - build-connector-win
       - deploy-manager2:
           slug: qgis
