@@ -25,8 +25,9 @@ jobs:
           at: ./
       - run:
           name: Create Innosetup signing cert
+          shell: powershell.exe
           command: |
-            echo $PFX_B64 > "speckle-sharp-ci-tools\SignTool\AEC Systems Ltd.txt"
+            echo $env:PFX_B64 > "speckle-sharp-ci-tools\SignTool\AEC Systems Ltd.txt"
             certutil -decode "speckle-sharp-ci-tools\SignTool\AEC Systems Ltd.txt" "speckle-sharp-ci-tools\SignTool\AEC Systems Ltd.pfx"
       - run:
           name: Patch
