@@ -32,7 +32,7 @@ if(path not in sys.path):
 from plugin_utils.installDependencies import setup
 from speckle.logging import logger
 
-
+from qgis.core import QGis
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
     """Load SpeckleQGIS class from file SpeckleQGIS.
@@ -52,5 +52,5 @@ def classFactory(iface):  # pylint: disable=invalid-name
     from speckle_qgis import SpeckleQGIS
     from specklepy.logging import metrics
     
-    metrics.set_host_app("QGIS")
+    metrics.set_host_app("QGIS", QGis.QGIS_VERSION)
     return SpeckleQGIS(iface)
