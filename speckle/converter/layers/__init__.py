@@ -158,12 +158,15 @@ def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch:
 
     #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
     for geom in layerContentList:
-        try: 
-            if geom.displayValue: geom_meshes.append(geom)
-        except:
+        if geom.speckle_type =='Objects.Geometry.Mesh':
+            geom_meshes.append(geom)
+        else:
             try: 
-                if geom.displayMesh: geom_meshes.append(geom)
-            except: pass
+                if geom.displayValue: geom_meshes.append(geom)
+            except:
+                try: 
+                    if geom.displayMesh: geom_meshes.append(geom)
+                except: pass
         
         #if geom.speckle_type == 'Objects.BuiltElements.Alignment':
 
@@ -184,7 +187,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     
     path = QgsProject.instance().absolutePath()
     if(path == ""):
-        logger.logToUser(f"Raster layers can only be received in an existing saved project. Layer {layerName} will be ignored", Qgis.Warning)
+        logger.logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", Qgis.Warning)
         return None
 
     path_bim = path + "/Layers_Speckle/BIM_layers/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #

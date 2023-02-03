@@ -4,6 +4,8 @@ from specklepy.objects.geometry import Mesh
 import shapefile
 from shapefile import TRIANGLE_STRIP, TRIANGLE_FAN
 from speckle.converter.layers.utils import get_scale_factor
+from speckle.logging import logger
+from qgis.core import Qgis
 
 def meshToNative(meshes: List[Mesh], path: str):
     """Converts a Speckle Mesh to QgsGeometry"""
@@ -16,26 +18,30 @@ def meshToNative(meshes: List[Mesh], path: str):
     shapes = []
     for geom in meshes:
 
-        try: 
-            if geom.displayValue and isinstance(geom.displayValue, Mesh): 
-                mesh = geom.displayValue
-                w = fill_mesh_parts(w, mesh)
-            elif geom.displayValue and isinstance(geom.displayValue, List): 
-                for part in geom.displayValue:
-                    if isinstance(part, Mesh): 
-                        mesh = part
-                        w = fill_mesh_parts(w, mesh)
-        except: 
+        if geom.speckle_type =='Objects.Geometry.Mesh' and isinstance(geom, Mesh):
+            mesh = geom
+            w = fill_mesh_parts(w, mesh)
+        else:
             try: 
-                if geom.displayMesh and isinstance(geom.displayMesh, Mesh): 
-                    mesh = geom.displayMesh
+                if geom.displayValue and isinstance(geom.displayValue, Mesh): 
+                    mesh = geom.displayValue
                     w = fill_mesh_parts(w, mesh)
-                elif geom.displayMesh and isinstance(geom.displayMesh, List): 
-                    for part in geom.displayMesh:
+                elif geom.displayValue and isinstance(geom.displayValue, List): 
+                    for part in geom.displayValue:
                         if isinstance(part, Mesh): 
                             mesh = part
                             w = fill_mesh_parts(w, mesh)
-            except: pass
+            except: 
+                try: 
+                    if geom.displayMesh and isinstance(geom.displayMesh, Mesh): 
+                        mesh = geom.displayMesh
+                        w = fill_mesh_parts(w, mesh)
+                    elif geom.displayMesh and isinstance(geom.displayMesh, List): 
+                        for part in geom.displayMesh:
+                            if isinstance(part, Mesh): 
+                                mesh = part
+                                w = fill_mesh_parts(w, mesh)
+                except: pass
     w.close()
     return path
 
@@ -59,10 +65,13 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh):
                         count += 4
                     else: 
                         count += mesh.faces[count+1]
+                        logger.logToUser("Received mesh type is only partially supported", Qgis.Warning)
                 except: break
             w.multipatch(parts_list, partTypes=types_list ) # one type for each part
             w.record('displayMesh')
-        else: print("not triangulated mesh")
+        else: 
+            logger.logToUser("Received mesh type is not supported", Qgis.Warning)
+            #print("not triangulated mesh")
 
     except Exception as e: pass #; print(e)
     #print("mesh part written")
