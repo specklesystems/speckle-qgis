@@ -24,17 +24,24 @@ jobs:
       - attach_workspace:
           at: ./
       - run:
+          name: Create Innosetup signing cert
+          shell: powershell.exe
+          command: |
+            echo $env:PFX_B64 > "speckle-sharp-ci-tools\SignTool\AEC Systems Ltd.txt"
+            certutil -decode "speckle-sharp-ci-tools\SignTool\AEC Systems Ltd.txt" "speckle-sharp-ci-tools\SignTool\AEC Systems Ltd.pfx"
+      - run:
           name: Patch
           shell: powershell.exe
+          command: |
+            $tag = if([string]::IsNullOrEmpty($env:CIRCLE_TAG)) { "0.0.0" } else { $env:CIRCLE_TAG }
+            $semver = if($tag.Contains('/')) {$tag.Split("/")[1] } else { $tag } 
+            python patch_version.py $semver
+      - run:
+          name: Build Installer
+          shell: cmd.exe
           command:
             | # If no tag, use 0.0.0.1 and don't make any YML (for testing only!)
-            $tag = if([string]::IsNullOrEmpty($env:CIRCLE_TAG)) { "0.0.0" } else { $env:CIRCLE_TAG }
-            $semver = if($tag.Contains('/')) {$tag.Split("/")[1] } else { $tag }
-            $ver = if($semver.Contains('-')) {$semver.Split("-")[0] } else { $semver }
-            $version = "$($ver).$($env:CIRCLE_BUILD_NUM)"
-            echo $semver
-            python patch_version.py $semver
-            speckle-sharp-ci-tools\InnoSetup\ISCC.exe speckle-sharp-ci-tools\qgis.iss
+            speckle-sharp-ci-tools\InnoSetup\ISCC.exe speckle-sharp-ci-tools\qgis.iss /Sbyparam=$p
       - when:
           condition: << parameters.installer >>
           steps:
@@ -79,8 +86,6 @@ jobs:
       - run: 
           name: Push to marketplace
           command: python plugin_utils/plugin_upload.py -u $QGIS_USERNAME -w $QGIS_PASSWORD zip_build/speckle-qgis.zip
-
-
   get-ci-tools: # Clones our ci tools and persists them to the workspace
     docker:
       - image: cimg/base:2021.01
@@ -101,7 +106,6 @@ jobs:
           root: ./
           paths:
             - speckle-sharp-ci-tools
-
   deploy-manager2:
     docker:
       - image: mcr.microsoft.com/dotnet/sdk:6.0
@@ -129,6 +133,7 @@ workflows: #happens with every PR to main
   build: # build the installers, but don't persist to workspace for deployment
     jobs:
       - get-ci-tools:
+          context: github-dev-bot
           filters:
             branches:
               only:
@@ -144,16 +149,23 @@ workflows: #happens with every PR to main
                 - /ci\/.*/   
       - build-connector-win:
           requires:
-            - get-ci-tools 
             - package
           filters:
             branches:
               only:
                 - main
                 - /ci\/.*/
+          context: innosetup
 
   deploy: # build installers and deploy
     jobs:
+      - get-ci-tools:
+          context: github-dev-bot
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
       - package:
           filters:
             tags:
@@ -162,6 +174,17 @@ workflows: #happens with every PR to main
               ignore: /.*/
           requires:
             - get-ci-tools 
+      - build-connector-win:
+          slug: qgis
+          installer: true
+          requires:
+            - package
+          filters:
+            tags:
+              only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
+            branches:
+              ignore: /.*/
+          context: innosetup
       - deploy-marketplace:
           filters:
             tags:
@@ -169,32 +192,13 @@ workflows: #happens with every PR to main
             branches:
               ignore: /.*/
           requires:
-            - package
-      - get-ci-tools:
-          filters:
-            tags:
-              only: /.*/
-            branches:
-              ignore: /.*/
-      - build-connector-win:
-          name: build-deploy-connector-win
-          slug: qgis
-          installer: true
-          requires:
-            - get-ci-tools
-            - package
-          filters:
-            tags:
-              only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
-            branches:
-              ignore: /.*/
+            - build-connector-win
       - deploy-manager2:
           slug: qgis
           os: Win
           extension: exe
           requires:
-            - get-ci-tools
-            - build-deploy-connector-win
+            - build-connector-win
           filters:
             tags:
               only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
