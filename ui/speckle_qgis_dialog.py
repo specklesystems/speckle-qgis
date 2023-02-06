@@ -31,7 +31,7 @@ from specklepy.logging.exceptions import SpeckleException
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt import QtGui
 from qgis.PyQt.QtGui import QIcon, QPixmap
-from qgis.PyQt.QtWidgets import QListWidgetItem 
+from qgis.PyQt.QtWidgets import QListWidgetItem, QAction, QDockWidget, QVBoxLayout, QHBoxLayout, QWidget, QLabel
 from qgis.PyQt import QtCore
 from qgis.PyQt.QtCore import pyqtSignal, Qt 
 from speckle.logging import logger
@@ -45,9 +45,15 @@ from ui.validation import tryGetStream
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "speckle_qgis_dialog_base.ui")
 )
+
+COLOR_HIGHLIGHT = (210,210,210)
+
 SPECKLE_COLOR = (59,130,246)
 SPECKLE_COLOR_LIGHT = (69,140,255)
 ICON_LOGO = os.path.dirname(os.path.abspath(__file__)) + "/logo-slab-white@0.5x.png"
+
+ICON_SEARCH = os.path.dirname(os.path.abspath(__file__)) + "/magnify.png"
+
 ICON_DELETE = os.path.dirname(os.path.abspath(__file__)) + "/delete.png"
 ICON_DELETE_BLUE = os.path.dirname(os.path.abspath(__file__)) + "/delete-blue.png"
 
@@ -98,44 +104,79 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         color = f"color: rgb{str(SPECKLE_COLOR)};"
         backgr_color = f"background-color: rgb{str(SPECKLE_COLOR)};"
         backgr_color_light = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
-        backgr_image = f"border-image: url({ICON_DELETE_BLUE});"
-        self.streams_add_button.setStyleSheet("QPushButton {border: none; text-align: center;} QPushButton:hover { " + f"{color}" + " }")
-        self.streams_add_button.setMaximumWidth(30)
+        backgr_image_del = f"border-image: url({ICON_DELETE_BLUE});"
+        self.streams_add_button.setIcon(QIcon(ICON_SEARCH))
+        self.streams_add_button.setMaximumWidth(25)
+        self.streams_add_button.setStyleSheet("QPushButton {padding:3px;padding-left:5px;border: none; text-align: left;} QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};" + f"{color}" + " }")
         self.streams_remove_button.setIcon(QIcon(ICON_DELETE))
-        self.streams_remove_button.setMaximumWidth(30)
-        self.streams_remove_button.setStyleSheet("QPushButton {border: none; text-align: center; image-position:right} QPushButton:hover { " + f"{backgr_image}" + f"{color}" + " }")
+        self.streams_remove_button.setMaximumWidth(25)
+        self.streams_remove_button.setStyleSheet("QPushButton {padding:3px;padding-left:5px;border: none; text-align: left; image-position:right} QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};" + f"{color}" + " }") #+ f"{backgr_image_del}" 
 
         self.saveLayerSelection.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{color}" + " }")
         self.saveSurveyPoint.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{color}" + " }")
         self.reloadButton.setStyleSheet("QPushButton {text-align: left;} QPushButton:hover { " + f"{color}" + " }")
         self.closeButton.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{color}" + " }")
 
+        exitIcon = QPixmap(ICON_LOGO)
+        #scaledExitIcon = exitIcon.scaled(QtCore.QSize(100, 31))
+        exitActIcon = QIcon(exitIcon)
 
-        label = QtWidgets.QPushButton("SPECKLE for QGIS")
-        label.setStyleSheet("border: 0px;"
+        backgr_color = f"background-color: rgb{str(SPECKLE_COLOR)};"
+        backgr_color_light = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
+
+        # create a label 
+        text_label = QtWidgets.QPushButton(" for QGIS")
+        text_label.setStyleSheet("border: 0px;"
                             "color: white;"
-                            f"background-color: rgb{str(SPECKLE_COLOR)};"
-                            "padding: 20px;"
+                            f"{backgr_color}"
                             "top-margin: 40 px;"
+                            "padding: 10px;"
+                            "padding-left: 20px;"
                             "font-size: 15px;"
-                            "height: 15px;"
+                            "height: 30px;"
                             "text-align: left;"
                             )
-        label.setMinimumSize(QtCore.QSize(100, 40))
-        exitIcon = QPixmap(ICON_LOGO)
-        scaledExitIcon = exitIcon.scaled(QtCore.QSize(100, 31))
-        exitActIcon = QIcon(scaledExitIcon)
+        text_label.setIcon(exitActIcon)
+        text_label.setIconSize(QtCore.QSize(300, 93))
+        text_label.setMinimumSize(QtCore.QSize(100, 40))
+        text_label.setMaximumWidth(200)
 
-        #label.setIcon(exitActIcon)
-        self.setTitleBarWidget(label)
+        version = ""
+        try:
+            metadata_file = os.path.dirname(__file__)[:-2] + "metadata.txt"
+            with open(metadata_file, "r") as file:
+                lines = file.readlines()
+                for i, line in enumerate(lines):
+                    if "version=" in line: 
+                        version = line.replace("version=", "")
+                        break
+        except: pass 
 
-        self.sendModeButton.setStyleSheet("border: 0px;"
-                                        f"color: rgb{str(SPECKLE_COLOR)};"
-                                        "padding: 10px;")
-        self.receiveModeButton.setFlat(True)
-        self.receiveModeButton.setStyleSheet("QPushButton {padding: 10px; border: 0px;} ") #QPushButton:hover { " + f"{backgr_color}" + " }
-        
+        version_label = QtWidgets.QPushButton(f"v {version}")
+        version_label.setStyleSheet("border: 0px;"
+                            "color: white;"
+                            f"{backgr_color}"
+                            "padding-top: 15px;"
+                            "padding-left: 0px;"
+                            "margin-left: 0px;"
+                            "font-size: 10px;"
+                            "height: 30px;"
+                            "text-align: left;"
+                            )
+
+        widget = QWidget()
+        widget.setStyleSheet(f"{backgr_color}")
+        connect_box = QHBoxLayout(widget)
+        connect_box.addWidget(text_label) #, alignment=Qt.AlignCenter) 
+        connect_box.addWidget(version_label) 
+        connect_box.setContentsMargins(0, 0, 0, 0)
+        self.setTitleBarWidget(widget)
+
+        self.sendModeButton.setStyleSheet("QPushButton {padding: 10px; border: 0px; " + f"color: rgb{str(SPECKLE_COLOR)};"+ "} QPushButton:hover { "  + "}" ) 
         self.sendModeButton.setIcon(QIcon(ICON_SEND_BLUE))
+        
+        self.receiveModeButton.setFlat(True)
+        self.receiveModeButton.setStyleSheet("QPushButton {padding: 10px; border: 0px;}"+ "QPushButton:hover { "  + f"background-color: rgb{str(COLOR_HIGHLIGHT)};" + "}" ) 
         self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLACK))
 
         self.runButton.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 10px;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
@@ -196,10 +237,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.sendModeButton.setIcon(QIcon(ICON_SEND_BLUE))
         self.sendModeButton.setFlat(False)
         self.receiveModeButton.setFlat(True)
-        self.receiveModeButton.setStyleSheet("border: 0px;"
-                                    f"color: black;"
-                                    "padding: 10px;"
-                                    "QPushButton:hover { " + f"{color}" + " };")
+        self.receiveModeButton.setStyleSheet("QPushButton {border: 0px; color: black; padding: 10px; } QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};" +  " };")
         self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLACK))
         #self.receiveModeButton.setFlat(True)
         self.runButton.setProperty("text", " SEND")
@@ -221,10 +259,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
                                     f"color: rgb{str(SPECKLE_COLOR)};"
                                     "padding: 10px;")
         self.sendModeButton.setIcon(QIcon(ICON_SEND_BLACK))
-        self.sendModeButton.setStyleSheet("border: 0px;"
-                                    f"color: black;"
-                                    "padding: 10px;"
-                                    "QPushButton:hover { " + f"{color}" + " };")
+        self.sendModeButton.setStyleSheet("QPushButton {border: 0px; color: black; padding: 10px;} QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};"  + " };")
         self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLUE))
         self.sendModeButton.setFlat(True)
         self.receiveModeButton.setFlat(False)
