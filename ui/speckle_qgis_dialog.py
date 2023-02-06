@@ -411,6 +411,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             self.streamList.addItems(
             [f"Stream not accessible - {stream[0].stream_id}" if stream[1] is None or isinstance(stream[1], SpeckleException) else f"{stream[1].name} - {stream[1].id}"]
         )
+        if len(plugin.current_streams)==0: self.streamList.addItems([""])
+        self.streamList.addItems(["Create New Stream"])
         set_project_streams(plugin)
         index = self.streamList.currentIndex()
         if index == -1: self.streams_remove_button.setEnabled(False)
@@ -421,17 +423,22 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def onActiveStreamChanged(self, plugin):
 
         if not self: return
-        if len(plugin.current_streams) == 0:
-            return
         index = self.streamList.currentIndex()
-        if index == -1:
-            return
+        if index == len(plugin.current_streams): self.createStream()
+        if len(plugin.current_streams) == 0: return
+        if index == -1: return
 
         try: plugin.active_stream = plugin.current_streams[index]
         except: plugin.active_stream = None
 
         self.populateActiveStreamBranchDropdown(plugin)
         self.populateActiveCommitDropdown(plugin)
+
+    def createStream(self): 
+        return 
+        
+    def createBranch(self): 
+        return 
 
     def populateLayerSendModeDropdown(self):
         if not self: return
@@ -452,12 +459,16 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.streamBranchDropdown.addItems(
             [f"{branch.name}" for branch in plugin.active_stream[1].branches.items]
         )
+        self.streamBranchDropdown.addItems(["Create New Branch"])
 
     def populateActiveCommitDropdown(self, plugin):
         if not self: return
         self.commitDropdown.clear()
         if plugin.active_stream is None: return
         branchName = self.streamBranchDropdown.currentText()
+        if branchName == "Create New Branch": 
+            self.createBranch()
+            return
         branch = None
         if isinstance(plugin.active_stream[1], SpeckleException): 
             logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
@@ -477,8 +488,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         from ui.project_vars import set_project_streams
         if not self: return
         index = self.streamList.currentIndex()
-        #if index == 0: 
-        plugin.current_streams.pop(index)
+        if len(plugin.current_streams) > 0: plugin.current_streams.pop(index)
         plugin.active_stream = None
         self.streamBranchDropdown.clear()
         self.commitDropdown.clear()

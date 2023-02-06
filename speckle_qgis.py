@@ -58,10 +58,10 @@ class SpeckleQGIS:
 
     dockwidget: Optional[QDockWidget]
     add_stream_modal: AddStreamModalDialog
-    current_streams: List[Tuple[StreamWrapper, Stream]] = [] #{id:(sw,st),id2:()}
+    current_streams: Optional[List[Tuple[StreamWrapper, Stream]]]  #{id:(sw,st),id2:()}
     current_layers: List[Tuple[str, Union[QgsVectorLayer, QgsRasterLayer]]] = []
 
-    active_stream: Union[Tuple[StreamWrapper, Stream], None] = None 
+    active_stream: Optional[Tuple[StreamWrapper, Stream]] 
 
     qgis_project: QgsProject
 
@@ -80,6 +80,8 @@ class SpeckleQGIS:
         self.dockwidget = None
         self.iface = iface
         self.qgis_project = QgsProject.instance()
+        self.current_streams = []
+        self.active_stream = None
 
         self.btnAction = 0
 
