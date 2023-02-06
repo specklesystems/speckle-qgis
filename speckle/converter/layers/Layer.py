@@ -3,7 +3,7 @@ from specklepy.objects.base import Base
 
 from speckle.converter.layers.CRS import CRS
 
-class Layer(Base, chunkable={"features": 100}):
+class Layer(Base, detachable={"features"}):
     """A GIS Layer"""
 
     def __init__(
@@ -26,7 +26,7 @@ class Layer(Base, chunkable={"features": 100}):
         self.geomType = geomType
         self.renderer = renderer or {} 
 
-class VectorLayer(Base, chunkable={"features": 100}):
+class VectorLayer(Base, detachable={"features"}):
     """A GIS Layer"""
 
     def __init__(
@@ -49,7 +49,7 @@ class VectorLayer(Base, chunkable={"features": 100}):
         self.geomType = geomType
         self.renderer = renderer or {}
 
-class RasterLayer(Base, chunkable={"features": 100}):
+class RasterLayer(Base, detachable={"features"}):
     """A GIS Layer"""
 
     def __init__(

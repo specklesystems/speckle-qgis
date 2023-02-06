@@ -2,6 +2,7 @@
 from typing import Any, Callable, List, Optional 
 
 from speckle.logging import logger
+from qgis.core import Qgis
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers import bimLayerToNative, cadLayerToNative, layerToNative
 
@@ -44,6 +45,8 @@ def traverseValue(
 def callback(base: Base, streamBranch: str) -> bool:
     if isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer):
         #print(base)
+        if isinstance(base, Layer):
+            logger.log(f"Class \"Layer\" will be deprecated in future updates in favour of \"VectorLayer\" or \"RasterLayer\"", Qgis.Warning) 
         layer = layerToNative(base, streamBranch)
         if layer is not None:
             logger.log("Layer created: " + layer.name())
