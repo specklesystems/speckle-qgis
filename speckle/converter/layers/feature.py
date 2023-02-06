@@ -42,6 +42,12 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         if corrected == "id": corrected = "applicationId"
         f_name = f[name]
         if f_name == "NULL" or f_name is None or str(f_name) == "NULL": f_name = None
+        if isinstance(f[name], list): 
+            x = ""
+            for i, attr in enumerate(f[name]): 
+                if i==0: x += attr
+                else: x += ", " + attr
+            f_name = x 
         b[corrected] = f_name
     return b
           
