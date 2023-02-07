@@ -38,6 +38,7 @@ from speckle.logging import logger
 from specklepy.api.credentials import get_local_accounts
 
 from specklepy.api.wrapper import StreamWrapper
+from specklepy.api.client import SpeckleClient
 
 from ui.validation import tryGetStream
 
@@ -424,7 +425,9 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
         if not self: return
         index = self.streamList.currentIndex()
-        if index == len(plugin.current_streams): self.createStream()
+        if (len(plugin.current_streams) == 0 and index ==1) or (len(plugin.current_streams)>0 and index == len(plugin.current_streams)): 
+            self.createStream(plugin)
+            return
         if len(plugin.current_streams) == 0: return
         if index == -1: return
 
@@ -434,10 +437,19 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.populateActiveStreamBranchDropdown(plugin)
         self.populateActiveCommitDropdown(plugin)
 
-    def createStream(self): 
+    def createStream(self, plugin): 
+        new_client = SpeckleClient(
+            plugin.default_account.serverInfo.url,
+            plugin.default_account.serverInfo.url.startswith("https")
+        )
+        new_client.authenticate_with_token(token=plugin.default_account.token)
+        str_id = new_client.stream.create(name="a shiny new stream") #id
+        #stream = new_client.stream.get(id = str_id)
+        wr = StreamWrapper(plugin.default_account.serverInfo.url + "/streams/" + str_id)
+        plugin.handleStreamAdd(wr)
         return 
         
-    def createBranch(self): 
+    def createBranch(self, plugin): 
         return 
 
     def populateLayerSendModeDropdown(self):
@@ -467,7 +479,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         if plugin.active_stream is None: return
         branchName = self.streamBranchDropdown.currentText()
         if branchName == "Create New Branch": 
-            self.createBranch()
+            self.createBranch(plugin)
             return
         branch = None
         if isinstance(plugin.active_stream[1], SpeckleException): 
