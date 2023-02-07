@@ -32,7 +32,7 @@ from specklepy.api.models import Stream
 from specklepy.api.wrapper import StreamWrapper
 from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
-from specklepy.api.credentials import get_local_accounts #, StreamWrapper
+from specklepy.api.credentials import Account, get_local_accounts #, StreamWrapper
 import webbrowser
 
 # Initialize Qt resources from file resources.py
@@ -68,6 +68,9 @@ class SpeckleQGIS:
     lat: float
     lon: float
 
+    default_account: Account
+    accounts: List[Account]
+
     def __init__(self, iface):
         """Constructor.
 
@@ -82,6 +85,8 @@ class SpeckleQGIS:
         self.qgis_project = QgsProject.instance()
         self.current_streams = []
         self.active_stream = None
+        self.default_account = None 
+        self.accounts = [] 
 
         self.btnAction = 0
 
@@ -311,7 +316,7 @@ class SpeckleQGIS:
             backgr_color = f"background-color: rgb{str(SPECKLE_COLOR)};"
             backgr_color_light = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
             commit_link_btn = QtWidgets.QPushButton(f"👌 Data sent \n Sent to '{streamName}', view it online")
-            commit_link_btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 30px;text-align: left;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
+            commit_link_btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
 
             widget = QWidget()
             widget.setAccessibleName("commit_link")
@@ -429,9 +434,14 @@ class SpeckleQGIS:
         def go_to_manager():
             webbrowser.open("https://speckle-releases.netlify.app/")
         accounts = get_local_accounts()
+        self.accounts = accounts
         if len(accounts) == 0:
             logger.logToUserWithAction("No accounts were found. Please remember to install the Speckle Manager and setup at least one account","Download Manager", go_to_manager)
             return False
+        for acc in accounts:
+            if acc.isDefault: 
+                self.default_account = acc 
+                break 
         return True
 
     def run(self):
