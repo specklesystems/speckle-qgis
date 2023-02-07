@@ -253,8 +253,8 @@ class SpeckleQGIS:
         if self.dockwidget.layerSendModeDropdown.currentIndex() == 1: bySelection = False 
         layers = getLayers(self, bySelection) # List[QgsLayerTreeNode]
 
-        selectedLayerNames = [ str(item.text()).replace(" !LARGE!","").split(" - ")[1] for item in self.dockwidget.layersWidget.selectedItems() ]
-        selectedLayerIndex = [ int(str(item.text()).split(" - ")[0]) for item in self.dockwidget.layersWidget.selectedItems() ]
+        #selectedLayerNames = [ str(item.text()).replace(" !LARGE!","").split(" - ")[1] for item in self.dockwidget.layersWidget.selectedItems() ]
+        #selectedLayerIndex = [ int(str(item.text()).split(" - ")[0]) for item in self.dockwidget.layersWidget.selectedItems() ]
 
         # Check if stream id/url is empty
         if self.active_stream is None:
@@ -267,7 +267,7 @@ class SpeckleQGIS:
             return
 
         base_obj = Base(units = "m")
-        base_obj.layers = convertSelectedLayers(layers, selectedLayerIndex, selectedLayerNames, projectCRS, project)
+        base_obj.layers = convertSelectedLayers(layers, [],[], projectCRS, project)
         if base_obj.layers is None:
             return 
 

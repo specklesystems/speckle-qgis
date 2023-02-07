@@ -27,7 +27,7 @@ from speckle.converter.layers import getLayers
 #from speckle_qgis import SpeckleQGIS
 import ui.speckle_qgis_dialog
 from qgis.core import Qgis, QgsProject,QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
-from specklepy.logging.exceptions import SpeckleException
+from specklepy.logging.exceptions import (SpeckleException, GraphQLException)
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt import QtGui
 from qgis.PyQt.QtGui import QIcon, QPixmap
@@ -410,7 +410,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.streamList.clear()
         for stream in plugin.current_streams: 
             self.streamList.addItems(
-            [f"Stream not accessible - {stream[0].stream_id}" if stream[1] is None or isinstance(stream[1], SpeckleException) else f"{stream[1].name} - {stream[1].id}"]
+            [f"Stream not accessible - {stream[0].stream_id}" if stream[1] is None or isinstance(stream[1], SpeckleException) else f"{stream[1].name}, {stream[1].id} | {stream[0].stream_url.split('/streams')[0]}"] 
         )
         if len(plugin.current_streams)==0: self.streamList.addItems([""])
         self.streamList.addItems(["Create New Stream"])
@@ -443,13 +443,35 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             plugin.default_account.serverInfo.url.startswith("https")
         )
         new_client.authenticate_with_token(token=plugin.default_account.token)
-        str_id = new_client.stream.create(name="a shiny new stream") #id
-        #stream = new_client.stream.get(id = str_id)
-        wr = StreamWrapper(plugin.default_account.serverInfo.url + "/streams/" + str_id)
-        plugin.handleStreamAdd(wr)
+        str_name = "a shiny new stream"
+        str_id = new_client.stream.create(name=str_name) #id
+        if isinstance(str_id, GraphQLException):
+            logger.logToUser(str_id.message, Qgis.Warning)
+        else:
+            sw = StreamWrapper(plugin.default_account.serverInfo.url + "/streams/" + str_id)
+            plugin.handleStreamAdd(sw)
         return 
         
-    def createBranch(self, plugin): 
+    def createBranch(self, plugin):
+        new_client = SpeckleClient(
+            plugin.default_account.serverInfo.url,
+            plugin.default_account.serverInfo.url.startswith("https")
+        )
+        new_client.authenticate_with_token(token=plugin.default_account.token)
+        br_name = "some branch"
+        description = "No description provided"
+        br_id = new_client.branch.create(stream_id = plugin.active_stream[0].stream_id, name = br_name, description = description) 
+        if isinstance(br_id, GraphQLException):
+            logger.logToUser(br_id.message, Qgis.Warning)
+
+        sw = plugin.active_stream[0]
+        plugin.active_stream = (sw, tryGetStream(sw))
+        plugin.current_streams[0] = plugin.active_stream
+
+        self.populateActiveStreamBranchDropdown(plugin)
+        self.populateActiveCommitDropdown(plugin)
+        self.streamBranchDropdown.setCurrentText(br_name) # will be ignored if branch name is not in the list 
+
         return 
 
     def populateLayerSendModeDropdown(self):

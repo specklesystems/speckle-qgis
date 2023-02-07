@@ -116,7 +116,7 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         self.accounts_dropdown.clear()
         self.accounts_dropdown.addItems(
             [
-                f"{acc.userInfo.name} ({acc.userInfo.email}) - {acc.serverInfo.url}"
+                f"{acc.userInfo.name}, {acc.userInfo.email} | {acc.serverInfo.url}"
                 for acc in self.speckle_accounts
             ]
         )
