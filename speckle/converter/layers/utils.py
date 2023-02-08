@@ -280,3 +280,17 @@ def get_scale_factor(units: str) -> float:
     logger.logToUser(f"Units {units} are not supported. Meters will be applied by default.", Qgis.Warning)
     return 1.0
 
+def validateAttributeName(name: str, fieldnames: List[str]) -> str:
+    
+    new_list = [x for x in fieldnames if x!=name]
+
+    corrected = name.replace("/", "_").replace(".", "_")
+    if corrected == "id": corrected = "applicationId"
+    
+    for i, x in enumerate(corrected):
+        if corrected[0] != "_" and corrected not in new_list: break
+        else: corrected = corrected[1:]
+    
+    if len(corrected)<=1 and len(name)>1: corrected = "0" + name # if the loop removed the property name completely
+
+    return corrected
