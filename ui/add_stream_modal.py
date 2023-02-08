@@ -55,12 +55,10 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
 
     def onSearchClicked(self):
         query = self.search_text_field.text()
+        sw = None 
         if "http" in query and len(query.split("/")) >= 3: # URL
-            steamId = query
-            try: steamId = query.split("/streams/")[1].split("/")[0] 
-            except: pass
-
-            stream = self.speckle_client.stream.get(steamId)
+            sw = StreamWrapper(query)
+            stream = sw.get_client().stream.get(sw.stream_id)
             if isinstance(stream, Stream): results = [stream]
             else: results = []
            
@@ -69,19 +67,25 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         
         self.stream_results = results
         #print(results)
-        self.populateResultsList()
+        self.populateResultsList(sw)
     
-    def populateResultsList(self):
+    def populateResultsList(self, sw):
         self.search_results_list.clear()
         if isinstance(self.stream_results, SpeckleException): 
             logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
             return 
         for stream in self.stream_results:
+            host = ""
+            if sw is not None:
+                host = sw.get_account().serverInfo.url
+            else: 
+                host = self.speckle_client.account.serverInfo.url
+            
             if isinstance(stream, SpeckleException): 
                 logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
             else: 
                 self.search_results_list.addItems([
-                    f"{stream.name} - {stream.id}" #for stream in self.stream_results 
+                    f"{stream.name}, {stream.id} | {host}" #for stream in self.stream_results 
                 ])
 
     def onOkClicked(self):
@@ -95,8 +99,11 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
             try:
                 index = self.search_results_list.currentIndex().row()
                 stream = self.stream_results[index]
-                acc = get_local_accounts()[self.accounts_dropdown.currentIndex()]
-                self.handleStreamAdd.emit(StreamWrapper(f"{acc.serverInfo.url}/streams/{stream.id}?u={acc.userInfo.id}"))
+                item = self.search_results_list.item(index)
+                url = item.text().split(" | ")[1] + "/streams/" + item.text().split(", ")[1].split(" | ")[0]
+                sw = StreamWrapper(url) 
+                #acc = sw.get_account() #get_local_accounts()[self.accounts_dropdown.currentIndex()]
+                self.handleStreamAdd.emit(sw) #StreamWrapper(f"{acc.serverInfo.url}/streams/{stream.id}?u={acc.userInfo.id}"))
                 self.close()
             except Exception as e:
                 logger.logToUser("Some streams cannot be accessed: " + str(e), Qgis.Warning)

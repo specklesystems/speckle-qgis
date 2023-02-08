@@ -70,7 +70,7 @@ def validateCommit(branch: Branch, commitId: str) -> Union[Commit, None]:
 
 def validateTransport(client: SpeckleClient, streamId: str) -> Union[ServerTransport, None]:
     try: transport = ServerTransport(client=client, stream_id=streamId)
-    except: 
-        logger.logToUser("Make sure your account has access to the chosen stream", Qgis.Warning)
+    except Exception as e: 
+        logger.logToUser("Make sure you have sufficient permissions: " + str(e), Qgis.Warning)
         return None
     return transport
