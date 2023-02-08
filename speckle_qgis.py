@@ -33,6 +33,7 @@ from specklepy.api.wrapper import StreamWrapper
 from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
 from specklepy.api.credentials import Account, get_local_accounts #, StreamWrapper
+from specklepy.api.client import SpeckleClient
 import webbrowser
 
 # Initialize Qt resources from file resources.py
@@ -45,6 +46,8 @@ from speckle.converter.layers import (
 )
 from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
+from ui.create_stream import CreateStreamModalDialog
+from ui.create_branch import CreateBranchModalDialog
 
 # Import the code for the dialog
 from ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
@@ -58,6 +61,7 @@ class SpeckleQGIS:
 
     dockwidget: Optional[QDockWidget]
     add_stream_modal: AddStreamModalDialog
+    create_stream_modal: CreateStreamModalDialog
     current_streams: Optional[List[Tuple[StreamWrapper, Stream]]]  #{id:(sw,st),id2:()}
     current_layers: List[Tuple[str, Union[QgsVectorLayer, QgsRasterLayer]]] = []
 
@@ -486,8 +490,59 @@ class SpeckleQGIS:
         from ui.project_vars import set_survey_point
         set_survey_point(self)
 
-    #def onStreamRemoveButtonClicked(self):
-    #    self.dockwidget.onStreamRemoveButtonClicked(self)
+    def onStreamCreateClicked(self):
+        self.create_stream_modal = CreateStreamModalDialog(None)
+        self.create_stream_modal.handleStreamCreate.connect(self.handleStreamCreate)
+        #self.create_stream_modal.handleCancelStreamCreate.connect(lambda: self.dockwidget.populateProjectStreams(self))
+        self.create_stream_modal.show()
+    
+    def handleStreamCreate(self, account, str_name, description, is_public): 
+        #if len(str_name)<3 and len(str_name)!=0: 
+        #    logger.logToUser("Stream Name should be at least 3 characters", Qgis.Warning)
+        new_client = SpeckleClient(
+            account.serverInfo.url,
+            account.serverInfo.url.startswith("https")
+        )
+        new_client.authenticate_with_token(token=account.token)
+
+        str_id = new_client.stream.create(name=str_name, description = description, is_public = is_public) 
+        if isinstance(str_id, GraphQLException):
+            logger.logToUser(str_id.message, Qgis.Warning)
+        else:
+            sw = StreamWrapper(account.serverInfo.url + "/streams/" + str_id)
+            self.handleStreamAdd(sw)
+        return 
+
+    def onBranchCreateClicked(self):
+        self.create_stream_modal = CreateBranchModalDialog(None)
+        self.create_stream_modal.handleBranchCreate.connect(self.handleBranchCreate)
+        self.create_stream_modal.show()
+    
+    def handleBranchCreate(self, br_name, description):
+        #if len(br_name)<3: 
+        #    logger.logToUser("Branch Name should be at least 3 characters", Qgis.Warning)
+        #    return 
+        br_name = br_name.lower()
+        sw: StreamWrapper = self.active_stream[0]
+        account = sw.get_account()
+        new_client = SpeckleClient(
+            account.serverInfo.url,
+            account.serverInfo.url.startswith("https")
+        )
+        new_client.authenticate_with_token(token=account.token)
+        #description = "No description provided"
+        br_id = new_client.branch.create(stream_id = sw.stream_id, name = br_name, description = description) 
+        if isinstance(br_id, GraphQLException):
+            logger.logToUser(br_id.message, Qgis.Warning)
+
+        self.active_stream = (sw, tryGetStream(sw))
+        self.current_streams[0] = self.active_stream
+
+        self.dockwidget.populateActiveStreamBranchDropdown(self)
+        self.dockwidget.populateActiveCommitDropdown(self)
+        self.dockwidget.streamBranchDropdown.setCurrentText(br_name) # will be ignored if branch name is not in the list 
+
+        return 
 
     def handleStreamAdd(self, sw: StreamWrapper):
         from ui.project_vars import set_project_streams

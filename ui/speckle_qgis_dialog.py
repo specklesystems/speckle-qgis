@@ -346,7 +346,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
                     listItem = self.fillLayerList(layer_tuple[1]) 
                 self.layersWidget.addItem(listItem)
 
-        if bySelection is True: # read selected layers 
+        else: # read selected layers 
             # Fetch selected layers
             #layerTreeRoot = project.layerTreeRoot()
             plugin.current_layers = []
@@ -358,6 +358,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
             set_project_layer_selection(plugin)
 
+        self.layersWidget.setIconSize(QtCore.QSize(20, 20))
         self.runBtnStatusChanged(plugin)
 
     def fillLayerList(self, layer):
@@ -375,10 +376,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             icon = QgsIconUtils().iconForLayer(layer)
             listItem.setIcon(icon)
         
-        newSize = listItem.sizeHint()
-        height = listItem.sizeHint().height()
-        newSize.setHeight(0.5)
-        listItem.setSizeHint(newSize)
+        #newSize = listItem.sizeHint()
+        #height = listItem.sizeHint().height()
+        #newSize.setHeight(1)
+        #listItem.setSizeHint(newSize)
         
         return listItem
 
@@ -426,7 +427,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         if not self: return
         index = self.streamList.currentIndex()
         if (len(plugin.current_streams) == 0 and index ==1) or (len(plugin.current_streams)>0 and index == len(plugin.current_streams)): 
-            self.createStream(plugin)
+            self.populateProjectStreams(plugin)
+            plugin.onStreamCreateClicked()
             return
         if len(plugin.current_streams) == 0: return
         if index == -1: return
@@ -436,44 +438,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.populateActiveStreamBranchDropdown(plugin)
         self.populateActiveCommitDropdown(plugin)
-
-    def createStream(self, plugin): 
-        new_client = SpeckleClient(
-            plugin.default_account.serverInfo.url,
-            plugin.default_account.serverInfo.url.startswith("https")
-        )
-        new_client.authenticate_with_token(token=plugin.default_account.token)
-        str_name = "a shiny new stream"
-        str_id = new_client.stream.create(name=str_name) #id
-        if isinstance(str_id, GraphQLException):
-            logger.logToUser(str_id.message, Qgis.Warning)
-        else:
-            sw = StreamWrapper(plugin.default_account.serverInfo.url + "/streams/" + str_id)
-            plugin.handleStreamAdd(sw)
-        return 
         
-    def createBranch(self, plugin):
-        new_client = SpeckleClient(
-            plugin.default_account.serverInfo.url,
-            plugin.default_account.serverInfo.url.startswith("https")
-        )
-        new_client.authenticate_with_token(token=plugin.default_account.token)
-        br_name = "some branch"
-        description = "No description provided"
-        br_id = new_client.branch.create(stream_id = plugin.active_stream[0].stream_id, name = br_name, description = description) 
-        if isinstance(br_id, GraphQLException):
-            logger.logToUser(br_id.message, Qgis.Warning)
-
-        sw = plugin.active_stream[0]
-        plugin.active_stream = (sw, tryGetStream(sw))
-        plugin.current_streams[0] = plugin.active_stream
-
-        self.populateActiveStreamBranchDropdown(plugin)
-        self.populateActiveCommitDropdown(plugin)
-        self.streamBranchDropdown.setCurrentText(br_name) # will be ignored if branch name is not in the list 
-
-        return 
-
     def populateLayerSendModeDropdown(self):
         if not self: return
         self.layerSendModeDropdown.clear()
@@ -501,7 +466,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         if plugin.active_stream is None: return
         branchName = self.streamBranchDropdown.currentText()
         if branchName == "Create New Branch": 
-            self.createBranch(plugin)
+            self.streamBranchDropdown.setCurrentText("main")
+            plugin.onBranchCreateClicked()
             return
         branch = None
         if isinstance(plugin.active_stream[1], SpeckleException): 
