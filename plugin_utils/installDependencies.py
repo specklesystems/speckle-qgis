@@ -8,6 +8,13 @@ from speckle.utils import get_qgis_python_path
 
 
 def setup():
+    # to debug:
+    r'''
+pythonExec = os.path.dirname(sys.executable) + "\\python3"
+retcode = subprocess.call([pythonExec, "-m", "pip", "install", "specklepy"]); print(retcode)
+import specklepy; import os; print(os.path.abspath(specklepy.__file__))
+
+    '''
     plugin_dir = os.path.dirname(__file__)
     pythonExec = get_qgis_python_path() # import specklepy; import os; print(os.path.abspath(specklepy.__file__)) #### import sysconfig; sysconfig.get_paths()['data'] # import qgis; import os; print(os.path.abspath(qgis.__file__)) # C:\Program Files\ArcGIS\Pro\Resources\ArcPy\arcpy\__init__.py
 

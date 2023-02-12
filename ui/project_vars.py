@@ -13,9 +13,10 @@ from ui.validation import tryGetStream
 def get_project_streams(self: SpeckleQGIS):
     proj = QgsProject().instance()
     saved_streams = proj.readEntry("speckle-qgis", "project_streams", "")
+    temp = []
     ######### need to check whether saved streams are available (account reachable)
     if saved_streams[1] and len(saved_streams[0]) != 0:
-        temp = []
+        
         for url in saved_streams[0].split(","):
             try:
                 sw = StreamWrapper(url)
@@ -30,13 +31,36 @@ def get_project_streams(self: SpeckleQGIS):
                 logger.logToUser(e.message, Qgis.Warning)
             #except GraphQLException as e:
             #    logger.logToUser(e.message, Qgis.Warning)
-        self.current_streams = temp
+    self.current_streams = temp
     
 def set_project_streams(self: SpeckleQGIS):
     proj = QgsProject().instance()
     value = ",".join([stream[0].stream_url for stream in self.current_streams])
     proj.writeEntry("speckle-qgis", "project_streams", value)
+  
+def get_project_layer_selection(self: SpeckleQGIS):
+    proj = QgsProject().instance()
+    saved_layers = proj.readEntry("speckle-qgis", "project_layer_selection", "")
+    temp = []
+    ######### need to check whether saved streams are available (account reachable)
+    if saved_layers[1] and len(saved_layers[0]) != 0:
+        
+        for id in saved_layers[0].split(","):
+            found = 0
+            for layer in proj.mapLayers().values():
+                if layer.id() == id:
+                    temp.append((layer.name(), layer))
+                    found += 1
+                    break
+            if found == 0: 
+                logger.logToUser(f'Saved layer not found: "{id}"', Qgis.Warning)
+    self.current_layers = temp
 
+def set_project_layer_selection(self: SpeckleQGIS):
+    proj = QgsProject().instance() 
+    #value = ",".join([x.id() for x in self.iface.layerTreeView().selectedLayers()]) #'points_qgis2_b22ed3d0_0ff9_40d2_97f2_bd17a350d698' <qgis._core.QgsVectorDataProvider object at 0x000002627D9D4790>
+    value = ",".join([x[1].id() for x in self.current_layers]) 
+    proj.writeEntry("speckle-qgis", "project_layer_selection", value)
 
 def get_survey_point(self: SpeckleQGIS):
     # get from saved project, set to local vars

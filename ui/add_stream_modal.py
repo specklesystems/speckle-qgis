@@ -39,20 +39,26 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         self.setupUi(self)
         self.setWindowTitle("Add Speckle stream")
 
+        self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(False) 
+
         self.search_button.clicked.connect(self.onSearchClicked)
+        self.search_results_list.currentItemChanged.connect( self.searchResultChanged )
         self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(self.onOkClicked)
         self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(self.onCancelClicked)
         self.accounts_dropdown.currentIndexChanged.connect(self.onAccountSelected)
         self.populate_accounts_dropdown()
 
+    def searchResultChanged(self):
+        index = self.search_results_list.currentIndex().row()
+        if index == -1: self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(False) 
+        else: self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(True) 
+
     def onSearchClicked(self):
         query = self.search_text_field.text()
+        sw = None 
         if "http" in query and len(query.split("/")) >= 3: # URL
-            steamId = query
-            try: steamId = query.split("/streams/")[1].split("/")[0] 
-            except: pass
-
-            stream = self.speckle_client.stream.get(steamId)
+            sw = StreamWrapper(query)
+            stream = sw.get_client().stream.get(sw.stream_id)
             if isinstance(stream, Stream): results = [stream]
             else: results = []
            
@@ -61,34 +67,46 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         
         self.stream_results = results
         #print(results)
-        self.populateResultsList()
+        self.populateResultsList(sw)
     
-    def populateResultsList(self):
+    def populateResultsList(self, sw):
         self.search_results_list.clear()
         if isinstance(self.stream_results, SpeckleException): 
             logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
             return 
         for stream in self.stream_results:
+            host = ""
+            if sw is not None:
+                host = sw.get_account().serverInfo.url
+            else: 
+                host = self.speckle_client.account.serverInfo.url
+            
             if isinstance(stream, SpeckleException): 
                 logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
             else: 
                 self.search_results_list.addItems([
-                    f"{stream.name} - {stream.id}" #for stream in self.stream_results 
+                    f"{stream.name}, {stream.id} | {host}" #for stream in self.stream_results 
                 ])
 
     def onOkClicked(self):
         if isinstance(self.stream_results, SpeckleException):
             logger.logToUser("Selected stream cannot be accessed", Qgis.Warning)
             return
+        #elif index == -1 or len(self.stream_results) == 0:
+        #    logger.logToUser("Select stream from \"Search Results\". No stream selected", Qgis.Warning)
+        #    return 
         else:
             try:
                 index = self.search_results_list.currentIndex().row()
                 stream = self.stream_results[index]
-                acc = get_local_accounts()[self.accounts_dropdown.currentIndex()]
-                self.handleStreamAdd.emit(StreamWrapper(f"{acc.serverInfo.url}/streams/{stream.id}?u={acc.userInfo.id}"))
+                item = self.search_results_list.item(index)
+                url = item.text().split(" | ")[1] + "/streams/" + item.text().split(", ")[1].split(" | ")[0]
+                sw = StreamWrapper(url) 
+                #acc = sw.get_account() #get_local_accounts()[self.accounts_dropdown.currentIndex()]
+                self.handleStreamAdd.emit(sw) #StreamWrapper(f"{acc.serverInfo.url}/streams/{stream.id}?u={acc.userInfo.id}"))
                 self.close()
-            except:
-                logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+            except Exception as e:
+                logger.logToUser("Some streams cannot be accessed: " + str(e), Qgis.Warning)
                 return 
 
     def onCancelClicked(self):
@@ -105,7 +123,7 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         self.accounts_dropdown.clear()
         self.accounts_dropdown.addItems(
             [
-                f"{acc.userInfo.name} - {acc.serverInfo.url}"
+                f"{acc.userInfo.name}, {acc.userInfo.email} | {acc.serverInfo.url}"
                 for acc in self.speckle_accounts
             ]
         )

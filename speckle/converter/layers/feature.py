@@ -14,7 +14,7 @@ from speckle.converter.geometry import convertToSpeckle, transform
 from speckle.converter.geometry.mesh import rasterToMesh
 from speckle.converter.layers.Layer import RasterLayer
 from speckle.logging import logger
-from speckle.converter.layers.utils import getVariantFromValue, traverseDict 
+from speckle.converter.layers.utils import getVariantFromValue, traverseDict, validateAttributeName 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 
@@ -38,10 +38,15 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         logger.logToUser("Error converting geometry: " + str(error), Qgis.Critical)
 
     for name in fieldnames:
-        corrected = name.replace("/", "_").replace(".", "-")
-        if corrected == "id": corrected = "applicationId"
+        corrected = validateAttributeName(name, fieldnames)
         f_name = f[name]
         if f_name == "NULL" or f_name is None or str(f_name) == "NULL": f_name = None
+        if isinstance(f[name], list): 
+            x = ""
+            for i, attr in enumerate(f[name]): 
+                if i==0: x += attr
+                else: x += ", " + attr
+            f_name = x 
         b[corrected] = f_name
     return b
           
@@ -338,8 +343,9 @@ def featureToNative(feature: Base, fields: QgsFields):
         except: 
             if name == "Speckle_ID": value = str(feature["id"])
             else: 
-                logger.logToUser(f"Field {name} not found", Qgis.Warning)
-                return None
+                value = None 
+                #logger.logToUser(f"Field {name} not found", Qgis.Warning)
+                #return None
         
         if variant == QVariant.String: value = str(value) 
         

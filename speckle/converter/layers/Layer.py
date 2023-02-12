@@ -1,9 +1,9 @@
-from typing import Any, List
+from typing import Any, Dict, List, Optional
 from specklepy.objects.base import Base
 
 from speckle.converter.layers.CRS import CRS
 
-class Layer(Base, chunkable={"features": 100}):
+class Layer(Base, detachable={"features"}):
     """A GIS Layer"""
 
     def __init__(
@@ -11,10 +11,10 @@ class Layer(Base, chunkable={"features": 100}):
         name:str=None,
         crs:CRS=None,
         units: str = "m",
-        features: List[Base] = [],
+        features: Optional[List[Base]] = None,
         layerType: str = "None",
         geomType: str = "None",
-        renderer: dict[str, Any] = {},
+        renderer: Optional[dict[str, Any]] = None,
         **kwargs
     ) -> None:
         super().__init__(**kwargs)
@@ -22,22 +22,22 @@ class Layer(Base, chunkable={"features": 100}):
         self.crs = crs
         self.units = units
         self.type = layerType
-        self.features = features
+        self.features = features or []
         self.geomType = geomType
-        self.renderer = renderer 
+        self.renderer = renderer or {} 
 
-class VectorLayer(Base, chunkable={"features": 100}):
+class VectorLayer(Base, detachable={"features"}):
     """A GIS Layer"""
 
     def __init__(
         self,
-        name:str=None,
-        crs:CRS=None,
+        name: str=None,
+        crs: CRS=None,
         units: str = "m",
-        features: List[Base] = [],
+        features: Optional[List[Base]] = None,
         layerType: str = "None",
         geomType: str = "None",
-        renderer: dict[str, Any] = {},
+        renderer: Optional[Dict[str, Any]] = None,
         **kwargs
     ) -> None:
         super().__init__(**kwargs)
@@ -45,23 +45,23 @@ class VectorLayer(Base, chunkable={"features": 100}):
         self.crs = crs
         self.units = units
         self.type = layerType
-        self.features = features
+        self.features = features or []
         self.geomType = geomType
-        self.renderer = renderer 
+        self.renderer = renderer or {}
 
-class RasterLayer(Base, chunkable={"features": 100}):
+class RasterLayer(Base, detachable={"features"}):
     """A GIS Layer"""
 
     def __init__(
         self,
-        name:str=None,
-        crs:CRS=None,
+        name: str=None,
+        crs: CRS=None,
         units: str = "m",
-        rasterCrs:CRS=None,
-        features: List[Base] = [],
+        rasterCrs: CRS=None,
+        features: Optional[List[Base]] = None,
         layerType: str = "None",
         geomType: str = "None",
-        renderer: dict[str, Any] = {},
+        renderer: Optional[Dict[str, Any]] = None,
         **kwargs
     ) -> None:
         super().__init__(**kwargs)
@@ -70,6 +70,6 @@ class RasterLayer(Base, chunkable={"features": 100}):
         self.units = units
         self.rasterCrs = rasterCrs
         self.type = layerType
-        self.features = features
+        self.features = features or []
         self.geomType = geomType
-        self.renderer = renderer 
+        self.renderer = renderer or {}

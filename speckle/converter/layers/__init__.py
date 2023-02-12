@@ -33,11 +33,33 @@ from PyQt5.QtGui import QColor
 import numpy as np
 
 
-def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
     #print("___ get layers list ___")
-    children = parent.children()
+    self = plugin.dockwidget
     layers = []
+    if bySelection is True: # by selection 
+        layers = plugin.iface.layerTreeView().selectedLayers()
+    else: # from project data 
+        project = QgsProject.instance()
+        #all_layers_ids = [l.id() for l in project.mapLayers().values()]
+        for item in plugin.current_layers:
+            try: 
+                id = item[1].id()
+            except:
+                logger.logToUser(f'Saved layer not found: "{item[0]}"', Qgis.Warning)
+                continue
+            found = 0
+            for l in project.mapLayers().values():
+                if id == l.id():
+                    layers.append(l)
+                    found += 1
+                    break 
+            if found == 0: 
+                logger.logToUser(f'Saved layer not found: "{item[0]}"', Qgis.Warning)
+    
+    r'''
+    children = parent.children()
     for node in children:
         #print(node)
         if tree.isLayer(node):
@@ -48,12 +70,14 @@ def getLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode) -> List[ Union[QgsLa
             for lyr in getLayers(tree, node):
                 if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer): layers.append(lyr) 
             #layers.extend( [ lyr for lyr in getLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
+    '''
     return layers
 
 
-def convertSelectedLayers(layers: List[QgsLayerTreeLayer], selectedLayerIndex: List[int], selectedLayerNames: List[str], projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> List[Union[VectorLayer, RasterLayer]]:
+def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], selectedLayerIndex: List[int], selectedLayerNames: List[str], projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> List[Union[VectorLayer, RasterLayer]]:
     """Converts the current selected layers to Speckle"""
     result = []
+    r'''
     for i, index in enumerate(selectedLayerIndex):
         #for k, layer in enumerate(layers):
         selected_name = selectedLayerNames[i]
@@ -61,13 +85,19 @@ def convertSelectedLayers(layers: List[QgsLayerTreeLayer], selectedLayerIndex: L
             logger.logToUser(f"Layers have changed. Pleash refresh Speckle Connector", Qgis.Critical)
             return None
         result.append(layerToSpeckle(layers[index], projectCRS, project))
+    '''
+    for i, layer in enumerate(layers):
+        result.append(layerToSpeckle(layer, projectCRS, project))
+    
     return result
 
 
-def layerToSpeckle(layer: QgsLayerTreeLayer, projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> VectorLayer or RasterLayer: #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
+def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> VectorLayer or RasterLayer: #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     """Converts a given QGIS Layer to Speckle"""
-    layerName = layer.name()
-    selectedLayer = layer.layer()
+    layerName = selectedLayer.name()
+    #except: layerName = layer.sourceName()
+    #try: selectedLayer = selectedLayer.layer()
+    #except: pass 
     crs = selectedLayer.crs()
     units = "m"
     if crs.isGeographic(): units = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
@@ -128,12 +158,15 @@ def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch:
 
     #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
     for geom in layerContentList:
-        try: 
-            if geom.displayValue: geom_meshes.append(geom)
-        except:
+        if geom.speckle_type =='Objects.Geometry.Mesh':
+            geom_meshes.append(geom)
+        else:
             try: 
-                if geom.displayMesh: geom_meshes.append(geom)
-            except: pass
+                if geom.displayValue: geom_meshes.append(geom)
+            except:
+                try: 
+                    if geom.displayMesh: geom_meshes.append(geom)
+                except: pass
         
         #if geom.speckle_type == 'Objects.BuiltElements.Alignment':
 
@@ -154,12 +187,11 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     
     path = QgsProject.instance().absolutePath()
     if(path == ""):
-        logger.logToUser(f"Raster layers can only be received in an existing saved project. Layer {layerName} will be ignored", Qgis.Warning)
+        logger.logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", Qgis.Warning)
         return None
 
-    path_bim = path + "/BIM_layers_speckle/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #
-    print(path_bim)
-    
+    path_bim = path + "/Layers_Speckle/BIM_layers/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #
+
     if not os.path.exists(path_bim): os.makedirs(path_bim)
     print(path_bim)
 
@@ -537,8 +569,12 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
 
     ## https://opensourceoptions.com/blog/pyqgis-create-raster/
     # creating file in temporary folder: https://stackoverflow.com/questions/56038742/creating-in-memory-qgsrasterlayer-from-the-rasterization-of-a-qgsvectorlayer-wit
+    
+    path_fn = source_folder + "/Layers_Speckle/raster_layers/" + streamBranch+ "/" 
+    if not os.path.exists(path_fn): os.makedirs(path_fn)
 
-    fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
+    fn = path_fn + layer.name + ".tif" #arcpy.env.workspace + "\\" #
+    #fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
     driver = gdal.GetDriverByName('GTiff')
     # create raster dataset
     ds = driver.Create(fn, xsize=feat["X pixels"], ysize=feat["Y pixels"], bands=feat["Band count"], eType=gdal.GDT_Float32)
