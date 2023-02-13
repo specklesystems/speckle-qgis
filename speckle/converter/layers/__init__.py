@@ -307,14 +307,14 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
                 g = (rgb & 0xFF00) >> 8
                 b = rgb & 0xFF 
                 color = QColor.fromRgb(r, g, b)
-            else: color = QColor.fromRgb(0,0,0)
+            else: color = QColor.fromRgb(245,245,245)
 
             symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
             symbol.setColor(color)
             categories.append(QgsRendererCategory(fetIds[i], symbol, fetIds[i], True) )  
         # create empty category for all other values
         symbol2 = symbol.clone()
-        symbol2.setColor(QColor.fromRgb(0,0,0))
+        symbol2.setColor(QColor.fromRgb(245,245,245))
         cat = QgsRendererCategory()
         cat.setSymbol(symbol2)
         cat.setLabel('Other')
