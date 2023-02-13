@@ -262,18 +262,11 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
             if new_feat is not None and new_feat != "": 
                 fets.append(new_feat)
                 vl.addFeature(new_feat)
-                #vl.deleteFeature(0)
-                
-                #pr.addAttributes(newFields) # add new attributes from the current object
                 fetIds.append(f.id)
-                try: fetColors.append(f.displayStyle.color) 
-                except: fetColors.append(None)
-            #else: geomList.remove(f)
+                #try: fetColors.append(f.displayStyle.color) # might not correstond to meh vertex colors 
+                #except: fetColors.append(None)
         except Exception as e: print(e)
        
-
-    #pr = vl.dataProvider()
-    #pr.addFeatures(fets)
     vl.updateExtents()
     vl.commitChanges()
     layerGroup.addLayer(vl)
@@ -283,10 +276,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     try: 
         ################################### RENDERER 3D ###########################################
         #rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
-        #symb = QgsAbstract3DSymbol()
-        #rend3d.setSymbol(symb)
-        #vl.setRenderer3D(rend3d)
-        
+
         plugin_dir = os.path.dirname(__file__)
         renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
         print(renderer3d)
@@ -301,20 +291,21 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         attribute = 'Speckle_ID'
         categories = []
         for i in range(len(fets)):
-            rgb = fetColors[i]
-            if rgb:
-                r = (rgb & 0xFF0000) >> 16
-                g = (rgb & 0xFF00) >> 8
-                b = rgb & 0xFF 
-                color = QColor.fromRgb(r, g, b)
-            else: color = QColor.fromRgb(0,0,0)
+            #rgb = fetColors[i]
+            #if rgb:
+            #    r = (rgb & 0xFF0000) >> 16
+            #    g = (rgb & 0xFF00) >> 8
+            #    b = rgb & 0xFF 
+            #    color = QColor.fromRgb(r, g, b)
+            #else: 
+            color = QColor.fromRgb(245,245,245)
 
             symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
             symbol.setColor(color)
             categories.append(QgsRendererCategory(fetIds[i], symbol, fetIds[i], True) )  
         # create empty category for all other values
         symbol2 = symbol.clone()
-        symbol2.setColor(QColor.fromRgb(0,0,0))
+        symbol2.setColor(QColor.fromRgb(245,245,245))
         cat = QgsRendererCategory()
         cat.setSymbol(symbol2)
         cat.setLabel('Other')

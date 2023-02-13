@@ -4,7 +4,7 @@
     <vector-layer-3d-tiling zoom-levels-count="3" show-bounding-boxes="0"/>
     <symbol type="polygon" material_type="phong">
       <data height="0" alt-binding="centroid" culling-mode="no-culling" extrusion-height="0" invert-normals="0" alt-clamping="relative" add-back-faces="0" rendered-facade="3"/>
-      <material shininess="0" specular="255,255,255,255" opacity="1" ambient="26,26,26,255" diffuse="178,178,178,255">
+      <material shininess="0" specular="255,255,255,255" opacity="1" ambient="245,245,245,255" diffuse="178,178,178,255">
         <data-defined-properties>
           <Option type="Map">
             <Option name="name" value="" type="QString"/>
