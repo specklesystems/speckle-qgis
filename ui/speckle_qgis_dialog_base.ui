@@ -263,7 +263,7 @@
                   <bool>true</bool>
                 </property>
                 <property name="text">
-                  <string>Create Custom CRS</string>
+                  <string>Set as a project center</string>
                 </property>
               </widget>
             </item>
