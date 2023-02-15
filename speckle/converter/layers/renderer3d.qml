@@ -20,7 +20,7 @@
           <Option name="type" value="collection" type="QString"/>
         </Option>
       </data-defined-properties>
-      <edges width="1" color="0,0,0,255" enabled="0"/>
+      <edges width="1" color="174,174,174,255" enabled="1"/>
     </symbol>
   </renderer-3d>
   <layerGeometryType>2</layerGeometryType>
