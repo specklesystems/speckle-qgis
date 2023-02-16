@@ -165,8 +165,11 @@ def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch:
                 if geom.displayValue: geom_meshes.append(geom)
             except:
                 try: 
-                    if geom.displayMesh: geom_meshes.append(geom)
-                except: pass
+                    if geom["@displayValue"]: geom_meshes.append(geom)
+                except:
+                    try: 
+                        if geom.displayMesh: geom_meshes.append(geom)
+                    except: pass
         
         #if geom.speckle_type == 'Objects.BuiltElements.Alignment':
 

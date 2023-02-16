@@ -33,15 +33,25 @@ def meshToNative(meshes: List[Mesh], path: str):
                             w = fill_mesh_parts(w, mesh)
             except: 
                 try: 
-                    if geom.displayMesh and isinstance(geom.displayMesh, Mesh): 
-                        mesh = geom.displayMesh
+                    if geom["@displayValue"] and isinstance(geom["@displayValue"], Mesh): 
+                        mesh = geom["@displayValue"]
                         w = fill_mesh_parts(w, mesh)
-                    elif geom.displayMesh and isinstance(geom.displayMesh, List): 
-                        for part in geom.displayMesh:
+                    elif geom["@displayValue"] and isinstance(geom["@displayValue"], List): 
+                        for part in geom["@displayValue"]:
                             if isinstance(part, Mesh): 
                                 mesh = part
                                 w = fill_mesh_parts(w, mesh)
-                except: pass
+                except:
+                    try: 
+                        if geom.displayMesh and isinstance(geom.displayMesh, Mesh): 
+                            mesh = geom.displayMesh
+                            w = fill_mesh_parts(w, mesh)
+                        elif geom.displayMesh and isinstance(geom.displayMesh, List): 
+                            for part in geom.displayMesh:
+                                if isinstance(part, Mesh): 
+                                    mesh = part
+                                    w = fill_mesh_parts(w, mesh)
+                    except: pass
     w.close()
     return path
 

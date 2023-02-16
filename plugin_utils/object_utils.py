@@ -60,9 +60,14 @@ def loopObj(base: Base, baseName: str, streamBranch: str):
     for name in memberNames:
         if name in ["id", "applicationId", "units", "speckle_type"]: continue
         # skip if traversal goes to displayValue of an object, that will be readable anyway:
-        if name == "displayValue" and base.speckle_type.startswith(tuple(SPECKLE_TYPES_TO_READ)): continue 
+        if (name == "displayValue" or name == "@displayValue") and base.speckle_type.startswith(tuple(SPECKLE_TYPES_TO_READ)): continue 
 
-        try: loopVal(base[name], baseName + "/" + name, streamBranch)
+        try: 
+            try: 
+                b=base["Name"]
+                loopVal(base[name], baseName + "/" + base["Name"][:10]+str(base["expressID"]), streamBranch)
+            except:
+                loopVal(base[name], baseName + "/" + base.speckle_type, streamBranch)
         except: pass
 
 def loopVal(value: Any, name: str, streamBranch: str): # "name" is the parent object/property/layer name
@@ -79,10 +84,22 @@ def loopVal(value: Any, name: str, streamBranch: str): # "name" is the parent ob
     elif isinstance(value, List):
         streamBranch = streamBranch.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
     
-        for item in value:
+        for i, item in enumerate(value):
             loopVal(item, name, streamBranch)
-            if item.speckle_type and (item.speckle_type == "Objects.Geometry.Mesh"  or item.speckle_type == "Objects.Geometry.Brep" or item.speckle_type.startswith("Objects.BuiltElements.")):
-                msh_bool = bimLayerToNative(value, name, streamBranch)
+            if item.speckle_type and item.speckle_type.startswith("IFC"):
+                try: 
+                    if item["displayValue"] is not None: 
+                        bimLayerToNative(value, name, streamBranch)
+                        break 
+                except: 
+                    try: 
+                        if item["@displayValue"] is not None: 
+                            bimLayerToNative(value, name, streamBranch)
+                            break 
+                    except: pass #loopVal(item, name + "_" + str(i), streamBranch) # if no displayValue for the object, keep traversing 
+            
+            elif item.speckle_type and (item.speckle_type == "Objects.Geometry.Mesh" or item.speckle_type == "Objects.Geometry.Brep" or item.speckle_type.startswith("Objects.BuiltElements.")):
+                bimLayerToNative(value, name, streamBranch)
                 break
             elif item.speckle_type and item.speckle_type != "Objects.Geometry.Mesh" and item.speckle_type != "Objects.Geometry.Brep" and item.speckle_type.startswith("Objects.Geometry."): # or item.speckle_type == 'Objects.BuiltElements.Alignment'): 
                 pt, pl = cadLayerToNative(value, name, streamBranch)
