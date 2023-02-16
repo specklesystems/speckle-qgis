@@ -24,12 +24,12 @@ def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer) -
         renderer = layer.renderer()
         if renderer.type() == 'categorizedSymbol' or renderer.type() == '25dRenderer' or renderer.type() == 'invertedPolygonRenderer' or renderer.type() == 'mergedFeatureRenderer' or renderer.type() == 'RuleRenderer' or renderer.type() == 'nullSymbol' or renderer.type() == 'singleSymbol' or renderer.type() == 'graduatedSymbol':
             #get color value
-            color = QColor.fromRgb(0,0,0)
+            color = QColor.fromRgb(245,245,245)
             if renderer.type() == 'singleSymbol':
                 color = renderer.symbol().color()
             elif renderer.type() == 'categorizedSymbol':
                 sSymb = renderer.sourceSymbol()
-                color = sSymb.color()
+                if sSymb is not None: color = sSymb.color()
                 category = renderer.classAttribute() # get the name of attribute used for classification
                 for obj in renderer.categories():
                     try: 
@@ -53,8 +53,8 @@ def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer) -
             except: r, g, b = [int(i) for i in color.replace(" ","").split(",")[:3] ]
             col = (r<<16) + (g<<8) + b
             return col
-        else: return (0<<16) + (0<<8) + 0
-    except: return (0<<16) + (0<<8) + 0
+        else: return (245<<16) + (245<<8) + 245
+    except: return (245<<16) + (245<<8) + 245
 
 def gradientColorRampToSpeckle(rRamp: QgsGradientColorRamp) -> dict[str, Any]: 
     props = rRamp.properties() # {'color1': '255,255,255,255', 'color2': '255,0,0,255', 'discrete': '0', 'rampType': 'gradient'}
