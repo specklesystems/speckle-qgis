@@ -7,7 +7,7 @@ from typing import List, Union
 from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint, 
     QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon,
     QgsCircularString, QgsLineString, QgsRasterLayer,QgsVectorLayer, QgsFeature)
-from speckle.converter.geometry.mesh import meshToNative
+from speckle.converter.geometry.mesh import meshToNative, writeMeshToShp
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from speckle.converter.geometry.polygon import *
 from speckle.converter.geometry.polyline import *
@@ -78,10 +78,14 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
     ]
 
     for conversion in conversions:
-        if isinstance(base, conversion[0]):
-            #print(conversion[0])
-            converted = conversion[1](base)
-            break
+        try: 
+            if isinstance(base.displayValue[0], Mesh):
+                converted: QgsMultiPolygon = meshToNative(base.displayValue) # only called for Meshes created in QGIS before
+        except:
+            if isinstance(base, conversion[0]):
+                #print(conversion[0])
+                converted = conversion[1](base)
+                break
 
     return converted
 

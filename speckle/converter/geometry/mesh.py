@@ -9,12 +9,27 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_scale_factor
 from speckle.logging import logger
-from qgis.core import Qgis, QgsPoint, QgsPointXY
+from qgis.core import (
+    Qgis, QgsPoint, QgsPointXY, QgsMultiPolygon, QgsPolygon, QgsLineString, QgsFeature, QgsVectorLayer
+    )
 from panda3d.core import Triangulator
-from qgis.core import Qgis, QgsGeometry, QgsFeature, QgsVectorLayer
 
+def meshToNative(meshes: List[Mesh]) -> QgsMultiPolygon:
+    multiPolygon = QgsMultiPolygon()
+    for mesh in meshes:
+        parts_list = deconstructSpeckleMesh(mesh)
+        for part in parts_list: 
+            polygon = QgsPolygon()
+            pts = [Point(x=pt[0], y=pt[1], z=pt[2], units="m") for pt in part]
+            pts.append(pts[0])
+            boundary = QgsLineString([pointToNative(pt) for pt in pts])
+            polygon.setExteriorRing(boundary)
 
-def meshToNative(meshes: List[Mesh], path: str):
+            if polygon is not None:
+                multiPolygon.addGeometry(polygon)
+    return multiPolygon
+    
+def writeMeshToShp(meshes: List[Mesh], path: str):
     """Converts a Speckle Mesh to QgsGeometry"""
     print("06___________________Mesh to Native")
     #print(meshes)
@@ -63,27 +78,11 @@ def meshToNative(meshes: List[Mesh], path: str):
     return path
 
 def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
-    scale = get_scale_factor(mesh.units)
-
-    parts_list = []
-    types_list = []
-    count = 0 # sequence of vertex (not of flat coord list) 
+    
     try:
         #print(len(mesh.faces))
         if len(mesh.faces) % 4 == 0 and (mesh.faces[0] == 0 or mesh.faces[0] == 3):
-            for f in mesh.faces:
-                try:
-                    if mesh.faces[count] == 0 or mesh.faces[count] == 3: # only handle triangles
-                        f1 = [ scale*mesh.vertices[mesh.faces[count+1]*3], scale*mesh.vertices[mesh.faces[count+1]*3+1], scale*mesh.vertices[mesh.faces[count+1]*3+2] ]
-                        f2 = [ scale*mesh.vertices[mesh.faces[(count+2)]*3], scale*mesh.vertices[mesh.faces[(count+2)]*3+1], scale*mesh.vertices[mesh.faces[(count+2)]*3+2] ]
-                        f3 = [ scale*mesh.vertices[mesh.faces[(count+3)]*3], scale*mesh.vertices[mesh.faces[(count+3)]*3+1], scale*mesh.vertices[mesh.faces[(count+3)]*3+2] ]
-                        parts_list.append([ f1, f2, f3 ])
-                        types_list.append(TRIANGLE_FAN)
-                        count += 4
-                    else: 
-                        count += mesh.faces[count+1]
-                        logger.logToUser("Received mesh type is only partially supported", Qgis.Warning)
-                except: break
+            parts_list, types_list = deconstructTriangleMesh(mesh) 
             w.multipatch(parts_list, partTypes=types_list ) # one type for each part
             w.record(geom_id)
         else: 
@@ -93,7 +92,53 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
     except Exception as e: pass #; print(e)
     #print("mesh part written")
     return w
+
+def deconstructSpeckleMesh(mesh: Mesh):
     
+    scale = get_scale_factor(mesh.units)
+    parts_list = []
+    types_list = []
+
+    count = 0 # sequence of vertex (not of flat coord list) 
+    for f in mesh.faces:
+        try:
+            if mesh.faces[count] == 0 or mesh.faces[count] == 3: # only handle triangles
+                f1 = [ scale*mesh.vertices[mesh.faces[count+1]*3], scale*mesh.vertices[mesh.faces[count+1]*3+1], scale*mesh.vertices[mesh.faces[count+1]*3+2] ]
+                f2 = [ scale*mesh.vertices[mesh.faces[(count+2)]*3], scale*mesh.vertices[mesh.faces[(count+2)]*3+1], scale*mesh.vertices[mesh.faces[(count+2)]*3+2] ]
+                f3 = [ scale*mesh.vertices[mesh.faces[(count+3)]*3], scale*mesh.vertices[mesh.faces[(count+3)]*3+1], scale*mesh.vertices[mesh.faces[(count+3)]*3+2] ]
+                parts_list.append([ f1, f2, f3 ])
+                types_list.append(TRIANGLE_FAN)
+                count += 4
+            else: 
+                count += mesh.faces[count+1]
+                logger.logToUser("Received mesh type is only partially supported", Qgis.Warning)
+        except: break
+
+    return parts_list
+
+def deconstructTriangleMesh(mesh: Mesh):
+
+    scale = get_scale_factor(mesh.units)
+    parts_list = []
+    types_list = []
+
+    count = 0 # sequence of vertex (not of flat coord list) 
+    for f in mesh.faces:
+        try:
+            if mesh.faces[count] == 0 or mesh.faces[count] == 3: # only handle triangles
+                f1 = [ scale*mesh.vertices[mesh.faces[count+1]*3], scale*mesh.vertices[mesh.faces[count+1]*3+1], scale*mesh.vertices[mesh.faces[count+1]*3+2] ]
+                f2 = [ scale*mesh.vertices[mesh.faces[(count+2)]*3], scale*mesh.vertices[mesh.faces[(count+2)]*3+1], scale*mesh.vertices[mesh.faces[(count+2)]*3+2] ]
+                f3 = [ scale*mesh.vertices[mesh.faces[(count+3)]*3], scale*mesh.vertices[mesh.faces[(count+3)]*3+1], scale*mesh.vertices[mesh.faces[(count+3)]*3+2] ]
+                parts_list.append([ f1, f2, f3 ])
+                types_list.append(TRIANGLE_FAN)
+                count += 4
+            else: 
+                count += mesh.faces[count+1]
+                logger.logToUser("Received mesh type is only partially supported", Qgis.Warning)
+        except: break
+
+    return parts_list, types_list
+
 def constructMesh(vertices, faces, colors):
     mesh = Mesh.create(vertices, faces, colors)
     mesh.units = "m"

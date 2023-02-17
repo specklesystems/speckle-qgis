@@ -25,7 +25,7 @@ from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
 from speckle.converter.layers.utils import colorFromRenderMaterial, getLayerGeomType, getLayerAttributes
 from speckle.logging import logger
-from speckle.converter.geometry.mesh import constructMesh, meshToNative
+from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
 
 from speckle.converter.layers.symbology import vectorRendererToNative, rasterRendererToNative, rendererToSpeckle
 
@@ -225,7 +225,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     crsid = crs.authid()
     
-    shp = meshToNative(geomList, path_bim + newName_shp)
+    shp = writeMeshToShp(geomList, path_bim + newName_shp)
     print("____ meshes saved___")
     print(shp)
 
