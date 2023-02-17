@@ -103,6 +103,7 @@ def deconstructSpeckleMesh(mesh: Mesh):
         try:
             vertices = mesh.faces[count]
             if mesh.faces[count] == 0: vertices = 3
+            if mesh.faces[count] == 1: vertices = 4
             
             face = []
             for i in range(vertices):

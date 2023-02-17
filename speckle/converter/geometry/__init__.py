@@ -49,7 +49,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
             return polylineToSpeckle(geom, feature, layer)
         else: 
             return [polylineToSpeckle(poly, feature, layer) for poly in geom.parts()]
-    elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_Mesh"):
+    elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_Mesh") and "Speckle_ID" in layer.fields().names():
         return polygonToSpeckleMesh(geom, feature, layer)
     elif geomType == QgsWkbTypes.PolygonGeometry: # 2
         if geomSingleType:
