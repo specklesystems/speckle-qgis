@@ -238,7 +238,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     #    vl_shp.deleteAttributes(vl.fields()) #if DisplayMesh exists 
     #    vl_shp.commitChanges()
     #except: pass 
-    print(vl_shp.fields().names())
+    #print(vl_shp.fields().names())
 
     pr = vl.dataProvider()
     vl.startEditing()
@@ -270,9 +270,6 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
             new_feat = bimFeatureToNative(exist_feat, f, vl.fields(), crs, path_bim)
             if new_feat is not None and new_feat != "": 
-                fets.append(new_feat)
-                vl.addFeature(new_feat)
-                fetIds.append(f.id)
                 colorFound = 0
                 try: # get render material from any part of the mesh (list of items in displayValue)
                     for k, item in enumerate(f.displayValue):
@@ -290,6 +287,9 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
                                 break
                             except: pass
                     except: pass
+                fets.append(new_feat)
+                vl.addFeature(new_feat)
+                fetIds.append(f.id)
                 if colorFound == 0: fetColors.append(None)
         except Exception as e: print(e)
     
