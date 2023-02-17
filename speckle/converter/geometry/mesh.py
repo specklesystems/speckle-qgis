@@ -13,49 +13,49 @@ def meshToNative(meshes: List[Mesh], path: str):
     #print(meshes)
     #print(mesh.units)
     w = shapefile.Writer(path) 
-    w.field('speckleTyp', 'C')
+    w.field('speckle_id', 'C')
 
     shapes = []
     for geom in meshes:
 
         if geom.speckle_type =='Objects.Geometry.Mesh' and isinstance(geom, Mesh):
             mesh = geom
-            w = fill_mesh_parts(w, mesh)
+            w = fill_mesh_parts(w, mesh, geom.id)
         else:
             try: 
                 if geom.displayValue and isinstance(geom.displayValue, Mesh): 
                     mesh = geom.displayValue
-                    w = fill_mesh_parts(w, mesh)
+                    w = fill_mesh_parts(w, mesh, geom.id)
                 elif geom.displayValue and isinstance(geom.displayValue, List): 
                     for part in geom.displayValue:
                         if isinstance(part, Mesh): 
                             mesh = part
-                            w = fill_mesh_parts(w, mesh)
+                            w = fill_mesh_parts(w, mesh, geom.id)
             except: 
                 try: 
                     if geom["@displayValue"] and isinstance(geom["@displayValue"], Mesh): 
                         mesh = geom["@displayValue"]
-                        w = fill_mesh_parts(w, mesh)
+                        w = fill_mesh_parts(w, mesh, geom.id)
                     elif geom["@displayValue"] and isinstance(geom["@displayValue"], List): 
                         for part in geom["@displayValue"]:
                             if isinstance(part, Mesh): 
                                 mesh = part
-                                w = fill_mesh_parts(w, mesh)
+                                w = fill_mesh_parts(w, mesh, geom.id)
                 except:
                     try: 
                         if geom.displayMesh and isinstance(geom.displayMesh, Mesh): 
                             mesh = geom.displayMesh
-                            w = fill_mesh_parts(w, mesh)
+                            w = fill_mesh_parts(w, mesh, geom.id)
                         elif geom.displayMesh and isinstance(geom.displayMesh, List): 
                             for part in geom.displayMesh:
                                 if isinstance(part, Mesh): 
                                     mesh = part
-                                    w = fill_mesh_parts(w, mesh)
+                                    w = fill_mesh_parts(w, mesh, geom.id)
                     except: pass
     w.close()
     return path
 
-def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh):
+def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
     scale = get_scale_factor(mesh.units)
 
     parts_list = []
@@ -78,7 +78,7 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh):
                         logger.logToUser("Received mesh type is only partially supported", Qgis.Warning)
                 except: break
             w.multipatch(parts_list, partTypes=types_list ) # one type for each part
-            w.record('displayMesh')
+            w.record(geom_id)
         else: 
             logger.logToUser("Received mesh type is not supported", Qgis.Warning)
             #print("not triangulated mesh")
