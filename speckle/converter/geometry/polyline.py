@@ -48,7 +48,7 @@ def polylineFromVerticesToSpeckle(vertices: Union[List[Point], QgsVertexIterator
     polyline['displayStyle']['color'] = col
     return polyline
 
-def unknownLineToSpeckle(poly: QgsCompoundCurve, closed: bool, feature: QgsFeature, layer: QgsVectorLayer):
+def unknownLineToSpeckle(poly: QgsCompoundCurve, closed: bool, feature: QgsFeature, layer: QgsVectorLayer) -> Union[Polyline, Arc, Line, Polycurve, None]:
     
     if poly.wkbType() == 10: # CurvePolygon
         actualGeom = poly.constGet()

@@ -10,18 +10,7 @@ from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint,
 from speckle.converter.geometry.mesh import meshToNative
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from speckle.converter.geometry.polygon import *
-from speckle.converter.geometry.polyline import (
-    compoudCurveToSpeckle,
-    lineToNative,
-    polylineToNative,
-    curveToNative,
-    polylineToSpeckle,
-    circleToNative,
-    arcToNative,
-    arcToSpeckle,
-    polycurveToNative,
-    ellipseToNative
-)
+from speckle.converter.geometry.polyline import *
 from specklepy.objects import Base
 from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Ellipse, Polycurve
 
@@ -60,6 +49,8 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
             return polylineToSpeckle(geom, feature, layer)
         else: 
             return [polylineToSpeckle(poly, feature, layer) for poly in geom.parts()]
+    elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_Mesh"):
+        return polygonToSpeckleMesh(geom, feature, layer)
     elif geomType == QgsWkbTypes.PolygonGeometry: # 2
         if geomSingleType:
             return polygonToSpeckle(geom, feature, layer)
