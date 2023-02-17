@@ -100,19 +100,20 @@ def deconstructSpeckleMesh(mesh: Mesh):
     types_list = []
 
     count = 0 # sequence of vertex (not of flat coord list) 
-    for f in mesh.faces:
+    for f in mesh.faces: # real number of loops will be at least 3 times less 
         try:
-            if mesh.faces[count] == 0 or mesh.faces[count] == 3: # only handle triangles
-                f1 = [ scale*mesh.vertices[mesh.faces[count+1]*3], scale*mesh.vertices[mesh.faces[count+1]*3+1], scale*mesh.vertices[mesh.faces[count+1]*3+2] ]
-                f2 = [ scale*mesh.vertices[mesh.faces[(count+2)]*3], scale*mesh.vertices[mesh.faces[(count+2)]*3+1], scale*mesh.vertices[mesh.faces[(count+2)]*3+2] ]
-                f3 = [ scale*mesh.vertices[mesh.faces[(count+3)]*3], scale*mesh.vertices[mesh.faces[(count+3)]*3+1], scale*mesh.vertices[mesh.faces[(count+3)]*3+2] ]
-                parts_list.append([ f1, f2, f3 ])
-                types_list.append(TRIANGLE_FAN)
-                count += 4
-            else: 
-                count += mesh.faces[count+1]
-                logger.logToUser("Received mesh type is only partially supported", Qgis.Warning)
-        except: break
+            vertices = mesh.faces[count]
+            if mesh.faces[count] == 0: vertices = 3
+            
+            face = []
+            for i in range(vertices):
+                index_faces = count + 1 + i 
+                index_vertices = mesh.faces[index_faces]*3
+                face.append([ scale * mesh.vertices[index_vertices], scale * mesh.vertices[index_vertices+1], scale * mesh.vertices[index_vertices+2] ]) 
+
+            parts_list.append(face)
+            count += vertices + 1
+        except: break # when out of range 
 
     return parts_list
 
