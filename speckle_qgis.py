@@ -506,8 +506,9 @@ class SpeckleQGIS:
         new_client.authenticate_with_token(token=account.token)
 
         str_id = new_client.stream.create(name=str_name, description = description, is_public = is_public) 
-        if isinstance(str_id, GraphQLException):
+        if isinstance(str_id, GraphQLException) or isinstance(str_id, SpeckleException):
             logger.logToUser(str_id.message, Qgis.Warning)
+            return
         else:
             sw = StreamWrapper(account.serverInfo.url + "/streams/" + str_id)
             self.handleStreamAdd(sw)
