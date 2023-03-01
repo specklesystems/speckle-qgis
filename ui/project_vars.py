@@ -76,14 +76,21 @@ def set_survey_point(self: SpeckleQGIS):
     vals =[ str(self.dockwidget.surveyPointLat.text()), str(self.dockwidget.surveyPointLon.text()) ]
 
     try: 
-        self.lat, self.lon = [float(i) for i in vals]
+        self.lat, self.lon = [float(i.replace(" ","")) for i in vals]
         pt = str(self.lat) + ";" + str(self.lon) 
         proj.writeEntry("speckle-qgis", "survey_point", pt)
-
-        # Create CRS and apply to the project:
-        # https://gis.stackexchange.com/questions/379199/having-problem-with-proj-string-for-custom-coordinate-system
-        # https://proj.org/usage/projections.html
-        
+        setProjectReferenceSystem(self)
+        return True
+    
+    except Exception as e:
+        logger.logToUser("Lat, Lon values invalid: " + str(e), Qgis.Warning)
+        return False 
+    
+def setProjectReferenceSystem(self: SpeckleQGIS):
+    # Create CRS and apply to the project:
+    # https://gis.stackexchange.com/questions/379199/having-problem-with-proj-string-for-custom-coordinate-system
+    # https://proj.org/usage/projections.html
+    try: 
         newCrsString = "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0=" + str(self.lon) + " lat_0=" + str(self.lat) + " +x_0=0 +y_0=0 +k_0=1"
         newCrs = QgsCoordinateReferenceSystem().fromProj(newCrsString)#fromWkt(newProjWkt)
         validate = QgsCoordinateReferenceSystem().createFromProj(newCrsString)
@@ -95,7 +102,7 @@ def set_survey_point(self: SpeckleQGIS):
             logger.logToUser("Custom project CRS successfully applied", Qgis.Info)
         else:
             logger.logToUser("Custom CRS could not be created", Qgis.Warning)
-
     except:
         logger.logToUser("Custom CRS could not be created", Qgis.Warning)
+    
     return True

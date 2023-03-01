@@ -39,11 +39,10 @@ import webbrowser
 # Initialize Qt resources from file resources.py
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
-from speckle.converter.layers import (
-    Layer, VectorLayer, RasterLayer,
-    convertSelectedLayers,
-    getLayers
-)
+from speckle.converter.layers.Layer import Layer, VectorLayer, RasterLayer
+from speckle.converter.layers import convertSelectedLayers, getLayers
+from speckle.converter.layers.utils import findAndClearLayerGroup
+
 from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
 from ui.create_stream import CreateStreamModalDialog
@@ -62,7 +61,7 @@ class SpeckleQGIS:
     dockwidget: Optional[QDockWidget]
     add_stream_modal: AddStreamModalDialog
     create_stream_modal: CreateStreamModalDialog
-    current_streams: Optional[List[Tuple[StreamWrapper, Stream]]]  #{id:(sw,st),id2:()}
+    current_streams: List[Tuple[StreamWrapper, Stream]]  #{id:(sw,st),id2:()}
     current_layers: List[Tuple[str, Union[QgsVectorLayer, QgsRasterLayer]]] = []
 
     active_stream: Optional[Tuple[StreamWrapper, Stream]] 
@@ -257,9 +256,6 @@ class SpeckleQGIS:
         if self.dockwidget.layerSendModeDropdown.currentIndex() == 1: bySelection = False 
         layers = getLayers(self, bySelection) # List[QgsLayerTreeNode]
 
-        #selectedLayerNames = [ str(item.text()).replace(" !LARGE!","").split(" - ")[1] for item in self.dockwidget.layersWidget.selectedItems() ]
-        #selectedLayerIndex = [ int(str(item.text()).split(" - ")[0]) for item in self.dockwidget.layersWidget.selectedItems() ]
-
         # Check if stream id/url is empty
         if self.active_stream is None:
             logger.logToUser("Please select a stream from the list.", Qgis.Critical )
@@ -400,22 +396,16 @@ class SpeckleQGIS:
             
             if app != "QGIS" and app != "ArcGIS": 
                 if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
-                    logger.logToUser("It is advisable to set the project CRS to Projected type before receiving CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
+                    logger.logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
             logger.log(f"Succesfully received {objId}")
 
-            # Clear group if exists, remove layers inside  
-            streamBranch = streamId + "_" + branch.name + "_" + commit.id
-            #newGroupName = f'{streamBranch}'
-            root = QgsProject.instance().layerTreeRoot()
-            if root.findGroup(streamBranch) is not None:
-                layerGroup = root.findGroup(streamBranch)
-                for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
-                    if isinstance(child, QgsLayerTreeLayer): 
-                        QgsProject.instance().removeMapLayer(child.layerId())
+            # If group exists, remove layers inside  
+            newGroupName = streamId + "_" + branch.name + "_" + commit.id
+            findAndClearLayerGroup(QgsProject.instance(), newGroupName)
 
             if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
-            traverseObject(commitObj, callback, check, str(streamBranch))
+            traverseObject(commitObj, callback, check, str(newGroupName))
             
         except SpeckleException as e:
             logger.logToUser("Receive failed: "+ e.message, Qgis.Critical)

@@ -247,6 +247,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         # enable sections only if in "saved streams" mode 
         if self.layerSendModeDropdown.currentIndex() == 1: self.layersWidget.setEnabled(True)
         if self.layerSendModeDropdown.currentIndex() == 1: self.saveLayerSelection.setEnabled(True)
+        self.commitDropdown.setEnabled(False)
         self.messageInput.setEnabled(True)
         self.layerSendModeDropdown.setEnabled(True)
 
@@ -268,6 +269,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.runButton.setProperty("text", " RECEIVE")
         self.runButton.setIcon(QIcon(ICON_RECEIVE))
         #self.layerSendModeChange(plugin, 1)
+        self.commitDropdown.setEnabled(True)
         self.layersWidget.setEnabled(False)
         self.messageInput.setEnabled(False)
         self.saveLayerSelection.setEnabled(False)
