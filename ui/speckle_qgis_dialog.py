@@ -334,23 +334,23 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def populateLayerDropdown(self, plugin, bySelection: bool = True):
         
         if not self: return
-        from ui.project_vars import set_project_layer_selection, get_project_layer_selection
+        from ui.project_vars import set_project_layer_selection
         
         self.layersWidget.clear()
         nameDisplay = [] 
         project = QgsProject.instance()
 
         if bySelection is False: # read from project data 
-            #get_project_layer_selection(plugin)
+
             all_layers_ids = [l.id() for l in project.mapLayers().values()]
             for layer_tuple in plugin.current_layers:
                 if layer_tuple[1].id() in all_layers_ids: 
                     listItem = self.fillLayerList(layer_tuple[1]) 
-                self.layersWidget.addItem(listItem)
+                    self.layersWidget.addItem(listItem)
 
         else: # read selected layers 
             # Fetch selected layers
-            #layerTreeRoot = project.layerTreeRoot()
+
             plugin.current_layers = []
             layers = getLayers(plugin, bySelection) # List[QgsLayerTreeNode]
             for i, layer in enumerate(layers):
@@ -404,7 +404,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         if plugin.is_setup is False: self.streams_remove_button.setEnabled(plugin.is_setup) 
         self.streamBranchDropdown.setEnabled(plugin.is_setup)
         self.layerSendModeDropdown.setEnabled(plugin.is_setup)
-        self.commitDropdown.setEnabled(plugin.is_setup)
+        self.commitDropdown.setEnabled(False)
         self.show()
 
     def populateProjectStreams(self, plugin):
