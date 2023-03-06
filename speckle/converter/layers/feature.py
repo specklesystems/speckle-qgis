@@ -96,7 +96,7 @@ def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, 
             try:
                 if key == "Speckle_ID": 
                     value = str(feature["id"])
-                    if key != "parameters": print(value)
+                    #if key != "parameters": print(value)
                     feat[key] = value 
 
                     feat = addFeatVariant(key, variant, value, feat)

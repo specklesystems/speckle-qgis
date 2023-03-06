@@ -10,6 +10,7 @@ import os
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
+from plugin_utils.helpers import findOrCreatePath
 #from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
 from qgis.core import (Qgis, QgsRasterLayer,
                        QgsVectorLayer, QgsProject, QgsWkbTypes,
@@ -195,7 +196,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     path_bim = path + "/Layers_Speckle/BIM_layers/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #
 
-    if not os.path.exists(path_bim): os.makedirs(path_bim)
+    findOrCreatePath(path_bim)
     print(path_bim)
 
 
@@ -233,6 +234,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     
     vl_shp = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
     vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl.setCrs(crs)
     QgsProject.instance().addMapLayer(vl, False)
     #try: 
     #    vl_shp.deleteAttributes(vl.fields()) #if DisplayMesh exists 
@@ -393,6 +395,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     if geomType == "Points": geomType = "PointZ"
     elif geomType == "Polylines": geomType = "LineStringZ"
     vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl.setCrs(crs)
     QgsProject.instance().addMapLayer(vl, False)
 
     pr = vl.dataProvider()
