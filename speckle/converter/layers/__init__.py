@@ -288,7 +288,11 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
                                 colorFound += 1
                                 break
                             except: pass
-                    except: pass
+                    except: 
+                        try:
+                            fetColors.append(f.renderMaterial) 
+                            colorFound += 1
+                        except: pass
                 fets.append(new_feat)
                 vl.addFeature(new_feat)
                 fetIds.append(f.id)
