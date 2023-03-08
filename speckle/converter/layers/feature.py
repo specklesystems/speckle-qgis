@@ -32,8 +32,8 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
     try:
         geom = convertToSpeckle(f, selectedLayer)
         #print(geom)
-        if geom is not None:
-            b["geometry"] = geom
+        if geom is not None: b["geometry"] = geom
+        else: b["geometry"] = [] 
     except Exception as error:
         logger.logToUser("Error converting geometry: " + str(error), Qgis.Critical)
 
