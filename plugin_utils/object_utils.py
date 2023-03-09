@@ -8,7 +8,7 @@ from speckle.converter.layers import bimLayerToNative, cadLayerToNative, layerTo
 
 from specklepy.objects import Base
 
-SPECKLE_TYPES_TO_READ = ["Objects.Geometry.", "Objects.BuiltElements."] # will properly traverse and check for displayValue
+SPECKLE_TYPES_TO_READ = ["Objects.Geometry.", "Objects.BuiltElements.", "IFC"] # will properly traverse and check for displayValue
 
 def traverseObject(
     base: Base,
@@ -56,33 +56,44 @@ def callback(base: Base, streamBranch: str) -> bool:
 
 def loopObj(base: Base, baseName: str, streamBranch: str):
     memberNames = base.get_member_names()
-    #print(baseName)
     for name in memberNames:
         if name in ["id", "applicationId", "units", "speckle_type"]: continue
         # skip if traversal goes to displayValue of an object, that will be readable anyway:
-        if name == "displayValue" and base.speckle_type.startswith(tuple(SPECKLE_TYPES_TO_READ)): continue 
+        if (name == "displayValue" or name == "@displayValue") and base.speckle_type.startswith(tuple(SPECKLE_TYPES_TO_READ)): continue 
 
         try: loopVal(base[name], baseName + "/" + name, streamBranch)
         except: pass
 
 def loopVal(value: Any, name: str, streamBranch: str): # "name" is the parent object/property/layer name
-    #print(name)
-    #if name.endswith('/displayValue'): return 
 
     if isinstance(value, Base): 
-        #print(value)
-        try: # dont go through parts of Speckle Geometry object
-            if value.speckle_type.startswith("Objects.Geometry."): pass #.Brep") or value.speckle_type.startswith("Objects.Geometry.Mesh") or value.speckle_type.startswith("Objects.Geometry.Surface") or value.speckle_type.startswith("Objects.Geometry.Extrusion"): pass
-            else: loopObj(value, name, streamBranch)
-        except: loopObj(value, name, streamBranch)
+        try: # loop through objects with Speckletype prop, but don't go through parts of Speckle Geometry object
+            if not value.speckle_type.startswith("Objects.Geometry."): 
+                loopObj(value, name, streamBranch)
+        except: 
+            loopObj(value, name, streamBranch)
 
     elif isinstance(value, List):
         streamBranch = streamBranch.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
-    
-        for item in value:
+
+        objectListConverted = 0
+        for i, item in enumerate(value):
             loopVal(item, name, streamBranch)
-            if item.speckle_type and (item.speckle_type == "Objects.Geometry.Mesh"  or item.speckle_type == "Objects.Geometry.Brep" or item.speckle_type.startswith("Objects.BuiltElements.")):
-                msh_bool = bimLayerToNative(value, name, streamBranch)
+            if item.speckle_type and item.speckle_type.startswith("IFC"): 
+                # keep traversing infinitely, just don't run repeated conversion for the same list of objects
+                try: 
+                    if item["displayValue"] is not None and objectListConverted == 0: 
+                        bimLayerToNative(value, name, streamBranch)
+                        objectListConverted += 1
+                except: 
+                    try: 
+                        if item["@displayValue"] is not None and objectListConverted == 0: 
+                            bimLayerToNative(value, name, streamBranch)
+                            objectListConverted += 1
+                    except: pass 
+            
+            elif item.speckle_type and (item.speckle_type == "Objects.Geometry.Mesh" or item.speckle_type == "Objects.Geometry.Brep" or item.speckle_type.startswith("Objects.BuiltElements.")):
+                bimLayerToNative(value, name, streamBranch)
                 break
             elif item.speckle_type and item.speckle_type != "Objects.Geometry.Mesh" and item.speckle_type != "Objects.Geometry.Brep" and item.speckle_type.startswith("Objects.Geometry."): # or item.speckle_type == 'Objects.BuiltElements.Alignment'): 
                 pt, pl = cadLayerToNative(value, name, streamBranch)

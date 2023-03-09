@@ -65,6 +65,22 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
             [pythonExec, "-m", "pip", "install", f"{pkgName}=={pkgVersion}"]
         )
 
+    # Check if panda3d needs updating
+    try:
+        logger.log(f"Attempting to update panda3d to {pkgVersion}")
+        subprocess_call(
+            [
+                pythonExec,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                f"{pkgName}=={pkgVersion}",
+            ]
+        )
+    except Exception as e:
+        logger.logToUser(e.with_traceback)
+
     ################################################# 
     pkgVersion = "2.3.1"
     pkgName = "pyshp"
@@ -75,3 +91,19 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
         subprocess_call(
             [pythonExec, "-m", "pip", "install", f"{pkgName}=={pkgVersion}"]
         )
+
+    # Check if pyshp needs updating
+    try:
+        logger.log(f"Attempting to update pyshp to {pkgVersion}")
+        subprocess_call(
+            [
+                pythonExec,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                f"{pkgName}=={pkgVersion}",
+            ]
+        )
+    except Exception as e:
+        logger.logToUser(e.with_traceback)

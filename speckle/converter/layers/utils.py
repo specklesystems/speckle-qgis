@@ -1,11 +1,20 @@
 from PyQt5.QtCore import QVariant, QDate, QDateTime
-from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes, QgsField, QgsFields
+from qgis._core import Qgis, QgsProject, QgsLayerTreeLayer, QgsVectorLayer, QgsWkbTypes, QgsField, QgsFields
 from speckle.logging import logger
 from speckle.converter.layers import Layer
 from typing import Any, List, Tuple, Union
 from specklepy.objects import Base
+from PyQt5.QtGui import QColor
 
-ATTRS_REMOVE = ['speckleTyp','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
+ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
+
+def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = ""):
+    root = project_gis.layerTreeRoot()
+    if root.findGroup(newGroupName) is not None:
+        layerGroup = root.findGroup(newGroupName)
+        for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
+            if isinstance(child, QgsLayerTreeLayer): 
+                project_gis.removeMapLayer(child.layerId())
 
 def getLayerGeomType(layer: QgsVectorLayer): #https://qgis.org/pyqgis/3.0/core/Wkb/QgsWkbTypes.html 
     #print(layer.wkbType())
@@ -148,6 +157,18 @@ def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
     elif isinstance(value, str) and "PyQt5.QtCore.QDateTime(" in value: res = QVariant.DateTime #16
 
     return res
+
+def colorFromRenderMaterial(material):
+
+    color = QColor.fromRgb(245,245,245) #Objects.Other.RenderMaterial
+    try: 
+        rgb = material.diffuse
+        r = (rgb & 0xFF0000) >> 16
+        g = (rgb & 0xFF00) >> 8
+        b = rgb & 0xFF 
+        color = QColor.fromRgb(r, g, b)
+    except: pass
+    return color
 
 def getLayerAttributes(features: List[Base]) -> QgsFields:
     #print("___________getLayerAttributes")

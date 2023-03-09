@@ -7,21 +7,10 @@ from typing import List, Union
 from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint, 
     QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon,
     QgsCircularString, QgsLineString, QgsRasterLayer,QgsVectorLayer, QgsFeature)
-from speckle.converter.geometry.mesh import meshToNative
+from speckle.converter.geometry.mesh import meshToNative, writeMeshToShp
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from speckle.converter.geometry.polygon import *
-from speckle.converter.geometry.polyline import (
-    compoudCurveToSpeckle,
-    lineToNative,
-    polylineToNative,
-    curveToNative,
-    polylineToSpeckle,
-    circleToNative,
-    arcToNative,
-    arcToSpeckle,
-    polycurveToNative,
-    ellipseToNative
-)
+from speckle.converter.geometry.polyline import *
 from specklepy.objects import Base
 from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Ellipse, Polycurve
 
@@ -60,6 +49,8 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
             return polylineToSpeckle(geom, feature, layer)
         else: 
             return [polylineToSpeckle(poly, feature, layer) for poly in geom.parts()]
+    elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_Mesh") and "Speckle_ID" in layer.fields().names():
+        return polygonToSpeckleMesh(geom, feature, layer)
     elif geomType == QgsWkbTypes.PolygonGeometry: # 2
         if geomSingleType:
             return polygonToSpeckle(geom, feature, layer)
@@ -87,10 +78,14 @@ def convertToNative(base: Base) -> Union[QgsGeometry, None]:
     ]
 
     for conversion in conversions:
-        if isinstance(base, conversion[0]):
-            #print(conversion[0])
-            converted = conversion[1](base)
-            break
+        try: 
+            if isinstance(base.displayValue[0], Mesh):
+                converted: QgsMultiPolygon = meshToNative(base.displayValue) # only called for Meshes created in QGIS before
+        except:
+            if isinstance(base, conversion[0]):
+                #print(conversion[0])
+                converted = conversion[1](base)
+                break
 
     return converted
 

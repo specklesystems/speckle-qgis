@@ -11,7 +11,7 @@ from typing import Dict, Any
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
-from speckle.converter.geometry.mesh import rasterToMesh
+from speckle.converter.geometry.mesh import constructMesh
 from speckle.converter.layers.Layer import RasterLayer
 from speckle.logging import logger
 from speckle.converter.layers.utils import getVariantFromValue, traverseDict, validateAttributeName 
@@ -32,8 +32,8 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
     try:
         geom = convertToSpeckle(f, selectedLayer)
         #print(geom)
-        if geom is not None:
-            b["geometry"] = geom
+        if geom is not None: b["geometry"] = geom
+        else: b["geometry"] = [] 
     except Exception as error:
         logger.logToUser("Error converting geometry: " + str(error), Qgis.Critical)
 
@@ -96,7 +96,7 @@ def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, 
             try:
                 if key == "Speckle_ID": 
                     value = str(feature["id"])
-                    if key != "parameters": print(value)
+                    #if key != "parameters": print(value)
                     feat[key] = value 
 
                     feat = addFeatVariant(key, variant, value, feat)
@@ -313,7 +313,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             colors.extend([color,color,color,color])
             count += 4
 
-    mesh = rasterToMesh(vertices, faces, colors)
+    mesh = constructMesh(vertices, faces, colors)
     if(b['displayValue'] is None):
         b['displayValue'] = []
     b['displayValue'].append(mesh)

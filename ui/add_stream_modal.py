@@ -56,17 +56,19 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
     def onSearchClicked(self):
         query = self.search_text_field.text()
         sw = None 
+        results = []
         if "http" in query and len(query.split("/")) >= 3: # URL
             sw = StreamWrapper(query)
             stream = sw.get_client().stream.get(sw.stream_id)
             if isinstance(stream, Stream): results = [stream]
             else: results = []
-           
-        else: 
+        
+        elif self.speckle_client is not None: 
             results = self.speckle_client.stream.search(query)
+        elif self.speckle_client is None: 
+            logger.logToUser(f"Account cannot be authenticated: {self.accounts_dropdown.currentText()}", Qgis.Warning) 
         
         self.stream_results = results
-        #print(results)
         self.populateResultsList(sw)
     
     def populateResultsList(self, sw):

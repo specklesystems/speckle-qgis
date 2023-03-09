@@ -10,6 +10,7 @@ import os
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
+from plugin_utils.helpers import findOrCreatePath
 #from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
 from qgis.core import (Qgis, QgsRasterLayer,
                        QgsVectorLayer, QgsProject, QgsWkbTypes,
@@ -23,9 +24,9 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import getLayerGeomType, getLayerAttributes
+from speckle.converter.layers.utils import colorFromRenderMaterial, getLayerGeomType, getLayerAttributes
 from speckle.logging import logger
-from speckle.converter.geometry.mesh import rasterToMesh, meshToNative
+from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
 
 from speckle.converter.layers.symbology import vectorRendererToNative, rasterRendererToNative, rendererToSpeckle
 
@@ -165,8 +166,11 @@ def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch:
                 if geom.displayValue: geom_meshes.append(geom)
             except:
                 try: 
-                    if geom.displayMesh: geom_meshes.append(geom)
-                except: pass
+                    if geom["@displayValue"]: geom_meshes.append(geom)
+                except:
+                    try: 
+                        if geom.displayMesh: geom_meshes.append(geom)
+                    except: pass
         
         #if geom.speckle_type == 'Objects.BuiltElements.Alignment':
 
@@ -192,7 +196,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     path_bim = path + "/Layers_Speckle/BIM_layers/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #
 
-    if not os.path.exists(path_bim): os.makedirs(path_bim)
+    findOrCreatePath(path_bim)
     print(path_bim)
 
 
@@ -222,7 +226,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     crsid = crs.authid()
     
-    shp = meshToNative(geomList, path_bim + newName_shp)
+    shp = writeMeshToShp(geomList, path_bim + newName_shp)
     print("____ meshes saved___")
     print(shp)
 
@@ -230,12 +234,13 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     
     vl_shp = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
     vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl.setCrs(crs)
     QgsProject.instance().addMapLayer(vl, False)
-    try: 
-        vl_shp.deleteAttributes(vl.fields()) #if DisplayMesh exists 
-        vl_shp.commitChanges()
-    except: pass 
-    print(vl_shp.fields().names())
+    #try: 
+    #    vl_shp.deleteAttributes(vl.fields()) #if DisplayMesh exists 
+    #    vl_shp.commitChanges()
+    #except: pass 
+    #print(vl_shp.fields().names())
 
     pr = vl.dataProvider()
     vl.startEditing()
@@ -257,16 +262,43 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     
     for i,f in enumerate(geomList[:]): 
         try:
-            exist_feat = vl_shp.getFeature(i)
+            exist_feat: None = None
+            for n, shape in enumerate(vl_shp.getFeatures()):
+                print(shape["speckle_id"])
+                if shape["speckle_id"] == f.id:
+                    exist_feat = vl_shp.getFeature(n)
+                    break
+            if exist_feat is None: continue 
+
             new_feat = bimFeatureToNative(exist_feat, f, vl.fields(), crs, path_bim)
             if new_feat is not None and new_feat != "": 
+                colorFound = 0
+                try: # get render material from any part of the mesh (list of items in displayValue)
+                    for k, item in enumerate(f.displayValue):
+                        try:
+                            fetColors.append(item.renderMaterial)  
+                            colorFound += 1
+                            break
+                        except: pass
+                except: 
+                    try:
+                        for k, item in enumerate(f["@displayValue"]):
+                            try: 
+                                fetColors.append(item.renderMaterial) 
+                                colorFound += 1
+                                break
+                            except: pass
+                    except: 
+                        try:
+                            fetColors.append(f.renderMaterial) 
+                            colorFound += 1
+                        except: pass
                 fets.append(new_feat)
                 vl.addFeature(new_feat)
                 fetIds.append(f.id)
-                #try: fetColors.append(f.displayStyle.color) # might not correstond to meh vertex colors 
-                #except: fetColors.append(None)
+                if colorFound == 0: fetColors.append(None)
         except Exception as e: print(e)
-       
+    
     vl.updateExtents()
     vl.commitChanges()
     layerGroup.addLayer(vl)
@@ -291,14 +323,8 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         attribute = 'Speckle_ID'
         categories = []
         for i in range(len(fets)):
-            #rgb = fetColors[i]
-            #if rgb:
-            #    r = (rgb & 0xFF0000) >> 16
-            #    g = (rgb & 0xFF00) >> 8
-            #    b = rgb & 0xFF 
-            #    color = QColor.fromRgb(r, g, b)
-            #else: 
-            color = QColor.fromRgb(245,245,245)
+            material = fetColors[i]
+            color = colorFromRenderMaterial(material)
 
             symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
             symbol.setColor(color)
@@ -373,6 +399,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     if geomType == "Points": geomType = "PointZ"
     elif geomType == "Polylines": geomType = "LineStringZ"
     vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl.setCrs(crs)
     QgsProject.instance().addMapLayer(vl, False)
 
     pr = vl.dataProvider()
