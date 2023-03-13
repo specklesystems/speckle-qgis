@@ -33,6 +33,8 @@ from speckle.converter.layers.symbology import vectorRendererToNative, rasterRen
 from PyQt5.QtGui import QColor
 import numpy as np
 
+GEOM_LINE_TYPES = ["Objects.Geometry.Line", "Objects.Geometry.Polyline", "Objects.Geometry.Curve", "Objects.Geometry.Arc", "Objects.Geometry.Circle", "Objects.Geometry.Ellipse", "Objects.Geometry.Polycurve"]
+
 
 def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
@@ -359,6 +361,10 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -
             geom_points.append(geom)
         if geom.speckle_type == "Objects.Geometry.Line" or geom.speckle_type == "Objects.Geometry.Polyline" or geom.speckle_type == "Objects.Geometry.Curve" or geom.speckle_type == "Objects.Geometry.Arc" or geom.speckle_type == "Objects.Geometry.Circle" or geom.speckle_type == "Objects.Geometry.Ellipse" or geom.speckle_type == "Objects.Geometry.Polycurve":
             geom_polylines.append(geom)
+        try:
+            if geom.speckle_type.endswith(".ModelCurve") and geom["baseCurve"].speckle_type in GEOM_LINE_TYPES:
+                geom_polylines.append(geom["baseCurve"])
+        except: pass
     
     if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch)
     if len(geom_polylines)>0: layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch)
