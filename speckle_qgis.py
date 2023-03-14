@@ -265,6 +265,8 @@ class SpeckleQGIS:
 
     def onSend(self, message: str):
         """Handles action when Send button is pressed."""
+        
+        self.dockwidget.showWait()
         if not self.dockwidget: return
 
         # creating our parent base object
@@ -324,7 +326,8 @@ class SpeckleQGIS:
                 source_application="QGIS",
             )
             url: str = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
-
+            
+            self.dockwidget.hideWait()
             self.dockwidget.showLink(url, streamName)
 
             return url

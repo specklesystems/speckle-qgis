@@ -44,6 +44,7 @@ from specklepy.api.client import SpeckleClient
 
 from ui.validation import tryGetStream
 from ui.linkWidget import LinkWidget
+from ui.waitScreen import WaitScreenWidget
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(
@@ -83,6 +84,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     saveLayerSelection: QtWidgets.QPushButton
     runButton: QtWidgets.QPushButton
     link = None
+    waitScreen = None
     link_url: str = ""
     
     def __init__(self, parent=None):
@@ -193,6 +195,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.layout().addWidget(widgetLink)
         self.link = widgetLink 
 
+        self.waitScreen = WaitScreenWidget(parent=self) 
+
     def clearDropdown(self):
         #self.streamIdField.clear()
         self.streamBranchDropdown.clear()
@@ -232,6 +236,20 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         except Exception as e: 
             logToUser(str(e), level = 1, func = inspect.stack()[0][3])
 
+    def showWait(self):
+        print("showWait")
+        try: 
+            self.waitScreen.setGeometry(0, 0, self.frameSize().width(), self.frameSize().height())
+        except Exception as e: 
+            logToUser(str(e), level=1, func = inspect.stack()[0][3])
+
+    def hideWait(self):
+        print("hideWait")
+        if self.waitScreen is None: return 
+        try: 
+            self.waitScreen.setGeometry(0, 0, 0, 0)
+        except Exception as e: 
+            logToUser(str(e), level = 1, func = inspect.stack()[0][3])
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
