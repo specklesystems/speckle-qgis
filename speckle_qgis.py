@@ -258,9 +258,9 @@ class SpeckleQGIS:
             t.start()
 
         elif self.btnAction == 1: 
-            #self.onReceive()
-            t = threading.Thread(target=self.onReceive, args=())
-            t.start()
+            self.onReceive()
+            #t = threading.Thread(target=self.onReceive, args=())
+            #t.start()
 
 
     def onSend(self, message: str):

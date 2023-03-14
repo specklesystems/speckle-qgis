@@ -230,7 +230,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     
     
     vl_shp = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
-    vl = QgsVectorLayer( geomType, newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl = QgsVectorLayer( geomType+ "?crs=" + crs.toWkt(), newName, "memory") # do something to distinguish: stream_id_latest_name
     vl.setCrs(crs)
     QgsProject.instance().addMapLayer(vl, False)
     #try: 
@@ -241,7 +241,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     pr = vl.dataProvider()
     vl.startEditing()
-    vl.setCrs(crs)
+    #print(vl.crs())
 
     newFields = getLayerAttributes(geomList)
     print("___________Layer fields_____________")
@@ -399,13 +399,13 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     #crsid = crs.authid()
     if geomType == "Points": geomType = "PointZ"
     elif geomType == "Polylines": geomType = "LineStringZ"
-    vl = QgsVectorLayer( geomType , newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl = QgsVectorLayer( geomType+ "?crs=" + crs.toWkt() , newName, "memory") # do something to distinguish: stream_id_latest_name
     vl.setCrs(crs)
     QgsProject.instance().addMapLayer(vl, False)
 
     pr = vl.dataProvider()
     vl.startEditing()
-    vl.setCrs(crs)
+    #print(vl.crs())
 
     newFields = getLayerAttributes(geomList)
     print(newFields.toList())
@@ -503,13 +503,13 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
     elif geomType =="Multipoint": geomType = "Point"
     
     #crsid = crs.authid()
-    vl = QgsVectorLayer(geomType, newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl = QgsVectorLayer(geomType+ "?crs=" + crs.toWkt(), newName, "memory") # do something to distinguish: stream_id_latest_name
     QgsProject.instance().addMapLayer(vl, False)
 
     pr = vl.dataProvider()
     vl.setCrs(crs)
-    print(crs.toWkt())
     vl.startEditing()
+    #print(vl.crs())
 
     fets = []
     newFields = getLayerAttributes(layer.features)
@@ -525,6 +525,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
     vl.updateExtents()
     vl.commitChanges()
     layerGroup.addLayer(vl)
+    #print(vl.sourceCrs().toWkt())
 
     rendererNew = vectorRendererToNative(layer, newFields)
     if rendererNew is None:
