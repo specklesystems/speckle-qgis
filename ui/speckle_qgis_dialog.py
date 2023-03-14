@@ -41,6 +41,7 @@ from specklepy.api.wrapper import StreamWrapper
 from specklepy.api.client import SpeckleClient
 
 from ui.validation import tryGetStream
+from ui.linkWidget import LinkWidget
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(
@@ -80,6 +81,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     saveLayerSelection: QtWidgets.QPushButton
     runButton: QtWidgets.QPushButton
     link = None
+    link_url: str = ""
     
     def __init__(self, parent=None):
         """Constructor."""
@@ -184,6 +186,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         #self.runButton.setGeometry(0, 0, 150, 30)
         self.runButton.setMaximumWidth(200)
         self.runButton.setIcon(QIcon(ICON_SEND))
+        
+        widgetLink = LinkWidget(parent=self)
+        self.layout().addWidget(widgetLink)
+        self.link = widgetLink 
 
     def clearDropdown(self):
         #self.streamIdField.clear()
@@ -206,6 +212,23 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.completeStreamSection(plugin)
         # Populate the UI dropdowns
         self.populateUI(plugin) 
+
+
+    def showLink(self, url = ""):
+        print("showLink")
+        self.link_url = url
+        try: 
+            self.link.setGeometry(0, 0, self.frameSize().width(), self.frameSize().height())
+        except Exception as e: 
+            logger.logToUser(str(e), Qgis.Warning)
+
+    def hideLink(self):
+        if self.link is None: return 
+        try: 
+            self.link.setGeometry(0, 0, 0, 0)
+        except Exception as e: 
+            logger.logToUser(str(e), Qgis.Warning)
+
 
     def closeEvent(self, event):
         self.closingPlugin.emit()

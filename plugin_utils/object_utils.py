@@ -6,6 +6,7 @@ from qgis.core import Qgis
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers import bimLayerToNative, cadLayerToNative, layerToNative
 
+import threading
 from specklepy.objects import Base
 
 SPECKLE_TYPES_TO_READ = ["Objects.Geometry.", "Objects.BuiltElements.", "IFC"] # will properly traverse and check for displayValue
@@ -49,10 +50,10 @@ def callback(base: Base, streamBranch: str) -> bool:
             logger.log(f"Class \"Layer\" will be deprecated in future updates in favour of \"VectorLayer\" or \"RasterLayer\"", Qgis.Warning) 
         layer = layerToNative(base, streamBranch)
         if layer is not None:
-            logger.log("Layer created: " + layer.name(), Qgis.Info)
+            logger.logToUser("Layer created: " + layer.name(), Qgis.Info)
     else:
-        loopObj(base, "", streamBranch)
-        logger.log("Data received", Qgis.Info)
+        loopObj(base, "", streamBranch)    
+        logger.logToUser("Data received", Qgis.Info)
     return True
 
 def loopObj(base: Base, baseName: str, streamBranch: str):

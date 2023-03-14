@@ -85,7 +85,7 @@ def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], s
         #for k, layer in enumerate(layers):
         selected_name = selectedLayerNames[i]
         if selected_name != layers[index].layer().name():
-            logger.logToUser(f"Layers have changed. Pleash refresh Speckle Connector", Qgis.Critical)
+            logger.logToUser(f"Layers have changed. Please refresh Speckle Connector", Qgis.Critical)
             return None
         result.append(layerToSpeckle(layers[index], projectCRS, project))
     '''

@@ -15,16 +15,19 @@
 
 
 import os.path
+import sys
 from typing import Any, Callable, List, Optional, Tuple, Union
 
+import threading
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsRasterLayer, QgsVectorLayer)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QApplication, QAction, QDockWidget, QVBoxLayout, QWidget
 from qgis.PyQt import QtWidgets
 from qgis import PyQt
 import sip
+
 from specklepy.api import operations
 from specklepy.logging.exceptions import SpeckleException, GraphQLException
 #from specklepy.api.credentials import StreamWrapper
@@ -240,10 +243,22 @@ class SpeckleQGIS:
             self.iface.removeToolBarIcon(action)
 
     def onRunButtonClicked(self):
-        if self.btnAction == 0: self.onSend()
-        elif self.btnAction == 1: self.onReceive()
+        if self.btnAction == 0: 
+            #self.onSend()
+            
+            # Reset Survey point
+            self.dockwidget.populateSurveyPoint(self)
 
-    def onSend(self):
+            message = str(self.dockwidget.messageInput.text())
+            self.dockwidget.messageInput.setText("")
+
+            t = threading.Thread(target=self.onSend, args=(message,))
+            t.start()
+
+        elif self.btnAction == 1: 
+            self.onReceive()
+
+    def onSend(self, message: str):
         """Handles action when Send button is pressed."""
         if not self.dockwidget: return
 
@@ -271,9 +286,6 @@ class SpeckleQGIS:
         if base_obj.layers is None:
             return 
 
-        # Reset Survey point
-        self.dockwidget.populateSurveyPoint(self)
-
         # Get the stream wrapper
         streamWrapper = self.active_stream[0]
         streamName = self.active_stream[1].name
@@ -296,7 +308,7 @@ class SpeckleQGIS:
             logger.logToUser("Error sending data: " + str(e.message), Qgis.Critical)
             return
 
-        message = str(self.dockwidget.messageInput.text())
+        
         try:
             # you can now create a commit on your stream with this object
             commit_id = client.commit.create(
@@ -306,11 +318,12 @@ class SpeckleQGIS:
                 message="Sent objects from QGIS" if len(message) == 0 else message,
                 source_application="QGIS",
             )
-            logger.logToUser("Successfully sent data to stream: " + streamId)
-            self.dockwidget.messageInput.setText("")
             url = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
 
-            # create a temporary floating button 
+            self.dockwidget.showLink(url)
+
+            return url
+            r''' 
             width = self.dockwidget.frameSize().width()
             height = self.dockwidget.frameSize().height()
             backgr_color = f"background-color: rgb{str(SPECKLE_COLOR)};"
@@ -330,6 +343,7 @@ class SpeckleQGIS:
             
             self.dockwidget.layout().addWidget(widget)
             commit_link_btn.clicked.connect(lambda: self.openLink(url))
+            ''' 
 
         except SpeckleException as e:
             logger.logToUser("Error creating commit", Qgis.Critical)
