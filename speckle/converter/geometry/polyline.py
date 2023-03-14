@@ -1,3 +1,4 @@
+import inspect
 from math import asin, cos, sin, atan
 import math
 import numpy as np
@@ -17,6 +18,7 @@ from speckle.logging import logger
 from speckle.converter.layers.utils import get_scale_factor
 from typing import List, Tuple, Union
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
+from ui.logger import logToUser
 #from PyQt5.QtGui import QColor
 
 
@@ -315,7 +317,7 @@ def polycurveToNative(poly: Polycurve) -> QgsLineString:
                 if singleSegm == 1: return arcToNative(segm)
                 else: return None
             else: # either return a part of the curve, of skip this segment and try next
-                logger.logToUser(f"Part of the polycurve cannot be converted", Qgis.Warning)
+                logToUser(f"Part of the polycurve cannot be converted", level = 1, func = inspect.stack()[0][3])
                 curve = QgsLineString(points)
                 return curve
             
@@ -324,7 +326,7 @@ def polycurveToNative(poly: Polycurve) -> QgsLineString:
                     if len(points)>0 and pt.x()== points[len(points)-1].x() and pt.y()== points[len(points)-1].y() and pt.z()== points[len(points)-1].z(): pass
                     else: points.append(pt)
             else:
-                logger.logToUser(f"Part of the polycurve cannot be converted", Qgis.Warning)
+                logToUser(f"Part of the polycurve cannot be converted", level = 1, func = inspect.stack()[0][3])
                 curve = QgsLineString(points)
                 return curve
     except: curve = None

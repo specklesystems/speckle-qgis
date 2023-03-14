@@ -230,7 +230,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         try: 
             self.link.setGeometry(0, 0, 0, 0)
         except Exception as e: 
-            logger.logToUser(str(e), Qgis.Warning)
+            logToUser(str(e), level = 1, func = inspect.stack()[0][3])
 
 
     def closeEvent(self, event):

@@ -1,4 +1,5 @@
 from distutils.log import error
+import inspect
 import math
 from tokenize import String
 from typing import List
@@ -18,6 +19,8 @@ from speckle.converter.layers.utils import getVariantFromValue, traverseDict, va
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 
+from ui.logger import logToUser
+
 def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer):
     b = Base(units = "m")
 
@@ -35,7 +38,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         if geom is not None: b["geometry"] = geom
         else: b["geometry"] = [] 
     except Exception as error:
-        logger.logToUser("Error converting geometry: " + str(error), Qgis.Critical)
+        logToUser("Error converting geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
 
     for name in fieldnames:
         corrected = validateAttributeName(name, fieldnames)
@@ -141,8 +144,8 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
     rasterBandCount = selectedLayer.bandCount()
     rasterBandNames = []
     rasterDimensions = [selectedLayer.width(), selectedLayer.height()]
-    if rasterDimensions[0]*rasterDimensions[1] > 1000000 :
-       logger.logToUser("Large layer: ", Qgis.Warning)
+    #if rasterDimensions[0]*rasterDimensions[1] > 1000000 :
+    #   logToUser("Large layer: ", level = 1, func = inspect.stack()[0][3])
 
     ds = gdal.Open(selectedLayer.source(), gdal.GA_ReadOnly)
     rasterOriginPoint = QgsPointXY(ds.GetGeoTransform()[0], ds.GetGeoTransform()[3])
@@ -163,7 +166,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         if (geom != None):
             b['displayValue'] = [geom]
     except Exception as error:
-        logger.logToUser("Error converting point geometry: " + str(error), Qgis.Critical)
+        logToUser("Error converting point geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
 
     for index in range(rasterBandCount):
         rasterBandNames.append(selectedLayer.bandName(index+1))

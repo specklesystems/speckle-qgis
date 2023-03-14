@@ -2,6 +2,7 @@
 Contains all Layer related classes and methods.
 """
 import enum
+import inspect
 import math
 from typing import List, Union
 from specklepy.objects import Base
@@ -33,6 +34,8 @@ from speckle.converter.layers.symbology import vectorRendererToNative, rasterRen
 from PyQt5.QtGui import QColor
 import numpy as np
 
+from ui.logger import logToUser
+
 GEOM_LINE_TYPES = ["Objects.Geometry.Line", "Objects.Geometry.Polyline", "Objects.Geometry.Curve", "Objects.Geometry.Arc", "Objects.Geometry.Circle", "Objects.Geometry.Ellipse", "Objects.Geometry.Polycurve"]
 
 
@@ -50,7 +53,7 @@ def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, Qg
             try: 
                 id = item[1].id()
             except:
-                logger.logToUser(f'Saved layer not found: "{item[0]}"', Qgis.Warning)
+                logToUser(f'Saved layer not found: "{item[0]}"', level = 1, func = inspect.stack()[0][3])
                 continue
             found = 0
             for l in project.mapLayers().values():
@@ -59,7 +62,7 @@ def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, Qg
                     found += 1
                     break 
             if found == 0: 
-                logger.logToUser(f'Saved layer not found: "{item[0]}"', Qgis.Warning)
+                logToUser(f'Saved layer not found: "{item[0]}"', level = 1, func = inspect.stack()[0][3])
     
     r'''
     children = parent.children()
@@ -80,15 +83,7 @@ def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, Qg
 def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], selectedLayerIndex: List[int], selectedLayerNames: List[str], projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> List[Union[VectorLayer, RasterLayer]]:
     """Converts the current selected layers to Speckle"""
     result = []
-    r'''
-    for i, index in enumerate(selectedLayerIndex):
-        #for k, layer in enumerate(layers):
-        selected_name = selectedLayerNames[i]
-        if selected_name != layers[index].layer().name():
-            logger.logToUser(f"Layers have changed. Please refresh Speckle Connector", Qgis.Critical)
-            return None
-        result.append(layerToSpeckle(layers[index], projectCRS, project))
-    '''
+
     for i, layer in enumerate(layers):
         result.append(layerToSpeckle(layer, projectCRS, project))
     
@@ -193,7 +188,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     
     path = QgsProject.instance().absolutePath()
     if(path == ""):
-        logger.logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", Qgis.Warning)
+        logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", level = 1, func = inspect.stack()[0][3])
         return None
 
     path_bim = path + "/Layers_Speckle/BIM_layers/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #
@@ -204,7 +199,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
     if crs.isGeographic is True: 
-        logger.logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", Qgis.Warning)
+        logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
 
     #CREATE A GROUP "received blabla" with sublayers
     newGroupName = f'{streamBranch}'
@@ -226,7 +221,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
     if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
 
-    crsid = crs.authid()
+    #crsid = crs.authid()
     
     shp = writeMeshToShp(geomList, path_bim + newName_shp)
     print("____ meshes saved___")
@@ -235,7 +230,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     
     
     vl_shp = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
-    vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl = QgsVectorLayer( geomType, newName, "memory") # do something to distinguish: stream_id_latest_name
     vl.setCrs(crs)
     QgsProject.instance().addMapLayer(vl, False)
     #try: 
@@ -381,7 +376,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     print(layerName)
     crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
     if crs.isGeographic is True: 
-        logger.logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", Qgis.Warning)
+        logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
 
     #CREATE A GROUP "received blabla" with sublayers
     newGroupName = f'{streamBranch}'
@@ -401,10 +396,10 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
 
     #or create one from scratch
-    crsid = crs.authid()
+    #crsid = crs.authid()
     if geomType == "Points": geomType = "PointZ"
     elif geomType == "Polylines": geomType = "LineStringZ"
-    vl = QgsVectorLayer( geomType +"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl = QgsVectorLayer( geomType , newName, "memory") # do something to distinguish: stream_id_latest_name
     vl.setCrs(crs)
     QgsProject.instance().addMapLayer(vl, False)
 
@@ -507,13 +502,14 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
     elif geomType =="Polyline": geomType = "MultiLineString"
     elif geomType =="Multipoint": geomType = "Point"
     
-    crsid = crs.authid()
-    vl = QgsVectorLayer(geomType+"?crs="+crsid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    #crsid = crs.authid()
+    vl = QgsVectorLayer(geomType, newName, "memory") # do something to distinguish: stream_id_latest_name
     QgsProject.instance().addMapLayer(vl, False)
 
     pr = vl.dataProvider()
-    vl.startEditing()
     vl.setCrs(crs)
+    print(crs.toWkt())
+    vl.startEditing()
 
     fets = []
     newFields = getLayerAttributes(layer.features)
@@ -551,7 +547,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
     except: 
         crsRasterWkt = str(layer.crs.wkt)
         crsRaster = crs
-        logger.logToUser(f"Raster layer {layer.name} might have been sent from the older version of plugin. Try sending it again for more accurate results.", Qgis.Warning)
+        logToUser(f"Raster layer {layer.name} might have been sent from the older version of plugin. Try sending it again for more accurate results.", level = 1, func = inspect.stack()[0][3])
     
     #CREATE A GROUP "received blabla" with sublayers
     newGroupName = f'{streamBranch}'
@@ -572,7 +568,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
     source_folder = QgsProject.instance().absolutePath()
 
     if(source_folder == ""):
-        logger.logToUser(f"Raster layers can only be received in an existing saved project. Layer {layer.name} will be ignored", Qgis.Warning)
+        logToUser(f"Raster layers can only be received in an existing saved project. Layer {layer.name} will be ignored", level = 1, func = inspect.stack()[0][3])
         return None
 
     project = QgsProject.instance()
@@ -581,8 +577,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
     #try: epsg = int(crsid.split(":")[1]) 
     #except: 
     #    epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
-    #    logger.logToUser(f"CRS of the received raster cannot be identified. Project CRS will be used.", Qgis.Warning)
-    
+
     feat = layer.features[0]
     bandNames = feat["Band names"]
     bandValues = [feat["@(10000)" + name + "_values"] for name in bandNames]

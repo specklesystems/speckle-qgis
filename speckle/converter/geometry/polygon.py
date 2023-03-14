@@ -1,5 +1,6 @@
 """ This module contains all geometry conversion functionality To and From Speckle."""
 
+import inspect
 from qgis.core import Qgis, QgsGeometry, QgsPolygon, QgsPointXY, QgsPoint, QgsFeature, QgsVectorLayer
 
 from typing import List, Sequence
@@ -20,6 +21,8 @@ import math
 from panda3d.core import Triangulator
 
 from PyQt5.QtGui import QColor
+
+from ui.logger import logToUser
 
 def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer):
 
@@ -70,7 +73,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
 
         return polygon
     except: 
-        logger.logToUser("Some polygons might be invalid", Qgis.Warning)
+        logToUser("Some polygons might be invalid", level = 1, func = inspect.stack()[0][3])
         pass
 
 
@@ -134,6 +137,6 @@ def getPolyBoundaryVoids(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
                     voids.append(intRing)
             except: pass 
     except: 
-        logger.logToUser("Some polygons might be invalid", Qgis.Warning)
+        logToUser("Some polygons might be invalid", level = 1, func = inspect.stack()[0][3])
 
     return boundary, voids

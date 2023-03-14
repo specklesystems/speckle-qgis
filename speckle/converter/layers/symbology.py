@@ -126,6 +126,7 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
             noneVal = 0
             for i in range(len(cats)):
                 v = cats[i]['value'] 
+                if v=="<Null>": v = None
                 if v is None or v=="": noneVal +=1
                 rgb = cats[i]['symbColor']
                 r = (rgb & 0xFF0000) >> 16
@@ -141,7 +142,7 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
                 #    categories[0].setLabel('Other')
 
                 symbol.setColor(color)
-                categories.append(QgsRendererCategory(cats[i]['value'], symbol, cats[i]['label'], True) )
+                categories.append(QgsRendererCategory(v, symbol, cats[i]['label'], True) )
             # create empty category for all other values (if doesn't exist yet)
             if noneVal == 0:
                 symbol2 = symbol.clone()

@@ -93,7 +93,6 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
         w.multipatch(parts_list, partTypes=types_list ) # one type for each part
         w.record(geom_id)
         #else: 
-        #    logger.logToUser("Received mesh type is not supported", Qgis.Warning)
         #    #print("not triangulated mesh")
 
     except Exception as e: pass #; print(e)

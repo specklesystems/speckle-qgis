@@ -8,6 +8,7 @@ from specklepy.api.wrapper import StreamWrapper
 
 from speckle.logging import logger
 from qgis.core import (Qgis, QgsProject, QgsCoordinateReferenceSystem)
+from ui.logger import logToUser
 from ui.validation import tryGetStream
 
 def get_project_streams(self: SpeckleQGIS):
@@ -86,23 +87,23 @@ def set_survey_point(self: SpeckleQGIS):
         logger.logToUser("Lat, Lon values invalid: " + str(e), Qgis.Warning)
         return False 
     
-def setProjectReferenceSystem(self: SpeckleQGIS):
+def setProjectReferenceSystem(plugin: SpeckleQGIS):
     # Create CRS and apply to the project:
     # https://gis.stackexchange.com/questions/379199/having-problem-with-proj-string-for-custom-coordinate-system
     # https://proj.org/usage/projections.html
     try: 
-        newCrsString = "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0=" + str(self.lon) + " lat_0=" + str(self.lat) + " +x_0=0 +y_0=0 +k_0=1"
+        newCrsString = "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0=" + str(plugin.lon) + " lat_0=" + str(plugin.lat) + " +x_0=0 +y_0=0 +k_0=1"
         newCrs = QgsCoordinateReferenceSystem().fromProj(newCrsString)#fromWkt(newProjWkt)
         validate = QgsCoordinateReferenceSystem().createFromProj(newCrsString)
 
         if validate: 
-            QgsProject.instance().setCrs(newCrs) 
+            plugin.qgis_project.setCrs(newCrs) 
             #listCrs = QgsCoordinateReferenceSystem().validSrsIds()
             #if exists == 0: newCrs.saveAsUserCrs("SpeckleCRS_lon=" + str(sPoint.x()) + "_lat=" + str(sPoint.y())) # srsid() #https://gis.stackexchange.com/questions/341500/creating-custom-crs-in-qgis
-            logger.logToUser("Custom project CRS successfully applied", Qgis.Info)
+            logToUser("Custom project CRS successfully applied", level=0)
         else:
-            logger.logToUser("Custom CRS could not be created", Qgis.Warning)
+            logToUser("Custom CRS could not be created", level=1)
     except:
-        logger.logToUser("Custom CRS could not be created", Qgis.Warning)
+        logToUser("Custom CRS could not be created", level=1)
     
     return True

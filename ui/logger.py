@@ -2,8 +2,6 @@
 from PyQt5.QtWidgets import QMessageBox, QPushButton
 from PyQt5 import QtCore
 
-import inspect 
-
 def logToUser(msg: str, func=None, level: int = 2):
       print("Log to user")
       window = createWindow(msg, func, level)

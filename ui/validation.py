@@ -1,4 +1,5 @@
 
+import inspect
 from typing import Union
 from specklepy.api.wrapper import StreamWrapper
 from specklepy.api.models import Stream, Branch, Commit 
@@ -8,6 +9,7 @@ from specklepy.logging.exceptions import SpeckleException, GraphQLException
 
 from speckle.logging import logger
 from qgis.core import Qgis
+from ui.logger import logToUser
   
 def tryGetStream (sw: StreamWrapper) -> Stream:
     client = sw.get_client()
@@ -20,13 +22,13 @@ def validateStream(streamWrapper: StreamWrapper) -> Union[Stream, None]:
     try: 
         stream = tryGetStream(streamWrapper)
     except SpeckleException as e:
-        logger.logToUser(e.message, Qgis.Warning)
+        logToUser(e.message, level = 1, func = inspect.stack()[0][3])
         return None
 
     if isinstance(stream, SpeckleException): return None
 
     if stream.branches is None:
-        logger.logToUser("Stream has no branches", Qgis.Warning)
+        logToUser("Stream has no branches", level = 1, func = inspect.stack()[0][3])
         return None
     return stream
 
@@ -39,21 +41,21 @@ def validateBranch(stream: Stream, branchName: str, checkCommits: bool) ->  Unio
             branch = b
             break
     if branch is None: 
-        logger.logToUser("Failed to find a branch", Qgis.Warning)
+        logToUser("Failed to find a branch", level = 2, func = inspect.stack()[0][3])
         return None
     if checkCommits == True:
         if branch.commits is None:
-            logger.logToUser("Failed to find a branch", Qgis.Warning)
+            logToUser("Failed to find a branch", level = 2, func = inspect.stack()[0][3])
             return None
         if len(branch.commits.items)==0:
-            logger.logToUser("Branch contains no commits", Qgis.Warning)
+            logToUser("Branch contains no commits", level = 1, func = inspect.stack()[0][3])
             return None
     return branch
             
 def validateCommit(branch: Branch, commitId: str) -> Union[Commit, None]:
     commit = None
     try: commitId = commitId.split(" | ")[0]
-    except: logger.logToUser("Commit ID is not valid", Qgis.Warning)
+    except: logToUser("Commit ID is not valid", level = 2, func = inspect.stack()[0][3])
 
     for i in branch.commits.items:
         if i.id == commitId:
@@ -62,15 +64,15 @@ def validateCommit(branch: Branch, commitId: str) -> Union[Commit, None]:
     if commit is None:
         try: 
             commit = branch.commits.items[0]
-            logger.logToUser("Failed to find a commit. Receiving Latest", Qgis.Warning)
+            logToUser("Failed to find a commit. Receiving Latest", level = 1, func = inspect.stack()[0][3])
         except: 
-            logger.logToUser("Failed to find a commit", Qgis.Warning)
+            logToUser("Failed to find a commit", level = 2, func = inspect.stack()[0][3])
             return None
     return commit
 
 def validateTransport(client: SpeckleClient, streamId: str) -> Union[ServerTransport, None]:
     try: transport = ServerTransport(client=client, stream_id=streamId)
     except Exception as e: 
-        logger.logToUser("Make sure you have sufficient permissions: " + str(e), Qgis.Warning)
+        logToUser("Make sure you have sufficient permissions: " + str(e), level = 1, func = inspect.stack()[0][3])
         return None
     return transport

@@ -9,6 +9,8 @@ from speckle.converter.layers import bimLayerToNative, cadLayerToNative, layerTo
 import threading
 from specklepy.objects import Base
 
+from ui.logger import logToUser
+
 SPECKLE_TYPES_TO_READ = ["Objects.Geometry.", "Objects.BuiltElements.", "IFC"] # will properly traverse and check for displayValue
 
 def traverseObject(
@@ -29,6 +31,7 @@ def traverseObject(
         except:
             pass
         traverseValue(base[name], callback, check, streamBranch)
+    #logToUser("Data received", level = 0)
 
 def traverseValue(
     value: Any,
@@ -48,12 +51,11 @@ def callback(base: Base, streamBranch: str) -> bool:
         #print(base)
         if isinstance(base, Layer):
             logger.log(f"Class \"Layer\" will be deprecated in future updates in favour of \"VectorLayer\" or \"RasterLayer\"", Qgis.Warning) 
-        layer = layerToNative(base, streamBranch)
-        if layer is not None:
-            logger.logToUser("Layer created: " + layer.name(), Qgis.Info)
+        layerToNative(base, streamBranch)
+        #if layer is not None:
+        #    .logToUser("Layer created: " + layer.name(), Qgis.Info)
     else:
         loopObj(base, "", streamBranch)    
-        logger.logToUser("Data received", Qgis.Info)
     return True
 
 def loopObj(base: Base, baseName: str, streamBranch: str):

@@ -425,6 +425,7 @@ class SpeckleQGIS:
             if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
             traverseObject(commitObj, callback, check, str(newGroupName))
+            return 
             
         except SpeckleException as e:
             logToUser("Receive failed: "+ e.message, level = 2, func = inspect.stack()[0][3])

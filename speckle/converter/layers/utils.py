@@ -1,3 +1,4 @@
+import inspect
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from qgis._core import Qgis, QgsProject, QgsLayerTreeLayer, QgsVectorLayer, QgsWkbTypes, QgsField, QgsFields
 from speckle.logging import logger
@@ -5,6 +6,8 @@ from speckle.converter.layers import Layer
 from typing import Any, List, Tuple, Union
 from specklepy.objects import Base
 from PyQt5.QtGui import QColor
+
+from ui.logger import logToUser
 
 ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
 
@@ -298,7 +301,7 @@ def get_scale_factor(units: str) -> float:
     }
     if units is not None and units.lower() in unit_scale.keys():
         return unit_scale[units]
-    logger.logToUser(f"Units {units} are not supported. Meters will be applied by default.", Qgis.Warning)
+    logToUser(f"Units {units} are not supported. Meters will be applied by default.", level = 1, func = inspect.stack()[0][3])
     return 1.0
 
 def validateAttributeName(name: str, fieldnames: List[str]) -> str:
