@@ -266,8 +266,8 @@ class SpeckleQGIS:
     def onSend(self, message: str):
         """Handles action when Send button is pressed."""
         
-        self.dockwidget.showWait()
         if not self.dockwidget: return
+        self.dockwidget.showWait()
 
         # creating our parent base object
         project = QgsProject.instance()
@@ -281,16 +281,19 @@ class SpeckleQGIS:
         # Check if stream id/url is empty
         if self.active_stream is None:
             logToUser("Please select a stream from the list.", level = 2, func = inspect.stack()[0][3] )
+            self.dockwidget.hideWait()
             return
         
         # Check if no layers are selected
         if len(layers) == 0: #len(selectedLayerNames) == 0:
             logToUser("No layers selected", level = 1, func = inspect.stack()[0][3])
+            self.dockwidget.hideWait()
             return
 
         base_obj = Base(units = "m")
         base_obj.layers = convertSelectedLayers(layers, [],[], projectCRS, project)
         if base_obj.layers is None:
+            self.dockwidget.hideWait()
             return 
 
         # Get the stream wrapper
@@ -300,19 +303,26 @@ class SpeckleQGIS:
         client = streamWrapper.get_client()
 
         stream = validateStream(streamWrapper)
-        if stream == None: return
+        if stream == None: 
+            self.dockwidget.hideWait()
+            return
         
         branchName = str(self.dockwidget.streamBranchDropdown.currentText())
         branch = validateBranch(stream, branchName, False)
-        if branch == None: return
+        if branch == None: 
+            self.dockwidget.hideWait()
+            return
 
         transport = validateTransport(client, streamId)
-        if transport == None: return
+        if transport == None: 
+            self.dockwidget.hideWait()
+            return
         try:
             # this serialises the block and sends it to the transport
             objId = operations.send(base=base_obj, transports=[transport])
         except SpeckleException as e:
             logToUser("Error sending data: " + str(e.message), level = 2, func = inspect.stack()[0][3])
+            self.dockwidget.hideWait()
             return
 
         
@@ -355,6 +365,7 @@ class SpeckleQGIS:
 
         except SpeckleException as e:
             logToUser("Error creating commit", level = 2, func = inspect.stack()[0][3])
+            self.dockwidget.hideWait()
     
     def openLink(self, url):
         webbrowser.open(url, new=0, autoraise=True)
@@ -370,10 +381,12 @@ class SpeckleQGIS:
         """Handles action when the Receive button is pressed"""
 
         if not self.dockwidget: return
+        self.dockwidget.showWait()
 
         # Check if stream id/url is empty
         if self.active_stream is None:
             logToUser("Please select a stream from the list.", level = 2, func = inspect.stack()[0][3])
+            self.dockwidget.hideWait()
             return
 
         # Get the stream wrapper
@@ -383,28 +396,39 @@ class SpeckleQGIS:
         # Ensure the stream actually exists
         try:
             stream = validateStream(streamWrapper)
-            if stream == None: return
+            if stream == None: 
+                self.dockwidget.hideWait()
+                return
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
             branch = validateBranch(stream, branchName, True)
-            if branch == None: return
+            if branch == None: 
+                self.dockwidget.hideWait()
+                return
 
             commitId = str(self.dockwidget.commitDropdown.currentText())
             commit = validateCommit(branch, commitId)
-            if commit == None: return
+            if commit == None: 
+                self.dockwidget.hideWait()
+                return
 
         except SpeckleException as error:
             logToUser(str(error), level = 2, func = inspect.stack()[0][3])
+            self.dockwidget.hideWait()
             return
 
         transport = validateTransport(client, streamId)
-        if transport == None: return 
+        if transport == None: 
+            self.dockwidget.hideWait()
+            return 
         
         try:
             objId = commit.referencedObject
             #commitDetailed = client.commit.get(streamId, commit.id)
             app = commit.sourceApplication
-            if branch.name is None or commit.id is None or objId is None: return 
+            if branch.name is None or commit.id is None or objId is None: 
+                self.dockwidget.hideWait()
+                return 
 
             commitObj = operations.receive(objId, transport, None)
 
@@ -428,10 +452,13 @@ class SpeckleQGIS:
             if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
             traverseObject(commitObj, callback, check, str(newGroupName))
+            
+            self.dockwidget.hideWait()
             return 
             
         except SpeckleException as e:
             logToUser("Receive failed: "+ e.message, level = 2, func = inspect.stack()[0][3])
+            self.dockwidget.hideWait()
             return
 
     def reloadUI(self):
