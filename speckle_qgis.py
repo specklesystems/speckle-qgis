@@ -14,6 +14,7 @@
 """
 
 
+import inspect
 import os.path
 import sys
 from typing import Any, Callable, List, Optional, Tuple, Union
@@ -50,6 +51,7 @@ from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
 from ui.create_stream import CreateStreamModalDialog
 from ui.create_branch import CreateBranchModalDialog
+from ui.logger import logToUser, logToUserWithAction
 
 # Import the code for the dialog
 from ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
@@ -256,7 +258,10 @@ class SpeckleQGIS:
             t.start()
 
         elif self.btnAction == 1: 
-            self.onReceive()
+            #self.onReceive()
+            t = threading.Thread(target=self.onReceive, args=())
+            t.start()
+
 
     def onSend(self, message: str):
         """Handles action when Send button is pressed."""
@@ -273,12 +278,12 @@ class SpeckleQGIS:
 
         # Check if stream id/url is empty
         if self.active_stream is None:
-            logger.logToUser("Please select a stream from the list.", Qgis.Critical )
+            logToUser("Please select a stream from the list.", level = 2, func = inspect.stack()[0][3] )
             return
         
         # Check if no layers are selected
         if len(layers) == 0: #len(selectedLayerNames) == 0:
-            logger.logToUser("No layers selected", Qgis.Warning)
+            logToUser("No layers selected", level = 1, func = inspect.stack()[0][3])
             return
 
         base_obj = Base(units = "m")
@@ -305,7 +310,7 @@ class SpeckleQGIS:
             # this serialises the block and sends it to the transport
             objId = operations.send(base=base_obj, transports=[transport])
         except SpeckleException as e:
-            logger.logToUser("Error sending data: " + str(e.message), Qgis.Critical)
+            logToUser("Error sending data: " + str(e.message), level = 2, func = inspect.stack()[0][3])
             return
 
         
@@ -318,9 +323,9 @@ class SpeckleQGIS:
                 message="Sent objects from QGIS" if len(message) == 0 else message,
                 source_application="QGIS",
             )
-            url = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
+            url: str = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
 
-            self.dockwidget.showLink(url)
+            self.dockwidget.showLink(url, streamName)
 
             return url
             r''' 
@@ -346,7 +351,7 @@ class SpeckleQGIS:
             ''' 
 
         except SpeckleException as e:
-            logger.logToUser("Error creating commit", Qgis.Critical)
+            logToUser("Error creating commit", level = 2, func = inspect.stack()[0][3])
     
     def openLink(self, url):
         webbrowser.open(url, new=0, autoraise=True)
@@ -365,7 +370,7 @@ class SpeckleQGIS:
 
         # Check if stream id/url is empty
         if self.active_stream is None:
-            logger.logToUser("Please select a stream from the list.", Qgis.Critical)
+            logToUser("Please select a stream from the list.", level = 2, func = inspect.stack()[0][3])
             return
 
         # Get the stream wrapper
@@ -386,7 +391,7 @@ class SpeckleQGIS:
             if commit == None: return
 
         except SpeckleException as error:
-            logger.logToUser(str(error), Qgis.Critical)
+            logToUser(str(error), level = 2, func = inspect.stack()[0][3])
             return
 
         transport = validateTransport(client, streamId)
@@ -410,7 +415,7 @@ class SpeckleQGIS:
             
             if app != "QGIS" and app != "ArcGIS": 
                 if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
-                    logger.logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
+                    logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", level = 1, func = inspect.stack()[0][3])
             logger.log(f"Succesfully received {objId}")
 
             # If group exists, remove layers inside  
@@ -422,7 +427,7 @@ class SpeckleQGIS:
             traverseObject(commitObj, callback, check, str(newGroupName))
             
         except SpeckleException as e:
-            logger.logToUser("Receive failed: "+ e.message, Qgis.Critical)
+            logToUser("Receive failed: "+ e.message, level = 2, func = inspect.stack()[0][3])
             return
 
     def reloadUI(self):
@@ -444,7 +449,7 @@ class SpeckleQGIS:
         accounts = get_local_accounts()
         self.accounts = accounts
         if len(accounts) == 0:
-            logger.logToUserWithAction("No accounts were found. Please remember to install the Speckle Manager and setup at least one account","Download Manager", go_to_manager)
+            logToUserWithAction("No accounts were found. Please remember to install the Speckle Manager and setup at least one account", level = 1, func = inspect.stack()[0][3], action_text="Download Manager", callback=go_to_manager)
             return False
         for acc in accounts:
             if acc.isDefault: 

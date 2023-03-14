@@ -4,7 +4,9 @@ from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget
 from qgis.PyQt import QtWidgets
 import webbrowser
 
-import inspect 
+import inspect
+
+from ui.logger import logToUser 
 
 SPECKLE_COLOR = (59,130,246)
 SPECKLE_COLOR_LIGHT = (69,140,255)
@@ -16,6 +18,7 @@ class LinkWidget(QWidget):
         super(LinkWidget, self).__init__(parent)
         print("start LinkWidget")
         self.parentWidget = parent
+        self.link_btn = None
         print(self.parentWidget)
         # create a temporary floating button 
         width = 0 #parent.frameSize().width()
@@ -36,6 +39,7 @@ class LinkWidget(QWidget):
         self.setGeometry(0, 0, width, height)
         #self.mouseReleaseEvent = lambda event: self.closeLinkWidget(parent)
         commit_link_btn.clicked.connect(lambda: self.openLink())
+        self.link_btn = commit_link_btn
         
 
     # overriding the mouseReleaseEvent method

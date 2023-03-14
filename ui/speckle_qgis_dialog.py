@@ -22,8 +22,10 @@
  ***************************************************************************/
 """
 
+import inspect
 import os
 from speckle.converter.layers import getLayers
+from ui.logger import logToUser
 #from speckle_qgis import SpeckleQGIS
 import ui.speckle_qgis_dialog
 from qgis.core import Qgis, QgsProject,QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
@@ -214,13 +216,14 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.populateUI(plugin) 
 
 
-    def showLink(self, url = ""):
+    def showLink(self, url = "", stream=""):
         print("showLink")
-        self.link_url = url
+        self.link_url = url # this parameter will be picked up by "open link" function
+        #self.link.link_btn.setText(f"👌 Data sent to Stream {stream} \n View it online")
         try: 
             self.link.setGeometry(0, 0, self.frameSize().width(), self.frameSize().height())
         except Exception as e: 
-            logger.logToUser(str(e), Qgis.Warning)
+            logToUser(str(e), level=1, func = inspect.stack()[0][3])
 
     def hideLink(self):
         if self.link is None: return 
