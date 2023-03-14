@@ -205,7 +205,8 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
                         if k not in all_props: all_props.append(k)
                         if k not in fields.names(): fields.append(QgsField(k, v)) # fields.update({k: v}) 
                         else: #check if the field was empty previously: 
-                            oldVariant = fields[k]
+                            index = fields.indexFromName(k)
+                            oldVariant = fields.field(index).type()
                             # replace if new one is NOT Float (too large integers)
                             #if oldVariant != "FLOAT" and v == "FLOAT": 
                             #    fields.append(QgsField(k, v)) # fields.update({k: v}) 
@@ -238,7 +239,8 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
                     if k not in all_props: all_props.append(k)
                     if k not in fields.names(): fields.append(QgsField(k, v)) # fields.update({k: v}) #if variant is known
                     else: #check if the field was empty previously: 
-                        oldVariant = fields[k]
+                        index = fields.indexFromName(k)
+                        oldVariant = fields.field(index).type()
                         # replace if new one is NOT Float (too large integers)
                         #if oldVariant != "FLOAT" and v == "FLOAT": 
                         #    fields.append(QgsField(k, v)) # fields.update({k: v}) 
