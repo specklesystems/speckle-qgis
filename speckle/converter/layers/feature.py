@@ -12,7 +12,7 @@ from typing import Dict, Any
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
-from speckle.converter.geometry.mesh import constructMesh
+from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from speckle.converter.layers.Layer import RasterLayer
 from speckle.logging import logger
 from speckle.converter.layers.utils import getVariantFromValue, traverseDict, validateAttributeName 
@@ -316,7 +316,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             colors.extend([color,color,color,color])
             count += 4
 
-    mesh = constructMesh(vertices, faces, colors)
+    mesh = constructMeshFromRaster(vertices, faces, colors)
     if(b['displayValue'] is None):
         b['displayValue'] = []
     b['displayValue'].append(mesh)

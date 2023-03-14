@@ -125,6 +125,11 @@ def deconstructSpeckleMesh(mesh: Mesh):
 
     return parts_list, types_list
 
+def constructMeshFromRaster(vertices, faces, colors):
+    mesh = Mesh.create(vertices, faces, colors)
+    mesh.units = "m"
+    return mesh
+
 def constructMesh(vertices, faces, colors):
     mesh = Mesh.create(vertices, faces, colors)
     mesh.units = "m"
