@@ -1,4 +1,5 @@
 
+import time
 from typing import Any, Callable, List, Optional 
 
 from speckle.logging import logger
@@ -52,6 +53,7 @@ def callback(base: Base, streamBranch: str) -> bool:
         if isinstance(base, Layer):
             logger.log(f"Class \"Layer\" will be deprecated in future updates in favour of \"VectorLayer\" or \"RasterLayer\"", Qgis.Warning) 
         layerToNative(base, streamBranch)
+        time.sleep(0.3)
         #if layer is not None:
         #    .logToUser("Layer created: " + layer.name(), Qgis.Info)
     else:
@@ -97,15 +99,19 @@ def loopVal(value: Any, name: str, streamBranch: str): # "name" is the parent ob
                             bimLayerToNative(value, name, streamBranch)
                             objectListConverted += 1
                     except: pass 
+                time.sleep(0.3)
             elif item.speckle_type and item.speckle_type.endswith(".ModelCurve"): 
                 if item["baseCurve"] is not None: 
                     cadLayerToNative(value, name, streamBranch)
+                    time.sleep(0.3)
                     break
             elif item.speckle_type and (item.speckle_type == "Objects.Geometry.Mesh" or item.speckle_type == "Objects.Geometry.Brep" or item.speckle_type.startswith("Objects.BuiltElements.")):
                 bimLayerToNative(value, name, streamBranch)
+                time.sleep(0.3)
                 break
             elif item.speckle_type and item.speckle_type != "Objects.Geometry.Mesh" and item.speckle_type != "Objects.Geometry.Brep" and item.speckle_type.startswith("Objects.Geometry."): # or item.speckle_type == 'Objects.BuiltElements.Alignment'): 
                 pt, pl = cadLayerToNative(value, name, streamBranch)
+                time.sleep(0.3)
                 #if pt is not None: logger.log("Layer group created: " + str(pt.name()))
                 #if pl is not None: logger.log("Layer group created: " + str(pl.name()))
                 break

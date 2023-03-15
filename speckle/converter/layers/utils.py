@@ -320,3 +320,7 @@ def validateAttributeName(name: str, fieldnames: List[str]) -> str:
     if len(corrected)<=1 and len(name)>1: corrected = "0" + name # if the loop removed the property name completely
 
     return corrected
+
+def saveCRS(crs, streamBranch:str = ""):
+    crs_id = crs.saveAsUserCrs("SpeckleCRS_" + streamBranch)
+    return "USER:" + str(crs_id)

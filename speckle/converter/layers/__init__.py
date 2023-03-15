@@ -8,12 +8,13 @@ from typing import List, Union
 from specklepy.objects import Base
 from specklepy.objects.geometry import Mesh
 import os
+import time
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 from plugin_utils.helpers import findOrCreatePath
 #from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
-from qgis.core import (Qgis, QgsRasterLayer,
+from qgis.core import (Qgis, QgsRasterLayer, 
                        QgsVectorLayer, QgsProject, QgsWkbTypes,
                        QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsLayerTreeLayer,
                        QgsCoordinateReferenceSystem, QgsCoordinateTransform,
@@ -25,7 +26,7 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import colorFromRenderMaterial, getLayerGeomType, getLayerAttributes
+from speckle.converter.layers.utils import colorFromRenderMaterial, getLayerGeomType, getLayerAttributes, saveCRS
 from speckle.logging import logger
 from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
 
@@ -198,6 +199,9 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
 
     crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+    #authid = saveCRS(crs, streamBranch)
+    #time.sleep(0.01)
+
     if crs.isGeographic is True: 
         logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
 
@@ -230,7 +234,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     
     
     vl_shp = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
-    vl = QgsVectorLayer( geomType+ "?crs=" + crs.toWkt(), newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid(), newName, "memory") # do something to distinguish: stream_id_latest_name
     vl.setCrs(crs)
     QgsProject.instance().addMapLayer(vl, False)
     #try: 
@@ -375,6 +379,9 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     layerName = layerName + "/" + geomType
     print(layerName)
     crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+    #authid = saveCRS(crs, streamBranch)
+    #time.sleep(0.01)
+
     if crs.isGeographic is True: 
         logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
 
@@ -399,7 +406,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     #crsid = crs.authid()
     if geomType == "Points": geomType = "PointZ"
     elif geomType == "Polylines": geomType = "LineStringZ"
-    vl = QgsVectorLayer( geomType+ "?crs=" + crs.toWkt() , newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid() , newName, "memory") # do something to distinguish: stream_id_latest_name
     vl.setCrs(crs)
     QgsProject.instance().addMapLayer(vl, False)
 
@@ -478,6 +485,8 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
     vl = None
     crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
+    authid = saveCRS(crs, streamBranch)
+    time.sleep(0.01)
 
     #CREATE A GROUP "received blabla" with sublayers
     newGroupName = f'{streamBranch}'
@@ -503,11 +512,12 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
     elif geomType =="Multipoint": geomType = "Point"
     
     #crsid = crs.authid()
-    vl = QgsVectorLayer(geomType+ "?crs=" + crs.toWkt(), newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl = QgsVectorLayer(geomType+ "?crs=" + authid, newName, "memory") # do something to distinguish: stream_id_latest_name
+    vl.setCrs(crs)
     QgsProject.instance().addMapLayer(vl, False)
 
     pr = vl.dataProvider()
-    vl.setCrs(crs)
+    #vl.setCrs(crs)
     vl.startEditing()
     #print(vl.crs())
 

@@ -1,6 +1,8 @@
 
 
 # Persist added streams in project
+import time
+from speckle.converter.layers.utils import saveCRS
 from speckle_qgis import SpeckleQGIS
 
 from specklepy.logging.exceptions import SpeckleException 
@@ -97,7 +99,12 @@ def setProjectReferenceSystem(plugin: SpeckleQGIS):
         validate = QgsCoordinateReferenceSystem().createFromProj(newCrsString)
 
         if validate: 
-            plugin.qgis_project.setCrs(newCrs) 
+            authid = saveCRS(newCrs, "latlon_"+str(plugin.lat)+"_"+str(plugin.lon))
+            time.sleep(0.01)
+
+            newID = int(authid.replace("USER:",""))
+            crs = QgsCoordinateReferenceSystem().fromSrsId(newID)
+            plugin.qgis_project.setCrs(crs) 
             #listCrs = QgsCoordinateReferenceSystem().validSrsIds()
             #if exists == 0: newCrs.saveAsUserCrs("SpeckleCRS_lon=" + str(sPoint.x()) + "_lat=" + str(sPoint.y())) # srsid() #https://gis.stackexchange.com/questions/341500/creating-custom-crs-in-qgis
             logToUser("Custom project CRS successfully applied", level=0)

@@ -238,6 +238,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def showWait(self):
         print("showWait")
+        return
         try: 
             self.waitScreen.setGeometry(0, 0, self.frameSize().width(), self.frameSize().height())
         except Exception as e: 
