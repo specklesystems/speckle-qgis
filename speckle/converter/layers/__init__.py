@@ -12,7 +12,7 @@ import time
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
-from plugin_utils.helpers import findOrCreatePath
+from plugin_utils.helpers import findOrCreatePath, removeSpecialCharacters
 #from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
 from qgis.core import (Qgis, QgsRasterLayer, 
                        QgsVectorLayer, QgsProject, QgsWkbTypes,
@@ -177,13 +177,19 @@ def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch:
 
     return True
 
-def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str): 
+def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: str, streamBranch: str): 
     print("02_________BIM vector layer to native_____")
+    
+    print(layerName_old)
+
+    layerName = layerName_old.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
+    #layerName = removeSpecialCharacters(layerName_old)[:30]
+    layerName = layerName[:50]
+    print(layerName)
+
     #get Project CRS, use it by default for the new received layer
     vl = None
     layerName = layerName + "_" + geomType
-    layerName = layerName.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
-    
     print(layerName)
 
     
@@ -228,6 +234,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     #crsid = crs.authid()
     
     shp = writeMeshToShp(geomList, path_bim + newName_shp)
+    if shp is None: return 
     print("____ meshes saved___")
     print(shp)
 
@@ -265,7 +272,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         try:
             exist_feat: None = None
             for n, shape in enumerate(vl_shp.getFeatures()):
-                print(shape["speckle_id"])
+                #print(shape["speckle_id"])
                 if shape["speckle_id"] == f.id:
                     exist_feat = vl_shp.getFeature(n)
                     break

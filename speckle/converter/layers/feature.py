@@ -59,9 +59,9 @@ def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields,
     exist_feat.setFields(fields)  
 
     feat_updated = updateFeat(exist_feat, fields, feature)
-    print(fields.toList())
-    print(feature)
-    print(feat_updated)
+    #print(fields.toList())
+    #print(feature)
+    #print(feat_updated)
 
     return feat_updated
 
@@ -88,7 +88,7 @@ def addFeatVariant(key, variant, value, f: QgsFeature):
             feat[key] = float(value) 
         else: 
             feat[key] = None 
-            print(key); print(value); print(type(value)); print(variant); print(getVariantFromValue(value))
+            #print(key); print(value); print(type(value)); print(variant); print(getVariantFromValue(value))
     elif isinstance(variant, int): feat[key] = None
     return feat 
 
@@ -181,7 +181,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 
         const = float(-1* math.pow(10,30))
         defaultNoData = rb.GetNoDataValue()
-        print(type(rb.GetNoDataValue()))
+        #print(type(rb.GetNoDataValue()))
 
         # check whether NA value is too small or raster has too small values
         # assign min value of an actual list; re-assign NA val; replace list items to new NA val
@@ -381,9 +381,9 @@ def cadFeatureToNative(feature: Base, fields: QgsFields):
     exist_feat.setFields(fields)  
 
     feat_updated = updateFeat(exist_feat, fields, feature)
-    print(fields.toList())
-    print(feature)
-    print(feat_updated)
+    #print(fields.toList())
+    #print(feature)
+    #print(feat_updated)
 
     #### setting attributes to feature
     r'''

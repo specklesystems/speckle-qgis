@@ -17,6 +17,7 @@
 import inspect
 import os.path
 import sys
+import time 
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 import threading
@@ -448,6 +449,7 @@ class SpeckleQGIS:
             # If group exists, remove layers inside  
             newGroupName = streamId + "_" + branch.name + "_" + commit.id
             findAndClearLayerGroup(QgsProject.instance(), newGroupName)
+            time.sleep(0.3)
 
             if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)

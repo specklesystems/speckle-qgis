@@ -99,7 +99,7 @@ def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: Qg
             pt1 = poly.childPoint(pt_len)
             pt2 = poly.childPoint(pt_len+1)
             pt3 = poly.childPoint(pt_len+2)
-            print(pt1.z())
+            #print(pt1.z())
             circString = QgsCircularString(QgsPoint(pt1.x(), pt1.y(), pt1.z()), QgsPoint(pt2.x(), pt2.y(), pt2.z()), QgsPoint(pt3.x(), pt3.y(), pt3.z()))
             p = arcToSpeckle(circString, feature, layer)
             if p is not None: pts.extend([poly.childPoint(pt_len), poly.childPoint(pt_len+1), poly.childPoint(pt_len+2)]) 
@@ -110,12 +110,12 @@ def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: Qg
             if len_segment_pts ==2: 
                 st = pointToSpeckle(poly.childPoint(pt_len), feature, layer)
                 en = pointToSpeckle(poly.childPoint(pt_len+1), feature, layer)
-                print(poly.childPoint(pt_len+1))
-                print(type(poly.childPoint(pt_len+1).x()))
+                #print(poly.childPoint(pt_len+1))
+                #print(type(poly.childPoint(pt_len+1).x()))
                 if "EMPTY" in str(poly.childPoint(pt_len+1)): 
                     en = en = pointToSpeckle(poly.childPoint(0), feature, layer)
                 p = Line(units = "m", start = st, end = en)
-                print(p)
+                #print(p)
                 pt_len += 1 # because the end point will be reused as n-point of the curve
             else:
                 actual_segment_pts = []

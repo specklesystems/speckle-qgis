@@ -32,6 +32,7 @@ def traverseObject(
         except:
             pass
         traverseValue(base[name], callback, check, streamBranch)
+        time.sleep(0.3)
     #logToUser("Data received", level = 0)
 
 def traverseValue(

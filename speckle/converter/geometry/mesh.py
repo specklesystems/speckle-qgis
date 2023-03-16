@@ -1,4 +1,5 @@
 import math
+import time
 from typing import List
 from specklepy.objects.geometry import Mesh, Point
 from specklepy.objects.other import RenderMaterial
@@ -9,6 +10,8 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_scale_factor
 from speckle.logging import logger
+from ui.logger import logToUser
+
 from qgis.core import (
     Qgis, QgsPoint, QgsPointXY, QgsMultiPolygon, QgsPolygon, QgsLineString, QgsFeature, QgsVectorLayer
     )
@@ -34,7 +37,13 @@ def writeMeshToShp(meshes: List[Mesh], path: str):
     print("06___________________Mesh to Native")
     #print(meshes)
     #print(mesh.units)
-    w = shapefile.Writer(path) 
+    try:
+        w = shapefile.Writer(path) 
+    except Exception as e: 
+        logToUser(e)
+        return 
+    time.sleep(0.3)
+    print(w)
     w.field('speckle_id', 'C')
 
     shapes = []
@@ -66,10 +75,12 @@ def writeMeshToShp(meshes: List[Mesh], path: str):
                             w = fill_multi_mesh_parts(w, geom.displayMesh, geom.id)
                     except: pass
     w.close()
+    print("06-end___________________Mesh to Native")
     return path
 
 def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str):
     
+    print("07___________________fill_multi_mesh_parts")
     parts_list = []
     types_list = []
     for mesh in meshes:
@@ -83,6 +94,7 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str)
     
     w.multipatch(parts_list, partTypes=types_list ) # one type for each part
     w.record(geom_id)
+    print("07-end___________________fill_multi_mesh_parts")
     return w
 
 def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
@@ -101,6 +113,7 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
 
 def deconstructSpeckleMesh(mesh: Mesh):
     
+    print("deconstructSpeckleMesh")
     scale = get_scale_factor(mesh.units)
     parts_list = []
     types_list = []
@@ -123,6 +136,7 @@ def deconstructSpeckleMesh(mesh: Mesh):
             count += vertices + 1
         except: break # when out of range 
 
+    print("end-deconstructSpeckleMesh")
     return parts_list, types_list
 
 def constructMeshFromRaster(vertices, faces, colors):
