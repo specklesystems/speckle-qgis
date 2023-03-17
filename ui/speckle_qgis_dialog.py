@@ -24,7 +24,9 @@
 
 import inspect
 import os
+from plugin_utils.helpers import splitTextIntoLines
 from speckle.converter.layers import getLayers
+from ui.ErrorWidget import ErrorWidget
 from ui.logger import logToUser
 #from speckle_qgis import SpeckleQGIS
 import ui.speckle_qgis_dialog
@@ -33,7 +35,7 @@ from specklepy.logging.exceptions import (SpeckleException, GraphQLException)
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt import QtGui
 from qgis.PyQt.QtGui import QIcon, QPixmap
-from qgis.PyQt.QtWidgets import QListWidgetItem, QAction, QDockWidget, QVBoxLayout, QHBoxLayout, QWidget, QLabel
+from qgis.PyQt.QtWidgets import QCheckBox, QListWidgetItem, QAction, QDockWidget, QVBoxLayout, QHBoxLayout, QWidget, QLabel
 from qgis.PyQt import QtCore
 from qgis.PyQt.QtCore import pyqtSignal, Qt 
 from speckle.logging import logger
@@ -43,7 +45,7 @@ from specklepy.api.wrapper import StreamWrapper
 from specklepy.api.client import SpeckleClient
 
 from ui.validation import tryGetStream
-from ui.linkWidget import LinkWidget
+from ui.LinkWidget import LinkWidget
 from ui.waitScreen import WaitScreenWidget
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
@@ -83,7 +85,9 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     layersWidget: QtWidgets.QListWidget
     saveLayerSelection: QtWidgets.QPushButton
     runButton: QtWidgets.QPushButton
-    link = None
+    experimental: QCheckBox
+    link: LinkWidget = None
+    msgError: ErrorWidget = None
     waitScreen = None
     link_url: str = ""
     
@@ -190,12 +194,34 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         #self.runButton.setGeometry(0, 0, 150, 30)
         self.runButton.setMaximumWidth(200)
         self.runButton.setIcon(QIcon(ICON_SEND))
-        
-        widgetLink = LinkWidget(parent=self)
-        self.layout().addWidget(widgetLink)
-        self.link = widgetLink 
 
-        self.waitScreen = WaitScreenWidget(parent=self) 
+        # insert checkbox 
+        l = self.verticalLayout
+        #l_item = None
+        
+        #for i in reversed(range(self.verticalLayout.count())): 
+        #   l_item = self.verticalLayout.itemAt(i).widget()
+
+        # add row with "experimental" checkbox 
+        box = QWidget()
+        box.layout = QHBoxLayout(box)
+        btn = QtWidgets.QCheckBox("Send/receive in the background, for large models (experimental)")
+        btn.setStyleSheet("QPushButton {color: black; border: 0px;padding: 0px;height: 40px;text-align: left;}")
+        box.layout.addWidget(btn)
+        box.layout.setContentsMargins(50, 0, 0, 0)
+        self.formLayout.insertRow(10,box)
+        self.experimental = btn
+
+        # add widgets that will only show on event trigger 
+        linkWidget = LinkWidget(parent=self)
+        self.layout().addWidget(linkWidget)
+        self.link = linkWidget 
+
+        errorWidget = ErrorWidget(parent=self)
+        self.layout().addWidget(errorWidget)
+        self.msgError = errorWidget 
+
+        self.waitScreen = WaitScreenWidget(parent=self) # not used for now 
 
     def clearDropdown(self):
         #self.streamIdField.clear()
@@ -204,6 +230,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         #self.layerSendModeDropdown.clear()
 
     def reloadDialogUI(self, plugin):
+
+        #logToUser("long errror something something msg1", level=2, plugin= plugin)
 
         self.clearDropdown()
         self.populateUI(plugin) 
@@ -223,34 +251,52 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def showLink(self, url = "", stream=""):
         print("showLink")
         self.link_url = url # this parameter will be picked up by "open link" function
-        #self.link.link_btn.setText(f"👌 Data sent to Stream {stream} \n View it online")
+        #self.link.btn.setText(f"👌 Data sent to Stream {stream} \n View it online")
         try: 
             self.link.setGeometry(0, 0, self.frameSize().width(), self.frameSize().height())
         except Exception as e: 
-            logToUser(str(e), level=1, func = inspect.stack()[0][3])
+            logToUser(str(e), level=1, func = inspect.stack()[0][3], plugin = self)
 
     def hideLink(self):
         if self.link is None: return 
         try: 
             self.link.setGeometry(0, 0, 0, 0)
         except Exception as e: 
-            logToUser(str(e), level = 1, func = inspect.stack()[0][3])
+            logToUser(str(e), level = 1, func = inspect.stack()[0][3], plugin = self)
+
+    def showError(self, msg = "", level = 2):
+        print("showError")
+        try: 
+            new_msg = splitTextIntoLines(msg, 50)
+            self.msgError.setGeometry(0, 0, self.frameSize().width(), self.frameSize().height())
+            self.msgError.addButton(new_msg, level)
+        except Exception as e: 
+            logToUser(str(e), level=1, func = inspect.stack()[0][3], plugin = self)
+
+    def hideError(self):
+        if self.msgError is None: return 
+        try: 
+            self.msgError.hide()
+        except Exception as e: 
+            logToUser(str(e), level = 1, func = inspect.stack()[0][3], plugin = self)
+
 
     def showWait(self):
         print("showWait")
-        return
+        return 
         try: 
             self.waitScreen.setGeometry(0, 0, self.frameSize().width(), self.frameSize().height())
         except Exception as e: 
-            logToUser(str(e), level=1, func = inspect.stack()[0][3])
+            logToUser(str(e), level=1, func = inspect.stack()[0][3], plugin = self)
 
     def hideWait(self):
         print("hideWait")
+        return
         if self.waitScreen is None: return 
         try: 
             self.waitScreen.setGeometry(0, 0, 0, 0)
         except Exception as e: 
-            logToUser(str(e), level = 1, func = inspect.stack()[0][3])
+            logToUser(str(e), level = 1, func = inspect.stack()[0][3], plugin = self)
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
@@ -498,7 +544,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         if plugin.active_stream is None: return
         self.streamBranchDropdown.clear()
         if isinstance(plugin.active_stream[1], SpeckleException): 
-            logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+            logToUser("Some streams cannot be accessed", level = 1, plugin = self)
             return
         elif plugin.active_stream is None or plugin.active_stream[1] is None or plugin.active_stream[1].branches is None:
             return
@@ -518,7 +564,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             return
         branch = None
         if isinstance(plugin.active_stream[1], SpeckleException): 
-            logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+            logToUser("Some streams cannot be accessed", level = 1, plugin = self)
             return
         elif plugin.active_stream[1]:
             for b in plugin.active_stream[1].branches.items:

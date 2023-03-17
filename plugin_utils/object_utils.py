@@ -15,6 +15,7 @@ from ui.logger import logToUser
 SPECKLE_TYPES_TO_READ = ["Objects.Geometry.", "Objects.BuiltElements.", "IFC"] # will properly traverse and check for displayValue
 
 def traverseObject(
+    plugin,
     base: Base,
     callback: Optional[Callable[[Base, str], bool]],
     check: Optional[Callable[[Base], bool]],
@@ -31,28 +32,31 @@ def traverseObject(
                 continue
         except:
             pass
-        traverseValue(base[name], callback, check, streamBranch)
-        time.sleep(0.3)
-    #logToUser("Data received", level = 0)
+        traverseValue(plugin, base[name], callback, check, streamBranch)
+        #time.sleep(0.3)
+    
+    #logToUser("DATA RECEIVED", level=0, plugin = plugin)
+    #logger.logToUser("DATA RECEIVED", Qgis.Info)
 
 def traverseValue(
+    plugin,
     value: Any,
     callback: Optional[Callable[[Base, str], bool]],
     check: Optional[Callable[[Base], bool]],
     streamBranch: str,
 ):
     if isinstance(value, Base):
-        traverseObject(value, callback, check, streamBranch)
+        traverseObject(plugin, value, callback, check, streamBranch)
     if isinstance(value, List):
         for item in value:
-            traverseValue(item, callback, check, streamBranch)
+            traverseValue(plugin, item, callback, check, streamBranch)
 
 
 def callback(base: Base, streamBranch: str) -> bool:
     if isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer):
         #print(base)
-        if isinstance(base, Layer):
-            logger.log(f"Class \"Layer\" will be deprecated in future updates in favour of \"VectorLayer\" or \"RasterLayer\"", Qgis.Warning) 
+        #if isinstance(base, Layer):
+        #    logger.log(f"Class \"Layer\" will be deprecated in future updates in favour of \"VectorLayer\" or \"RasterLayer\"", Qgis.Warning) 
         layerToNative(base, streamBranch)
         time.sleep(0.3)
         #if layer is not None:

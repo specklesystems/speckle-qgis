@@ -1,12 +1,13 @@
 
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect, QObject
-from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget, QPushButton
 from qgis.PyQt import QtWidgets
 import webbrowser
 
 import inspect
 
 from ui.logger import logToUser 
+from speckle.logging import logger
 
 SPECKLE_COLOR = (59,130,246)
 SPECKLE_COLOR_LIGHT = (69,140,255)
@@ -18,7 +19,7 @@ class LinkWidget(QWidget):
         super(LinkWidget, self).__init__(parent)
         print("start LinkWidget")
         self.parentWidget = parent
-        self.link_btn = None
+        self.btn = None
         print(self.parentWidget)
         # create a temporary floating button 
         width = 0 #parent.frameSize().width()
@@ -26,20 +27,20 @@ class LinkWidget(QWidget):
         backgr_color = f"background-color: rgb{str(SPECKLE_COLOR)};"
         backgr_color_light = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
         
-        self.setAccessibleName("commit_link")
-        connect_box = QVBoxLayout(self)
+        self.layout = QVBoxLayout(self)
 
         
-        commit_link_btn = QtWidgets.QPushButton(f"👌 Data sent \n View it online") # to '{streamName}' Sent , v
-        commit_link_btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
-
-        connect_box.addWidget(commit_link_btn) #, alignment=Qt.AlignCenter) 
-        connect_box.setContentsMargins(0, 0, 0, 0)
-        connect_box.setAlignment(Qt.AlignBottom)  
+        self.layout.setContentsMargins(0, 0, 0, 20)
+        self.layout.setAlignment(Qt.AlignBottom)  
         self.setGeometry(0, 0, width, height)
         #self.mouseReleaseEvent = lambda event: self.closeLinkWidget(parent)
-        commit_link_btn.clicked.connect(lambda: self.openLink())
-        self.link_btn = commit_link_btn
+
+        button = QPushButton(f"👌 Data sent \n View it online") # to '{streamName}' Sent , v
+        button.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
+
+        self.layout.addWidget(button) #, alignment=Qt.AlignCenter) 
+        button.clicked.connect(lambda: self.openLink())
+        self.btn = button
         
 
     # overriding the mouseReleaseEvent method
@@ -54,7 +55,7 @@ class LinkWidget(QWidget):
             webbrowser.open(url, new=0, autoraise=True)
             self.parentWidget.hideLink()
         except Exception as e: 
-            logToUser(str(e), level=2, func = inspect.stack()[0][3])
+            logger.logToUser(str(e), level=2, func = inspect.stack()[0][3])
 
     def closeLinkWidget(self):
         return
@@ -69,7 +70,7 @@ class LinkWidget(QWidget):
             self.parentWidget.link = None
             return True
         except Exception as e: 
-            logToUser(str(e), level=2, func = inspect.stack()[0][3])
+            logger.logToUser(str(e), level=2, func = inspect.stack()[0][3])
             return True 
         '''
 

@@ -1,13 +1,29 @@
 
-from PyQt5.QtWidgets import QMessageBox, QPushButton
+import PyQt5 
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QPushButton, QPushButton, QLabel, QVBoxLayout, QWidget
 from PyQt5 import QtCore
+import threading
+import time 
 
-def logToUser(msg: str, func=None, level: int = 2):
+def logToUser(msg: str, func=None, level: int = 2, plugin = None):
       print("Log to user")
-      window = createWindow(msg, func, level)
-      print(window)
-      window.exec_() 
-      return
+      dockwidget = plugin
+      if dockwidget is None: return
+      try: 
+            if func is not None:
+                  msg += "\n" + str(func)
+            if level == 0: msg = "🛈 " + msg
+            if level == 1: msg = "⚠️ " + msg
+            if level == 2: msg = "❗ " + msg
+            dockwidget.showError(msg = msg, level = level)
+      except Exception as e: print(e); return 
+
+r'''
+def displayUserMsg(msg: str, func=None, level: int = 2): 
+      try:
+            window = createWindow(msg, func, level)
+            window.exec_() 
+      except Exception as e: print(e)
 
 def logToUserWithAction(msg: str, func=None, level: int = 2, action_text="Click", callback=None):
       print("Log to user with action")
@@ -32,18 +48,14 @@ def createWindow(msg_old: str, func=None, level: int = 2):
             # https://www.techwithtim.net/tutorials/pyqt5-tutorial/messageboxes/
             window = QMessageBox()
             msg = ""
-            if len(msg_old)>60:
+            if len(msg_old)>80:
                   try:
                         for i, x in enumerate(msg_old):
-                              print(x)
                               msg += x
-                              if i!=0 and i%60 == 0: msg += "\n"
-                              print(msg)
+                              if i!=0 and i%80 == 0: msg += "\n"
                   except Exception as e: print(e)
             else: 
                   msg = msg_old
-
-            print(msg)
       
             window.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
             if level==0: 
@@ -64,3 +76,4 @@ def createWindow(msg_old: str, func=None, level: int = 2):
             print(window)
       except Exception as e: print(e)
       return window 
+'''

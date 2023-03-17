@@ -166,8 +166,9 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         if (geom != None):
             b['displayValue'] = [geom]
     except Exception as error:
-        logToUser("Error converting point geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
-
+        #logToUser("Error converting point geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
+        logToUser("Error converting point geometry: " + str(error), level = 2)
+    
     for index in range(rasterBandCount):
         rasterBandNames.append(selectedLayer.bandName(index+1))
         rb = ds.GetRasterBand(index+1)
