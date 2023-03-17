@@ -57,7 +57,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
             else:
                 return [polygonToSpeckle(poly, feature, layer) for poly in geom.parts()]
         else:
-            logger.log("Unsupported or invalid geometry")
+            logToUser("Unsupported or invalid geometry", level = 1, func = inspect.stack()[0][3])
         return None
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

@@ -283,7 +283,7 @@ class SpeckleQGIS:
 
     def onSend(self):
         """Handles action when Send button is pressed."""
-        logToUser("Some message here", level = 0, func = inspect.stack()[0][3], plugin=self.dockwidget )
+        #logToUser("Some message here", level = 0, func = inspect.stack()[0][3], plugin=self.dockwidget )
         try: 
             if not self.dockwidget: return
             #self.dockwidget.showWait()
@@ -362,11 +362,13 @@ class SpeckleQGIS:
             
             #self.dockwidget.hideWait()
             #self.dockwidget.showLink(url, streamName)
+            time.sleep(1)
             logToUserWithAction(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
 
             return url
 
         except Exception as e:
+            time.sleep(1)
             logToUser("Error creating commit: "+str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
 
     def onReceive(self):
@@ -436,16 +438,17 @@ class SpeckleQGIS:
             # If group exists, remove layers inside  
             newGroupName = streamId + "_" + branch.name + "_" + commit.id
             findAndClearLayerGroup(QgsProject.instance(), newGroupName)
-            time.sleep(0.3)
 
             if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
+            time.sleep(1)
             logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
             return 
             
         except Exception as e:
+            time.sleep(1)
             logToUser("Receive failed: "+ str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
             return
 

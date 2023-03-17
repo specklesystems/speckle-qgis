@@ -227,7 +227,6 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
 
         crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
         #authid = saveCRS(crs, streamBranch)
-        #time.sleep(0.01)
 
         if crs.isGeographic is True: 
             logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
@@ -416,7 +415,6 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         print(layerName)
         crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
         #authid = saveCRS(crs, streamBranch)
-        #time.sleep(0.01)
 
         if crs.isGeographic is True: 
             logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
@@ -526,7 +524,6 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
         authid = saveCRS(crs, streamBranch)
-        time.sleep(0.01)
 
         #CREATE A GROUP "received blabla" with sublayers
         newGroupName = f'{streamBranch}'

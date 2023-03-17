@@ -52,7 +52,7 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
             ]
         )
     except Exception as e:
-        logger.logToUser(e.with_traceback)
+        logger.log(e.with_traceback)
 
     #################################################
     pkgVersion = "1.10.11"  # "2.5.3"
@@ -79,7 +79,7 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
             ]
         )
     except Exception as e:
-        logger.logToUser(e.with_traceback)
+        logger.log(e.with_traceback)
 
     ################################################# 
     pkgVersion = "2.3.1"
@@ -106,4 +106,4 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
             ]
         )
     except Exception as e:
-        logger.logToUser(e.with_traceback)
+        logger.log(e.with_traceback)

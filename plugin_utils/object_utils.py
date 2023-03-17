@@ -97,14 +97,15 @@ def loopVal(value: Any, name: str, streamBranch: str): # "name" is the parent ob
                 try: 
                     if item["displayValue"] is not None and objectListConverted == 0: 
                         bimLayerToNative(value, name, streamBranch)
+                        time.sleep(0.3)
                         objectListConverted += 1
                 except: 
                     try: 
                         if item["@displayValue"] is not None and objectListConverted == 0: 
                             bimLayerToNative(value, name, streamBranch)
+                            time.sleep(0.3)
                             objectListConverted += 1
                     except: pass 
-                time.sleep(0.3)
             elif item.speckle_type and item.speckle_type.endswith(".ModelCurve"): 
                 if item["baseCurve"] is not None: 
                     cadLayerToNative(value, name, streamBranch)

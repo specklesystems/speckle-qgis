@@ -73,7 +73,7 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
             elif self.speckle_client is not None: 
                 results = self.speckle_client.stream.search(query)
             elif self.speckle_client is None: 
-                logger.logToUser(f"Account cannot be authenticated: {self.accounts_dropdown.currentText()}", Qgis.Warning) 
+                logToUser(f"Account cannot be authenticated: {self.accounts_dropdown.currentText()}", level = 1, func = inspect.stack()[0][3]) 
             
             self.stream_results = results
             self.populateResultsList(sw)
@@ -85,7 +85,7 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         try:
             self.search_results_list.clear()
             if isinstance(self.stream_results, SpeckleException): 
-                logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+                logToUser("Some streams cannot be accessed", level = 1, func = inspect.stack()[0][3])
                 return 
             for stream in self.stream_results:
                 host = ""
@@ -95,7 +95,7 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
                     host = self.speckle_client.account.serverInfo.url
                 
                 if isinstance(stream, SpeckleException): 
-                    logger.logToUser("Some streams cannot be accessed", Qgis.Warning)
+                    logToUser("Some streams cannot be accessed", level = 1, func = inspect.stack()[0][3])
                 else: 
                     self.search_results_list.addItems([
                         f"{stream.name}, {stream.id} | {host}" #for stream in self.stream_results 
@@ -107,7 +107,7 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
     def onOkClicked(self):
         try:
             if isinstance(self.stream_results, SpeckleException):
-                logger.logToUser("Selected stream cannot be accessed", Qgis.Warning)
+                logToUser("Selected stream cannot be accessed: "+ str(self.stream_results.message), level = 1, func = inspect.stack()[0][3])
                 return
             #elif index == -1 or len(self.stream_results) == 0:
             #    logger.logToUser("Select stream from \"Search Results\". No stream selected", Qgis.Warning)
@@ -123,7 +123,7 @@ class AddStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
                     self.handleStreamAdd.emit(sw) #StreamWrapper(f"{acc.serverInfo.url}/streams/{stream.id}?u={acc.userInfo.id}"))
                     self.close()
                 except Exception as e:
-                    logger.logToUser("Some streams cannot be accessed: " + str(e), Qgis.Warning)
+                    logToUser("Some streams cannot be accessed: " + str(e), level = 1, func = inspect.stack()[0][3])
                     return 
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3])

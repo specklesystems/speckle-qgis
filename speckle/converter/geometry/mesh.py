@@ -48,7 +48,6 @@ def writeMeshToShp(meshes: List[Mesh], path: str):
         except Exception as e: 
             logToUser(e)
             return 
-        time.sleep(0.3)
         print(w)
         w.field('speckle_id', 'C')
 

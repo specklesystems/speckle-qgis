@@ -22,8 +22,10 @@ class Logging:
             #return
             QgsMessageLog.logMessage(message, "Speckle", level=level)
         except Exception as e:
-            logToUser(e, level = 2, func = inspect.stack()[0][3])
-            return
+            try:
+                logToUser(e, level = 2, func = inspect.stack()[0][3])
+                return
+            except: pass
 
 
     def logToUserWithAction(self, message: str, action_text:str, callback: bool, level: Qgis.MessageLevel = Qgis.Info, duration:int =10):

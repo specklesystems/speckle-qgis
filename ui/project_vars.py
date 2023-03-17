@@ -29,12 +29,12 @@ def get_project_streams(plugin: SpeckleQGIS):
                     try: 
                         stream = tryGetStream(sw)
                     except SpeckleException as e:
-                        logger.logToUser(e.message, Qgis.Warning)
+                        logToUser(e.message, level = 1, func = inspect.stack()[0][3])
                         stream = None
                     #strId = stream.id # will cause exception if invalid
                     temp.append((sw, stream))
                 except SpeckleException as e:
-                    logger.logToUser(e.message, Qgis.Warning)
+                    logToUser(e.message, level = 1, func = inspect.stack()[0][3])
                 #except GraphQLException as e:
                 #    logger.logToUser(e.message, Qgis.Warning)
         plugin.current_streams = temp
@@ -67,7 +67,7 @@ def get_project_layer_selection(plugin: SpeckleQGIS):
                         found += 1
                         break
                 if found == 0: 
-                    logger.logToUser(f'Saved layer not found: "{id}"', Qgis.Warning)
+                    logToUser(f'Saved layer not found: "{id}"', level = 1, func = inspect.stack()[0][3])
         plugin.current_layers = temp
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget)
@@ -125,7 +125,6 @@ def setProjectReferenceSystem(plugin: SpeckleQGIS):
 
         if validate: 
             authid = saveCRS(newCrs, "latlon_"+str(plugin.lat)+"_"+str(plugin.lon))
-            time.sleep(0.01)
 
             newID = int(authid.replace("USER:",""))
             crs = QgsCoordinateReferenceSystem().fromSrsId(newID)
