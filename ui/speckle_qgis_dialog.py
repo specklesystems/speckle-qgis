@@ -205,7 +205,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         # add row with "experimental" checkbox 
         box = QWidget()
         box.layout = QHBoxLayout(box)
-        btn = QtWidgets.QCheckBox("Send/receive in the background, for large models (experimental)")
+        btn = QtWidgets.QCheckBox("Check to send/receive in the background, for large models (experimental!!)")
         btn.setStyleSheet("QPushButton {color: black; border: 0px;padding: 0px;height: 40px;text-align: left;}")
         box.layout.addWidget(btn)
         box.layout.setContentsMargins(50, 0, 0, 0)
@@ -267,7 +267,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def showError(self, msg = "", level = 2):
         print("showError")
         try: 
-            new_msg = splitTextIntoLines(msg, 50)
+            new_msg = splitTextIntoLines(msg, 70)
             self.msgError.setGeometry(0, 0, self.frameSize().width(), self.frameSize().height())
             self.msgError.addButton(new_msg, level)
         except Exception as e: 

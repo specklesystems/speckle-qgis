@@ -50,12 +50,6 @@ class ErrorWidget(QWidget):
 
         self.hide() 
 
-    def drawBackground(self, qp):
-        func, kwargs = self.func
-        if func is not None:
-            kwargs["qp"] = qp
-            func(**kwargs)
-
     # overriding the mouseReleaseEvent method
     def mouseReleaseEvent(self, event):
         print("Mouse Release Event")
@@ -76,7 +70,7 @@ class ErrorWidget(QWidget):
 
 
     def addButton(self, text: str = "something went wrong", level: int = 2):
-
+        print("Add button")
         # find index of the first unused button
         index = len(self.used_btns)
         if index >= len(self.btns): 
@@ -85,8 +79,10 @@ class ErrorWidget(QWidget):
         btn = self.btns[index] # get the next "free" button 
         
         btn.setText(text)
-        if len(text)>153:
-            btn.resize(btn.size().width(), 60)
+        if len(text.split("\n"))>=3:
+            height = len(text.split("\n"))*25
+            #btn.resize(btn.size().width(), 90)
+            btn.setMinimumHeight(height)
 
         #btn.resize(btn.sizeHint())
         self.layout.addWidget(btn) #, alignment=Qt.AlignCenter) 

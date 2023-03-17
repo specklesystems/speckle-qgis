@@ -39,6 +39,7 @@ from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
 from specklepy.api.credentials import Account, get_local_accounts #, StreamWrapper
 from specklepy.api.client import SpeckleClient
+from specklepy.logging import metrics
 import webbrowser
 
 # Initialize Qt resources from file resources.py
