@@ -1,4 +1,5 @@
 
+import time
 from typing import List
 from plugin_utils.helpers import splitTextIntoLines
 from qgis.PyQt import QtCore
@@ -15,7 +16,8 @@ SPECKLE_COLOR_LIGHT = (69,140,255)
 
 BACKGR_COLOR = f"background-color: rgb{str(SPECKLE_COLOR)};"
 BACKGR_COLOR_LIGHT = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
-        
+
+BACKGR_COLOR_GREY = f"background-color: Gainsboro;"
 
 class LogWidget(QWidget):
     
@@ -33,8 +35,6 @@ class LogWidget(QWidget):
         # create a temporary floating button 
         width = 0 #parent.frameSize().width()
         height = 0 # parent.frameSize().height()
-        backgr_color = f"background-color: Gainsboro;"
-        backgr_color_light = f"background-color: Gainsboro;"
         
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
         self.setStyleSheet("background-color: rgba(250,250,250,80);")
@@ -48,7 +48,7 @@ class LogWidget(QWidget):
         self.btns = []
         for i in range(10):
             button = QPushButton(f"👌 Error") # to '{streamName}' Sent , v
-            button.setStyleSheet("QPushButton {color: black; border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
+            button.setStyleSheet("QPushButton {color: black; border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR_GREY}" + "}")
             button.clicked.connect(lambda: self.hide())
             self.btns.append(button)
 
@@ -75,12 +75,14 @@ class LogWidget(QWidget):
 
     def addButton(self, text: str = "something went wrong", level: int = 2):
         print("Add button")
+        time.sleep(0.3)
 
         self.setGeometry(0, 0, self.parentWidget.frameSize().width(), self.parentWidget.frameSize().height())
         
         # find index of the first unused button
         btn = self.getNextBtn()
-        
+
+        btn.setStyleSheet("QPushButton {color: black; border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR_GREY}" + "}")
         btn.setText(text)
         self.resizeToText(btn)
 
@@ -92,6 +94,7 @@ class LogWidget(QWidget):
 
     def addInfoButton(self, text: str = "link here", level: int = 2, url = ""):
         print("Add blue button")
+        time.sleep(0.3)
 
         self.setGeometry(0, 0, self.parentWidget.frameSize().width(), self.parentWidget.frameSize().height())
         
@@ -111,6 +114,7 @@ class LogWidget(QWidget):
 
     def addLinkButton(self, text: str = "link here", level: int = 2, url = ""):
         print("Add link button")
+        time.sleep(0.3)
 
         self.setGeometry(0, 0, self.parentWidget.frameSize().width(), self.parentWidget.frameSize().height())
         
@@ -146,7 +150,7 @@ class LogWidget(QWidget):
     def resizeToText(self, btn):
         try:
             text = btn.text()
-            if len(text.split("\n"))>=2:
+            if len(text.split("\n"))>2:
                 height = len(text.split("\n"))*25
                 btn.setMinimumHeight(height)
             return btn 

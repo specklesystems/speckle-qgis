@@ -43,6 +43,7 @@ from specklepy.api.credentials import get_local_accounts
 
 from specklepy.api.wrapper import StreamWrapper
 from specklepy.api.client import SpeckleClient
+from specklepy.logging import metrics
 
 from ui.validation import tryGetStream
 
@@ -249,8 +250,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.runButton.clicked.connect(plugin.onRunButtonClicked)
         
         self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
-        self.reloadButton.clicked.connect(plugin.reloadUI)
-        self.closeButton.clicked.connect(plugin.onClosePlugin)
+        self.reloadButton.clicked.connect(lambda: self.refreshClicked(plugin))
+        self.closeButton.clicked.connect(lambda: self.closeClicked(plugin))
         self.saveSurveyPoint.clicked.connect(plugin.set_survey_point)
         self.saveLayerSelection.clicked.connect(lambda: self.populateLayerDropdown(plugin))
         self.sendModeButton.clicked.connect(lambda: self.setSendMode(plugin))
@@ -262,6 +263,14 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.closingPlugin.connect(plugin.onClosePlugin)
         return 
+
+    def refreshClicked(self, plugin):
+        metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Refresh"})
+        plugin.reloadUI()
+
+    def closeClicked(self, plugin):
+        metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Close"})
+        plugin.onClosePlugin()
 
     def setSendMode(self, plugin):
         plugin.btnAction = 0 # send 

@@ -80,6 +80,7 @@ class SpeckleQGIS:
 
     default_account: Account
     accounts: List[Account]
+    active_account: Account
 
     def __init__(self, iface):
         """Constructor.
@@ -97,6 +98,7 @@ class SpeckleQGIS:
         self.active_stream = None
         self.default_account = None 
         self.accounts = [] 
+        self.active_account = None 
 
         self.btnAction = 0
 
@@ -247,30 +249,46 @@ class SpeckleQGIS:
             self.iface.removeToolBarIcon(action)
 
     def onRunButtonClicked(self):
+        # send 
         if self.btnAction == 0: 
-            # Reset Survey point
-            self.dockwidget.populateSurveyPoint(self)
 
-            message = str(self.dockwidget.messageInput.text())
-            self.dockwidget.messageInput.setText("")
-
-            if not self.dockwidget.experimental.isChecked(): self.onSend(message)
+            if not self.dockwidget.experimental.isChecked(): self.onSend()
             else:
-                t = threading.Thread(target=self.onSend, args=(message,))
-                t.start()
-
+                try:
+                    streamWrapper = self.active_stream[0]
+                    client = streamWrapper.get_client()
+                    self.active_account = client.account
+                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send"})
+                    
+                    t = threading.Thread(target=self.onSend, args=())
+                    t.start()
+                except: self.onSend()
+        # receive 
         elif self.btnAction == 1: 
             if not self.dockwidget.experimental.isChecked(): self.onReceive()
             else:
-                t = threading.Thread(target=self.onReceive, args=())
-                t.start()
+                try:
+                    streamWrapper = self.active_stream[0]
+                    client = streamWrapper.get_client()
+                    self.active_account = client.account
+                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive"})
 
-    def onSend(self, message: str):
+                    t = threading.Thread(target=self.onReceive, args=())
+                    t.start()
+                except: self.onReceive()
+
+    def onSend(self):
         """Handles action when Send button is pressed."""
         logToUser("Some message here", level = 0, func = inspect.stack()[0][3], plugin=self.dockwidget )
             
         if not self.dockwidget: return
         #self.dockwidget.showWait()
+
+        # Reset Survey point
+        self.dockwidget.populateSurveyPoint(self)
+
+        message = str(self.dockwidget.messageInput.text())
+        self.dockwidget.messageInput.setText("")
 
         # creating our parent base object
         project = QgsProject.instance()
@@ -380,17 +398,16 @@ class SpeckleQGIS:
         print("Receive")
 
         if not self.dockwidget: return
-        #self.dockwidget.showWait()
-
         # Check if stream id/url is empty
         if self.active_stream is None:
             logToUser("Please select a stream from the list.", level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
-
+        
         # Get the stream wrapper
         streamWrapper = self.active_stream[0]
         streamId = streamWrapper.stream_id
         client = streamWrapper.get_client()
+
         # Ensure the stream actually exists
         try:
             stream = validateStream(streamWrapper)
@@ -478,6 +495,7 @@ class SpeckleQGIS:
         for acc in accounts:
             if acc.isDefault: 
                 self.default_account = acc 
+                self.active_account = acc 
                 break 
         return True
 

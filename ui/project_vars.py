@@ -7,6 +7,7 @@ from speckle_qgis import SpeckleQGIS
 
 from specklepy.logging.exceptions import SpeckleException 
 from specklepy.api.wrapper import StreamWrapper
+from specklepy.logging import metrics
 
 from speckle.logging import logger
 from qgis.core import (Qgis, QgsProject, QgsCoordinateReferenceSystem)
@@ -41,7 +42,7 @@ def set_project_streams(self: SpeckleQGIS):
     value = ",".join([stream[0].stream_url for stream in self.current_streams])
     proj.writeEntry("speckle-qgis", "project_streams", value)
   
-def get_project_layer_selection(self: SpeckleQGIS):
+def get_project_layer_selection(plugin: SpeckleQGIS):
     proj = QgsProject().instance()
     saved_layers = proj.readEntry("speckle-qgis", "project_layer_selection", "")
     temp = []
@@ -57,36 +58,38 @@ def get_project_layer_selection(self: SpeckleQGIS):
                     break
             if found == 0: 
                 logger.logToUser(f'Saved layer not found: "{id}"', Qgis.Warning)
-    self.current_layers = temp
+    plugin.current_layers = temp
 
-def set_project_layer_selection(self: SpeckleQGIS):
+def set_project_layer_selection(plugin: SpeckleQGIS):
     proj = QgsProject().instance() 
     #value = ",".join([x.id() for x in self.iface.layerTreeView().selectedLayers()]) #'points_qgis2_b22ed3d0_0ff9_40d2_97f2_bd17a350d698' <qgis._core.QgsVectorDataProvider object at 0x000002627D9D4790>
-    value = ",".join([x[1].id() for x in self.current_layers]) 
+    value = ",".join([x[1].id() for x in plugin.current_layers]) 
     proj.writeEntry("speckle-qgis", "project_layer_selection", value)
+    metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Set layer selection"})
 
-def get_survey_point(self: SpeckleQGIS):
+def get_survey_point(plugin: SpeckleQGIS):
     # get from saved project, set to local vars
     proj = QgsProject().instance()
     points = proj.readEntry("speckle-qgis", "survey_point", "")
     if points[1] and len(points[0])>0: 
         vals: list[str] = points[0].replace(" ","").split(";")[:2]
-        self.lat, self.lon = [float(i) for i in vals]
+        plugin.lat, plugin.lon = [float(i) for i in vals]
     
-def set_survey_point(self: SpeckleQGIS):
+def set_survey_point(plugin: SpeckleQGIS):
     # from widget (3 strings) to local vars AND memory (1 string)
     proj = QgsProject().instance()
-    vals =[ str(self.dockwidget.surveyPointLat.text()), str(self.dockwidget.surveyPointLon.text()) ]
+    vals =[ str(plugin.dockwidget.surveyPointLat.text()), str(plugin.dockwidget.surveyPointLon.text()) ]
 
     try: 
-        self.lat, self.lon = [float(i.replace(" ","")) for i in vals]
-        pt = str(self.lat) + ";" + str(self.lon) 
+        plugin.lat, plugin.lon = [float(i.replace(" ","")) for i in vals]
+        pt = str(plugin.lat) + ";" + str(plugin.lon) 
         proj.writeEntry("speckle-qgis", "survey_point", pt)
-        setProjectReferenceSystem(self)
+        setProjectReferenceSystem(plugin)
+        metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Set survey point"})
         return True
     
     except Exception as e:
-        logger.logToUser("Lat, Lon values invalid: " + str(e), Qgis.Warning)
+        logToUser("Lat, Lon values invalid: " + str(e), level = 2, plugin = plugin)
         return False 
     
 def setProjectReferenceSystem(plugin: SpeckleQGIS):
@@ -107,10 +110,10 @@ def setProjectReferenceSystem(plugin: SpeckleQGIS):
             plugin.qgis_project.setCrs(crs) 
             #listCrs = QgsCoordinateReferenceSystem().validSrsIds()
             #if exists == 0: newCrs.saveAsUserCrs("SpeckleCRS_lon=" + str(sPoint.x()) + "_lat=" + str(sPoint.y())) # srsid() #https://gis.stackexchange.com/questions/341500/creating-custom-crs-in-qgis
-            logToUser("Custom project CRS successfully applied", level=0)
+            logToUser("Custom project CRS successfully applied", level = 0, plugin = plugin)
         else:
-            logToUser("Custom CRS could not be created", level=1)
+            logToUser("Custom CRS could not be created", level = 1, plugin = plugin)
     except:
-        logToUser("Custom CRS could not be created", level=1)
+        logToUser("Custom CRS could not be created", level = 1, plugin = plugin)
     
     return True
