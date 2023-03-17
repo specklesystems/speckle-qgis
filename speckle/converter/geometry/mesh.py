@@ -1,3 +1,4 @@
+import inspect
 import math
 import time
 from typing import List
@@ -18,84 +19,96 @@ from qgis.core import (
 from panda3d.core import Triangulator
 
 def meshToNative(meshes: List[Mesh]) -> QgsMultiPolygon:
-    multiPolygon = QgsMultiPolygon()
-    for mesh in meshes:
-        parts_list, types_list = deconstructSpeckleMesh(mesh)
-        for part in parts_list: 
-            polygon = QgsPolygon()
-            pts = [Point(x=pt[0], y=pt[1], z=pt[2], units="m") for pt in part]
-            pts.append(pts[0])
-            boundary = QgsLineString([pointToNative(pt) for pt in pts])
-            polygon.setExteriorRing(boundary)
+    try:
+        multiPolygon = QgsMultiPolygon()
+        for mesh in meshes:
+            parts_list, types_list = deconstructSpeckleMesh(mesh)
+            for part in parts_list: 
+                polygon = QgsPolygon()
+                pts = [Point(x=pt[0], y=pt[1], z=pt[2], units="m") for pt in part]
+                pts.append(pts[0])
+                boundary = QgsLineString([pointToNative(pt) for pt in pts])
+                polygon.setExteriorRing(boundary)
 
-            if polygon is not None:
-                multiPolygon.addGeometry(polygon)
-    return multiPolygon
+                if polygon is not None:
+                    multiPolygon.addGeometry(polygon)
+        return multiPolygon
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None
     
 def writeMeshToShp(meshes: List[Mesh], path: str):
     """Converts a Speckle Mesh to QgsGeometry"""
-    print("06___________________Mesh to Native")
-    #print(meshes)
-    #print(mesh.units)
     try:
-        w = shapefile.Writer(path) 
-    except Exception as e: 
-        logToUser(e)
-        return 
-    time.sleep(0.3)
-    print(w)
-    w.field('speckle_id', 'C')
+        print("06___________________Mesh to Native")
+        #print(meshes)
+        #print(mesh.units)
+        try:
+            w = shapefile.Writer(path) 
+        except Exception as e: 
+            logToUser(e)
+            return 
+        time.sleep(0.3)
+        print(w)
+        w.field('speckle_id', 'C')
 
-    shapes = []
-    for geom in meshes:
+        shapes = []
+        for geom in meshes:
 
-        if geom.speckle_type =='Objects.Geometry.Mesh' and isinstance(geom, Mesh):
-            mesh = geom
-            w = fill_mesh_parts(w, mesh, geom.id)
-        else:
-            try: 
-                if geom.displayValue and isinstance(geom.displayValue, Mesh): 
-                    mesh = geom.displayValue
-                    w = fill_mesh_parts(w, mesh, geom.id)
-                elif geom.displayValue and isinstance(geom.displayValue, List): 
-                    w = fill_multi_mesh_parts(w, geom.displayValue, geom.id)
-            except: 
+            if geom.speckle_type =='Objects.Geometry.Mesh' and isinstance(geom, Mesh):
+                mesh = geom
+                w = fill_mesh_parts(w, mesh, geom.id)
+            else:
                 try: 
-                    if geom["@displayValue"] and isinstance(geom["@displayValue"], Mesh): 
-                        mesh = geom["@displayValue"]
+                    if geom.displayValue and isinstance(geom.displayValue, Mesh): 
+                        mesh = geom.displayValue
                         w = fill_mesh_parts(w, mesh, geom.id)
-                    elif geom["@displayValue"] and isinstance(geom["@displayValue"], List): 
-                        w = fill_multi_mesh_parts(w, geom["@displayValue"], geom.id)
-                except:
+                    elif geom.displayValue and isinstance(geom.displayValue, List): 
+                        w = fill_multi_mesh_parts(w, geom.displayValue, geom.id)
+                except: 
                     try: 
-                        if geom.displayMesh and isinstance(geom.displayMesh, Mesh): 
-                            mesh = geom.displayMesh
+                        if geom["@displayValue"] and isinstance(geom["@displayValue"], Mesh): 
+                            mesh = geom["@displayValue"]
                             w = fill_mesh_parts(w, mesh, geom.id)
-                        elif geom.displayMesh and isinstance(geom.displayMesh, List): 
-                            w = fill_multi_mesh_parts(w, geom.displayMesh, geom.id)
-                    except: pass
-    w.close()
-    print("06-end___________________Mesh to Native")
-    return path
+                        elif geom["@displayValue"] and isinstance(geom["@displayValue"], List): 
+                            w = fill_multi_mesh_parts(w, geom["@displayValue"], geom.id)
+                    except:
+                        try: 
+                            if geom.displayMesh and isinstance(geom.displayMesh, Mesh): 
+                                mesh = geom.displayMesh
+                                w = fill_mesh_parts(w, mesh, geom.id)
+                            elif geom.displayMesh and isinstance(geom.displayMesh, List): 
+                                w = fill_multi_mesh_parts(w, geom.displayMesh, geom.id)
+                        except: pass
+        w.close()
+        print("06-end___________________Mesh to Native")
+        return path
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None
 
 def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str):
     
     print("07___________________fill_multi_mesh_parts")
-    parts_list = []
-    types_list = []
-    for mesh in meshes:
-        if not isinstance(mesh, Mesh): continue
-        try:
-            print(f"Fill multi-mesh parts # {geom_id}")
-            parts_list_x, types_list_x = deconstructSpeckleMesh(mesh) 
-            parts_list.extend(parts_list_x)
-            types_list.extend(types_list_x)
-        except Exception as e: pass 
-    
-    w.multipatch(parts_list, partTypes=types_list ) # one type for each part
-    w.record(geom_id)
-    print("07-end___________________fill_multi_mesh_parts")
-    return w
+    try:
+        parts_list = []
+        types_list = []
+        for mesh in meshes:
+            if not isinstance(mesh, Mesh): continue
+            try:
+                print(f"Fill multi-mesh parts # {geom_id}")
+                parts_list_x, types_list_x = deconstructSpeckleMesh(mesh) 
+                parts_list.extend(parts_list_x)
+                types_list.extend(types_list_x)
+            except Exception as e: pass 
+        
+        w.multipatch(parts_list, partTypes=types_list ) # one type for each part
+        w.record(geom_id)
+        print("07-end___________________fill_multi_mesh_parts")
+        return w
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None
 
 def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
     
@@ -107,128 +120,145 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
         #else: 
         #    #print("not triangulated mesh")
 
-    except Exception as e: pass #; print(e)
-    #print("mesh part written")
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+
     return w
 
 def deconstructSpeckleMesh(mesh: Mesh):
     
     print("deconstructSpeckleMesh")
-    scale = get_scale_factor(mesh.units)
-    parts_list = []
-    types_list = []
+    try:
+        scale = get_scale_factor(mesh.units)
+        parts_list = []
+        types_list = []
 
-    count = 0 # sequence of vertex (not of flat coord list) 
-    for f in mesh.faces: # real number of loops will be at least 3 times less 
-        try:
-            vertices = mesh.faces[count]
-            if mesh.faces[count] == 0: vertices = 3
-            if mesh.faces[count] == 1: vertices = 4
-            
-            face = []
-            for i in range(vertices):
-                index_faces = count + 1 + i 
-                index_vertices = mesh.faces[index_faces]*3
-                face.append([ scale * mesh.vertices[index_vertices], scale * mesh.vertices[index_vertices+1], scale * mesh.vertices[index_vertices+2] ]) 
+        count = 0 # sequence of vertex (not of flat coord list) 
+        for f in mesh.faces: # real number of loops will be at least 3 times less 
+            try:
+                vertices = mesh.faces[count]
+                if mesh.faces[count] == 0: vertices = 3
+                if mesh.faces[count] == 1: vertices = 4
+                
+                face = []
+                for i in range(vertices):
+                    index_faces = count + 1 + i 
+                    index_vertices = mesh.faces[index_faces]*3
+                    face.append([ scale * mesh.vertices[index_vertices], scale * mesh.vertices[index_vertices+1], scale * mesh.vertices[index_vertices+2] ]) 
 
-            parts_list.append(face)
-            types_list.append(OUTER_RING)
-            count += vertices + 1
-        except: break # when out of range 
+                parts_list.append(face)
+                types_list.append(OUTER_RING)
+                count += vertices + 1
+            except: break # when out of range 
 
-    print("end-deconstructSpeckleMesh")
-    return parts_list, types_list
+        print("end-deconstructSpeckleMesh")
+        return parts_list, types_list
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return [],[]
 
 def constructMeshFromRaster(vertices, faces, colors):
-    mesh = Mesh.create(vertices, faces, colors)
-    mesh.units = "m"
-    return mesh
+    try:
+        mesh = Mesh.create(vertices, faces, colors)
+        mesh.units = "m"
+        return mesh
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None
 
 def constructMesh(vertices, faces, colors):
-    mesh = Mesh.create(vertices, faces, colors)
-    mesh.units = "m"
-    material = RenderMaterial()
-    material.diffuse = colors[0]
-    mesh.renderMaterial = material 
-    return mesh
+    try:
+        mesh = Mesh.create(vertices, faces, colors)
+        mesh.units = "m"
+        material = RenderMaterial()
+        material.diffuse = colors[0]
+        mesh.renderMaterial = material 
+        return mesh
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None
 
 def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, layer: QgsVectorLayer):
-    
-    vertices = []
-    total_vertices = 0
+    try:
+        vertices = []
+        total_vertices = 0
 
-    coef = 1
-    maxPoints = 5000
-    if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
-        
-    if len(voidsAsPts) == 0: # only if there is a mesh with no voids and large amount of points
-        for k, ptt in enumerate(polyBorder): #pointList:
-            pt = polyBorder[k*coef]
-            if k < maxPoints:
-                if isinstance(pt, QgsPointXY):
-                    pt = QgsPoint(pt)
-                if isinstance(pt,Point):
-                    pt = pointToNative(pt)
-                x = pt.x()
-                y = pt.y()
-                z = 0 if math.isnan(pt.z()) else pt.z()
-                vertices.extend([x, y, z])
-                total_vertices += 1
-            else: break
-
-        ran = range(0, total_vertices)
-        faces = [total_vertices]
-        faces.extend([i + existing_vert for i in ran])
-        # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
-    else: # if there are voids 
-        # if its a large polygon with voids to be triangualted, lower the coef even more:
-        maxPoints = 100
+        coef = 1
+        maxPoints = 5000
         if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
-
-        trianglator = Triangulator()
-        faces = []
-
-        pt_count = 0
-        # add extra middle point for border
-        for k, ptt in enumerate(polyBorder): #pointList:
-            pt = polyBorder[k*coef]
-            if k < maxPoints:
-                if pt_count < len(polyBorder)-1 and k < (maxPoints-1): 
-                    pt2 = polyBorder[(k+1)*coef]
-                else: pt2 = polyBorder[0]
-                        
-                trianglator.addPolygonVertex(trianglator.addVertex(pt.x, pt.y))
-                vertices.extend([pt.x, pt.y, pt.z])
-                trianglator.addPolygonVertex(trianglator.addVertex((pt.x+pt2.x)/2, (pt.y+pt2.y)/2))
-                vertices.extend([(pt.x+pt2.x)/2, (pt.y+pt2.y)/2, (pt.z+pt2.z)/2])
-                total_vertices += 2
-                pt_count += 1
-            else: break
-
-        #add void points
-        for pts in voidsAsPts:
-            trianglator.beginHole()
-
-            coefVoid = 1
-            if len(pts) >= maxPoints: coefVoid = int(len(pts)/maxPoints)
-            for k, ptt in enumerate(pts):
-                pt = pts[k*coefVoid]
+            
+        if len(voidsAsPts) == 0: # only if there is a mesh with no voids and large amount of points
+            for k, ptt in enumerate(polyBorder): #pointList:
+                pt = polyBorder[k*coef]
                 if k < maxPoints:
-                    trianglator.addHoleVertex(trianglator.addVertex(pt.x, pt.y))
-                    vertices.extend([pt.x, pt.y, pt.z])
+                    if isinstance(pt, QgsPointXY):
+                        pt = QgsPoint(pt)
+                    if isinstance(pt,Point):
+                        pt = pointToNative(pt)
+                    x = pt.x()
+                    y = pt.y()
+                    z = 0 if math.isnan(pt.z()) else pt.z()
+                    vertices.extend([x, y, z])
                     total_vertices += 1
                 else: break
-        
-        trianglator.triangulate()
-        i = 0
-        #print(trianglator.getNumTriangles())
-        while i < trianglator.getNumTriangles():
-            tr = [trianglator.getTriangleV0(i),trianglator.getTriangleV1(i),trianglator.getTriangleV2(i)]
-            faces.extend([3, tr[0] + existing_vert, tr[1] + existing_vert, tr[2] + existing_vert])
-            i+=1
-        ran = range(0, total_vertices)
 
-    col = featureColorfromNativeRenderer(feature, layer)
-    colors = [col for i in ran] # apply same color for all vertices
+            ran = range(0, total_vertices)
+            faces = [total_vertices]
+            faces.extend([i + existing_vert for i in ran])
+            # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
+        else: # if there are voids 
+            # if its a large polygon with voids to be triangualted, lower the coef even more:
+            maxPoints = 100
+            if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
 
-    return total_vertices, vertices, faces, colors
+            trianglator = Triangulator()
+            faces = []
+
+            pt_count = 0
+            # add extra middle point for border
+            for k, ptt in enumerate(polyBorder): #pointList:
+                pt = polyBorder[k*coef]
+                if k < maxPoints:
+                    if pt_count < len(polyBorder)-1 and k < (maxPoints-1): 
+                        pt2 = polyBorder[(k+1)*coef]
+                    else: pt2 = polyBorder[0]
+                            
+                    trianglator.addPolygonVertex(trianglator.addVertex(pt.x, pt.y))
+                    vertices.extend([pt.x, pt.y, pt.z])
+                    trianglator.addPolygonVertex(trianglator.addVertex((pt.x+pt2.x)/2, (pt.y+pt2.y)/2))
+                    vertices.extend([(pt.x+pt2.x)/2, (pt.y+pt2.y)/2, (pt.z+pt2.z)/2])
+                    total_vertices += 2
+                    pt_count += 1
+                else: break
+
+            #add void points
+            for pts in voidsAsPts:
+                trianglator.beginHole()
+
+                coefVoid = 1
+                if len(pts) >= maxPoints: coefVoid = int(len(pts)/maxPoints)
+                for k, ptt in enumerate(pts):
+                    pt = pts[k*coefVoid]
+                    if k < maxPoints:
+                        trianglator.addHoleVertex(trianglator.addVertex(pt.x, pt.y))
+                        vertices.extend([pt.x, pt.y, pt.z])
+                        total_vertices += 1
+                    else: break
+            
+            trianglator.triangulate()
+            i = 0
+            #print(trianglator.getNumTriangles())
+            while i < trianglator.getNumTriangles():
+                tr = [trianglator.getTriangleV0(i),trianglator.getTriangleV1(i),trianglator.getTriangleV2(i)]
+                faces.extend([3, tr[0] + existing_vert, tr[1] + existing_vert, tr[2] + existing_vert])
+                i+=1
+            ran = range(0, total_vertices)
+
+        col = featureColorfromNativeRenderer(feature, layer)
+        colors = [col for i in ran] # apply same color for all vertices
+
+        return total_vertices, vertices, faces, colors
+    
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None, None, None, None 
