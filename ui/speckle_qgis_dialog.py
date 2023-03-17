@@ -214,219 +214,277 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.msgLog = logWidget 
 
     def resizeEvent(self, event):
-        print("resize")
-        QtWidgets.QDockWidget.resizeEvent(self, event)
-        if self.msgLog.size().height() != 0: # visible
-            self.msgLog.resize(self.frameSize().width(), self.frameSize().height())
+        try:
+            print("resize")
+            QtWidgets.QDockWidget.resizeEvent(self, event)
+            if self.msgLog.size().height() != 0: # visible
+                self.msgLog.resize(self.frameSize().width(), self.frameSize().height())
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def clearDropdown(self):
-        #self.streamIdField.clear()
-        self.streamBranchDropdown.clear()
-        self.commitDropdown.clear()
-        #self.layerSendModeDropdown.clear()
+        try:
+            #self.streamIdField.clear()
+            self.streamBranchDropdown.clear()
+            self.commitDropdown.clear()
+            #self.layerSendModeDropdown.clear()
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def reloadDialogUI(self, plugin):
+        try:
 
-        #logToUser("long errror something something msg1", level=2, plugin= plugin)
+            #logToUser("long errror something something msg1", level=2, plugin= plugin)
 
-        self.clearDropdown()
-        self.populateUI(plugin) 
-        self.enableElements(plugin)
+            self.clearDropdown()
+            self.populateUI(plugin) 
+            self.enableElements(plugin)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     
     def run(self, plugin): 
-        # Setup events on first load only!
-        self.setupOnFirstLoad(plugin)
-        # Connect streams section events
-        self.completeStreamSection(plugin)
-        # Populate the UI dropdowns
-        self.populateUI(plugin) 
+        try:
+            # Setup events on first load only!
+            self.setupOnFirstLoad(plugin)
+            # Connect streams section events
+            self.completeStreamSection(plugin)
+            # Populate the UI dropdowns
+            self.populateUI(plugin) 
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def closeEvent(self, event):
-        self.closingPlugin.emit()
-        event.accept()
+        try:
+            self.closingPlugin.emit()
+            event.accept()
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def setupOnFirstLoad(self, plugin):
-        self.runButton.clicked.connect(plugin.onRunButtonClicked)
-        
-        self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
-        self.reloadButton.clicked.connect(lambda: self.refreshClicked(plugin))
-        self.closeButton.clicked.connect(lambda: self.closeClicked(plugin))
-        self.saveSurveyPoint.clicked.connect(plugin.set_survey_point)
-        self.saveLayerSelection.clicked.connect(lambda: self.populateLayerDropdown(plugin))
-        self.sendModeButton.clicked.connect(lambda: self.setSendMode(plugin))
-        self.layerSendModeDropdown.currentIndexChanged.connect( lambda: self.layerSendModeChange(plugin) )
-        self.receiveModeButton.clicked.connect(lambda: self.setReceiveMode(plugin))
+        try:
+            self.runButton.clicked.connect(plugin.onRunButtonClicked)
+            
+            self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
+            self.reloadButton.clicked.connect(lambda: self.refreshClicked(plugin))
+            self.closeButton.clicked.connect(lambda: self.closeClicked(plugin))
+            self.saveSurveyPoint.clicked.connect(plugin.set_survey_point)
+            self.saveLayerSelection.clicked.connect(lambda: self.populateLayerDropdown(plugin))
+            self.sendModeButton.clicked.connect(lambda: self.setSendMode(plugin))
+            self.layerSendModeDropdown.currentIndexChanged.connect( lambda: self.layerSendModeChange(plugin) )
+            self.receiveModeButton.clicked.connect(lambda: self.setReceiveMode(plugin))
 
-        self.streamBranchDropdown.currentIndexChanged.connect( lambda: self.runBtnStatusChanged(plugin) )
-        self.commitDropdown.currentIndexChanged.connect( lambda: self.runBtnStatusChanged(plugin) )
+            self.streamBranchDropdown.currentIndexChanged.connect( lambda: self.runBtnStatusChanged(plugin) )
+            self.commitDropdown.currentIndexChanged.connect( lambda: self.runBtnStatusChanged(plugin) )
 
-        self.closingPlugin.connect(plugin.onClosePlugin)
-        return 
+            self.closingPlugin.connect(plugin.onClosePlugin)
+            return 
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def refreshClicked(self, plugin):
-        metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Refresh"})
-        plugin.reloadUI()
+        try:
+            metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Refresh"})
+            plugin.reloadUI()
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def closeClicked(self, plugin):
-        metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Close"})
-        plugin.onClosePlugin()
+        try:
+            metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Close"})
+            plugin.onClosePlugin()
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def setSendMode(self, plugin):
-        plugin.btnAction = 0 # send 
-        color = f"color: rgb{str(SPECKLE_COLOR)};"
-        self.sendModeButton.setStyleSheet("border: 0px;"
-                                    f"color: rgb{str(SPECKLE_COLOR)};"
-                                    "padding: 10px;")
-        self.sendModeButton.setIcon(QIcon(ICON_SEND_BLUE))
-        self.sendModeButton.setFlat(False)
-        self.receiveModeButton.setFlat(True)
-        self.receiveModeButton.setStyleSheet("QPushButton {border: 0px; color: black; padding: 10px; } QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};" +  " };")
-        self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLACK))
-        #self.receiveModeButton.setFlat(True)
-        self.runButton.setProperty("text", " SEND")
-        self.runButton.setIcon(QIcon(ICON_SEND))
+        try:
+            plugin.btnAction = 0 # send 
+            color = f"color: rgb{str(SPECKLE_COLOR)};"
+            self.sendModeButton.setStyleSheet("border: 0px;"
+                                        f"color: rgb{str(SPECKLE_COLOR)};"
+                                        "padding: 10px;")
+            self.sendModeButton.setIcon(QIcon(ICON_SEND_BLUE))
+            self.sendModeButton.setFlat(False)
+            self.receiveModeButton.setFlat(True)
+            self.receiveModeButton.setStyleSheet("QPushButton {border: 0px; color: black; padding: 10px; } QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};" +  " };")
+            self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLACK))
+            #self.receiveModeButton.setFlat(True)
+            self.runButton.setProperty("text", " SEND")
+            self.runButton.setIcon(QIcon(ICON_SEND))
 
-        # enable sections only if in "saved streams" mode 
-        if self.layerSendModeDropdown.currentIndex() == 1: self.layersWidget.setEnabled(True)
-        if self.layerSendModeDropdown.currentIndex() == 1: self.saveLayerSelection.setEnabled(True)
-        self.commitDropdown.setEnabled(False)
-        self.messageInput.setEnabled(True)
-        self.layerSendModeDropdown.setEnabled(True)
+            # enable sections only if in "saved streams" mode 
+            if self.layerSendModeDropdown.currentIndex() == 1: self.layersWidget.setEnabled(True)
+            if self.layerSendModeDropdown.currentIndex() == 1: self.saveLayerSelection.setEnabled(True)
+            self.commitDropdown.setEnabled(False)
+            self.messageInput.setEnabled(True)
+            self.layerSendModeDropdown.setEnabled(True)
 
-        self.runBtnStatusChanged(plugin)
-        return
+            self.runBtnStatusChanged(plugin)
+            return
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
     
     def setReceiveMode(self, plugin):
-        plugin.btnAction = 1 # receive 
-        color = f"color: rgb{str(SPECKLE_COLOR)};"
-        self.receiveModeButton.setStyleSheet("border: 0px;"
-                                    f"color: rgb{str(SPECKLE_COLOR)};"
-                                    "padding: 10px;")
-        self.sendModeButton.setIcon(QIcon(ICON_SEND_BLACK))
-        self.sendModeButton.setStyleSheet("QPushButton {border: 0px; color: black; padding: 10px;} QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};"  + " };")
-        self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLUE))
-        self.sendModeButton.setFlat(True)
-        self.receiveModeButton.setFlat(False)
-        #self.sendModeButton.setFlat(True)
-        self.runButton.setProperty("text", " RECEIVE")
-        self.runButton.setIcon(QIcon(ICON_RECEIVE))
-        #self.layerSendModeChange(plugin, 1)
-        self.commitDropdown.setEnabled(True)
-        self.layersWidget.setEnabled(False)
-        self.messageInput.setEnabled(False)
-        self.saveLayerSelection.setEnabled(False)
-        self.layerSendModeDropdown.setEnabled(False)
+        try:
+            plugin.btnAction = 1 # receive 
+            color = f"color: rgb{str(SPECKLE_COLOR)};"
+            self.receiveModeButton.setStyleSheet("border: 0px;"
+                                        f"color: rgb{str(SPECKLE_COLOR)};"
+                                        "padding: 10px;")
+            self.sendModeButton.setIcon(QIcon(ICON_SEND_BLACK))
+            self.sendModeButton.setStyleSheet("QPushButton {border: 0px; color: black; padding: 10px;} QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};"  + " };")
+            self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLUE))
+            self.sendModeButton.setFlat(True)
+            self.receiveModeButton.setFlat(False)
+            #self.sendModeButton.setFlat(True)
+            self.runButton.setProperty("text", " RECEIVE")
+            self.runButton.setIcon(QIcon(ICON_RECEIVE))
+            #self.layerSendModeChange(plugin, 1)
+            self.commitDropdown.setEnabled(True)
+            self.layersWidget.setEnabled(False)
+            self.messageInput.setEnabled(False)
+            self.saveLayerSelection.setEnabled(False)
+            self.layerSendModeDropdown.setEnabled(False)
 
-        self.runBtnStatusChanged(plugin)
-        return
+            self.runBtnStatusChanged(plugin)
+            return
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def completeStreamSection(self, plugin):
-        self.streams_remove_button.clicked.connect( lambda: self.onStreamRemoveButtonClicked(plugin) )
-        self.streamList.currentIndexChanged.connect( lambda: self.onActiveStreamChanged(plugin) )
-        self.streamBranchDropdown.currentIndexChanged.connect( lambda: self.populateActiveCommitDropdown(plugin) )
-        return
+        try:
+            self.streams_remove_button.clicked.connect( lambda: self.onStreamRemoveButtonClicked(plugin) )
+            self.streamList.currentIndexChanged.connect( lambda: self.onActiveStreamChanged(plugin) )
+            self.streamBranchDropdown.currentIndexChanged.connect( lambda: self.populateActiveCommitDropdown(plugin) )
+            return
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def populateUI(self, plugin):
-        self.populateLayerSendModeDropdown()
-        self.populateLayerDropdown(plugin, False)
-        #items = [self.layersWidget.item(x).text() for x in range(self.layersWidget.count())]
-        self.populateProjectStreams(plugin)
-        self.populateSurveyPoint(plugin)
+        try:
+            self.populateLayerSendModeDropdown()
+            self.populateLayerDropdown(plugin, False)
+            #items = [self.layersWidget.item(x).text() for x in range(self.layersWidget.count())]
+            self.populateProjectStreams(plugin)
+            self.populateSurveyPoint(plugin)
 
-        self.runBtnStatusChanged(plugin)
-        self.runButton.setEnabled(False) 
-  
+            self.runBtnStatusChanged(plugin)
+            self.runButton.setEnabled(False) 
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
+    
     def runBtnStatusChanged(self, plugin):
-        commitStr = str(self.commitDropdown.currentText())
-        branchStr = str(self.streamBranchDropdown.currentText())
+        try:
+            commitStr = str(self.commitDropdown.currentText())
+            branchStr = str(self.streamBranchDropdown.currentText())
 
-        if plugin.btnAction == 1: # on receive
-            if commitStr == "": 
-                self.runButton.setEnabled(False) 
-            else: 
-                self.runButton.setEnabled(True) 
-        
-        if plugin.btnAction == 0: # on send 
-            if branchStr == "": 
-                self.runButton.setEnabled(False) 
-            elif branchStr != "" and self.layerSendModeDropdown.currentIndex() == 1 and len(plugin.current_layers) == 0: # saved layers; but the list is empty 
-                self.runButton.setEnabled(False)
-            else:
-                self.runButton.setEnabled(True)
+            if plugin.btnAction == 1: # on receive
+                if commitStr == "": 
+                    self.runButton.setEnabled(False) 
+                else: 
+                    self.runButton.setEnabled(True) 
+            
+            if plugin.btnAction == 0: # on send 
+                if branchStr == "": 
+                    self.runButton.setEnabled(False) 
+                elif branchStr != "" and self.layerSendModeDropdown.currentIndex() == 1 and len(plugin.current_layers) == 0: # saved layers; but the list is empty 
+                    self.runButton.setEnabled(False)
+                else:
+                    self.runButton.setEnabled(True)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
             
 
     def layerSendModeChange(self, plugin, runMode = None):
-
-        if self.layerSendModeDropdown.currentIndex() == 0 or runMode == 1: # by manual selection OR receive mode
-            self.current_layers = []
-            self.layersWidget.setEnabled(False)
-            self.saveLayerSelection.setEnabled(False)
+        try:
+            if self.layerSendModeDropdown.currentIndex() == 0 or runMode == 1: # by manual selection OR receive mode
+                self.current_layers = []
+                self.layersWidget.setEnabled(False)
+                self.saveLayerSelection.setEnabled(False)
+                
+            elif self.layerSendModeDropdown.currentIndex() == 1 and (runMode == 0 or runMode is None): # by saved AND when Send mode
+                self.layersWidget.setEnabled(True)
+                self.saveLayerSelection.setEnabled(True)
             
-        elif self.layerSendModeDropdown.currentIndex() == 1 and (runMode == 0 or runMode is None): # by saved AND when Send mode
-            self.layersWidget.setEnabled(True)
-            self.saveLayerSelection.setEnabled(True)
-        
-        branchStr = str(self.streamBranchDropdown.currentText())
-        if self.layerSendModeDropdown.currentIndex() == 0:
-            if branchStr == "": self.runButton.setEnabled(False) # by manual selection
-            else: self.runButton.setEnabled(True) # by manual selection
-        elif self.layerSendModeDropdown.currentIndex() == 1: self.runBtnStatusChanged(plugin) # by saved
+            branchStr = str(self.streamBranchDropdown.currentText())
+            if self.layerSendModeDropdown.currentIndex() == 0:
+                if branchStr == "": self.runButton.setEnabled(False) # by manual selection
+                else: self.runButton.setEnabled(True) # by manual selection
+            elif self.layerSendModeDropdown.currentIndex() == 1: self.runBtnStatusChanged(plugin) # by saved
 
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def populateLayerDropdown(self, plugin, bySelection: bool = True):
         
-        if not self: return
-        from ui.project_vars import set_project_layer_selection
-        
-        self.layersWidget.clear()
-        nameDisplay = [] 
-        project = QgsProject.instance()
+        try:
+            if not self: return
+            from ui.project_vars import set_project_layer_selection
+            
+            self.layersWidget.clear()
+            nameDisplay = [] 
+            project = QgsProject.instance()
 
-        if bySelection is False: # read from project data 
+            if bySelection is False: # read from project data 
 
-            all_layers_ids = [l.id() for l in project.mapLayers().values()]
-            for layer_tuple in plugin.current_layers:
-                if layer_tuple[1].id() in all_layers_ids: 
-                    listItem = self.fillLayerList(layer_tuple[1]) 
+                all_layers_ids = [l.id() for l in project.mapLayers().values()]
+                for layer_tuple in plugin.current_layers:
+                    if layer_tuple[1].id() in all_layers_ids: 
+                        listItem = self.fillLayerList(layer_tuple[1]) 
+                        self.layersWidget.addItem(listItem)
+
+            else: # read selected layers 
+                # Fetch selected layers
+
+                plugin.current_layers = []
+                layers = getLayers(plugin, bySelection) # List[QgsLayerTreeNode]
+                for i, layer in enumerate(layers):
+                    plugin.current_layers.append((layer.name(), layer)) 
+                    listItem = self.fillLayerList(layer)
                     self.layersWidget.addItem(listItem)
 
-        else: # read selected layers 
-            # Fetch selected layers
+                set_project_layer_selection(plugin)
 
-            plugin.current_layers = []
-            layers = getLayers(plugin, bySelection) # List[QgsLayerTreeNode]
-            for i, layer in enumerate(layers):
-                plugin.current_layers.append((layer.name(), layer)) 
-                listItem = self.fillLayerList(layer)
-                self.layersWidget.addItem(listItem)
-
-            set_project_layer_selection(plugin)
-
-        self.layersWidget.setIconSize(QtCore.QSize(20, 20))
-        self.runBtnStatusChanged(plugin)
+            self.layersWidget.setIconSize(QtCore.QSize(20, 20))
+            self.runBtnStatusChanged(plugin)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def fillLayerList(self, layer):
-        
-        icon_xxl = os.path.dirname(os.path.abspath(__file__)) + "/size-xxl.png"
-        listItem = QListWidgetItem(layer.name()) 
+        try:
+            icon_xxl = os.path.dirname(os.path.abspath(__file__)) + "/size-xxl.png"
+            listItem = QListWidgetItem(layer.name()) 
 
-        if isinstance(layer, QgsRasterLayer) and layer.width()*layer.height() > 1000000:
-                listItem.setIcon(QIcon(icon_xxl))
-        
-        elif isinstance(layer, QgsVectorLayer) and layer.featureCount() > 20000:
-                listItem.setIcon(QIcon(icon_xxl))
+            if isinstance(layer, QgsRasterLayer) and layer.width()*layer.height() > 1000000:
+                    listItem.setIcon(QIcon(icon_xxl))
+            
+            elif isinstance(layer, QgsVectorLayer) and layer.featureCount() > 20000:
+                    listItem.setIcon(QIcon(icon_xxl))
 
-        else: 
-            icon = QgsIconUtils().iconForLayer(layer)
-            listItem.setIcon(icon)
+            else: 
+                icon = QgsIconUtils().iconForLayer(layer)
+                listItem.setIcon(icon)
+            
+            return listItem
         
-        #newSize = listItem.sizeHint()
-        #height = listItem.sizeHint().height()
-        #newSize.setHeight(1)
-        #listItem.setSizeHint(newSize)
-        
-        return listItem
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
 
     def populateSurveyPoint(self, plugin):
@@ -437,108 +495,136 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             self.surveyPointLat.setText(str(plugin.lat))
             self.surveyPointLon.clear()
             self.surveyPointLon.setText(str(plugin.lon))
-        except: return
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def enableElements(self, plugin):
-        self.sendModeButton.setEnabled(plugin.is_setup)
-        self.receiveModeButton.setEnabled(plugin.is_setup)
-        self.runButton.setEnabled(plugin.is_setup)
-        self.streams_add_button.setEnabled(plugin.is_setup)
-        if plugin.is_setup is False: self.streams_remove_button.setEnabled(plugin.is_setup) 
-        self.streamBranchDropdown.setEnabled(plugin.is_setup)
-        self.layerSendModeDropdown.setEnabled(plugin.is_setup)
-        self.commitDropdown.setEnabled(False)
-        self.show()
+        try:
+            self.sendModeButton.setEnabled(plugin.is_setup)
+            self.receiveModeButton.setEnabled(plugin.is_setup)
+            self.runButton.setEnabled(plugin.is_setup)
+            self.streams_add_button.setEnabled(plugin.is_setup)
+            if plugin.is_setup is False: self.streams_remove_button.setEnabled(plugin.is_setup) 
+            self.streamBranchDropdown.setEnabled(plugin.is_setup)
+            self.layerSendModeDropdown.setEnabled(plugin.is_setup)
+            self.commitDropdown.setEnabled(False)
+            self.show()
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def populateProjectStreams(self, plugin):
-        from ui.project_vars import set_project_streams
-        if not self: return
-        self.streamList.clear()
-        for stream in plugin.current_streams: 
-            self.streamList.addItems(
-            [f"Stream not accessible - {stream[0].stream_id}" if stream[1] is None or isinstance(stream[1], SpeckleException) else f"{stream[1].name}, {stream[1].id} | {stream[0].stream_url.split('/streams')[0]}"] 
-        )
-        if len(plugin.current_streams)==0: self.streamList.addItems([""])
-        self.streamList.addItems(["Create New Stream"])
-        set_project_streams(plugin)
-        index = self.streamList.currentIndex()
-        if index == -1: self.streams_remove_button.setEnabled(False)
-        else: self.streams_remove_button.setEnabled(True)
+        try:
+            from ui.project_vars import set_project_streams
+            if not self: return
+            self.streamList.clear()
+            for stream in plugin.current_streams: 
+                self.streamList.addItems(
+                [f"Stream not accessible - {stream[0].stream_id}" if stream[1] is None or isinstance(stream[1], SpeckleException) else f"{stream[1].name}, {stream[1].id} | {stream[0].stream_url.split('/streams')[0]}"] 
+            )
+            if len(plugin.current_streams)==0: self.streamList.addItems([""])
+            self.streamList.addItems(["Create New Stream"])
+            set_project_streams(plugin)
+            index = self.streamList.currentIndex()
+            if index == -1: self.streams_remove_button.setEnabled(False)
+            else: self.streams_remove_button.setEnabled(True)
 
-        if len(plugin.current_streams)>0: plugin.active_stream = plugin.current_streams[0]
+            if len(plugin.current_streams)>0: plugin.active_stream = plugin.current_streams[0]
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def onActiveStreamChanged(self, plugin):
+        try:
+            if not self: return
+            index = self.streamList.currentIndex()
+            if (len(plugin.current_streams) == 0 and index ==1) or (len(plugin.current_streams)>0 and index == len(plugin.current_streams)): 
+                self.populateProjectStreams(plugin)
+                plugin.onStreamCreateClicked()
+                return
+            if len(plugin.current_streams) == 0: return
+            if index == -1: return
 
-        if not self: return
-        index = self.streamList.currentIndex()
-        if (len(plugin.current_streams) == 0 and index ==1) or (len(plugin.current_streams)>0 and index == len(plugin.current_streams)): 
-            self.populateProjectStreams(plugin)
-            plugin.onStreamCreateClicked()
+            try: plugin.active_stream = plugin.current_streams[index]
+            except: plugin.active_stream = None
+
+            self.populateActiveStreamBranchDropdown(plugin)
+            self.populateActiveCommitDropdown(plugin)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
             return
-        if len(plugin.current_streams) == 0: return
-        if index == -1: return
-
-        try: plugin.active_stream = plugin.current_streams[index]
-        except: plugin.active_stream = None
-
-        self.populateActiveStreamBranchDropdown(plugin)
-        self.populateActiveCommitDropdown(plugin)
         
     def populateLayerSendModeDropdown(self):
         if not self: return
-        self.layerSendModeDropdown.clear()
-        self.layerSendModeDropdown.addItems(
-            ["Send selected layers", "Send saved layers"]
-        )
+        try:
+            self.layerSendModeDropdown.clear()
+            self.layerSendModeDropdown.addItems(
+                ["Send selected layers", "Send saved layers"]
+            )
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def populateActiveStreamBranchDropdown(self, plugin):
         if not self: return
-        if plugin.active_stream is None: return
-        self.streamBranchDropdown.clear()
-        if isinstance(plugin.active_stream[1], SpeckleException): 
-            logToUser("Some streams cannot be accessed", level = 1, plugin = self)
+        try:
+            if plugin.active_stream is None: return
+            self.streamBranchDropdown.clear()
+            if isinstance(plugin.active_stream[1], SpeckleException): 
+                logToUser("Some streams cannot be accessed", level = 1, plugin = self)
+                return
+            elif plugin.active_stream is None or plugin.active_stream[1] is None or plugin.active_stream[1].branches is None:
+                return
+            self.streamBranchDropdown.addItems(
+                [f"{branch.name}" for branch in plugin.active_stream[1].branches.items]
+            )
+            self.streamBranchDropdown.addItems(["Create New Branch"])
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
             return
-        elif plugin.active_stream is None or plugin.active_stream[1] is None or plugin.active_stream[1].branches is None:
-            return
-        self.streamBranchDropdown.addItems(
-            [f"{branch.name}" for branch in plugin.active_stream[1].branches.items]
-        )
-        self.streamBranchDropdown.addItems(["Create New Branch"])
 
     def populateActiveCommitDropdown(self, plugin):
         if not self: return
-        self.commitDropdown.clear()
-        if plugin.active_stream is None: return
-        branchName = self.streamBranchDropdown.currentText()
-        if branchName == "Create New Branch": 
-            self.streamBranchDropdown.setCurrentText("main")
-            plugin.onBranchCreateClicked()
-            return
-        branch = None
-        if isinstance(plugin.active_stream[1], SpeckleException): 
-            logToUser("Some streams cannot be accessed", level = 1, plugin = self)
-            return
-        elif plugin.active_stream[1]:
-            for b in plugin.active_stream[1].branches.items:
-                if b.name == branchName:
-                    branch = b
-                    break
         try:
+            self.commitDropdown.clear()
+            if plugin.active_stream is None: return
+            branchName = self.streamBranchDropdown.currentText()
+            if branchName == "Create New Branch": 
+                self.streamBranchDropdown.setCurrentText("main")
+                plugin.onBranchCreateClicked()
+                return
+            branch = None
+            if isinstance(plugin.active_stream[1], SpeckleException): 
+                logToUser("Some streams cannot be accessed", level = 1, plugin = self)
+                return
+            elif plugin.active_stream[1]:
+                for b in plugin.active_stream[1].branches.items:
+                    if b.name == branchName:
+                        branch = b
+                        break
+
             self.commitDropdown.addItems(
                 [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]
             )
-        except: pass
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 
     def onStreamRemoveButtonClicked(self, plugin):
-        from ui.project_vars import set_project_streams
-        if not self: return
-        index = self.streamList.currentIndex()
-        if len(plugin.current_streams) > 0: plugin.current_streams.pop(index)
-        plugin.active_stream = None
-        self.streamBranchDropdown.clear()
-        self.commitDropdown.clear()
-        #self.streamIdField.setText("")
+        try:
+            from ui.project_vars import set_project_streams
+            if not self: return
+            index = self.streamList.currentIndex()
+            if len(plugin.current_streams) > 0: plugin.current_streams.pop(index)
+            plugin.active_stream = None
+            self.streamBranchDropdown.clear()
+            self.commitDropdown.clear()
+            #self.streamIdField.setText("")
 
-        set_project_streams(plugin)
-        self.populateProjectStreams(plugin)
+            set_project_streams(plugin)
+            self.populateProjectStreams(plugin)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            return
 

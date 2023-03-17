@@ -10,12 +10,13 @@ from plugin_utils.helpers import splitTextIntoLines
 def logToUser(msg: str, func=None, level: int = 2, plugin = None, blue = False):
       print("Log to user")
       time.sleep(0.3)
+      
       dockwidget = plugin
-      if dockwidget is None: return
       try: 
             if func is not None: msg += "\n" + str(func)
-
             writeToLog(msg, level)
+            if dockwidget is None: return
+
             new_msg = splitTextIntoLines(msg, 70)
 
             if blue is True: 

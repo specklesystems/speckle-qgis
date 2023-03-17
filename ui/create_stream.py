@@ -1,5 +1,7 @@
+import inspect
 import os
 from typing import List, Tuple, Union
+from ui.logger import logToUser
 import ui.speckle_qgis_dialog
 from qgis.core import Qgis
 
@@ -46,11 +48,15 @@ class CreateStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
         self.populate_accounts_dropdown()
 
     def nameCheck(self):
-        if len(self.name_field.text()) == 0 or len(self.name_field.text()) >= 3:
-            self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(True) 
-        else: 
-            self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(False) 
-        return
+        try:
+            if len(self.name_field.text()) == 0 or len(self.name_field.text()) >= 3:
+                self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(True) 
+            else: 
+                self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(False) 
+            return
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3])
+            return
 
     def onOkClicked(self):
         try:
@@ -61,26 +67,38 @@ class CreateStreamModalDialog(QtWidgets.QWidget, FORM_CLASS):
             self.handleStreamCreate.emit(acc,name,description,public)
             self.close()
         except Exception as e:
-            logger.logToUser(str(e), Qgis.Warning)
-            return 
+            logToUser(e, level = 2, func = inspect.stack()[0][3])
+            return
 
     def onCancelClicked(self):
-        #self.handleCancelStreamCreate.emit()
-        self.close()
+        try:
+            #self.handleCancelStreamCreate.emit()
+            self.close()
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3])
+            return
 
     def onAccountSelected(self, index):
-        account = self.speckle_accounts[index]
-        self.speckle_client = SpeckleClient(account.serverInfo.url, account.serverInfo.url.startswith("https"))
-        self.speckle_client.authenticate_with_token(token=account.token)
+        try:
+            account = self.speckle_accounts[index]
+            self.speckle_client = SpeckleClient(account.serverInfo.url, account.serverInfo.url.startswith("https"))
+            self.speckle_client.authenticate_with_token(token=account.token)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3])
+            return
 
     def populate_accounts_dropdown(self):
-        # Populate the accounts comboBox
-        self.speckle_accounts = get_local_accounts()
-        self.accounts_dropdown.clear()
-        self.accounts_dropdown.addItems(
-            [
-                f"{acc.userInfo.name}, {acc.userInfo.email} | {acc.serverInfo.url}"
-                for acc in self.speckle_accounts
-            ]
-        )
+        try:
+            # Populate the accounts comboBox
+            self.speckle_accounts = get_local_accounts()
+            self.accounts_dropdown.clear()
+            self.accounts_dropdown.addItems(
+                [
+                    f"{acc.userInfo.name}, {acc.userInfo.email} | {acc.serverInfo.url}"
+                    for acc in self.speckle_accounts
+                ]
+            )
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3])
+            return
 
