@@ -26,7 +26,7 @@ import inspect
 import os
 from plugin_utils.helpers import splitTextIntoLines
 from speckle.converter.layers import getLayers
-from ui.ErrorWidget import ErrorWidget
+from ui.LogWidget import LogWidget
 from ui.logger import logToUser
 #from speckle_qgis import SpeckleQGIS
 import ui.speckle_qgis_dialog
@@ -45,8 +45,6 @@ from specklepy.api.wrapper import StreamWrapper
 from specklepy.api.client import SpeckleClient
 
 from ui.validation import tryGetStream
-from ui.LinkWidget import LinkWidget
-from ui.waitScreen import WaitScreenWidget
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(
@@ -86,10 +84,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     saveLayerSelection: QtWidgets.QPushButton
     runButton: QtWidgets.QPushButton
     experimental: QCheckBox
-    link: LinkWidget = None
-    msgError: ErrorWidget = None
-    waitScreen = None
-    link_url: str = ""
+    msgLog: LogWidget = None
     
     def __init__(self, parent=None):
         """Constructor."""
@@ -205,23 +200,23 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         # add row with "experimental" checkbox 
         box = QWidget()
         box.layout = QHBoxLayout(box)
-        btn = QtWidgets.QCheckBox("Check to send/receive in the background, for large models (experimental!!)")
+        btn = QtWidgets.QCheckBox("Send/receive in the background (experimental!)")
         btn.setStyleSheet("QPushButton {color: black; border: 0px;padding: 0px;height: 40px;text-align: left;}")
         box.layout.addWidget(btn)
-        box.layout.setContentsMargins(50, 0, 0, 0)
+        box.layout.setContentsMargins(65, 0, 0, 0)
         self.formLayout.insertRow(10,box)
         self.experimental = btn
 
         # add widgets that will only show on event trigger 
-        linkWidget = LinkWidget(parent=self)
-        self.layout().addWidget(linkWidget)
-        self.link = linkWidget 
+        logWidget = LogWidget(parent=self)
+        self.layout().addWidget(logWidget)
+        self.msgLog = logWidget 
 
-        errorWidget = ErrorWidget(parent=self)
-        self.layout().addWidget(errorWidget)
-        self.msgError = errorWidget 
-
-        self.waitScreen = WaitScreenWidget(parent=self) # not used for now 
+    def resizeEvent(self, event):
+        print("resize")
+        QtWidgets.QDockWidget.resizeEvent(self, event)
+        if self.msgLog.size().height() != 0: # visible
+            self.msgLog.resize(self.frameSize().width(), self.frameSize().height())
 
     def clearDropdown(self):
         #self.streamIdField.clear()
@@ -237,8 +232,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.populateUI(plugin) 
         self.enableElements(plugin)
 
-        
-
+    
     def run(self, plugin): 
         # Setup events on first load only!
         self.setupOnFirstLoad(plugin)
@@ -246,57 +240,6 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.completeStreamSection(plugin)
         # Populate the UI dropdowns
         self.populateUI(plugin) 
-
-
-    def showLink(self, url = "", stream=""):
-        print("showLink")
-        self.link_url = url # this parameter will be picked up by "open link" function
-        #self.link.btn.setText(f"👌 Data sent to Stream {stream} \n View it online")
-        try: 
-            self.link.setGeometry(0, 0, self.frameSize().width(), self.frameSize().height())
-        except Exception as e: 
-            logToUser(str(e), level=1, func = inspect.stack()[0][3], plugin = self)
-
-    def hideLink(self):
-        if self.link is None: return 
-        try: 
-            self.link.setGeometry(0, 0, 0, 0)
-        except Exception as e: 
-            logToUser(str(e), level = 1, func = inspect.stack()[0][3], plugin = self)
-
-    def showError(self, msg = "", level = 2):
-        print("showError")
-        try: 
-            new_msg = splitTextIntoLines(msg, 70)
-            self.msgError.setGeometry(0, 0, self.frameSize().width(), self.frameSize().height())
-            self.msgError.addButton(new_msg, level)
-        except Exception as e: 
-            logToUser(str(e), level=1, func = inspect.stack()[0][3], plugin = self)
-
-    def hideError(self):
-        if self.msgError is None: return 
-        try: 
-            self.msgError.hide()
-        except Exception as e: 
-            logToUser(str(e), level = 1, func = inspect.stack()[0][3], plugin = self)
-
-
-    def showWait(self):
-        print("showWait")
-        return 
-        try: 
-            self.waitScreen.setGeometry(0, 0, self.frameSize().width(), self.frameSize().height())
-        except Exception as e: 
-            logToUser(str(e), level=1, func = inspect.stack()[0][3], plugin = self)
-
-    def hideWait(self):
-        print("hideWait")
-        return
-        if self.waitScreen is None: return 
-        try: 
-            self.waitScreen.setGeometry(0, 0, 0, 0)
-        except Exception as e: 
-            logToUser(str(e), level = 1, func = inspect.stack()[0][3], plugin = self)
 
     def closeEvent(self, event):
         self.closingPlugin.emit()

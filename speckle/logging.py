@@ -39,7 +39,10 @@ class Logging:
 
     def log(self, message: str, level: Qgis.MessageLevel = Qgis.Info):
         """Logs a specific message to the Speckle messages panel."""
-        return
+        if level==0: level = Qgis.Info
+        if level==1: level = Qgis.Warning
+        if level==2: level = Qgis.Critical
+        #return
         QgsMessageLog.logMessage(message, "Speckle", level=level)
 
 

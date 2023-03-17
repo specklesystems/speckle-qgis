@@ -53,7 +53,7 @@ from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
 from ui.create_stream import CreateStreamModalDialog
 from ui.create_branch import CreateBranchModalDialog
-from ui.logger import logToUser
+from ui.logger import logToUser, logToUserWithAction
 
 # Import the code for the dialog
 from ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
@@ -267,7 +267,8 @@ class SpeckleQGIS:
 
     def onSend(self, message: str):
         """Handles action when Send button is pressed."""
-
+        logToUser("Some message here", level = 0, func = inspect.stack()[0][3], plugin=self.dockwidget )
+            
         if not self.dockwidget: return
         #self.dockwidget.showWait()
 
@@ -333,7 +334,8 @@ class SpeckleQGIS:
             url: str = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
             
             #self.dockwidget.hideWait()
-            self.dockwidget.showLink(url, streamName)
+            #self.dockwidget.showLink(url, streamName)
+            logToUserWithAction(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
 
             return url
             r''' 
@@ -367,6 +369,7 @@ class SpeckleQGIS:
         self.closeWidget()
 
     def closeWidget(self):
+        return
         # https://stackoverflow.com/questions/5899826/pyqt-how-to-remove-a-widget 
         self.dockwidget.layout().removeWidget(self.dockwidget.link)
         sip.delete(self.dockwidget.link)
@@ -405,8 +408,8 @@ class SpeckleQGIS:
                 self.dockwidget.hideWait()
                 return
 
-        except SpeckleException as error:
-            logToUser(str(error), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
+        except SpeckleException as e:
+            logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
             return
 
         transport = validateTransport(client, streamId)
@@ -433,8 +436,7 @@ class SpeckleQGIS:
             if app != "QGIS" and app != "ArcGIS": 
                 if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
                     logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
-                    time.sleep(0.3)
-            logger.log(f"Succesfully received {objId}")
+            #logger.log(f"Succesfully received {objId}")
 
             # If group exists, remove layers inside  
             newGroupName = streamId + "_" + branch.name + "_" + commit.id
@@ -445,7 +447,7 @@ class SpeckleQGIS:
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
-            #self.dockwidget.hideWait()
+            logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
             return 
             
         except SpeckleException as e:

@@ -3,21 +3,50 @@ import PyQt5
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QPushButton, QPushButton, QLabel, QVBoxLayout, QWidget
 from PyQt5 import QtCore
 import threading
-import time 
+import time
 
-def logToUser(msg: str, func=None, level: int = 2, plugin = None):
+from plugin_utils.helpers import splitTextIntoLines 
+
+def logToUser(msg: str, func=None, level: int = 2, plugin = None, blue = False):
       print("Log to user")
+      time.sleep(0.3)
       dockwidget = plugin
       if dockwidget is None: return
       try: 
-            if func is not None:
-                  msg += "\n" + str(func)
-            if level == 0: msg = "🛈 " + msg
-            if level == 1: msg = "⚠️ " + msg
-            if level == 2: msg = "❗ " + msg
-            dockwidget.showError(msg = msg, level = level)
+            if func is not None: msg += "\n" + str(func)
+
+            writeToLog(msg, level)
+            new_msg = splitTextIntoLines(msg, 70)
+
+            if blue is True: 
+                  dockwidget.msgLog.addInfoButton(new_msg, level=level)
+            else:
+                  msg = addLevelSymbol(msg, level)
+                  dockwidget.msgLog.addButton(new_msg, level=level)
+            
       except Exception as e: print(e); return 
 
+def logToUserWithAction(msg: str, level: int = 0, plugin = None, url = ""):
+      print("Log to user")
+      time.sleep(0.3)
+      dockwidget = plugin
+      if dockwidget is None: return
+      try:             
+            new_msg = splitTextIntoLines(msg, 70)
+            dockwidget.msgLog.addLinkButton(new_msg, level=level, url=url)
+            writeToLog(new_msg, level)
+      except Exception as e: print(e); return 
+
+def addLevelSymbol(msg: str, level: int):
+      if level == 0: msg = "🛈 " + msg
+      if level == 1: msg = "⚠️ " + msg
+      if level == 2: msg = "❗ " + msg
+      return msg 
+
+def writeToLog(msg: str = "", level: int = 2):
+      from speckle.logging import logger
+      logger.log(msg, level)
+       
 r'''
 def displayUserMsg(msg: str, func=None, level: int = 2): 
       try:
