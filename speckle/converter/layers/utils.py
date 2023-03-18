@@ -173,19 +173,18 @@ def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
 
-def colorFromRenderMaterial(material):
-
+def colorFromSpeckle(rgb):
     try: 
-        color = QColor.fromRgb(245,245,245) #Objects.Other.RenderMaterial
-        rgb = material.diffuse
-        r = (rgb & 0xFF0000) >> 16
-        g = (rgb & 0xFF00) >> 8
-        b = rgb & 0xFF 
-        color = QColor.fromRgb(r, g, b)
+        color = QColor.fromRgb(245,245,245) 
+        if isinstance(rgb, int):
+            r = (rgb & 0xFF0000) >> 16
+            g = (rgb & 0xFF00) >> 8
+            b = rgb & 0xFF 
+            color = QColor.fromRgb(r, g, b)
         return color
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return
+        return QColor.fromRgb(245,245,245) 
 
 def getLayerAttributes(features: List[Base]) -> QgsFields:
     try:

@@ -26,7 +26,7 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import colorFromRenderMaterial, getLayerGeomType, getLayerAttributes, saveCRS
+from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, saveCRS
 from speckle.logging import logger
 from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
 
@@ -304,27 +304,30 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
                     try: # get render material from any part of the mesh (list of items in displayValue)
                         for k, item in enumerate(f.displayValue):
                             try:
-                                fetColors.append(item.renderMaterial)  
+                                fetColors.append(item.renderMaterial.diffuse)  
                                 colorFound += 1
                                 break
                             except: pass
-                    except: 
+                        if colorFound == 0: fetColors.append(f.renderMaterial.diffuse)
+                    except: # if no "DisplayValue"
                         try:
                             for k, item in enumerate(f["@displayValue"]):
                                 try: 
-                                    fetColors.append(item.renderMaterial) 
+                                    fetColors.append(item.renderMaterial.diffuse) 
                                     colorFound += 1
                                     break
                                 except: pass
+                            if colorFound == 0: fetColors.append(f.renderMaterial.diffuse)
                         except: 
                             try:
-                                fetColors.append(f.renderMaterial) 
+                                fetColors.append(f.displayStyle.color) 
                                 colorFound += 1
                             except: pass
                     fets.append(new_feat)
                     vl.addFeature(new_feat)
                     fetIds.append(f.id)
-                    if colorFound == 0: fetColors.append(None)
+                    if colorFound == 0: 
+                        fetColors.append(None)
             except Exception as e: print(e)
         
         vl.updateExtents()
@@ -352,7 +355,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
             categories = []
             for i in range(len(fets)):
                 material = fetColors[i]
-                color = colorFromRenderMaterial(material)
+                color = colorFromSpeckle(material)
 
                 symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
                 symbol.setColor(color)
