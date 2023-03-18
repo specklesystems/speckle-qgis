@@ -1,5 +1,6 @@
 """ This module contains all geometry conversion functionality To and From Speckle."""
 
+import inspect
 from qgis.core import Qgis, QgsGeometry, QgsPolygon, QgsPointXY, QgsPoint, QgsFeature, QgsVectorLayer
 
 from typing import List, Sequence
@@ -21,38 +22,45 @@ from panda3d.core import Triangulator
 
 from PyQt5.QtGui import QColor
 
+from ui.logger import logToUser
+
 def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer):
 
     polygon = Base(units = "m")
+    try: 
 
-    vertices = []
-    faces = [] 
-    colors = []
-    existing_vert = 0
-    for p in geom.parts():
-        boundary, voids = getPolyBoundaryVoids(p, feature, layer)
-        polyBorder = speckleBoundaryToSpecklePts(boundary)
-        voidsAsPts = []
-        for v in voids:
-            pts = speckleBoundaryToSpecklePts(v)
-            voidsAsPts.append(pts)
-        total_vert, vertices_x, faces_x, colors_x = meshPartsFromPolygon(polyBorder, voidsAsPts, existing_vert, feature, layer)
+        vertices = []
+        faces = [] 
+        colors = []
+        existing_vert = 0
+        for p in geom.parts():
+            boundary, voids = getPolyBoundaryVoids(p, feature, layer)
+            polyBorder = speckleBoundaryToSpecklePts(boundary)
+            voidsAsPts = []
+            for v in voids:
+                pts = speckleBoundaryToSpecklePts(v)
+                voidsAsPts.append(pts)
+            total_vert, vertices_x, faces_x, colors_x = meshPartsFromPolygon(polyBorder, voidsAsPts, existing_vert, feature, layer)
 
-        existing_vert += total_vert
-        vertices.extend(vertices_x)
-        faces.extend(faces_x)
-        colors.extend(colors_x)
+            existing_vert += total_vert
+            vertices.extend(vertices_x)
+            faces.extend(faces_x)
+            colors.extend(colors_x)
 
-    mesh = constructMesh(vertices, faces, colors)
-    polygon.displayValue = [ mesh ] 
+        mesh = constructMesh(vertices, faces, colors)
+        polygon.displayValue = [ mesh ] 
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+    
 
     return polygon 
 
 def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsPolygon to Speckle"""
-    boundary, voids = getPolyBoundaryVoids(geom, feature, layer)
     polygon = Base(units = "m")
     try:
+        boundary, voids = getPolyBoundaryVoids(geom, feature, layer)
+    
         polygon.boundary = boundary
         polygon.voids = voids
         polygon.displayValue = [ boundary ] + voids
@@ -69,9 +77,11 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         polygon.displayValue = [ mesh ] 
 
         return polygon
-    except: 
-        logger.logToUser("Some polygons might be invalid", Qgis.Warning)
-        pass
+    except Exception as e:
+        logToUser("Some polygons might be invalid" + str(e), level = 1, func = inspect.stack()[0][3])
+        return polygon 
+
+    
 
 
 def polygonToNative(poly: Base) -> QgsPolygon:
@@ -81,22 +91,26 @@ def polygonToNative(poly: Base) -> QgsPolygon:
     #print(polylineToNative(poly["boundary"]))
     
     polygon = QgsPolygon()
-    try: # if it's indeed a polygon with QGIS properties
-        polygon.setExteriorRing(polylineToNative(poly["boundary"]))
-    except: return
     try:
-        for void in poly["voids"]: 
-            #print(polylineToNative(void))
-            polygon.addInteriorRing(polylineToNative(void))
-    except:pass
-    #print(polygon)
-    #print()
+        try: # if it's indeed a polygon with QGIS properties
+            polygon.setExteriorRing(polylineToNative(poly["boundary"]))
+        except: return
+        try:
+            for void in poly["voids"]: 
+                #print(polylineToNative(void))
+                polygon.addInteriorRing(polylineToNative(void))
+        except:pass
+        #print(polygon)
+        #print()
 
-    #polygon = QgsPolygon(
-    #    polylineToNative(poly["boundary"]),
-    #    [polylineToNative(void) for void in poly["voids"]],
-    #)
-    return polygon
+        #polygon = QgsPolygon(
+        #    polylineToNative(poly["boundary"]),
+        #    [polylineToNative(void) for void in poly["voids"]],
+        #)
+        return polygon
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return polygon 
 
 def getPolyBoundaryVoids(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer):
     boundary = None
@@ -132,8 +146,11 @@ def getPolyBoundaryVoids(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
                     intRing = unknownLineToSpeckle(geom.interiorRing(i), True, feature, layer)
                     #intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True, feature, layer)
                     voids.append(intRing)
-            except: pass 
-    except: 
-        logger.logToUser("Some polygons might be invalid", Qgis.Warning)
+            except: pass     
 
-    return boundary, voids
+        return boundary, voids
+    
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None, None 
+    

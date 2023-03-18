@@ -14,17 +14,22 @@
 """
 
 
+import inspect
 import os.path
+import sys
+import time 
 from typing import Any, Callable, List, Optional, Tuple, Union
 
+import threading
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsRasterLayer, QgsVectorLayer)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QApplication, QAction, QDockWidget, QVBoxLayout, QWidget
 from qgis.PyQt import QtWidgets
 from qgis import PyQt
 import sip
+
 from specklepy.api import operations
 from specklepy.logging.exceptions import SpeckleException, GraphQLException
 #from specklepy.api.credentials import StreamWrapper
@@ -34,6 +39,7 @@ from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
 from specklepy.api.credentials import Account, get_local_accounts #, StreamWrapper
 from specklepy.api.client import SpeckleClient
+from specklepy.logging import metrics
 import webbrowser
 
 # Initialize Qt resources from file resources.py
@@ -47,6 +53,7 @@ from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
 from ui.create_stream import CreateStreamModalDialog
 from ui.create_branch import CreateBranchModalDialog
+from ui.logger import logToUser, logToUserWithAction
 
 # Import the code for the dialog
 from ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
@@ -73,6 +80,7 @@ class SpeckleQGIS:
 
     default_account: Account
     accounts: List[Account]
+    active_account: Account
 
     def __init__(self, iface):
         """Constructor.
@@ -90,6 +98,7 @@ class SpeckleQGIS:
         self.active_stream = None
         self.default_account = None 
         self.accounts = [] 
+        self.active_account = None 
 
         self.btnAction = 0
 
@@ -235,68 +244,114 @@ class SpeckleQGIS:
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
-        for action in self.actions:
-            self.iface.removePluginWebMenu(self.tr("&SpeckleQGIS"), action)
-            self.iface.removeToolBarIcon(action)
+        try:
+            for action in self.actions:
+                self.iface.removePluginWebMenu(self.tr("&SpeckleQGIS"), action)
+                self.iface.removeToolBarIcon(action)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            return
 
     def onRunButtonClicked(self):
-        if self.btnAction == 0: self.onSend()
-        elif self.btnAction == 1: self.onReceive()
+        
+        # set the project instance 
+        self.qgis_project = QgsProject.instance()
 
-    def onSend(self):
+        # send 
+        if self.btnAction == 0: 
+            
+            # Reset Survey point
+            self.dockwidget.populateSurveyPoint(self)
+            
+            # Get and clear message
+            message = str(self.dockwidget.messageInput.text())
+            self.dockwidget.messageInput.setText("")
+            
+            if not self.dockwidget.experimental.isChecked(): self.onSend(message)
+            else:
+                try:
+                    streamWrapper = self.active_stream[0]
+                    client = streamWrapper.get_client()
+                    self.active_account = client.account
+                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send"})
+                    
+                    t = threading.Thread(target=self.onSend, args=(message,))
+                    t.start()
+                except: self.onSend(message)
+        # receive 
+        elif self.btnAction == 1: 
+            if not self.dockwidget.experimental.isChecked(): self.onReceive()
+            else:
+                try:
+                    streamWrapper = self.active_stream[0]
+                    client = streamWrapper.get_client()
+                    self.active_account = client.account
+                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive"})
+
+                    t = threading.Thread(target=self.onReceive, args=())
+                    t.start()
+                except: self.onReceive()
+
+    def onSend(self, message):
         """Handles action when Send button is pressed."""
-        if not self.dockwidget: return
+        #logToUser("Some message here", level = 0, func = inspect.stack()[0][3], plugin=self.dockwidget )
+        try: 
+            if not self.dockwidget: return
+            #self.dockwidget.showWait()
+            
+            projectCRS = self.qgis_project.crs()
 
-        # creating our parent base object
-        project = QgsProject.instance()
-        projectCRS = project.crs()
-        layerTreeRoot = project.layerTreeRoot()
+            bySelection = True
+            if self.dockwidget.layerSendModeDropdown.currentIndex() == 1: 
+                bySelection = False 
+            layers = getLayers(self, bySelection) # List[QgsLayerTreeNode]
 
-        bySelection = True
-        if self.dockwidget.layerSendModeDropdown.currentIndex() == 1: bySelection = False 
-        layers = getLayers(self, bySelection) # List[QgsLayerTreeNode]
+            # Check if stream id/url is empty
+            if self.active_stream is None:
+                logToUser("Please select a stream from the list", level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                return
+            
+            # Check if no layers are selected
+            if len(layers) == 0: #len(selectedLayerNames) == 0:
+                logToUser("No layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                return
 
-        # Check if stream id/url is empty
-        if self.active_stream is None:
-            logger.logToUser("Please select a stream from the list.", Qgis.Critical )
-            return
+            base_obj = Base(units = "m")
+            base_obj.layers = convertSelectedLayers(layers, [],[], projectCRS, self)
+            if base_obj.layers is None:
+                return 
+
+            # Get the stream wrapper
+            streamWrapper = self.active_stream[0]
+            streamName = self.active_stream[1].name
+            streamId = streamWrapper.stream_id
+            client = streamWrapper.get_client()
+
+            stream = validateStream(streamWrapper)
+            if stream == None: 
+                return
+            
+            branchName = str(self.dockwidget.streamBranchDropdown.currentText())
+            branch = validateBranch(stream, branchName, False)
+            if branch == None: 
+                return
+
+            transport = validateTransport(client, streamId)
+            if transport == None: 
+                return
         
-        # Check if no layers are selected
-        if len(layers) == 0: #len(selectedLayerNames) == 0:
-            logger.logToUser("No layers selected", Qgis.Warning)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
 
-        base_obj = Base(units = "m")
-        base_obj.layers = convertSelectedLayers(layers, [],[], projectCRS, project)
-        if base_obj.layers is None:
-            return 
-
-        # Reset Survey point
-        self.dockwidget.populateSurveyPoint(self)
-
-        # Get the stream wrapper
-        streamWrapper = self.active_stream[0]
-        streamName = self.active_stream[1].name
-        streamId = streamWrapper.stream_id
-        client = streamWrapper.get_client()
-
-        stream = validateStream(streamWrapper)
-        if stream == None: return
-        
-        branchName = str(self.dockwidget.streamBranchDropdown.currentText())
-        branch = validateBranch(stream, branchName, False)
-        if branch == None: return
-
-        transport = validateTransport(client, streamId)
-        if transport == None: return
         try:
             # this serialises the block and sends it to the transport
             objId = operations.send(base=base_obj, transports=[transport])
         except SpeckleException as e:
-            logger.logToUser("Error sending data: " + str(e.message), Qgis.Critical)
+            logToUser("Error sending data: " + str(e.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
 
-        message = str(self.dockwidget.messageInput.text())
+        #logToUser("long errror something something msg1", level=2, plugin= self.dockwidget)
         try:
             # you can now create a commit on your stream with this object
             commit_id = client.commit.create(
@@ -306,83 +361,67 @@ class SpeckleQGIS:
                 message="Sent objects from QGIS" if len(message) == 0 else message,
                 source_application="QGIS",
             )
-            logger.logToUser("Successfully sent data to stream: " + streamId)
-            self.dockwidget.messageInput.setText("")
-            url = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
-
-            # create a temporary floating button 
-            width = self.dockwidget.frameSize().width()
-            height = self.dockwidget.frameSize().height()
-            backgr_color = f"background-color: rgb{str(SPECKLE_COLOR)};"
-            backgr_color_light = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
-            commit_link_btn = QtWidgets.QPushButton(f"👌 Data sent \n Sent to '{streamName}', view it online")
-            commit_link_btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
-
-            widget = QWidget()
-            widget.setAccessibleName("commit_link")
-            connect_box = QVBoxLayout(widget)
-            connect_box.addWidget(commit_link_btn) #, alignment=Qt.AlignCenter) 
-            connect_box.setContentsMargins(0, 0, 0, 0)
-            connect_box.setAlignment(Qt.AlignBottom)  
-            widget.setGeometry(0, 0, width, height)
-            widget.mouseReleaseEvent = lambda event: self.closeWidget()
-            self.dockwidget.link = widget 
+            url: str = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
             
-            self.dockwidget.layout().addWidget(widget)
-            commit_link_btn.clicked.connect(lambda: self.openLink(url))
+            #self.dockwidget.hideWait()
+            #self.dockwidget.showLink(url, streamName)
+            if self.dockwidget.experimental.isChecked(): time.sleep(1)
+            logToUserWithAction(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
 
-        except SpeckleException as e:
-            logger.logToUser("Error creating commit", Qgis.Critical)
-    
-    def openLink(self, url):
-        webbrowser.open(url, new=0, autoraise=True)
-        self.closeWidget()
+            return url
 
-    def closeWidget(self):
-        # https://stackoverflow.com/questions/5899826/pyqt-how-to-remove-a-widget 
-        self.dockwidget.layout().removeWidget(self.dockwidget.link)
-        sip.delete(self.dockwidget.link)
-        self.dockwidget.link = None
+        except Exception as e:
+            if self.dockwidget.experimental.isChecked(): time.sleep(1)
+            logToUser("Error creating commit: "+str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
 
     def onReceive(self):
         """Handles action when the Receive button is pressed"""
-
-        if not self.dockwidget: return
-
-        # Check if stream id/url is empty
-        if self.active_stream is None:
-            logger.logToUser("Please select a stream from the list.", Qgis.Critical)
+        print("Receive")
+        try:
+            if not self.dockwidget: return
+            # Check if stream id/url is empty
+            if self.active_stream is None:
+                logToUser("Please select a stream from the list", level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                return
+            
+            # Get the stream wrapper
+            streamWrapper = self.active_stream[0]
+            streamId = streamWrapper.stream_id
+            client = streamWrapper.get_client()
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
 
-        # Get the stream wrapper
-        streamWrapper = self.active_stream[0]
-        streamId = streamWrapper.stream_id
-        client = streamWrapper.get_client()
         # Ensure the stream actually exists
         try:
             stream = validateStream(streamWrapper)
-            if stream == None: return
+            if stream == None: 
+                return
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
             branch = validateBranch(stream, branchName, True)
-            if branch == None: return
+            if branch == None: 
+                return
 
             commitId = str(self.dockwidget.commitDropdown.currentText())
             commit = validateCommit(branch, commitId)
-            if commit == None: return
+            if commit == None: 
+                return
 
-        except SpeckleException as error:
-            logger.logToUser(str(error), Qgis.Critical)
+        except Exception as e:
+            logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
             return
 
-        transport = validateTransport(client, streamId)
-        if transport == None: return 
-        
         try:
+            transport = validateTransport(client, streamId)
+            if transport == None: 
+                return 
+            
             objId = commit.referencedObject
             #commitDetailed = client.commit.get(streamId, commit.id)
             app = commit.sourceApplication
-            if branch.name is None or commit.id is None or objId is None: return 
+            if branch.name is None or commit.id is None or objId is None: 
+                return 
 
             commitObj = operations.receive(objId, transport, None)
 
@@ -393,50 +432,63 @@ class SpeckleQGIS:
             message="Received commit in QGIS",
             )
 
-            
             if app != "QGIS" and app != "ArcGIS": 
-                if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
-                    logger.logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", Qgis.Warning)
-            logger.log(f"Succesfully received {objId}")
+                if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
+                    logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD/BIM geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
+            #logger.log(f"Succesfully received {objId}")
 
             # If group exists, remove layers inside  
             newGroupName = streamId + "_" + branch.name + "_" + commit.id
-            findAndClearLayerGroup(QgsProject.instance(), newGroupName)
+            findAndClearLayerGroup(self.qgis_project, newGroupName)
 
             if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
-            traverseObject(commitObj, callback, check, str(newGroupName))
+            traverseObject(self, commitObj, callback, check, str(newGroupName))
             
-        except SpeckleException as e:
-            logger.logToUser("Receive failed: "+ e.message, Qgis.Critical)
+            if self.dockwidget.experimental.isChecked(): time.sleep(1)
+            logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
+            return 
+            
+        except Exception as e:
+            if self.dockwidget.experimental.isChecked(): time.sleep(1)
+            logToUser("Receive failed: "+ str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
             return
 
     def reloadUI(self):
-        
-        from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection
+        print("___RELOAD UI")
+        try:
+            from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection
 
-        self.is_setup = self.check_for_accounts()
-        if self.dockwidget is not None:
-            self.active_stream = None
-            get_project_streams(self)
-            get_survey_point(self)
-            get_project_layer_selection(self)
+            self.is_setup = self.check_for_accounts()
+            if self.dockwidget is not None:
+                self.active_stream = None
+                get_project_streams(self)
+                get_survey_point(self)
+                get_project_layer_selection(self)
 
-            self.dockwidget.reloadDialogUI(self)
+                self.dockwidget.reloadDialogUI(self)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            return
 
     def check_for_accounts(self):
-        def go_to_manager():
-            webbrowser.open("https://speckle-releases.netlify.app/")
-        accounts = get_local_accounts()
-        self.accounts = accounts
-        if len(accounts) == 0:
-            logger.logToUserWithAction("No accounts were found. Please remember to install the Speckle Manager and setup at least one account","Download Manager", go_to_manager)
-            return False
-        for acc in accounts:
-            if acc.isDefault: 
-                self.default_account = acc 
-                break 
-        return True
+        try:
+            def go_to_manager():
+                webbrowser.open("https://speckle-releases.netlify.app/")
+            accounts = get_local_accounts()
+            self.accounts = accounts
+            if len(accounts) == 0:
+                logToUser("No accounts were found. Please remember to install the Speckle Manager and setup at least one account", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget) #, action_text="Download Manager", callback=go_to_manager)
+                return False
+            for acc in accounts:
+                if acc.isDefault: 
+                    self.default_account = acc 
+                    self.active_account = acc 
+                    break 
+            return True
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            return
 
     def run(self):
         """Run method that performs all the real work"""
@@ -463,7 +515,7 @@ class SpeckleQGIS:
             self.dockwidget.run(self)
 
             # Setup reload of UI dropdowns when layers change.
-            layerRoot = QgsProject.instance()
+            #layerRoot = QgsProject.instance()
             #layerRoot.layersAdded.connect(self.reloadUI)
             #layerRoot.layersRemoved.connect(self.reloadUI)
 
@@ -472,75 +524,95 @@ class SpeckleQGIS:
             self.dockwidget.enableElements(self)
 
     def onStreamAddButtonClicked(self):
-        self.add_stream_modal = AddStreamModalDialog(None)
-        self.add_stream_modal.handleStreamAdd.connect(self.handleStreamAdd)
-        self.add_stream_modal.show()
+        try:
+            self.add_stream_modal = AddStreamModalDialog(None)
+            self.add_stream_modal.handleStreamAdd.connect(self.handleStreamAdd)
+            self.add_stream_modal.show()
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            return
 
     def set_survey_point(self): 
-        from ui.project_vars import set_survey_point
-        set_survey_point(self)
+        try:
+            from ui.project_vars import set_survey_point
+            set_survey_point(self)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            return
 
     def onStreamCreateClicked(self):
-        self.create_stream_modal = CreateStreamModalDialog(None)
-        self.create_stream_modal.handleStreamCreate.connect(self.handleStreamCreate)
-        #self.create_stream_modal.handleCancelStreamCreate.connect(lambda: self.dockwidget.populateProjectStreams(self))
-        self.create_stream_modal.show()
+        try:
+            self.create_stream_modal = CreateStreamModalDialog(None)
+            self.create_stream_modal.handleStreamCreate.connect(self.handleStreamCreate)
+            #self.create_stream_modal.handleCancelStreamCreate.connect(lambda: self.dockwidget.populateProjectStreams(self))
+            self.create_stream_modal.show()
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            return
     
     def handleStreamCreate(self, account, str_name, description, is_public): 
-        #if len(str_name)<3 and len(str_name)!=0: 
-        #    logger.logToUser("Stream Name should be at least 3 characters", Qgis.Warning)
-        new_client = SpeckleClient(
-            account.serverInfo.url,
-            account.serverInfo.url.startswith("https")
-        )
-        new_client.authenticate_with_token(token=account.token)
+        try:
+            new_client = SpeckleClient(
+                account.serverInfo.url,
+                account.serverInfo.url.startswith("https")
+            )
+            new_client.authenticate_with_token(token=account.token)
 
-        str_id = new_client.stream.create(name=str_name, description = description, is_public = is_public) 
-        if isinstance(str_id, GraphQLException) or isinstance(str_id, SpeckleException):
-            logger.logToUser(str_id.message, Qgis.Warning)
+            str_id = new_client.stream.create(name=str_name, description = description, is_public = is_public) 
+            if isinstance(str_id, GraphQLException) or isinstance(str_id, SpeckleException):
+                logToUser(str_id.message, level = 2, plugin = self.dockwidget)
+                return
+            else:
+                sw = StreamWrapper(account.serverInfo.url + "/streams/" + str_id)
+                self.handleStreamAdd(sw)
+            return 
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
-        else:
-            sw = StreamWrapper(account.serverInfo.url + "/streams/" + str_id)
-            self.handleStreamAdd(sw)
-        return 
 
     def onBranchCreateClicked(self):
-        self.create_stream_modal = CreateBranchModalDialog(None)
-        self.create_stream_modal.handleBranchCreate.connect(self.handleBranchCreate)
-        self.create_stream_modal.show()
+        try:
+            self.create_stream_modal = CreateBranchModalDialog(None)
+            self.create_stream_modal.handleBranchCreate.connect(self.handleBranchCreate)
+            self.create_stream_modal.show()
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            return
     
     def handleBranchCreate(self, br_name, description):
-        #if len(br_name)<3: 
-        #    logger.logToUser("Branch Name should be at least 3 characters", Qgis.Warning)
-        #    return 
-        br_name = br_name.lower()
-        sw: StreamWrapper = self.active_stream[0]
-        account = sw.get_account()
-        new_client = SpeckleClient(
-            account.serverInfo.url,
-            account.serverInfo.url.startswith("https")
-        )
-        new_client.authenticate_with_token(token=account.token)
-        #description = "No description provided"
-        br_id = new_client.branch.create(stream_id = sw.stream_id, name = br_name, description = description) 
-        if isinstance(br_id, GraphQLException):
-            logger.logToUser(br_id.message, Qgis.Warning)
+        try: 
+            br_name = br_name.lower()
+            sw: StreamWrapper = self.active_stream[0]
+            account = sw.get_account()
+            new_client = SpeckleClient(
+                account.serverInfo.url,
+                account.serverInfo.url.startswith("https")
+            )
+            new_client.authenticate_with_token(token=account.token)
+            #description = "No description provided"
+            br_id = new_client.branch.create(stream_id = sw.stream_id, name = br_name, description = description) 
+            if isinstance(br_id, GraphQLException):
+                logToUser(br_id.message, level = 1, plugin = self.dockwidget)
 
-        self.active_stream = (sw, tryGetStream(sw))
-        self.current_streams[0] = self.active_stream
+            self.active_stream = (sw, tryGetStream(sw))
+            self.current_streams[0] = self.active_stream
 
-        self.dockwidget.populateActiveStreamBranchDropdown(self)
-        self.dockwidget.populateActiveCommitDropdown(self)
-        self.dockwidget.streamBranchDropdown.setCurrentText(br_name) # will be ignored if branch name is not in the list 
+            self.dockwidget.populateActiveStreamBranchDropdown(self)
+            self.dockwidget.populateActiveCommitDropdown(self)
+            self.dockwidget.streamBranchDropdown.setCurrentText(br_name) # will be ignored if branch name is not in the list 
 
-        return 
+            return 
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            return
 
     def handleStreamAdd(self, sw: StreamWrapper):
-        from ui.project_vars import set_project_streams
-           
-        streamExists = 0
-        index = 0
         try: 
+            from ui.project_vars import set_project_streams
+            
+            streamExists = 0
+            index = 0
+
             stream = tryGetStream(sw)
             
             for st in self.current_streams: 
@@ -550,15 +622,19 @@ class SpeckleQGIS:
                     break 
                 index += 1
         except SpeckleException as e:
-            logger.logToUser(e.message, Qgis.Warning)
+            logToUser(e.message, level = 1, plugin=self.dockwidget)
             stream = None
         
-        if streamExists == 0: 
-            self.current_streams.insert(0,(sw, stream))
-        else: 
-            del self.current_streams[index]
-            self.current_streams.insert(0,(sw, stream))
-        try: self.add_stream_modal.handleStreamAdd.disconnect(self.handleStreamAdd)
-        except: pass 
-        set_project_streams(self)
-        self.dockwidget.populateProjectStreams(self)
+        try: 
+            if streamExists == 0: 
+                self.current_streams.insert(0,(sw, stream))
+            else: 
+                del self.current_streams[index]
+                self.current_streams.insert(0,(sw, stream))
+            try: self.add_stream_modal.handleStreamAdd.disconnect(self.handleStreamAdd)
+            except: pass 
+            set_project_streams(self)
+            self.dockwidget.populateProjectStreams(self)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            return
