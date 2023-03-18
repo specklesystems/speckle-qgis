@@ -19,7 +19,7 @@ def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = ""):
             layerGroup = root.findGroup(newGroupName)
             for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
                 if isinstance(child, QgsLayerTreeLayer): 
-                    if "_Speckle" in child.name(): project_gis.removeMapLayer(child.layerId())
+                    if "Speckle_ID" in child.layer().fields().names(): project_gis.removeMapLayer(child.layerId())
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return

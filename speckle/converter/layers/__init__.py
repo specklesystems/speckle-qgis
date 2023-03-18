@@ -209,7 +209,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         print(layerName_old)
 
         layerName = layerName_old[:50]
-        layerName = removeSpecialCharacters(layerName) + "_Speckle"
+        layerName = removeSpecialCharacters(layerName) 
         #layerName = removeSpecialCharacters(layerName_old)[:30]
         print(layerName)
 
@@ -426,7 +426,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         #get Project CRS, use it by default for the new received layer
         vl = None
 
-        layerName = removeSpecialCharacters(layerName) + "_Speckle"
+        layerName = removeSpecialCharacters(layerName) 
 
         layerName = layerName + "_" + geomType
         print(layerName)
@@ -539,7 +539,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
     try:
         project: QgsProject = plugin.qgis_project
-        layerName = removeSpecialCharacters(layer.name) + "_Speckle"
+        layerName = removeSpecialCharacters(layer.name) 
 
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
@@ -610,7 +610,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
 def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
     try:
         project = plugin.qgis_project
-        layerName = removeSpecialCharacters(layer.name) + "_Speckle"
+        layerName = removeSpecialCharacters(layer.name) 
 
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
