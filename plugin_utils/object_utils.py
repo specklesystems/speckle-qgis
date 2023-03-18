@@ -116,10 +116,6 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin): # "name" is the p
                         cadLayerToNative(value, name, streamBranch, plugin)
                         time.sleep(0.3)
                         break
-                elif item.speckle_type and item["baseLine"] is not None:
-                    cadLayerToNative(value, name, streamBranch, plugin)
-                    time.sleep(0.3)
-                    break
                 elif item.speckle_type and (item.speckle_type == "Objects.Geometry.Mesh" or item.speckle_type == "Objects.Geometry.Brep" or item.speckle_type.startswith("Objects.BuiltElements.")):
                     bimLayerToNative(value, name, streamBranch, plugin)
                     time.sleep(0.3)
@@ -130,5 +126,12 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin): # "name" is the p
                     #if pt is not None: logger.log("Layer group created: " + str(pt.name()))
                     #if pl is not None: logger.log("Layer group created: " + str(pl.name()))
                     break
+                elif item.speckle_type:
+                    try:
+                        if item["baseLine"] is not None:
+                            cadLayerToNative(value, name, streamBranch, plugin)
+                            time.sleep(0.3)
+                            break
+                    except: pass
     except: pass 
 
