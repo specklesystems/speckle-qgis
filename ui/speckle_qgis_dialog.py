@@ -220,7 +220,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             if self.msgLog.size().height() != 0: # visible
                 self.msgLog.resize(self.frameSize().width(), self.frameSize().height())
         except Exception as e:
-            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            #logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
             return
 
     def clearDropdown(self):
