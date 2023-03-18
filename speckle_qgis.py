@@ -434,7 +434,7 @@ class SpeckleQGIS:
 
             if app != "QGIS" and app != "ArcGIS": 
                 if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
-                    logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
+                    logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD/BIM geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
             #logger.log(f"Succesfully received {objId}")
 
             # If group exists, remove layers inside  

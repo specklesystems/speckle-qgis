@@ -9,6 +9,7 @@ from specklepy.objects import Base
 from specklepy.objects.geometry import Mesh
 import os
 import time
+from datetime import datetime
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
@@ -219,10 +220,12 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         print(layerName)
 
         
-        path = project.absolutePath()
-        if(path == ""):
-            logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", level = 1, func = inspect.stack()[0][3])
-            return None
+        #path = project.absolutePath()
+        #if(path == ""):
+        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\SpeckleQGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
+        findOrCreatePath(p)
+        path = p
+        #logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", level = 1, func = inspect.stack()[0][3])
 
         path_bim = path + "/Layers_Speckle/BIM_layers/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #
 
@@ -612,6 +615,8 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         project = plugin.qgis_project
         layerName = removeSpecialCharacters(layer.name) 
 
+        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
+
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
         # try, in case of older version "rasterCrs" will not exist 
@@ -636,14 +641,15 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         layerGroup.setItemVisibilityChecked(True)
 
         #find ID of the layer with a matching name in the "latest" group 
-        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
 
         ######################## testing, only for receiving layers #################
-        source_folder = project.absolutePath()
+        #source_folder = project.absolutePath()
 
-        if(source_folder == ""):
-            logToUser(f"Raster layers can only be received in an existing saved project. Layer {layer.name} will be ignored", level = 1, func = inspect.stack()[0][3])
-            return None
+        #if(source_folder == ""):
+        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\SpeckleQGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
+        findOrCreatePath(p)
+        source_folder = p
+        #logToUser(f"Raster layers can only be received in an existing saved project. Layer {layer.name} will be ignored", level = 1, func = inspect.stack()[0][3])
 
         projectCRS = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
         #crsid = crsRaster.authid()
@@ -663,7 +669,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         path_fn = source_folder + "/Layers_Speckle/raster_layers/" + streamBranch+ "/" 
         if not os.path.exists(path_fn): os.makedirs(path_fn)
 
-        fn = path_fn + newName + ".tif" #arcpy.env.workspace + "\\" #
+        fn = path_fn + layerName + ".tif" #arcpy.env.workspace + "\\" #
         #fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
         driver = gdal.GetDriverByName('GTiff')
         # create raster dataset
