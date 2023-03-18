@@ -203,7 +203,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
     try: 
         print(layerName_old)
 
-        layerName = layerName_old.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
+        layerName = removeSpecialCharacters(layerName_old)
         #layerName = removeSpecialCharacters(layerName_old)[:30]
         layerName = layerName[:50]
         print(layerName)
@@ -619,6 +619,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, project):
 
         #find ID of the layer with a matching name in the "latest" group 
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layer.name}'
+        newName = removeSpecialCharacters(newName)
 
         ######################## testing, only for receiving layers #################
         source_folder = project.absolutePath()
@@ -637,8 +638,6 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, project):
         bandNames = feat["Band names"]
         bandValues = [feat["@(10000)" + name + "_values"] for name in bandNames]
 
-        #newName = f'{streamBranch}_latest_{layer.name}'
-
         ###########################################################################
 
         ## https://opensourceoptions.com/blog/pyqgis-create-raster/
@@ -647,7 +646,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, project):
         path_fn = source_folder + "/Layers_Speckle/raster_layers/" + streamBranch+ "/" 
         if not os.path.exists(path_fn): os.makedirs(path_fn)
 
-        fn = path_fn + layer.name + ".tif" #arcpy.env.workspace + "\\" #
+        fn = path_fn + newName + ".tif" #arcpy.env.workspace + "\\" #
         #fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
         driver = gdal.GetDriverByName('GTiff')
         # create raster dataset
