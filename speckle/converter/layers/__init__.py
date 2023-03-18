@@ -155,9 +155,9 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
             # Handle this case
             return
         elif layer.type.endswith("VectorLayer"):
-            return vectorLayerToNative(layer, streamBranch, project)
+            return vectorLayerToNative(layer, streamBranch, plugin)
         elif layer.type.endswith("RasterLayer"):
-            return rasterLayerToNative(layer, streamBranch, project)
+            return rasterLayerToNative(layer, streamBranch, plugin)
         return None
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
@@ -203,7 +203,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
     try: 
         print(layerName_old)
 
-        layerName = removeSpecialCharacters(layerName_old)
+        layerName = removeSpecialCharacters(layerName_old) + "_Speckle"
         #layerName = removeSpecialCharacters(layerName_old)[:30]
         layerName = layerName[:50]
         print(layerName)
@@ -416,7 +416,10 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
     try:
         #get Project CRS, use it by default for the new received layer
         vl = None
-        layerName = layerName + "/" + geomType
+
+        layerName = removeSpecialCharacters(layerName) + "_Speckle"
+
+        layerName = layerName + "_" + geomType
         print(layerName)
         crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
         #authid = saveCRS(crs, streamBranch)
@@ -524,8 +527,11 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return  
 
-def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, project: QgsProject):
+def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
     try:
+        project: QgsProject = plugin.qgis_project
+        layerName = removeSpecialCharacters(layer.name) + "_Speckle"
+
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
         authid = saveCRS(crs, streamBranch)
@@ -544,7 +550,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, project:
         layerGroup.setItemVisibilityChecked(True)
 
         #find ID of the layer with a matching name in the "latest" group 
-        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layer.name}'
+        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
 
         # particularly if the layer comes from ArcGIS
         geomType = layer.geomType # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
@@ -592,8 +598,11 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, project:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return  
 
-def rasterLayerToNative(layer: RasterLayer, streamBranch: str, project):
+def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
     try:
+        project = plugin.qgis_project
+        layerName = removeSpecialCharacters(layer.name) + "_Speckle"
+
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
         # try, in case of older version "rasterCrs" will not exist 
@@ -618,8 +627,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, project):
         layerGroup.setItemVisibilityChecked(True)
 
         #find ID of the layer with a matching name in the "latest" group 
-        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layer.name}'
-        newName = removeSpecialCharacters(newName)
+        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
 
         ######################## testing, only for receiving layers #################
         source_folder = project.absolutePath()

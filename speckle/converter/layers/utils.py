@@ -14,11 +14,12 @@ ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','dis
 def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = ""):
     try:
         root = project_gis.layerTreeRoot()
+        
         if root.findGroup(newGroupName) is not None:
             layerGroup = root.findGroup(newGroupName)
             for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
                 if isinstance(child, QgsLayerTreeLayer): 
-                    project_gis.removeMapLayer(child.layerId())
+                    if "_Speckle" in child.name(): project_gis.removeMapLayer(child.layerId())
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
