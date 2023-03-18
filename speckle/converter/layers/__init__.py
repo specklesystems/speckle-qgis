@@ -397,6 +397,8 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str, p
             try:
                 if geom.speckle_type.endswith(".ModelCurve") and geom["baseCurve"].speckle_type in GEOM_LINE_TYPES:
                     geom_polylines.append(geom["baseCurve"])
+                if geom["baseLine"].speckle_type in GEOM_LINE_TYPES:
+                    geom_polylines.append(geom["baseLine"])
             except: pass
         
         if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch, project)
