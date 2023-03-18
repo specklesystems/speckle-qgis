@@ -317,7 +317,7 @@ class SpeckleQGIS:
                 return
 
             base_obj = Base(units = "m")
-            base_obj.layers = convertSelectedLayers(layers, [],[], projectCRS, self.qgis_project)
+            base_obj.layers = convertSelectedLayers(layers, [],[], projectCRS, self)
             if base_obj.layers is None:
                 return 
 

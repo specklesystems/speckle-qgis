@@ -86,23 +86,25 @@ def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, Qg
         return layers 
 
 
-def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], selectedLayerIndex: List[int], selectedLayerNames: List[str], projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> List[Union[VectorLayer, RasterLayer]]:
+def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], selectedLayerIndex: List[int], selectedLayerNames: List[str], projectCRS: QgsCoordinateReferenceSystem, plugin) -> List[Union[VectorLayer, RasterLayer]]:
     """Converts the current selected layers to Speckle"""
     result = []
     try:
+        project: QgsProject = plugin.qgis_project
 
         for i, layer in enumerate(layers):
-            result.append(layerToSpeckle(layer, projectCRS, project))
+            result.append(layerToSpeckle(layer, projectCRS, plugin))
         
         return result
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return  
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        return []
 
 
-def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], projectCRS: QgsCoordinateReferenceSystem, project: QgsProject) -> VectorLayer or RasterLayer: #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
+def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], projectCRS: QgsCoordinateReferenceSystem, plugin) -> VectorLayer or RasterLayer: #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     """Converts a given QGIS Layer to Speckle"""
     try:
+        project: QgsProject = plugin.qgis_project
         layerName = selectedLayer.name()
         #except: layerName = layer.sourceName()
         #try: selectedLayer = selectedLayer.layer()
@@ -145,12 +147,13 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             layerBase.applicationId = selectedLayer.id()
             return layerBase
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
 
-def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: str, project: QgsProject) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: str, plugin) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
     try:
+        project: QgsProject = plugin.qgis_project
         if layer.type is None:
             # Handle this case
             return
@@ -160,13 +163,14 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
             return rasterLayerToNative(layer, streamBranch, plugin)
         return None
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
 
-def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str, project: QgsProject):
+def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str, plugin):
     print("01______BIM layer to native")
     try:
+        project: QgsProject = plugin.qgis_project
         print(layerName)
 
         geom_meshes = []
@@ -190,17 +194,18 @@ def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch:
             #if geom.speckle_type == 'Objects.BuiltElements.Alignment':
 
         
-        if len(geom_meshes)>0: layer_meshes = bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch, project)
+        if len(geom_meshes)>0: layer_meshes = bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch, plugin)
 
         return True
     
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
-def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: str, streamBranch: str, project: QgsProject): 
+def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: str, streamBranch: str, plugin): 
     print("02_________BIM vector layer to native_____")
     try: 
+        project: QgsProject = plugin.qgis_project
         print(layerName_old)
 
         layerName = removeSpecialCharacters(layerName_old) + "_Speckle"
@@ -375,12 +380,14 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
 
         return vl
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
-def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str, project: QgsProject) -> List[QgsVectorLayer or None]:
+def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str, plugin) -> List[QgsVectorLayer or None]:
     print("02_________ CAD vector layer to native_____")
     try:
+        project: QgsProject = plugin.qgis_project
+
         geom_points = []
         geom_polylines = []
         geom_meshes = []
@@ -401,19 +408,21 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str, p
                     geom_polylines.append(geom["baseLine"])
             except: pass
         
-        if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch, project)
-        if len(geom_polylines)>0: layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch, project)
+        if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch, plugin)
+        if len(geom_polylines)>0: layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch, plugin)
         #print(layerName)
         #print(layer_points)
         #print(layer_polylines)
         return [layer_points, layer_polylines]
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return []
 
-def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str, project: QgsProject) -> QgsVectorLayer: 
+def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str, plugin) -> QgsVectorLayer: 
     print("___________cadVectorLayerToNative")
     try:
+        project: QgsProject = plugin.qgis_project
+
         #get Project CRS, use it by default for the new received layer
         vl = None
 
@@ -524,7 +533,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
         return vl
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
@@ -595,7 +604,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         
         return vl
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
 def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
@@ -705,5 +714,5 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
 
         return raster_layer
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
