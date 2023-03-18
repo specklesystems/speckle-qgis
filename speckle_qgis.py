@@ -365,13 +365,13 @@ class SpeckleQGIS:
             
             #self.dockwidget.hideWait()
             #self.dockwidget.showLink(url, streamName)
-            time.sleep(1)
+            if self.dockwidget.experimental.isChecked(): time.sleep(1)
             logToUserWithAction(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
 
             return url
 
         except Exception as e:
-            time.sleep(1)
+            if self.dockwidget.experimental.isChecked(): time.sleep(1)
             logToUser("Error creating commit: "+str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
 
     def onReceive(self):
@@ -445,12 +445,12 @@ class SpeckleQGIS:
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
-            time.sleep(1)
+            if self.dockwidget.experimental.isChecked(): time.sleep(1)
             logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
             return 
             
         except Exception as e:
-            time.sleep(1)
+            if self.dockwidget.experimental.isChecked(): time.sleep(1)
             logToUser("Receive failed: "+ str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
             return
 
