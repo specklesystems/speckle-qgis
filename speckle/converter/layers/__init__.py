@@ -570,6 +570,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         elif geomType =="Polygon": geomType = "Multipolygon"
         elif geomType =="Polyline": geomType = "MultiLineString"
         elif geomType =="Multipoint": geomType = "Point"
+        elif geomType == 'MultiPatch': geomType = "Polygon"
         
         #crsid = crs.authid()
         vl = QgsVectorLayer(geomType+ "?crs=" + authid, newName, "memory") # do something to distinguish: stream_id_latest_name
@@ -613,7 +614,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
 def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
     try:
         project = plugin.qgis_project
-        layerName = removeSpecialCharacters(layer.name) 
+        layerName = removeSpecialCharacters(layer.name) + "_Speckle"
 
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
 

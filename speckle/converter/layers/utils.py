@@ -1,6 +1,6 @@
 import inspect
 from PyQt5.QtCore import QVariant, QDate, QDateTime
-from qgis._core import Qgis, QgsProject, QgsLayerTreeLayer, QgsVectorLayer, QgsWkbTypes, QgsField, QgsFields
+from qgis._core import Qgis, QgsProject, QgsLayerTreeLayer, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, QgsField, QgsFields
 from speckle.logging import logger
 from speckle.converter.layers import Layer
 from typing import Any, List, Tuple, Union
@@ -19,7 +19,12 @@ def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = ""):
             layerGroup = root.findGroup(newGroupName)
             for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
                 if isinstance(child, QgsLayerTreeLayer): 
-                    if "Speckle_ID" in child.layer().fields().names(): project_gis.removeMapLayer(child.layerId())
+                    if isinstance(child.layer(), QgsVectorLayer): 
+                        if "Speckle_ID" in child.layer().fields().names(): project_gis.removeMapLayer(child.layerId())
+                    
+                    if isinstance(child.layer(), QgsRasterLayer): 
+                        if "_Speckle" in child.layer().name(): project_gis.removeMapLayer(child.layerId())
+
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return

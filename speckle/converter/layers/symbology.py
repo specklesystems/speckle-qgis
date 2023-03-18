@@ -127,6 +127,8 @@ def vectorRendererToNative(layer: Union[Layer, VectorLayer], fields: QgsFields )
         renderer = layer.renderer 
         existingAttrs = fields.names()
         geomType = layer.geomType
+        if geomType == 'MultiPatch': geomType = "Polygon"
+
         if "polyline" in geomType.lower(): geomType = 'LineString'
         if renderer and renderer['type']:
 

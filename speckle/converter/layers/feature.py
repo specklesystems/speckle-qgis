@@ -364,7 +364,12 @@ def featureToNative(feature: Base, fields: QgsFields):
 
             try: value = feature[name]
             except: 
-                if name == "Speckle_ID": value = str(feature["id"])
+                if name == "Speckle_ID": 
+                    try: 
+                        value = str(feature["Speckle_ID"]) # if GIS already generated this field
+                    except:
+                        try: value = str(feature["speckle_id"]) 
+                        except: value = str(feature["id"])
                 else: 
                     value = None 
                     #logger.logToUser(f"Field {name} not found", Qgis.Warning)

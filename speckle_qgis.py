@@ -267,6 +267,7 @@ class SpeckleQGIS:
             message = str(self.dockwidget.messageInput.text())
             self.dockwidget.messageInput.setText("")
             
+            self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
             if not self.dockwidget.experimental.isChecked(): self.onSend(message)
             else:
                 try:
@@ -280,6 +281,8 @@ class SpeckleQGIS:
                 except: self.onSend(message)
         # receive 
         elif self.btnAction == 1: 
+            
+            self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
             if not self.dockwidget.experimental.isChecked(): self.onReceive()
             else:
                 try:
@@ -365,7 +368,7 @@ class SpeckleQGIS:
             
             #self.dockwidget.hideWait()
             #self.dockwidget.showLink(url, streamName)
-            if self.dockwidget.experimental.isChecked(): time.sleep(1)
+            if self.dockwidget.experimental.isChecked(): time.sleep(3)
             logToUserWithAction(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
 
             return url
@@ -445,7 +448,7 @@ class SpeckleQGIS:
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
-            if self.dockwidget.experimental.isChecked(): time.sleep(1)
+            if self.dockwidget.experimental.isChecked(): time.sleep(3)
             logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
             return 
             

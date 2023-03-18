@@ -82,6 +82,9 @@ class LogWidget(QWidget):
         # find index of the first unused button
         btn = self.getNextBtn()
 
+        try: btn.clicked.disconnect(self.openLink)
+        except: pass
+
         btn.setStyleSheet("QPushButton {color: black; border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR_GREY}" + "}")
         btn.setText(text)
         self.resizeToText(btn)
@@ -100,6 +103,9 @@ class LogWidget(QWidget):
         
         # find index of the first unused button
         btn = self.getNextBtn()
+
+        try: btn.clicked.disconnect(self.openLink)
+        except: pass
         
         # style the button
         btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR}" + "}")
