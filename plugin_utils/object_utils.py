@@ -17,7 +17,7 @@ SPECKLE_TYPES_TO_READ = ["Objects.Geometry.", "Objects.BuiltElements.", "IFC"] #
 def traverseObject(
     plugin,
     base: Base,
-    callback: Optional[Callable[[Base, str, QgsProject], bool]],
+    callback: Optional[Callable[[Base, str, Any], bool]],
     check: Optional[Callable[[Base], bool]],
     streamBranch: str,
 ):
@@ -54,7 +54,6 @@ def traverseValue(
 
 def callback(base: Base, streamBranch: str, plugin) -> bool:
     try:
-        project: QgsProject = plugin.qgis_project
         if isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer):
             #print(base)
             #if isinstance(base, Layer):
@@ -64,13 +63,12 @@ def callback(base: Base, streamBranch: str, plugin) -> bool:
             #if layer is not None:
             #    .logToUser("Layer created: " + layer.name(), Qgis.Info)
         else:
-            loopObj(base, "", streamBranch, plugin)    
-    except: pass
-    return True
+            loopObj(base, "", streamBranch, plugin)   
+        return True 
+    except: return 
 
 def loopObj(base: Base, baseName: str, streamBranch: str, plugin):
     try:
-        project: QgsProject = plugin.project_qgis
         memberNames = base.get_member_names()
         for name in memberNames:
             if name in ["id", "applicationId", "units", "speckle_type"]: continue
@@ -85,7 +83,6 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin):
 def loopVal(value: Any, name: str, streamBranch: str, plugin): # "name" is the parent object/property/layer name
 
     try: 
-        project: QgsProject = plugin.project_qgis
         if isinstance(value, Base): 
             try: # loop through objects with Speckletype prop, but don't go through parts of Speckle Geometry object
                 if not value.speckle_type.startswith("Objects.Geometry."): 

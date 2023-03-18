@@ -208,9 +208,9 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         project: QgsProject = plugin.qgis_project
         print(layerName_old)
 
-        layerName = removeSpecialCharacters(layerName_old) + "_Speckle"
+        layerName = layerName_old[:50]
+        layerName = removeSpecialCharacters(layerName) + "_Speckle"
         #layerName = removeSpecialCharacters(layerName_old)[:30]
-        layerName = layerName[:50]
         print(layerName)
 
         #get Project CRS, use it by default for the new received layer
