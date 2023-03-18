@@ -218,7 +218,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             print("resize")
             QtWidgets.QDockWidget.resizeEvent(self, event)
             if self.msgLog.size().height() != 0: # visible
-                self.msgLog.resize(self.frameSize().width(), self.frameSize().height())
+                self.msgLog.setGeometry(0, 0, self.msgLog.parentWidget.frameSize().width(), self.msgLog.parentWidget.frameSize().height()) #.resize(self.frameSize().width(), self.frameSize().height())
         except Exception as e:
             #logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
             return
