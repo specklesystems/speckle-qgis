@@ -437,7 +437,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             
             self.layersWidget.clear()
             nameDisplay = [] 
-            project = QgsProject.instance()
+            project = plugin.qgis_project
 
             if bySelection is False: # read from project data 
 
@@ -590,6 +590,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             self.commitDropdown.clear()
             if plugin.active_stream is None: return
             branchName = self.streamBranchDropdown.currentText()
+            if branchName == "": return
             if branchName == "Create New Branch": 
                 self.streamBranchDropdown.setCurrentText("main")
                 plugin.onBranchCreateClicked()
@@ -603,12 +604,13 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
                     if b.name == branchName:
                         branch = b
                         break
-
+            print(branch)
             self.commitDropdown.addItems(
                 [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]
             )
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
+            print(str(e) + "::" + str(inspect.stack()[0][3]))
             return
 
     def onStreamRemoveButtonClicked(self, plugin):

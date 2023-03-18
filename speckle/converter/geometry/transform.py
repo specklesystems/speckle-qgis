@@ -1,6 +1,7 @@
 
 import inspect
 from qgis.core import (
+    QgsProject,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsPointXY,
@@ -14,13 +15,14 @@ from ui.logger import logToUser
 
 
 def transform(
+    project: QgsProject, 
     src: QgsPointXY,
     crsSrc: QgsCoordinateReferenceSystem,
     crsDest: QgsCoordinateReferenceSystem,
 ):
     """Transforms a QgsPointXY from the source CRS to the destination."""
     try:
-        transformContext = QgsProject.instance().transformContext()
+        transformContext = project.transformContext()
         xform = QgsCoordinateTransform(crsSrc, crsDest, transformContext)
 
         # forward transformation: src -> dest
@@ -30,16 +32,15 @@ def transform(
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
     
-
-
 def reverseTransform(
+    project: QgsProject,
     dest: QgsPointXY,
     crsSrc: QgsCoordinateReferenceSystem,
     crsDest: QgsCoordinateReferenceSystem,
 ):
     """Transforms a QgsPointXY from the destination CRS to the source."""
     try:
-        transformContext = QgsProject.instance().transformContext()
+        transformContext = project.transformContext()
         xform = QgsCoordinateTransform(crsSrc, crsDest, transformContext)
 
         # inverse transformation: dest -> src

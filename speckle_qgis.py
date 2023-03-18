@@ -253,10 +253,21 @@ class SpeckleQGIS:
             return
 
     def onRunButtonClicked(self):
+        
+        # set the project instance 
+        self.qgis_project = QgsProject.instance()
+
         # send 
         if self.btnAction == 0: 
-
-            if not self.dockwidget.experimental.isChecked(): self.onSend()
+            
+            # Reset Survey point
+            self.dockwidget.populateSurveyPoint(self)
+            
+            # Get and clear message
+            message = str(self.dockwidget.messageInput.text())
+            self.dockwidget.messageInput.setText("")
+            
+            if not self.dockwidget.experimental.isChecked(): self.onSend(message)
             else:
                 try:
                     streamWrapper = self.active_stream[0]
@@ -264,9 +275,9 @@ class SpeckleQGIS:
                     self.active_account = client.account
                     metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send"})
                     
-                    t = threading.Thread(target=self.onSend, args=())
+                    t = threading.Thread(target=self.onSend, args=(message,))
                     t.start()
-                except: self.onSend()
+                except: self.onSend(message)
         # receive 
         elif self.btnAction == 1: 
             if not self.dockwidget.experimental.isChecked(): self.onReceive()
@@ -281,31 +292,23 @@ class SpeckleQGIS:
                     t.start()
                 except: self.onReceive()
 
-    def onSend(self):
+    def onSend(self, message):
         """Handles action when Send button is pressed."""
         #logToUser("Some message here", level = 0, func = inspect.stack()[0][3], plugin=self.dockwidget )
         try: 
             if not self.dockwidget: return
             #self.dockwidget.showWait()
-
-            # Reset Survey point
-            self.dockwidget.populateSurveyPoint(self)
-
-            message = str(self.dockwidget.messageInput.text())
-            self.dockwidget.messageInput.setText("")
-
-            # creating our parent base object
-            project = QgsProject.instance()
-            projectCRS = project.crs()
-            layerTreeRoot = project.layerTreeRoot()
+            
+            projectCRS = self.qgis_project.crs()
 
             bySelection = True
-            if self.dockwidget.layerSendModeDropdown.currentIndex() == 1: bySelection = False 
+            if self.dockwidget.layerSendModeDropdown.currentIndex() == 1: 
+                bySelection = False 
             layers = getLayers(self, bySelection) # List[QgsLayerTreeNode]
 
             # Check if stream id/url is empty
             if self.active_stream is None:
-                logToUser("Please select a stream from the list.", level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                logToUser("Please select a stream from the list", level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                 return
             
             # Check if no layers are selected
@@ -314,7 +317,7 @@ class SpeckleQGIS:
                 return
 
             base_obj = Base(units = "m")
-            base_obj.layers = convertSelectedLayers(layers, [],[], projectCRS, project)
+            base_obj.layers = convertSelectedLayers(layers, [],[], projectCRS, self.qgis_project)
             if base_obj.layers is None:
                 return 
 
@@ -378,7 +381,7 @@ class SpeckleQGIS:
             if not self.dockwidget: return
             # Check if stream id/url is empty
             if self.active_stream is None:
-                logToUser("Please select a stream from the list.", level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                logToUser("Please select a stream from the list", level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
             
             # Get the stream wrapper
@@ -429,15 +432,14 @@ class SpeckleQGIS:
             message="Received commit in QGIS",
             )
 
-            
             if app != "QGIS" and app != "ArcGIS": 
-                if QgsProject.instance().crs().isGeographic() is True or QgsProject.instance().crs().isValid() is False: 
+                if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
                     logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
             #logger.log(f"Succesfully received {objId}")
 
             # If group exists, remove layers inside  
             newGroupName = streamId + "_" + branch.name + "_" + commit.id
-            findAndClearLayerGroup(QgsProject.instance(), newGroupName)
+            findAndClearLayerGroup(self.qgis_project, newGroupName)
 
             if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer)
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
@@ -453,6 +455,7 @@ class SpeckleQGIS:
             return
 
     def reloadUI(self):
+        print("___RELOAD UI")
         try:
             from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection
 
@@ -512,7 +515,7 @@ class SpeckleQGIS:
             self.dockwidget.run(self)
 
             # Setup reload of UI dropdowns when layers change.
-            layerRoot = QgsProject.instance()
+            #layerRoot = QgsProject.instance()
             #layerRoot.layersAdded.connect(self.reloadUI)
             #layerRoot.layersRemoved.connect(self.reloadUI)
 

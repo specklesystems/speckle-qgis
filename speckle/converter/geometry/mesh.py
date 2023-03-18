@@ -126,7 +126,7 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
 
 def deconstructSpeckleMesh(mesh: Mesh):
     
-    print("deconstructSpeckleMesh")
+    #print("deconstructSpeckleMesh")
     try:
         scale = get_scale_factor(mesh.units)
         parts_list = []
@@ -150,7 +150,7 @@ def deconstructSpeckleMesh(mesh: Mesh):
                 count += vertices + 1
             except: break # when out of range 
 
-        print("end-deconstructSpeckleMesh")
+        #print("end-deconstructSpeckleMesh")
         return parts_list, types_list
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

@@ -10,14 +10,20 @@ def removeSpecialCharacters(text: str) -> str:
     return new_text
 
 def splitTextIntoLines(text: str = "", number: int= 40) -> str: 
-
+    print("__splitTextIntoLines")
+    print(text)
     msg = ""
-    if len(text)>number:
-        try:
-            for i, x in enumerate(text):
-                msg += x
-                if i!=0 and i%number == 0: msg += "\n"
-        except Exception as e: print(e)
-    else: 
-        msg = text
+    try:
+        if len(text)>number:
+            try:
+                for i, x in enumerate(text):
+                    msg += x
+                    if i!=0 and i%number == 0: msg += "\n"
+            except Exception as e: print(e)
+        else: 
+            msg = text
+    except Exception as e:
+        print(e)
+        print(text)
+    
     return msg

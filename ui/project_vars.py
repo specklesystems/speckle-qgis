@@ -17,7 +17,7 @@ from ui.validation import tryGetStream
 
 def get_project_streams(plugin: SpeckleQGIS):
     try:
-        proj = QgsProject().instance()
+        proj = plugin.qgis_project
         saved_streams = proj.readEntry("speckle-qgis", "project_streams", "")
         temp = []
         ######### need to check whether saved streams are available (account reachable)
@@ -44,7 +44,7 @@ def get_project_streams(plugin: SpeckleQGIS):
     
 def set_project_streams(plugin: SpeckleQGIS):
     try:
-        proj = QgsProject().instance()
+        proj = plugin.qgis_project
         value = ",".join([stream[0].stream_url for stream in plugin.current_streams])
         proj.writeEntry("speckle-qgis", "project_streams", value)
     except Exception as e:
@@ -53,7 +53,7 @@ def set_project_streams(plugin: SpeckleQGIS):
   
 def get_project_layer_selection(plugin: SpeckleQGIS):
     try:
-        proj = QgsProject().instance()
+        proj = plugin.qgis_project
         saved_layers = proj.readEntry("speckle-qgis", "project_layer_selection", "")
         temp = []
         ######### need to check whether saved streams are available (account reachable)
@@ -75,7 +75,7 @@ def get_project_layer_selection(plugin: SpeckleQGIS):
 
 def set_project_layer_selection(plugin: SpeckleQGIS):
     try:
-        proj = QgsProject().instance() 
+        proj = plugin.qgis_project
         #value = ",".join([x.id() for x in self.iface.layerTreeView().selectedLayers()]) #'points_qgis2_b22ed3d0_0ff9_40d2_97f2_bd17a350d698' <qgis._core.QgsVectorDataProvider object at 0x000002627D9D4790>
         value = ",".join([x[1].id() for x in plugin.current_layers]) 
         proj.writeEntry("speckle-qgis", "project_layer_selection", value)
@@ -88,7 +88,7 @@ def set_project_layer_selection(plugin: SpeckleQGIS):
 def get_survey_point(plugin: SpeckleQGIS):
     try:
         # get from saved project, set to local vars
-        proj = QgsProject().instance()
+        proj = plugin.qgis_project
         points = proj.readEntry("speckle-qgis", "survey_point", "")
         if points[1] and len(points[0])>0: 
             vals: list[str] = points[0].replace(" ","").split(";")[:2]
@@ -100,7 +100,7 @@ def get_survey_point(plugin: SpeckleQGIS):
 def set_survey_point(plugin: SpeckleQGIS):
     try: 
         # from widget (3 strings) to local vars AND memory (1 string)
-        proj = QgsProject().instance()
+        proj = plugin.qgis_project
         vals =[ str(plugin.dockwidget.surveyPointLat.text()), str(plugin.dockwidget.surveyPointLon.text()) ]
 
         plugin.lat, plugin.lon = [float(i.replace(" ","")) for i in vals]

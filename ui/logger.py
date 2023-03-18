@@ -10,10 +10,11 @@ from plugin_utils.helpers import splitTextIntoLines
 def logToUser(msg: str, func=None, level: int = 2, plugin = None, blue = False):
       print("Log to user")
       time.sleep(0.3)
-      
+
+      msg = str(msg)
       dockwidget = plugin
       try: 
-            if func is not None: msg += "\n" + str(func)
+            if func is not None: msg += "::" + str(func)
             writeToLog(msg, level)
             if dockwidget is None: return
 
@@ -22,14 +23,16 @@ def logToUser(msg: str, func=None, level: int = 2, plugin = None, blue = False):
             if blue is True: 
                   dockwidget.msgLog.addInfoButton(new_msg, level=level)
             else:
-                  msg = addLevelSymbol(msg, level)
+                  new_msg = addLevelSymbol(new_msg, level)
                   dockwidget.msgLog.addButton(new_msg, level=level)
             
       except Exception as e: print(e); return 
 
 def logToUserWithAction(msg: str, level: int = 0, plugin = None, url = ""):
-      print("Log to user")
+      print("Log to user with action")
       time.sleep(0.3)
+      
+      msg = str(msg)
       dockwidget = plugin
       if dockwidget is None: return
       try:             
@@ -45,6 +48,7 @@ def addLevelSymbol(msg: str, level: int):
       return msg 
 
 def writeToLog(msg: str = "", level: int = 2):
+      print("write log")
       from speckle.logging import logger
       logger.log(msg, level)
        

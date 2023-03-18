@@ -14,7 +14,7 @@ from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-pac
     gdal, osr)
 from plugin_utils.helpers import findOrCreatePath, removeSpecialCharacters
 #from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
-from qgis.core import (Qgis, QgsRasterLayer, 
+from qgis.core import (Qgis, QgsProject, QgsRasterLayer, 
                        QgsVectorLayer, QgsProject, QgsWkbTypes,
                        QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsLayerTreeLayer,
                        QgsCoordinateReferenceSystem, QgsCoordinateTransform,
@@ -50,7 +50,7 @@ def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, Qg
         if bySelection is True: # by selection 
             layers = plugin.iface.layerTreeView().selectedLayers()
         else: # from project data 
-            project = QgsProject.instance()
+            project = plugin.qgis_project
             #all_layers_ids = [l.id() for l in project.mapLayers().values()]
             for item in plugin.current_layers:
                 try: 
@@ -149,22 +149,22 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         return  
 
 
-def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: str) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: str, project: QgsProject) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
     try:
         if layer.type is None:
             # Handle this case
             return
         elif layer.type.endswith("VectorLayer"):
-            return vectorLayerToNative(layer, streamBranch)
+            return vectorLayerToNative(layer, streamBranch, project)
         elif layer.type.endswith("RasterLayer"):
-            return rasterLayerToNative(layer, streamBranch)
+            return rasterLayerToNative(layer, streamBranch, project)
         return None
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return  
 
 
-def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str):
+def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str, project: QgsProject):
     print("01______BIM layer to native")
     try:
         print(layerName)
@@ -190,7 +190,7 @@ def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch:
             #if geom.speckle_type == 'Objects.BuiltElements.Alignment':
 
         
-        if len(geom_meshes)>0: layer_meshes = bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch)
+        if len(geom_meshes)>0: layer_meshes = bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch, project)
 
         return True
     
@@ -198,7 +198,7 @@ def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return  
 
-def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: str, streamBranch: str): 
+def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: str, streamBranch: str, project: QgsProject): 
     print("02_________BIM vector layer to native_____")
     try: 
         print(layerName_old)
@@ -214,7 +214,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         print(layerName)
 
         
-        path = QgsProject.instance().absolutePath()
+        path = project.absolutePath()
         if(path == ""):
             logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", level = 1, func = inspect.stack()[0][3])
             return None
@@ -225,7 +225,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         print(path_bim)
 
 
-        crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+        crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
         #authid = saveCRS(crs, streamBranch)
 
         if crs.isGeographic is True: 
@@ -233,7 +233,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
 
         #CREATE A GROUP "received blabla" with sublayers
         newGroupName = f'{streamBranch}'
-        root = QgsProject.instance().layerTreeRoot()
+        root = project.layerTreeRoot()
         layerGroup = QgsLayerTreeGroup(newGroupName)
 
         if root.findGroup(newGroupName) is not None:
@@ -259,11 +259,11 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         print(shp)
 
         
-        
+        print(geomType)
         vl_shp = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
         vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid(), newName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
-        QgsProject.instance().addMapLayer(vl, False)
+        project.addMapLayer(vl, False)
         #try: 
         #    vl_shp.deleteAttributes(vl.fields()) #if DisplayMesh exists 
         #    vl_shp.commitChanges()
@@ -375,7 +375,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return  
 
-def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -> List[QgsVectorLayer or None]:
+def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str, project: QgsProject) -> List[QgsVectorLayer or None]:
     print("02_________ CAD vector layer to native_____")
     try:
         geom_points = []
@@ -396,8 +396,8 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -
                     geom_polylines.append(geom["baseCurve"])
             except: pass
         
-        if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch)
-        if len(geom_polylines)>0: layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch)
+        if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch, project)
+        if len(geom_polylines)>0: layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch, project)
         #print(layerName)
         #print(layer_points)
         #print(layer_polylines)
@@ -406,14 +406,14 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str) -
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return []
 
-def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str) -> QgsVectorLayer: 
+def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str, project: QgsProject) -> QgsVectorLayer: 
     print("___________cadVectorLayerToNative")
     try:
         #get Project CRS, use it by default for the new received layer
         vl = None
         layerName = layerName + "/" + geomType
         print(layerName)
-        crs = QgsProject.instance().crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+        crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
         #authid = saveCRS(crs, streamBranch)
 
         if crs.isGeographic is True: 
@@ -421,7 +421,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
         #CREATE A GROUP "received blabla" with sublayers
         newGroupName = f'{streamBranch}'
-        root = QgsProject.instance().layerTreeRoot()
+        root = project.layerTreeRoot()
         layerGroup = QgsLayerTreeGroup(newGroupName)
 
         if root.findGroup(newGroupName) is not None:
@@ -442,7 +442,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         elif geomType == "Polylines": geomType = "LineStringZ"
         vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid() , newName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
-        QgsProject.instance().addMapLayer(vl, False)
+        project.addMapLayer(vl, False)
 
         pr = vl.dataProvider()
         vl.startEditing()
@@ -519,7 +519,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return  
 
-def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
+def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, project: QgsProject):
     try:
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
@@ -527,7 +527,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
 
         #CREATE A GROUP "received blabla" with sublayers
         newGroupName = f'{streamBranch}'
-        root = QgsProject.instance().layerTreeRoot()
+        root = project.layerTreeRoot()
         layerGroup = QgsLayerTreeGroup(newGroupName)
 
         if root.findGroup(newGroupName) is not None:
@@ -551,7 +551,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
         #crsid = crs.authid()
         vl = QgsVectorLayer(geomType+ "?crs=" + authid, newName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
-        QgsProject.instance().addMapLayer(vl, False)
+        project.addMapLayer(vl, False)
 
         pr = vl.dataProvider()
         #vl.setCrs(crs)
@@ -587,7 +587,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return  
 
-def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
+def rasterLayerToNative(layer: RasterLayer, streamBranch: str, project):
     try:
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
@@ -602,7 +602,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
         
         #CREATE A GROUP "received blabla" with sublayers
         newGroupName = f'{streamBranch}'
-        root = QgsProject.instance().layerTreeRoot()
+        root = project.layerTreeRoot()
         layerGroup = QgsLayerTreeGroup(newGroupName)
 
         if root.findGroup(newGroupName) is not None:
@@ -616,13 +616,12 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layer.name}'
 
         ######################## testing, only for receiving layers #################
-        source_folder = QgsProject.instance().absolutePath()
+        source_folder = project.absolutePath()
 
         if(source_folder == ""):
             logToUser(f"Raster layers can only be received in an existing saved project. Layer {layer.name} will be ignored", level = 1, func = inspect.stack()[0][3])
             return None
 
-        project = QgsProject.instance()
         projectCRS = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
         #crsid = crsRaster.authid()
         #try: epsg = int(crsid.split(":")[1]) 
@@ -683,7 +682,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str):
         ds = None
 
         raster_layer = QgsRasterLayer(fn, newName, 'gdal')
-        QgsProject.instance().addMapLayer(raster_layer, False)
+        project.addMapLayer(raster_layer, False)
         layerGroup.addLayer(raster_layer)
 
         dataProvider = raster_layer.dataProvider()
