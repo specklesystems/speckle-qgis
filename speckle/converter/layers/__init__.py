@@ -13,7 +13,7 @@ from datetime import datetime
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
-from plugin_utils.helpers import findOrCreatePath, removeSpecialCharacters
+from plugin_utils.helpers import findFeatColors, findOrCreatePath, removeSpecialCharacters
 #from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
 from qgis.core import (Qgis, QgsProject, QgsRasterLayer, 
                        QgsVectorLayer, QgsProject, QgsWkbTypes,
@@ -308,34 +308,10 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
 
                 new_feat = bimFeatureToNative(exist_feat, f, vl.fields(), crs, path_bim)
                 if new_feat is not None and new_feat != "": 
-                    colorFound = 0
-                    try: # get render material from any part of the mesh (list of items in displayValue)
-                        for k, item in enumerate(f.displayValue):
-                            try:
-                                fetColors.append(item.renderMaterial.diffuse)  
-                                colorFound += 1
-                                break
-                            except: pass
-                        if colorFound == 0: fetColors.append(f.renderMaterial.diffuse)
-                    except: # if no "DisplayValue"
-                        try:
-                            for k, item in enumerate(f["@displayValue"]):
-                                try: 
-                                    fetColors.append(item.renderMaterial.diffuse) 
-                                    colorFound += 1
-                                    break
-                                except: pass
-                            if colorFound == 0: fetColors.append(f.renderMaterial.diffuse)
-                        except: 
-                            try:
-                                fetColors.append(f.displayStyle.color) 
-                                colorFound += 1
-                            except: pass
+                    fetColors = findFeatColors(fetColors, f)
                     fets.append(new_feat)
                     vl.addFeature(new_feat)
                     fetIds.append(f.id)
-                    if colorFound == 0: 
-                        fetColors.append(None)
             except Exception as e: print(e)
         
         vl.updateExtents()
@@ -491,8 +467,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
                 
                 pr.addAttributes(newFields) # add new attributes from the current object
                 fetIds.append(f.id)
-                try: fetColors.append(f.displayStyle.color) #, print(str(f.id)+ ': ' + str(f.displayStyle.color))
-                except: fetColors.append(None)
+                fetColors = findFeatColors(fetColors, f)
             #else: geomList.remove(f)
         
         # add Layer attribute fields
