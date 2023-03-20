@@ -222,7 +222,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         
         #path = project.absolutePath()
         #if(path == ""):
-        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\SpeckleQGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
+        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
         findOrCreatePath(p)
         path = p
         #logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", level = 1, func = inspect.stack()[0][3])
@@ -647,7 +647,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         #source_folder = project.absolutePath()
 
         #if(source_folder == ""):
-        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\SpeckleQGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
+        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
         findOrCreatePath(p)
         source_folder = p
         #logToUser(f"Raster layers can only be received in an existing saved project. Layer {layer.name} will be ignored", level = 1, func = inspect.stack()[0][3])

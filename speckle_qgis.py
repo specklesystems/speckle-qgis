@@ -21,6 +21,7 @@ import time
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 import threading
+from plugin_utils.helpers import removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsRasterLayer, QgsVectorLayer)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
@@ -442,6 +443,7 @@ class SpeckleQGIS:
 
             # If group exists, remove layers inside  
             newGroupName = streamId + "_" + branch.name + "_" + commit.id
+            newGroupName = removeSpecialCharacters(newGroupName)
             findAndClearLayerGroup(self.qgis_project, newGroupName)
 
             if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer)
