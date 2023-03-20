@@ -257,18 +257,16 @@ class SpeckleQGIS:
         
         # set the project instance 
         self.qgis_project = QgsProject.instance()
+        self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
 
         # send 
         if self.btnAction == 0: 
-            
             # Reset Survey point
             self.dockwidget.populateSurveyPoint(self)
-            
             # Get and clear message
             message = str(self.dockwidget.messageInput.text())
             self.dockwidget.messageInput.setText("")
             
-            self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
             if not self.dockwidget.experimental.isChecked(): self.onSend(message)
             else:
                 try:
@@ -283,7 +281,6 @@ class SpeckleQGIS:
         # receive 
         elif self.btnAction == 1: 
             
-            self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
             if not self.dockwidget.experimental.isChecked(): self.onReceive()
             else:
                 try:
