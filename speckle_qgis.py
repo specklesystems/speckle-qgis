@@ -362,6 +362,9 @@ class SpeckleQGIS:
                 message="Sent objects from QGIS" if len(message) == 0 else message,
                 source_application="QGIS",
             )
+            if isinstance(commit_id, SpeckleException):
+                logToUser("Error creating commit: "+str(commit_id.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                return
             url: str = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
             
             #self.dockwidget.hideWait()
