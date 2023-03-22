@@ -619,13 +619,13 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         #find ID of the layer with a matching name in the "latest" group 
 
         ######################## testing, only for receiving layers #################
-        #source_folder = project.absolutePath()
+        source_folder = project.absolutePath()
 
-        #if(source_folder == ""):
-        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
-        findOrCreatePath(p)
-        source_folder = p
-        #logToUser(f"Raster layers can only be received in an existing saved project. Layer {layer.name} will be ignored", level = 1, func = inspect.stack()[0][3])
+        if(source_folder == ""):
+            p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
+            findOrCreatePath(p)
+            source_folder = p
+            logToUser(f"Project directory not found. Raster layers saved to \"{p}\".", level = 1, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
 
         projectCRS = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
         #crsid = crsRaster.authid()
