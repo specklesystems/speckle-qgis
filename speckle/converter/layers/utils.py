@@ -22,7 +22,7 @@ def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = ""):
                     if isinstance(child.layer(), QgsVectorLayer): 
                         if "Speckle_ID" in child.layer().fields().names(): project_gis.removeMapLayer(child.layerId())
                     
-                    if isinstance(child.layer(), QgsRasterLayer): 
+                    elif isinstance(child.layer(), QgsRasterLayer): 
                         if "_Speckle" in child.layer().name(): project_gis.removeMapLayer(child.layerId())
 
     except Exception as e:
