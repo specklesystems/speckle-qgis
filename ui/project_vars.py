@@ -104,6 +104,9 @@ def set_survey_point(plugin: SpeckleQGIS):
         vals =[ str(plugin.dockwidget.surveyPointLat.text()), str(plugin.dockwidget.surveyPointLon.text()) ]
 
         plugin.lat, plugin.lon = [float(i.replace(" ","")) for i in vals]
+        if plugin.lat>180 or plugin.lat<-180 or plugin.lon >180 or plugin.lon<-180:
+            logToUser("LAT LON values must be within (-180, 180). You can right-click on the canvas location to copy coordinates in WGS 84", level = 1, plugin=plugin.dockwidget)
+            return True 
         pt = str(plugin.lat) + ";" + str(plugin.lon) 
         proj.writeEntry("speckle-qgis", "survey_point", pt)
         setProjectReferenceSystem(plugin)
