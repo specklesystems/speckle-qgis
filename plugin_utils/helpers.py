@@ -31,7 +31,6 @@ def splitTextIntoLines(text: str = "", number: int= 40) -> str:
 
 def findFeatColors(fetColors: List, f):
     colorFound = 0
-    fetColors = []
     try: # get render material from any part of the mesh (list of items in displayValue)
         for k, item in enumerate(f.displayValue):
             try:
