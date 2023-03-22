@@ -41,7 +41,9 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
                 pts = speckleBoundaryToSpecklePts(v)
                 voidsAsPts.append(pts)
             total_vert, vertices_x, faces_x, colors_x = meshPartsFromPolygon(polyBorder, voidsAsPts, existing_vert, feature, layer)
-
+            
+            if total_vert is None:
+                return None 
             existing_vert += total_vert
             vertices.extend(vertices_x)
             faces.extend(faces_x)
