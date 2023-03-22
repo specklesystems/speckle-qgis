@@ -24,6 +24,7 @@ class LogWidget(QWidget):
     msgs: List[str] = []
     used_btns: List[int] = []
     btns: List[QPushButton]
+    max_msg: int
 
     # constructor
     def __init__(self, parent=None):
@@ -31,6 +32,7 @@ class LogWidget(QWidget):
         print("start LogWidget")
         self.parentWidget = parent
         print(self.parentWidget)
+        self.max_msg = 10
         
         # create a temporary floating button 
         width = 0 #parent.frameSize().width()
@@ -46,9 +48,10 @@ class LogWidget(QWidget):
 
         # generate 100 buttons to use later
         self.btns = []
-        for i in range(10):
+        for i in range(self.max_msg):
             button = QPushButton(f"👌 Error") # to '{streamName}' Sent , v
             button.setStyleSheet("QPushButton {color: black; border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR_GREY}" + "}")
+            button.clicked.connect(lambda: self.openLink())
             button.clicked.connect(lambda: self.hide())
             self.btns.append(button)
 
@@ -72,18 +75,15 @@ class LogWidget(QWidget):
         self.used_btns.clear()
         self.msgs.clear()
 
-
-    def addButton(self, text: str = "something went wrong", level: int = 2):
+    def addButton(self, text: str = "something went wrong", level: int = 2, url = ""):
         print("Add button")
         time.sleep(0.3)
 
         self.setGeometry(0, 0, self.parentWidget.frameSize().width(), self.parentWidget.frameSize().height())
         
         # find index of the first unused button
-        btn = self.getNextBtn()
-
-        try: btn.clicked.disconnect(self.openLink)
-        except: pass
+        btn, index = self.getNextBtn()
+        btn.setAccessibleName("")
 
         btn.setStyleSheet("QPushButton {color: black; border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR_GREY}" + "}")
         btn.setText(text)
@@ -102,10 +102,8 @@ class LogWidget(QWidget):
         self.setGeometry(0, 0, self.parentWidget.frameSize().width(), self.parentWidget.frameSize().height())
         
         # find index of the first unused button
-        btn = self.getNextBtn()
-
-        try: btn.clicked.disconnect(self.openLink)
-        except: pass
+        btn, index = self.getNextBtn()
+        btn.setAccessibleName("")
         
         # style the button
         btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR}" + "}")
@@ -117,7 +115,6 @@ class LogWidget(QWidget):
         self.msgs.append(text)
         self.used_btns.append(1)
 
-
     def addLinkButton(self, text: str = "link here", level: int = 2, url = ""):
         print("Add link button")
         time.sleep(0.3)
@@ -125,13 +122,13 @@ class LogWidget(QWidget):
         self.setGeometry(0, 0, self.parentWidget.frameSize().width(), self.parentWidget.frameSize().height())
         
         # find index of the first unused button
-        btn = self.getNextBtn()
+        btn, index = self.getNextBtn()
+        btn.setAccessibleName(url)
 
         # style the button
         btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR}" + "} QPushButton:hover { "+ f"{BACKGR_COLOR_LIGHT}" + " }")
         btn.setText(text)
         self.resizeToText(btn)
-        btn.clicked.connect(lambda: self.openLink(url))
 
         self.layout.addWidget(btn) #, alignment=Qt.AlignCenter) 
 
@@ -140,19 +137,28 @@ class LogWidget(QWidget):
 
     def openLink(self, url = ""):
         try:
+            btn = self.sender()
+            url = btn.accessibleName()
+            if url == "": return
+
             webbrowser.open(url, new=0, autoraise=True)
             self.hide()
         except Exception as e: 
             pass #logger.logToUser(str(e), level=2, func = inspect.stack()[0][3])
 
     def getNextBtn(self):
-        index = len(self.used_btns)
+        index = len(self.used_btns) # get the next "free" button 
+
         if index >= len(self.btns): 
+            # remove first button
+            self.layout.itemAt(0).widget().setParent(None)
+
             self.used_btns.clear()
             index = 0 
-        btn = self.btns[index] # get the next "free" button 
-        return btn 
-    
+
+        btn = self.btns[index]
+        return btn, index 
+
     def resizeToText(self, btn):
         try:
             text = btn.text()
@@ -160,4 +166,6 @@ class LogWidget(QWidget):
                 height = len(text.split("\n"))*25
                 btn.setMinimumHeight(height)
             return btn 
-        except Exception as e: print(e); return btn 
+        except Exception as e: 
+            print(e)
+            return btn 

@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 def findOrCreatePath(path: str):
     if not os.path.exists(path): 
@@ -27,3 +28,31 @@ def splitTextIntoLines(text: str = "", number: int= 40) -> str:
         print(text)
     
     return msg
+
+def findFeatColors(fetColors: List, f):
+    colorFound = 0
+    try: # get render material from any part of the mesh (list of items in displayValue)
+        for k, item in enumerate(f.displayValue):
+            try:
+                fetColors.append(item.renderMaterial.diffuse)  
+                colorFound += 1
+                break
+            except: pass
+        if colorFound == 0: fetColors.append(f.renderMaterial.diffuse)
+    except: # if no "DisplayValue"
+        try:
+            for k, item in enumerate(f["@displayValue"]):
+                try: 
+                    fetColors.append(item.renderMaterial.diffuse) 
+                    colorFound += 1
+                    break
+                except: pass
+            if colorFound == 0: fetColors.append(f.renderMaterial.diffuse)
+        except: 
+            try:
+                fetColors.append(f.displayStyle.color) 
+                colorFound += 1
+            except: pass
+    if colorFound == 0: 
+        fetColors.append(None)
+    return fetColors 

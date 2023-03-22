@@ -279,7 +279,11 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         if rasterBandVals[k][int(count/4)] >= rasterBandMinVal[k]: 
                             #### REMAP band values to (0,255) range
                             valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
-                            colorVal = int( (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / valRange * 255 )
+                            if valRange == 0: 
+                                if rasterBandMinVal[k] ==0: colorVal = 0
+                                else: colorVal = 255
+                            else: colorVal = int( (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / valRange * 255 )
+                            
                             if k+1 == redBand: rVal = colorVal
                             if k+1 == greenBand: gVal = colorVal
                             if k+1 == blueBand: bVal = colorVal
@@ -326,7 +330,10 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     if rasterBandVals[bandIndex][int(count/4)] >= rasterBandMinVal[bandIndex]: 
                         # REMAP band values to (0,255) range
                         valRange = (rasterBandMaxVal[bandIndex] - rasterBandMinVal[bandIndex])
-                        colorVal = int( (rasterBandVals[bandIndex][int(count/4)] - rasterBandMinVal[bandIndex]) / valRange * 255 )
+                        if valRange == 0: 
+                            if rasterBandMinVal[bandIndex] ==0: colorVal = 0
+                            else: colorVal = 255
+                        else: colorVal = int( (rasterBandVals[bandIndex][int(count/4)] - rasterBandMinVal[bandIndex]) / valRange * 255 )
                         color =  (colorVal<<16) + (colorVal<<8) + colorVal
 
                 colors.extend([color,color,color,color])

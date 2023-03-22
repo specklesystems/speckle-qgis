@@ -21,6 +21,7 @@ import time
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 import threading
+from plugin_utils.helpers import removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsRasterLayer, QgsVectorLayer)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
@@ -256,18 +257,16 @@ class SpeckleQGIS:
         
         # set the project instance 
         self.qgis_project = QgsProject.instance()
+        self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
 
         # send 
         if self.btnAction == 0: 
-            
             # Reset Survey point
             self.dockwidget.populateSurveyPoint(self)
-            
             # Get and clear message
             message = str(self.dockwidget.messageInput.text())
             self.dockwidget.messageInput.setText("")
             
-            self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
             if not self.dockwidget.experimental.isChecked(): self.onSend(message)
             else:
                 try:
@@ -282,7 +281,6 @@ class SpeckleQGIS:
         # receive 
         elif self.btnAction == 1: 
             
-            self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
             if not self.dockwidget.experimental.isChecked(): self.onReceive()
             else:
                 try:
@@ -364,6 +362,9 @@ class SpeckleQGIS:
                 message="Sent objects from QGIS" if len(message) == 0 else message,
                 source_application="QGIS",
             )
+            if isinstance(commit_id, SpeckleException):
+                logToUser("Error creating commit: "+str(commit_id.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                return
             url: str = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
             
             #self.dockwidget.hideWait()
@@ -442,6 +443,7 @@ class SpeckleQGIS:
 
             # If group exists, remove layers inside  
             newGroupName = streamId + "_" + branch.name + "_" + commit.id
+            newGroupName = removeSpecialCharacters(newGroupName)
             findAndClearLayerGroup(self.qgis_project, newGroupName)
 
             if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer)
