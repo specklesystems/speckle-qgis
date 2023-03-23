@@ -1,4 +1,18 @@
 
+
+import os; import sys; import subprocess; p1 = os.path.dirname(sys.executable); print(p1); p = p1+"\\python3"; 
+r =subprocess.run([p, "-m", "pip", "install", "specklepy==2.9.0"], capture_output=True, text=True, shell=True, timeout=1000); print(r) 
+r =subprocess.run([p, "-m", "pip", "install", "panda3d==1.10.11"], capture_output=True, text=True, shell=True, timeout=1000); print(r) 
+r =subprocess.run([p, "-m", "pip", "install", "pyshp==2.3.1"], capture_output=True, text=True, shell=True, timeout=1000); print(r) 
+## IF retcode for EACH command is not 0: 
+# - Windows -> cmd -> C:\Program Files\QGIS 3.28.0\bin
+r'''
+python -m pip install specklepy==2.9.0 
+python -m pip install panda3d==1.10.11 
+python -m pip install pyshp==2.3.1 
+'''
+# - restart QGIS 
+
 r'''
 layer = QgsVectorLayer('CompoundCurve?crs=epsg:4326', 'polygon' , 'memory')
 prov = layer.dataProvider()

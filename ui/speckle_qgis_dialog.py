@@ -72,7 +72,7 @@ ICON_RECEIVE_BLACK = os.path.dirname(os.path.abspath(__file__)) + "/cube-receive
 ICON_SEND_BLUE = os.path.dirname(os.path.abspath(__file__)) + "/cube-send-blue.png"
 ICON_RECEIVE_BLUE = os.path.dirname(os.path.abspath(__file__)) + "/cube-receive-blue.png"
 
-class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
+class SpeckleQGISDialog(QtWidgets.QMainWindow, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
     streamList: QtWidgets.QComboBox
@@ -86,6 +86,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     runButton: QtWidgets.QPushButton
     experimental: QCheckBox
     msgLog: LogWidget = None
+    gridLayoutTitleBar = QtWidgets.QGridLayout
     
     def __init__(self, parent=None):
         """Constructor."""
@@ -177,7 +178,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         connect_box.addWidget(text_label) #, alignment=Qt.AlignCenter) 
         connect_box.addWidget(version_label) 
         connect_box.setContentsMargins(0, 0, 0, 0)
-        self.setTitleBarWidget(widget)
+        self.gridLayoutTitleBar.addWidget(widget) # fro QMainWindow
+        #self.setTitleBarWidget(widget)
 
         self.sendModeButton.setStyleSheet("QPushButton {padding: 10px; border: 0px; " + f"color: rgb{str(SPECKLE_COLOR)};"+ "} QPushButton:hover { "  + "}" ) 
         self.sendModeButton.setIcon(QIcon(ICON_SEND_BLUE))
@@ -215,7 +217,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def resizeEvent(self, event):
         try:
-            print("resize")
+            #print("resize")
             QtWidgets.QDockWidget.resizeEvent(self, event)
             if self.msgLog.size().height() != 0: # visible
                 self.msgLog.setGeometry(0, 0, self.msgLog.parentWidget.frameSize().width(), self.msgLog.parentWidget.frameSize().height()) #.resize(self.frameSize().width(), self.frameSize().height())

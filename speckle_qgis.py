@@ -59,7 +59,73 @@ from ui.logger import logToUser, logToUserWithAction
 # Import the code for the dialog
 from ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
 
+class SpeckleQGIS1:
+    def __init__(self, iface):
+        self.iface = iface
+        # Declare instance attributes
+        self.actions = []
+        self.menu = QCoreApplication.translate("SpeckleQGIS", "&SpeckleQGIS")
 
+    def initGui(self):
+        """Create the menu entries and toolbar icons inside the QGIS GUI."""
+
+        icon_path = ":/plugins/speckle_qgis/icon.png"
+        self.add_action(
+            icon_path,
+            text=QCoreApplication.translate("SpeckleQGIS", "SpeckleQGIS"),
+            callback=self.run,
+            parent=self.iface.mainWindow(),
+        )
+    
+    def run(self):
+        t = threading.Thread(target=self.qtApp, args=("",))
+        t.start()
+
+        #self.plugin = SpeckleQGIS(self.iface)
+        #self.plugin.run()
+
+    def qtApp(self, text: str):
+        print("MAIN function")
+        
+        app = QApplication(sys.argv)
+        ex = SpeckleQGIS(self.iface)
+        #ex.show()
+        sys.exit(app.exec_())
+
+    def add_action(
+        self,
+        icon_path: str,
+        text,
+        callback,
+        enabled_flag=True,
+        add_to_menu=True,
+        add_to_toolbar=True,
+        status_tip=None,
+        whats_this=None,
+        parent=None,
+    ):
+        icon = QIcon(icon_path)
+        action = QAction(icon, text, parent)
+        action.triggered.connect(callback)
+        action.setEnabled(enabled_flag)
+
+        if status_tip is not None:
+            action.setStatusTip(status_tip)
+
+        if whats_this is not None:
+            action.setWhatsThis(whats_this)
+
+        if add_to_toolbar:
+            # Adds plugin icon to Plugins toolbar
+            self.iface.addToolBarIcon(action)
+
+        if add_to_menu:
+            self.iface.addPluginToWebMenu(self.menu, action)
+
+        self.actions.append(action)
+
+        return action
+    
 SPECKLE_COLOR = (59,130,246)
 SPECKLE_COLOR_LIGHT = (69,140,255)
 
@@ -125,6 +191,7 @@ class SpeckleQGIS:
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.pluginIsActive = False
+        self.run()
 
     # noinspection PyMethodMayBeStatic
 
@@ -192,7 +259,7 @@ class SpeckleQGIS:
             added to self.actions list.
         :rtype: QAction
         """
-
+        return 
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
@@ -217,7 +284,7 @@ class SpeckleQGIS:
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
-
+        return
         icon_path = ":/plugins/speckle_qgis/icon.png"
         self.add_action(
             icon_path,
@@ -477,6 +544,7 @@ class SpeckleQGIS:
             return
 
     def check_for_accounts(self):
+        print("check for accounts")
         try:
             def go_to_manager():
                 webbrowser.open("https://speckle-releases.netlify.app/")
@@ -496,6 +564,7 @@ class SpeckleQGIS:
             return
 
     def run(self):
+        print("run")
         """Run method that performs all the real work"""
         from ui.speckle_qgis_dialog import SpeckleQGISDialog
         from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection
@@ -505,8 +574,10 @@ class SpeckleQGIS:
         self.is_setup = self.check_for_accounts()
             
         if self.pluginIsActive:
+            print("already active, reload")
             self.reloadUI()
         else:
+            print("set as active")
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
@@ -525,7 +596,8 @@ class SpeckleQGIS:
             #layerRoot.layersRemoved.connect(self.reloadUI)
 
             # show the dockwidget
-            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
+            #self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
+            self.dockwidget.show()
             self.dockwidget.enableElements(self)
 
     def onStreamAddButtonClicked(self):

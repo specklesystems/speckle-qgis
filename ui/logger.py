@@ -15,7 +15,9 @@ def logToUser(msg: str, func=None, level: int = 2, plugin = None, blue = False):
       dockwidget = plugin
       try: 
             if func is not None: msg += "::" + str(func)
+            print(msg)
             writeToLog(msg, level)
+            return
             if dockwidget is None: return
 
             new_msg = splitTextIntoLines(msg, 70)
