@@ -34,9 +34,18 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         # Try to extract geometry
         try:
             geom = convertToSpeckle(f, selectedLayer)
-            #print(geom)
-            if geom is not None: b["geometry"] = geom
-            else: b["geometry"] = [] 
+            
+            b["geometry"] = [] 
+            if geom is not None and geom!="None": 
+                if isinstance(geom, List):
+                    for g in geom:
+                        if g is not None and g!="None": b["geometry"].append(g)
+                        else:
+                            print(g)
+                else:
+                    b["geometry"] = [geom]
+            else: 
+                print(geom)
         except Exception as error:
             logToUser("Error converting geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
 

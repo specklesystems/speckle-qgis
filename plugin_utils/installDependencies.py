@@ -10,9 +10,12 @@ from speckle.utils import get_qgis_python_path
 def setup():
     # to debug:
     r'''
-pythonExec = os.path.dirname(sys.executable) + "\\python3"
-retcode = subprocess.call([pythonExec, "-m", "pip", "install", "specklepy"]); print(retcode)
+import os; import sys; import subprocess; pythonExec = os.path.dirname(sys.executable) + "\\python3"
+#retcode = subprocess.call([pythonExec, "-m", "pip", "install", "specklepy"]); print(retcode)
+result = subprocess.run([pythonExec, "-m", "pip", "install", "specklepy"], capture_output=True, text=True, shell=True, timeout=1000); print(result)
+
 import specklepy; import os; print(os.path.abspath(specklepy.__file__))
+
 
     '''
     plugin_dir = os.path.dirname(__file__)
