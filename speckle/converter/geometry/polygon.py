@@ -76,7 +76,8 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, layer)
 
         mesh = constructMesh(vertices, faces, colors)
-        polygon.displayValue = [ mesh ] 
+        if mesh is not None: polygon.displayValue = [ mesh ] 
+        else: pass 
 
         return polygon
     except Exception as e:
