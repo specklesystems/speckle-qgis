@@ -50,7 +50,8 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
             colors.extend(colors_x)
 
         mesh = constructMesh(vertices, faces, colors)
-        polygon.displayValue = [ mesh ] 
+        if mesh is not None: polygon.displayValue = [ mesh ] 
+        
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
     
@@ -77,7 +78,6 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
 
         mesh = constructMesh(vertices, faces, colors)
         if mesh is not None: polygon.displayValue = [ mesh ] 
-        else: pass 
 
         return polygon
     except Exception as e:
