@@ -50,14 +50,16 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
             colors.extend(colors_x)
 
         mesh = constructMesh(vertices, faces, colors)
-        if mesh is not None: polygon.displayValue = [ mesh ] 
-        
+        if mesh is not None: 
+            polygon.displayValue = [ mesh ] 
+        else: 
+            logToUser("Mesh creation from Polygon failed. Boundaries will be used as displayValue", level = 1, func = inspect.stack()[0][3])
+        return polygon 
+    
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None
     
-
-    return polygon 
-
 def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer):
     """Converts a QgsPolygon to Speckle"""
     polygon = Base(units = "m")
@@ -77,13 +79,15 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, layer)
 
         mesh = constructMesh(vertices, faces, colors)
-        if mesh is not None: polygon.displayValue = [ mesh ] 
-
+        if mesh is not None: 
+            polygon.displayValue = [ mesh ] 
+        else: 
+            logToUser("Mesh creation from Polygon failed. Boundaries will be used as displayValue", level = 1, func = inspect.stack()[0][3])
         return polygon
+    
     except Exception as e:
         logToUser("Some polygons might be invalid" + str(e), level = 1, func = inspect.stack()[0][3])
-        return polygon 
-
+        return None
     
 
 
