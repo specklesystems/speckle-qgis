@@ -1,7 +1,7 @@
 
-import PyQt5 
-from PyQt5.QtWidgets import QMainWindow, QMessageBox, QPushButton, QPushButton, QLabel, QVBoxLayout, QWidget
-from PyQt5 import QtCore
+#import PyQt5 
+#from PyQt5.QtWidgets import QMainWindow, QMessageBox, QPushButton, QPushButton, QLabel, QVBoxLayout, QWidget
+#from PyQt5 import QtCore
 import threading
 import time
 
@@ -16,6 +16,7 @@ def logToUser(msg: str, func=None, level: int = 2, plugin = None, blue = False):
       try: 
             if func is not None: msg += "::" + str(func)
             writeToLog(msg, level)
+            #return
             if dockwidget is None: return
 
             new_msg = splitTextIntoLines(msg, 70)
@@ -36,9 +37,10 @@ def logToUserWithAction(msg: str, level: int = 0, plugin = None, url = ""):
       dockwidget = plugin
       if dockwidget is None: return
       try:             
+            writeToLog(msg, level)
+            #return
             new_msg = splitTextIntoLines(msg, 70)
             dockwidget.msgLog.addLinkButton(new_msg, level=level, url=url)
-            writeToLog(new_msg, level)
       except Exception as e: print(e); return 
 
 def addLevelSymbol(msg: str, level: int):

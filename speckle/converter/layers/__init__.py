@@ -304,7 +304,9 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
                     if shape["speckle_id"] == f.id:
                         exist_feat = vl_shp.getFeature(n)
                         break
-                if exist_feat is None: continue 
+                if exist_feat is None: 
+                    logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
+                    continue 
 
                 new_feat = bimFeatureToNative(exist_feat, f, vl.fields(), crs, path_bim)
                 if new_feat is not None and new_feat != "": 
@@ -312,6 +314,8 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
                     fets.append(new_feat)
                     vl.addFeature(new_feat)
                     fetIds.append(f.id)
+                else:
+                    logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
             except Exception as e: print(e)
         
         vl.updateExtents()
@@ -468,6 +472,8 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
                 pr.addAttributes(newFields) # add new attributes from the current object
                 fetIds.append(f.id)
                 fetColors = findFeatColors(fetColors, f)
+            else:
+                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
             #else: geomList.remove(f)
         
         # add Layer attribute fields
@@ -562,6 +568,8 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         for f in layer.features: 
             new_feat = featureToNative(f, newFields)
             if new_feat is not None and new_feat != "": fets.append(new_feat)
+            else:
+                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
 
         # add Layer attribute fields
         pr.addAttributes(newFields.toList())

@@ -39,11 +39,17 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
             if geom is not None and geom!="None": 
                 if isinstance(geom, List):
                     for g in geom:
-                        if g is not None and g!="None": b["geometry"].append(g)
+                        if g is not None and g!="None": 
+                            b["geometry"].append(g)
                         else:
+                            logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
                             print(g)
                 else:
-                    b["geometry"] = [geom]
+                    if geom is not None and geom!="None": 
+                        b["geometry"] = [geom]
+                    else:
+                        logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
+                        print(geom)
             else: 
                 print(geom)
         except Exception as error:
