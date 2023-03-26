@@ -83,6 +83,8 @@ class SpeckleQGIS:
     accounts: List[Account]
     active_account: Account
 
+    theads_total: int
+
     def __init__(self, iface):
         """Constructor.
 
@@ -100,6 +102,8 @@ class SpeckleQGIS:
         self.default_account = None 
         self.accounts = [] 
         self.active_account = None 
+
+        self.theads_total = 0
 
         self.btnAction = 0
 
@@ -254,11 +258,17 @@ class SpeckleQGIS:
             return
 
     def onRunButtonClicked(self):
-        
+        print("onRUN")
+        # set QGIS threads number only the first time: 
+        if self.theads_total==0: self.theads_total = threading.active_count()
+        print(threading.active_count())
+
         # set the project instance 
         self.qgis_project = QgsProject.instance()
         self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
 
+        # https://www.opengis.ch/2016/09/07/using-threads-in-qgis-python-plugins/
+        
         # send 
         if self.btnAction == 0: 
             # Reset Survey point
@@ -270,12 +280,16 @@ class SpeckleQGIS:
             if not self.dockwidget.experimental.isChecked(): self.onSend(message)
             else:
                 try:
+                    if threading.active_count() > self.theads_total:
+                        logToUser("Please wait for other Send/Reeive operations to finish", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                        return
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.active_account = client.account
                     metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send"})
                     
                     t = threading.Thread(target=self.onSend, args=(message,))
+                    #t.daemon = True
                     t.start()
                 except: self.onSend(message)
         # receive 
@@ -284,6 +298,9 @@ class SpeckleQGIS:
             if not self.dockwidget.experimental.isChecked(): self.onReceive()
             else:
                 try:
+                    if threading.active_count() > self.theads_total:
+                        logToUser("Please wait for other Send/Reeive operations to finish", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                        return
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.active_account = client.account
@@ -291,6 +308,18 @@ class SpeckleQGIS:
 
                     t = threading.Thread(target=self.onReceive, args=())
                     t.start()
+                    r'''
+                    def _targetReceive():
+                        try:
+                            t.result = self.onReceive()
+                        except Exception as e:
+                            print(e)
+                            t.failure = e
+
+                    t = threading.Thread(target=_targetReceive, args=())
+                    #t.daemon = True
+                    t.start()
+                    '''
                 except: self.onReceive()
 
     def onSend(self, message):
@@ -369,7 +398,7 @@ class SpeckleQGIS:
             
             #self.dockwidget.hideWait()
             #self.dockwidget.showLink(url, streamName)
-            if self.dockwidget.experimental.isChecked(): time.sleep(3)
+            #if self.dockwidget.experimental.isChecked(): time.sleep(3)
             logToUserWithAction(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
 
             return url
@@ -450,7 +479,7 @@ class SpeckleQGIS:
             else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
-            if self.dockwidget.experimental.isChecked(): time.sleep(3)
+            #if self.dockwidget.experimental.isChecked(): time.sleep(3)
             logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
             return 
             
