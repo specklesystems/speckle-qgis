@@ -1,9 +1,10 @@
 
+import threading
 import time
 from typing import List
 from plugin_utils.helpers import splitTextIntoLines
 from qgis.PyQt import QtCore
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect, QObject
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, pyqtSignal, QTranslator, QRect, QObject
 from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget, QPushButton
 from qgis.PyQt import QtWidgets
 from qgis.PyQt.QtGui import QPainter
@@ -25,6 +26,7 @@ class LogWidget(QWidget):
     used_btns: List[int] = []
     btns: List[QPushButton]
     max_msg: int
+    sendMessage = pyqtSignal(str, int, str, bool)
 
     # constructor
     def __init__(self, parent=None):
@@ -75,49 +77,8 @@ class LogWidget(QWidget):
         self.used_btns.clear()
         self.msgs.clear()
 
-    def addButton(self, text: str = "something went wrong", level: int = 2, url = ""):
+    def addButton(self, text: str = "something went wrong", level: int = 2, url = "", blue = False):
         print("Add button")
-        time.sleep(0.3)
-
-        self.setGeometry(0, 0, self.parentWidget.frameSize().width(), self.parentWidget.frameSize().height())
-        
-        # find index of the first unused button
-        btn, index = self.getNextBtn()
-        btn.setAccessibleName("")
-
-        btn.setStyleSheet("QPushButton {color: black; border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR_GREY}" + "}")
-        btn.setText(text)
-        self.resizeToText(btn)
-
-        #btn.resize(btn.sizeHint())
-        self.layout.addWidget(btn) #, alignment=Qt.AlignCenter) 
-
-        self.msgs.append(text)
-        self.used_btns.append(1)
-
-    def addInfoButton(self, text: str = "link here", level: int = 2, url = ""):
-        print("Add blue button")
-        time.sleep(0.3)
-
-        self.setGeometry(0, 0, self.parentWidget.frameSize().width(), self.parentWidget.frameSize().height())
-        
-        # find index of the first unused button
-        btn, index = self.getNextBtn()
-        btn.setAccessibleName("")
-        
-        # style the button
-        btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR}" + "}")
-        btn.setText(text)
-        btn = self.resizeToText(btn)
-
-        self.layout.addWidget(btn) #, alignment=Qt.AlignCenter) 
-
-        self.msgs.append(text)
-        self.used_btns.append(1)
-
-    def addLinkButton(self, text: str = "link here", level: int = 2, url = ""):
-        print("Add link button")
-        time.sleep(0.3)
 
         self.setGeometry(0, 0, self.parentWidget.frameSize().width(), self.parentWidget.frameSize().height())
         
@@ -125,11 +86,20 @@ class LogWidget(QWidget):
         btn, index = self.getNextBtn()
         btn.setAccessibleName(url)
 
-        # style the button
-        btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR}" + "} QPushButton:hover { "+ f"{BACKGR_COLOR_LIGHT}" + " }")
+        if url != "":
+            btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR}" + "} QPushButton:hover { "+ f"{BACKGR_COLOR_LIGHT}" + " }")
+        
+        else:
+            if blue is False: 
+                btn.setStyleSheet("QPushButton {color: black; border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR_GREY}" + "}")
+            else:
+                btn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 20px;height: 40px;text-align: left;"+ f"{BACKGR_COLOR}" + "}")
+        
+        
         btn.setText(text)
         self.resizeToText(btn)
 
+        #btn.resize(btn.sizeHint())
         self.layout.addWidget(btn) #, alignment=Qt.AlignCenter) 
 
         self.msgs.append(text)
@@ -163,7 +133,7 @@ class LogWidget(QWidget):
         try:
             text = btn.text()
             if len(text.split("\n"))>2:
-                height = len(text.split("\n"))*25
+                height = len(text.split("\n"))*30
                 btn.setMinimumHeight(height)
             return btn 
         except Exception as e: 

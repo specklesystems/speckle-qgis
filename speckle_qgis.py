@@ -54,7 +54,7 @@ from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
 from ui.create_stream import CreateStreamModalDialog
 from ui.create_branch import CreateBranchModalDialog
-from ui.logger import logToUser, logToUserWithAction
+from ui.logger import logToUser
 
 # Import the code for the dialog
 from ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
@@ -281,7 +281,7 @@ class SpeckleQGIS:
             else:
                 try:
                     if threading.active_count() > self.theads_total:
-                        logToUser("Please wait for other Send/Reeive operations to finish", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                        logToUser("Please wait for other Send/Reeive operations to finish", level = 1, plugin=self.dockwidget)
                         return
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
@@ -299,7 +299,7 @@ class SpeckleQGIS:
             else:
                 try:
                     if threading.active_count() > self.theads_total:
-                        logToUser("Please wait for other Send/Reeive operations to finish", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                        logToUser("Please wait for other Send/Reeive operations to finish", level = 1, plugin=self.dockwidget)
                         return
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
@@ -399,7 +399,7 @@ class SpeckleQGIS:
             #self.dockwidget.hideWait()
             #self.dockwidget.showLink(url, streamName)
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
-            logToUserWithAction(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
+            logToUser(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
 
             return url
 

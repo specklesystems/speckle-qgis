@@ -24,6 +24,7 @@
 
 import inspect
 import os
+import threading
 from plugin_utils.helpers import splitTextIntoLines
 from speckle.converter.layers import getLayers
 from ui.LogWidget import LogWidget
@@ -265,11 +266,18 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
             return
+        
+    def addMsg(self, text:str, level:int, url:str, blue:bool):
+        t_name = threading.current_thread().getName()
+        #print(t_name)
+        self.msgLog.addButton(text, level, url, blue)
 
     def setupOnFirstLoad(self, plugin):
         try:
             self.runButton.clicked.connect(plugin.onRunButtonClicked)
-            
+
+            self.msgLog.sendMessage.connect(self.addMsg)
+
             self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
             self.reloadButton.clicked.connect(lambda: self.refreshClicked(plugin))
             self.closeButton.clicked.connect(lambda: self.closeClicked(plugin))

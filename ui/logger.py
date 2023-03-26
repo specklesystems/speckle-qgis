@@ -7,40 +7,30 @@ import time
 
 from plugin_utils.helpers import splitTextIntoLines 
 
-def logToUser(msg: str, func=None, level: int = 2, plugin = None, blue = False):
+def logToUser(msg: str, func=None, level: int = 2, plugin = None, url = "", blue = False):
       print("Log to user")
-      time.sleep(0.3)
+      #time.sleep(0.3)
+      #t_name = threading.current_thread().getName()
 
       msg = str(msg)
       dockwidget = plugin
       try: 
-            if func is not None: msg += "::" + str(func)
+            if url == "" and blue is False: # only for info messages
+                  msg = addLevelSymbol(msg, level)
+                  if func is not None: 
+                        msg += "::" + str(func)
             writeToLog(msg, level)
-            #return
+            
             if dockwidget is None: return
 
             new_msg = splitTextIntoLines(msg, 70)
 
-            if blue is True: 
-                  dockwidget.msgLog.addInfoButton(new_msg, level=level)
-            else:
-                  new_msg = addLevelSymbol(new_msg, level)
-                  dockwidget.msgLog.addButton(new_msg, level=level)
-            
-      except Exception as e: print(e); return 
+            #if url == "" and blue is False:
+            #      new_msg = addLevelSymbol(new_msg, level)
 
-def logToUserWithAction(msg: str, level: int = 0, plugin = None, url = ""):
-      print("Log to user with action")
-      time.sleep(0.3)
-      
-      msg = str(msg)
-      dockwidget = plugin
-      if dockwidget is None: return
-      try:             
-            writeToLog(msg, level)
-            #return
-            new_msg = splitTextIntoLines(msg, 70)
-            dockwidget.msgLog.addLinkButton(new_msg, level=level, url=url)
+            dockwidget.msgLog.sendMessage.emit(new_msg, level, url, blue)
+            #dockwidget.msgLog.addButton(new_msg, level=level, blue=blue)
+            
       except Exception as e: print(e); return 
 
 def addLevelSymbol(msg: str, level: int):
