@@ -59,7 +59,7 @@ def callback(base: Base, streamBranch: str, plugin) -> bool:
             #if isinstance(base, Layer):
             #    logger.log(f"Class \"Layer\" will be deprecated in future updates in favour of \"VectorLayer\" or \"RasterLayer\"", Qgis.Warning) 
             layerToNative(base, streamBranch, plugin)
-            time.sleep(0.3)
+            #time.sleep(0.3)
             #if layer is not None:
             #    .logToUser("Layer created: " + layer.name(), Qgis.Info)
         else:
@@ -102,27 +102,27 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin): # "name" is the p
                     try: 
                         if item["displayValue"] is not None and objectListConverted == 0: 
                             bimLayerToNative(value, name, streamBranch, plugin)
-                            time.sleep(0.3)
+                            #time.sleep(0.3)
                             objectListConverted += 1
                     except: 
                         try: 
                             if item["@displayValue"] is not None and objectListConverted == 0: 
                                 bimLayerToNative(value, name, streamBranch, plugin)
-                                time.sleep(0.3)
+                                #time.sleep(0.3)
                                 objectListConverted += 1
                         except: pass 
                 elif item.speckle_type and item.speckle_type.endswith(".ModelCurve"): 
                     if item["baseCurve"] is not None: 
                         cadLayerToNative(value, name, streamBranch, plugin)
-                        time.sleep(0.3)
+                        #time.sleep(0.3)
                         break
                 elif item.speckle_type and (item.speckle_type == "Objects.Geometry.Mesh" or item.speckle_type == "Objects.Geometry.Brep" or item.speckle_type.startswith("Objects.BuiltElements.")):
                     bimLayerToNative(value, name, streamBranch, plugin)
-                    time.sleep(0.3)
+                    #time.sleep(0.3)
                     break
                 elif item.speckle_type and item.speckle_type != "Objects.Geometry.Mesh" and item.speckle_type != "Objects.Geometry.Brep" and item.speckle_type.startswith("Objects.Geometry."): # or item.speckle_type == 'Objects.BuiltElements.Alignment'): 
                     pt, pl = cadLayerToNative(value, name, streamBranch, plugin)
-                    time.sleep(0.3)
+                    #time.sleep(0.3)
                     #if pt is not None: logger.log("Layer group created: " + str(pt.name()))
                     #if pl is not None: logger.log("Layer group created: " + str(pl.name()))
                     break
@@ -130,7 +130,7 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin): # "name" is the p
                     try:
                         if item["baseLine"] is not None:
                             cadLayerToNative(value, name, streamBranch, plugin)
-                            time.sleep(0.3)
+                            #time.sleep(0.3)
                             break
                     except: pass
     except: pass 
