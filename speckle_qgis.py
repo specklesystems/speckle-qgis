@@ -550,6 +550,7 @@ class SpeckleQGIS:
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
                 self.dockwidget.addLabel(self)
+                self.dockwidget.addProps(self)
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
 
