@@ -5,6 +5,8 @@ def patch_installer(tag):
     """Patches the installer with the correct connector version and specklepy version"""
     iss_file = "speckle-sharp-ci-tools/qgis.iss"
     metadata = "metadata.txt"
+    plugin_start_file = "speckle_qgis.py"
+
     #conda_file = "speckle_arcgis_installer/conda_clone_activate.py"
     #toolbox_install_file = "speckle_arcgis_installer/toolbox_install.py"
     #toolbox_manual_install_file = "speckle_arcgis_installer/toolbox_install_manual.py"
@@ -34,6 +36,18 @@ def patch_installer(tag):
         with open(metadata, "w") as file:
             file.writelines(lines)
             print(f"Patched metadata v{tag} ")
+    file.close()
+
+
+    with open(plugin_start_file, "r") as file:
+        lines = file.readlines()
+        for i, line in enumerate(lines):
+            if 'self.version = ' in line: 
+                lines[i] = lines[i].split("")[0] + "\"" + tag.split('-')[0] + "\""
+                break
+        with open(plugin_start_file, "w") as file:
+            file.writelines(lines)
+            print(f"Patched GIS start file with connector v{tag} and specklepy ")
     file.close()
 
     r'''

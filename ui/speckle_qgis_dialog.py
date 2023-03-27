@@ -73,6 +73,10 @@ ICON_RECEIVE_BLACK = os.path.dirname(os.path.abspath(__file__)) + "/cube-receive
 ICON_SEND_BLUE = os.path.dirname(os.path.abspath(__file__)) + "/cube-send-blue.png"
 ICON_RECEIVE_BLUE = os.path.dirname(os.path.abspath(__file__)) + "/cube-receive-blue.png"
 
+COLOR = f"color: rgb{str(SPECKLE_COLOR)};"
+BACKGR_COLOR = f"background-color: rgb{str(SPECKLE_COLOR)};"
+BACKGR_COLOR_LIGHT = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
+
 class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
@@ -109,76 +113,22 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.closeButton.setFlat(True)
 
         # https://stackoverflow.com/questions/67585501/pyqt-how-to-use-hover-in-button-stylesheet
-        color = f"color: rgb{str(SPECKLE_COLOR)};"
-        backgr_color = f"background-color: rgb{str(SPECKLE_COLOR)};"
-        backgr_color_light = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
+        #color = f"color: rgb{str(SPECKLE_COLOR)};"
+        #backgr_color = f"background-color: rgb{str(SPECKLE_COLOR)};"
+        #backgr_color_light = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
         backgr_image_del = f"border-image: url({ICON_DELETE_BLUE});"
         self.streams_add_button.setIcon(QIcon(ICON_SEARCH))
         self.streams_add_button.setMaximumWidth(25)
-        self.streams_add_button.setStyleSheet("QPushButton {padding:3px;padding-left:5px;border: none; text-align: left;} QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};" + f"{color}" + " }")
+        self.streams_add_button.setStyleSheet("QPushButton {padding:3px;padding-left:5px;border: none; text-align: left;} QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};" + f"{COLOR}" + " }")
         self.streams_remove_button.setIcon(QIcon(ICON_DELETE))
         self.streams_remove_button.setMaximumWidth(25)
-        self.streams_remove_button.setStyleSheet("QPushButton {padding:3px;padding-left:5px;border: none; text-align: left; image-position:right} QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};" + f"{color}" + " }") #+ f"{backgr_image_del}" 
+        self.streams_remove_button.setStyleSheet("QPushButton {padding:3px;padding-left:5px;border: none; text-align: left; image-position:right} QPushButton:hover { " + f"background-color: rgb{str(COLOR_HIGHLIGHT)};" + f"{COLOR}" + " }") #+ f"{backgr_image_del}" 
 
-        self.saveLayerSelection.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{color}" + " }")
-        self.saveSurveyPoint.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{color}" + " }")
-        self.reloadButton.setStyleSheet("QPushButton {text-align: left;} QPushButton:hover { " + f"{color}" + " }")
-        self.closeButton.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{color}" + " }")
+        self.saveLayerSelection.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{COLOR}" + " }")
+        self.saveSurveyPoint.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{COLOR}" + " }")
+        self.reloadButton.setStyleSheet("QPushButton {text-align: left;} QPushButton:hover { " + f"{COLOR}" + " }")
+        self.closeButton.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{COLOR}" + " }")
 
-        exitIcon = QPixmap(ICON_LOGO)
-        #scaledExitIcon = exitIcon.scaled(QtCore.QSize(100, 31))
-        exitActIcon = QIcon(exitIcon)
-
-        backgr_color = f"background-color: rgb{str(SPECKLE_COLOR)};"
-        backgr_color_light = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
-
-        # create a label 
-        text_label = QtWidgets.QPushButton(" for QGIS")
-        text_label.setStyleSheet("border: 0px;"
-                            "color: white;"
-                            f"{backgr_color}"
-                            "top-margin: 40 px;"
-                            "padding: 10px;"
-                            "padding-left: 20px;"
-                            "font-size: 15px;"
-                            "height: 30px;"
-                            "text-align: left;"
-                            )
-        text_label.setIcon(exitActIcon)
-        text_label.setIconSize(QtCore.QSize(300, 93))
-        text_label.setMinimumSize(QtCore.QSize(100, 40))
-        text_label.setMaximumWidth(200)
-
-        version = ""
-        try:
-            metadata_file = os.path.dirname(__file__)[:-2] + "metadata.txt"
-            with open(metadata_file, "r") as file:
-                lines = file.readlines()
-                for i, line in enumerate(lines):
-                    if "version=" in line: 
-                        version = line.replace("version=", "")
-                        break
-        except: pass 
-
-        version_label = QtWidgets.QPushButton(f"v {version}")
-        version_label.setStyleSheet("border: 0px;"
-                            "color: white;"
-                            f"{backgr_color}"
-                            "padding-top: 15px;"
-                            "padding-left: 0px;"
-                            "margin-left: 0px;"
-                            "font-size: 10px;"
-                            "height: 30px;"
-                            "text-align: left;"
-                            )
-
-        widget = QWidget()
-        widget.setStyleSheet(f"{backgr_color}")
-        connect_box = QHBoxLayout(widget)
-        connect_box.addWidget(text_label) #, alignment=Qt.AlignCenter) 
-        connect_box.addWidget(version_label) 
-        connect_box.setContentsMargins(0, 0, 0, 0)
-        self.setTitleBarWidget(widget)
 
         self.sendModeButton.setStyleSheet("QPushButton {padding: 10px; border: 0px; " + f"color: rgb{str(SPECKLE_COLOR)};"+ "} QPushButton:hover { "  + "}" ) 
         self.sendModeButton.setIcon(QIcon(ICON_SEND_BLUE))
@@ -187,7 +137,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.receiveModeButton.setStyleSheet("QPushButton {padding: 10px; border: 0px;}"+ "QPushButton:hover { "  + f"background-color: rgb{str(COLOR_HIGHLIGHT)};" + "}" ) 
         self.receiveModeButton.setIcon(QIcon(ICON_RECEIVE_BLACK))
 
-        self.runButton.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 10px;"+ f"{backgr_color}" + "} QPushButton:hover { "+ f"{backgr_color_light}" + " }")
+        self.runButton.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 10px;"+ f"{BACKGR_COLOR}" + "} QPushButton:hover { "+ f"{BACKGR_COLOR_LIGHT}" + " }")
         #self.runButton.setGeometry(0, 0, 150, 30)
         self.runButton.setMaximumWidth(200)
         self.runButton.setIcon(QIcon(ICON_SEND))
@@ -213,6 +163,57 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         logWidget = LogWidget(parent=self)
         self.layout().addWidget(logWidget)
         self.msgLog = logWidget 
+    
+    def addLabel(self, plugin): 
+        try:
+            exitIcon = QPixmap(ICON_LOGO)
+            #scaledExitIcon = exitIcon.scaled(QtCore.QSize(100, 31))
+            exitActIcon = QIcon(exitIcon)
+
+            # create a label 
+            text_label = QtWidgets.QPushButton(" for QGIS")
+            text_label.setStyleSheet("border: 0px;"
+                                "color: white;"
+                                f"{BACKGR_COLOR}"
+                                "top-margin: 40 px;"
+                                "padding: 10px;"
+                                "padding-left: 20px;"
+                                "font-size: 15px;"
+                                "height: 30px;"
+                                "text-align: left;"
+                                )
+            text_label.setIcon(exitActIcon)
+            text_label.setIconSize(QtCore.QSize(300, 93))
+            text_label.setMinimumSize(QtCore.QSize(100, 40))
+            text_label.setMaximumWidth(200)
+
+            version = ""
+            try: 
+                if isinstance(plugin.version, str): version = str(plugin.version)
+            except: pass
+
+
+            version_label = QtWidgets.QPushButton(version)
+            version_label.setStyleSheet("border: 0px;"
+                                "color: white;"
+                                f"{BACKGR_COLOR}"
+                                "padding-top: 15px;"
+                                "padding-left: 0px;"
+                                "margin-left: 0px;"
+                                "font-size: 10px;"
+                                "height: 30px;"
+                                "text-align: left;"
+                                )
+
+            widget = QWidget()
+            widget.setStyleSheet(f"{BACKGR_COLOR}")
+            connect_box = QHBoxLayout(widget)
+            connect_box.addWidget(text_label) #, alignment=Qt.AlignCenter) 
+            connect_box.addWidget(version_label) 
+            connect_box.setContentsMargins(0, 0, 0, 0)
+            self.setTitleBarWidget(widget)
+        except Exception as e:
+            logToUser(e)
 
     def resizeEvent(self, event):
         try:
@@ -298,7 +299,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def refreshClicked(self, plugin):
         try:
-            metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Refresh"})
+            metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Refresh", "connector_version": str(plugin.version)})
             plugin.reloadUI()
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
@@ -306,7 +307,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def closeClicked(self, plugin):
         try:
-            metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Close"})
+            metrics.track("Connector Action", plugin.active_account, {"name": "Toggle Close", "connector_version": str(plugin.version)})
             plugin.onClosePlugin()
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)

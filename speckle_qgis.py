@@ -67,6 +67,7 @@ class SpeckleQGIS:
     """Speckle Connector Plugin for QGIS"""
 
     dockwidget: Optional[QDockWidget]
+    version: str
     add_stream_modal: AddStreamModalDialog
     create_stream_modal: CreateStreamModalDialog
     current_streams: List[Tuple[StreamWrapper, Stream]]  #{id:(sw,st),id2:()}
@@ -95,6 +96,7 @@ class SpeckleQGIS:
         """
         # Save reference to the QGIS interface
         self.dockwidget = None
+        self.version = "0.0.99"
         self.iface = iface
         self.qgis_project = QgsProject.instance()
         self.current_streams = []
@@ -286,7 +288,7 @@ class SpeckleQGIS:
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.active_account = client.account
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send"})
+                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "connector_version": str(self.version)})
                     
                     t = threading.Thread(target=self.onSend, args=(message,))
                     #t.daemon = True
@@ -304,7 +306,7 @@ class SpeckleQGIS:
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.active_account = client.account
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive"})
+                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "connector_version": str(self.version)})
 
                     t = threading.Thread(target=self.onReceive, args=())
                     t.start()
@@ -539,6 +541,7 @@ class SpeckleQGIS:
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
+                self.dockwidget.addLabel(self)
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
 
