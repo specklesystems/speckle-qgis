@@ -21,7 +21,7 @@ import time
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 import threading
-from plugin_utils.helpers import removeSpecialCharacters
+from plugin_utils.helpers import getAppName, removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsRasterLayer, QgsVectorLayer)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
@@ -68,6 +68,7 @@ class SpeckleQGIS:
 
     dockwidget: Optional[QDockWidget]
     version: str
+    gis_version: str
     add_stream_modal: AddStreamModalDialog
     create_stream_modal: CreateStreamModalDialog
     current_streams: List[Tuple[StreamWrapper, Stream]]  #{id:(sw,st),id2:()}
@@ -97,6 +98,7 @@ class SpeckleQGIS:
         # Save reference to the QGIS interface
         self.dockwidget = None
         self.version = "0.0.99"
+        self.gis_version = Qgis.QGIS_VERSION.encode('iso-8859-1', errors='ignore').decode('utf-8')
         self.iface = iface
         self.qgis_project = QgsProject.instance()
         self.current_streams = []
@@ -391,8 +393,10 @@ class SpeckleQGIS:
                 object_id=objId,
                 branch_name=branchName,
                 message="Sent objects from QGIS" if len(message) == 0 else message,
-                source_application="QGIS",
+                source_application="QGIS " + self.gis_version,
             )
+            metrics.track(metrics.SEND, self.active_account, {"connector_version": str(self.version)})
+
             if isinstance(commit_id, SpeckleException):
                 logToUser("Error creating commit: "+str(commit_id.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
@@ -453,17 +457,21 @@ class SpeckleQGIS:
                 return 
             
             objId = commit.referencedObject
-            #commitDetailed = client.commit.get(streamId, commit.id)
-            app = commit.sourceApplication
             if branch.name is None or commit.id is None or objId is None: 
                 return 
 
-            commitObj = operations.receive(objId, transport, None)
+            #commitDetailed = client.commit.get(streamId, commit.id)
+            app_full = commit.sourceApplication
+            app = getAppName(commit.sourceApplication)
+            client_id = client.account.id
+
+            commitObj = operations._untracked_receive(objId, transport, None)
+            metrics.track(metrics.RECEIVE, self.active_account, {"sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version)})
 
             client.commit.received(
             streamId,
             commit.id,
-            source_application="QGIS",
+            source_application="QGIS " + self.gis_version,
             message="Received commit in QGIS",
             )
 
