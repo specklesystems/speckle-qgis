@@ -463,7 +463,7 @@ class SpeckleQGIS:
             #commitDetailed = client.commit.get(streamId, commit.id)
             app_full = commit.sourceApplication
             app = getAppName(commit.sourceApplication)
-            client_id = client.account.id
+            client_id = client.account.userInfo.id
 
             commitObj = operations._untracked_receive(objId, transport, None)
             metrics.track(metrics.RECEIVE, self.active_account, {"sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version)})
