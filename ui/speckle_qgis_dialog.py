@@ -221,7 +221,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def resizeEvent(self, event):
         try:
-            print("resize")
+            #print("resize")
             QtWidgets.QDockWidget.resizeEvent(self, event)
             if self.msgLog.size().height() != 0: # visible
                 self.msgLog.setGeometry(0, 0, self.msgLog.parentWidget.frameSize().width(), self.msgLog.parentWidget.frameSize().height()) #.resize(self.frameSize().width(), self.frameSize().height())
@@ -273,7 +273,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             return
         
     def addMsg(self, text:str, level:int, url:str, blue:bool):
-        t_name = threading.current_thread().getName()
+        #t_name = threading.current_thread().getName()
         #print(t_name)
         self.msgLog.addButton(text, level, url, blue)
 

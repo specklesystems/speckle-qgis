@@ -59,6 +59,8 @@ from ui.logger import logToUser
 # Import the code for the dialog
 from ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
 
+#import concurrent.futures
+#from concurrent.futures import ThreadPoolExecutor
 
 SPECKLE_COLOR = (59,130,246)
 SPECKLE_COLOR_LIGHT = (69,140,255)
@@ -96,6 +98,8 @@ class SpeckleQGIS:
         :type iface: QgsInterface
         """
         # Save reference to the QGIS interface
+        
+        #self.lock = threading.Lock() 
         self.dockwidget = None
         self.version = "0.0.99"
         self.gis_version = Qgis.QGIS_VERSION.encode('iso-8859-1', errors='ignore').decode('utf-8')
@@ -292,6 +296,12 @@ class SpeckleQGIS:
                     self.active_account = client.account
                     metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "connector_version": str(self.version)})
                     
+                    #with ThreadPoolExecutor(max_workers=1) as executor:
+                    #    future = executor.submit(self.onSend, message)
+                        
+                    #    print("RESULT")
+                    #    print(future.result())
+                    #    print("FINISHED")
                     t = threading.Thread(target=self.onSend, args=(message,))
                     #t.daemon = True
                     t.start()
@@ -310,6 +320,11 @@ class SpeckleQGIS:
                     self.active_account = client.account
                     metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "connector_version": str(self.version)})
 
+                    #with ThreadPoolExecutor(max_workers=1) as executor:
+                    #    future = executor.submit(self.onReceive)
+                    #    print("RESULT")
+                    #    print(future.result())
+                    #    print("FINISHED")
                     t = threading.Thread(target=self.onReceive, args=())
                     t.start()
                     r'''
@@ -326,7 +341,7 @@ class SpeckleQGIS:
                     '''
                 except: self.onReceive()
 
-    def onSend(self, message):
+    def onSend(self, message: str):
         """Handles action when Send button is pressed."""
         #logToUser("Some message here", level = 0, func = inspect.stack()[0][3], plugin=self.dockwidget )
         try: 
