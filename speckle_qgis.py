@@ -490,7 +490,7 @@ class SpeckleQGIS:
             message="Received commit in QGIS",
             )
 
-            if app != "QGIS" and app != "ArcGIS": 
+            if app.lower() != "qgis" and app.lower() != "arcgis": 
                 if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
                     logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD/BIM geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
             #logger.log(f"Succesfully received {objId}")
@@ -500,8 +500,8 @@ class SpeckleQGIS:
             newGroupName = removeSpecialCharacters(newGroupName)
             findAndClearLayerGroup(self.qgis_project, newGroupName)
 
-            if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer)
-            else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
+            if app.lower() == "qgis" or app.lower() == "arcgis": check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
+            else: check: Callable[[Base], bool] = lambda base: (base.speckle_type and base.speckle_type.endswith("Base") )
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
@@ -509,7 +509,7 @@ class SpeckleQGIS:
             return 
             
         except Exception as e:
-            if self.dockwidget.experimental.isChecked(): time.sleep(1)
+            #if self.dockwidget.experimental.isChecked(): time.sleep(1)
             logToUser("Receive failed: "+ str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
             return
 
