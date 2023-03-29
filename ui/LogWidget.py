@@ -118,8 +118,11 @@ class LogWidget(QWidget):
 
             webbrowser.open(url, new=0, autoraise=True)
             
-            metrics.track("Connector Action", self.active_account, {"name": "Open In Web", "connector_version": str(self.speckle_version)})
-
+            try:
+                metrics.track("Connector Action", self.active_account, {"name": "Open In Web", "connector_version": str(self.speckle_version)})
+            except:
+                pass   
+               
             self.hide()
         except Exception as e: 
             pass #logger.logToUser(str(e), level=2, func = inspect.stack()[0][3])

@@ -294,7 +294,10 @@ class SpeckleQGIS:
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.active_account = client.account
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "connector_version": str(self.version)})
+                    try:
+                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "connector_version": str(self.version)})
+                    except:
+                        pass
                     
                     #with ThreadPoolExecutor(max_workers=1) as executor:
                     #    future = executor.submit(self.onSend, message)
@@ -318,8 +321,10 @@ class SpeckleQGIS:
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.active_account = client.account
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "connector_version": str(self.version)})
-
+                    try:
+                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "connector_version": str(self.version)})
+                    except:
+                        pass
                     #with ThreadPoolExecutor(max_workers=1) as executor:
                     #    future = executor.submit(self.onReceive)
                     #    print("RESULT")
@@ -410,8 +415,26 @@ class SpeckleQGIS:
                 message="Sent objects from QGIS" if len(message) == 0 else message,
                 source_application="QGIS " + self.gis_version,
             )
-            metrics.track(metrics.SEND, self.active_account, {"connector_version": str(self.version)})
+            r'''
+            try:
+                metr_filter = "Selected" if bySelection is True else "Saved"
+                metr_main = True if branchName=="main" else False
+                metr_saved_streams = len(self.current_streams)
+                metr_branches = len(self.active_stream[1].branches.items)
+                metr_collab = len(self.active_stream[1].collaborators)
+                metr_projected = True if not projectCRS.isGeographic() else False
+                if self.qgis_project.crs().isValid() is False: metr_projected = None
+                
+                try:
+                    metr_crs = True if self.lat!=0 and self.lon!=0 and str(self.lat) in projectCRS.toWkt() and str(self.lon) in projectCRS.toWkt() else False
+                except:
+                    metr_crs = False
 
+                metrics.track(metrics.SEND, self.active_account, {"branches":metr_branches, "collaborators":metr_collab,"connector_version": str(self.version), "filter": metr_filter, "isMain": metr_main, "savedStreams": metr_saved_streams, "projectedCRS": metr_projected, "customCRS": metr_crs})
+            except:
+                metrics.track(metrics.SEND, self.active_account)
+            '''
+            
             if isinstance(commit_id, SpeckleException):
                 logToUser("Error creating commit: "+str(commit_id.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
@@ -481,8 +504,20 @@ class SpeckleQGIS:
             client_id = client.account.userInfo.id
 
             commitObj = operations._untracked_receive(objId, transport, None)
-            metrics.track(metrics.RECEIVE, self.active_account, {"sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version)})
-
+            
+            projectCRS = self.qgis_project.crs()
+            try:
+                metr_crs = True if self.lat!=0 and self.lon!=0 and str(self.lat) in projectCRS.toWkt() and str(self.lon) in projectCRS.toWkt() else False
+            except:
+                metr_crs = False
+            
+            metr_projected = True if not projectCRS.isGeographic() else False
+            if self.qgis_project.crs().isValid() is False: metr_projected = None
+            try:
+                metrics.track(metrics.RECEIVE, self.active_account, {"sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
+            except:
+                metrics.track(metrics.RECEIVE, self.active_account)
+            
             client.commit.received(
             streamId,
             commit.id,

@@ -79,7 +79,10 @@ def set_project_layer_selection(plugin: SpeckleQGIS):
         #value = ",".join([x.id() for x in self.iface.layerTreeView().selectedLayers()]) #'points_qgis2_b22ed3d0_0ff9_40d2_97f2_bd17a350d698' <qgis._core.QgsVectorDataProvider object at 0x000002627D9D4790>
         value = ",".join([x[1].id() for x in plugin.current_layers]) 
         proj.writeEntry("speckle-qgis", "project_layer_selection", value)
-        metrics.track("Connector Action", plugin.active_account, {"name": "Save Layer Selection", "connector_version": str(plugin.version)})
+        try:
+            metrics.track("Connector Action", plugin.active_account, {"name": "Save Layer Selection", "connector_version": str(plugin.version)})
+        except:
+            pass
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget)
@@ -110,7 +113,10 @@ def set_survey_point(plugin: SpeckleQGIS):
         pt = str(plugin.lat) + ";" + str(plugin.lon) 
         proj.writeEntry("speckle-qgis", "survey_point", pt)
         setProjectReferenceSystem(plugin)
-        metrics.track("Connector Action", plugin.active_account, {"name": "Set As Center Point", "connector_version": str(plugin.version)})
+        try:
+            metrics.track("Connector Action", plugin.active_account, {"name": "Set As Center Point", "connector_version": str(plugin.version)})
+        except:
+            pass
         return True
     
     except Exception as e:
