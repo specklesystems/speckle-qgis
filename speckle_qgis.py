@@ -285,7 +285,14 @@ class SpeckleQGIS:
             message = str(self.dockwidget.messageInput.text())
             self.dockwidget.messageInput.setText("")
             
-            if not self.dockwidget.experimental.isChecked(): self.onSend(message)
+            if not self.dockwidget.experimental.isChecked(): 
+                
+                try:
+                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": False, "connector_version": str(self.version)})
+                except Exception as e:
+                    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                
+                self.onSend(message)
             else:
                 try:
                     if threading.active_count() > self.theads_total:
@@ -295,7 +302,7 @@ class SpeckleQGIS:
                     client = streamWrapper.get_client()
                     self.active_account = client.account
                     try:
-                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "connector_version": str(self.version)})
+                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
                     except Exception as e:
                         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                     
@@ -312,7 +319,14 @@ class SpeckleQGIS:
         # receive 
         elif self.btnAction == 1: 
             
-            if not self.dockwidget.experimental.isChecked(): self.onReceive()
+            if not self.dockwidget.experimental.isChecked(): 
+                
+                try:
+                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": False, "connector_version": str(self.version)})
+                except Exception as e:
+                    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                
+                self.onReceive()
             else:
                 try:
                     if threading.active_count() > self.theads_total:
@@ -322,7 +336,7 @@ class SpeckleQGIS:
                     client = streamWrapper.get_client()
                     self.active_account = client.account
                     try:
-                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "connector_version": str(self.version)})
+                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
                     except Exception as e:
                         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                     #with ThreadPoolExecutor(max_workers=1) as executor:
