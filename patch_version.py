@@ -43,7 +43,7 @@ def patch_installer(tag):
         lines = file.readlines()
         for i, line in enumerate(lines):
             if 'self.version = ' in line: 
-                lines[i] = lines[i].split("\"")[0] + "\"" + tag.split('-')[0] + "\""
+                lines[i] = lines[i].split("\"")[0] + "\"" + tag.split('-')[0] + "\"" + lines[i].split("\"")[2]
                 break
         with open(plugin_start_file, "w") as file:
             file.writelines(lines)
