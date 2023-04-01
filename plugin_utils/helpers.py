@@ -1,6 +1,14 @@
 import os
 from typing import List
 
+def getAppName(name: str) -> str:
+    new_name = ""
+    for i, x in enumerate(str(name)):
+        if x.lower() in [a for k,a in enumerate("abcdefghijklmnopqrstuvwxyz")]:
+            new_name += x
+        else: break
+    return new_name
+
 def findOrCreatePath(path: str):
     if not os.path.exists(path): 
         os.makedirs(path)

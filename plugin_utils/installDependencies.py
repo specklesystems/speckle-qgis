@@ -13,7 +13,8 @@ def setup():
 import os; import sys; import subprocess; pythonExec = os.path.dirname(sys.executable) + "\\python3"
 #retcode = subprocess.call([pythonExec, "-m", "pip", "install", "specklepy"]); print(retcode)
 result = subprocess.run([pythonExec, "-m", "pip", "install", "specklepy"], capture_output=True, text=True, shell=True, timeout=1000); print(result)
-
+#result = subprocess.run([pythonExec, "-m", "pip", "install", "--upgrade", "specklepy==2.13.0", "-t", target], capture_output=True, text=True, shell=True, timeout=1000); print(result)
+            
 import specklepy; import os; print(os.path.abspath(specklepy.__file__))
 
 

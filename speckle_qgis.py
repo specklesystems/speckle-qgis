@@ -21,7 +21,7 @@ import time
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 import threading
-from plugin_utils.helpers import removeSpecialCharacters
+from plugin_utils.helpers import getAppName, removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsRasterLayer, QgsVectorLayer)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
@@ -59,6 +59,8 @@ from ui.logger import logToUser
 # Import the code for the dialog
 from ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
 
+#import concurrent.futures
+#from concurrent.futures import ThreadPoolExecutor
 
 SPECKLE_COLOR = (59,130,246)
 SPECKLE_COLOR_LIGHT = (69,140,255)
@@ -67,6 +69,8 @@ class SpeckleQGIS:
     """Speckle Connector Plugin for QGIS"""
 
     dockwidget: Optional[QDockWidget]
+    version: str
+    gis_version: str
     add_stream_modal: AddStreamModalDialog
     create_stream_modal: CreateStreamModalDialog
     current_streams: List[Tuple[StreamWrapper, Stream]]  #{id:(sw,st),id2:()}
@@ -94,7 +98,11 @@ class SpeckleQGIS:
         :type iface: QgsInterface
         """
         # Save reference to the QGIS interface
+        
+        #self.lock = threading.Lock() 
         self.dockwidget = None
+        self.version = "0.0.99"
+        self.gis_version = Qgis.QGIS_VERSION.encode('iso-8859-1', errors='ignore').decode('utf-8')
         self.iface = iface
         self.qgis_project = QgsProject.instance()
         self.current_streams = []
@@ -277,7 +285,14 @@ class SpeckleQGIS:
             message = str(self.dockwidget.messageInput.text())
             self.dockwidget.messageInput.setText("")
             
-            if not self.dockwidget.experimental.isChecked(): self.onSend(message)
+            if not self.dockwidget.experimental.isChecked(): 
+                
+                try:
+                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": False, "connector_version": str(self.version)})
+                except Exception as e:
+                    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                
+                self.onSend(message)
             else:
                 try:
                     if threading.active_count() > self.theads_total:
@@ -286,8 +301,17 @@ class SpeckleQGIS:
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.active_account = client.account
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send"})
+                    try:
+                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
+                    except Exception as e:
+                        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                     
+                    #with ThreadPoolExecutor(max_workers=1) as executor:
+                    #    future = executor.submit(self.onSend, message)
+                        
+                    #    print("RESULT")
+                    #    print(future.result())
+                    #    print("FINISHED")
                     t = threading.Thread(target=self.onSend, args=(message,))
                     #t.daemon = True
                     t.start()
@@ -295,7 +319,14 @@ class SpeckleQGIS:
         # receive 
         elif self.btnAction == 1: 
             
-            if not self.dockwidget.experimental.isChecked(): self.onReceive()
+            if not self.dockwidget.experimental.isChecked(): 
+                
+                try:
+                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": False, "connector_version": str(self.version)})
+                except Exception as e:
+                    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                
+                self.onReceive()
             else:
                 try:
                     if threading.active_count() > self.theads_total:
@@ -304,8 +335,15 @@ class SpeckleQGIS:
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.active_account = client.account
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive"})
-
+                    try:
+                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
+                    except Exception as e:
+                        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                    #with ThreadPoolExecutor(max_workers=1) as executor:
+                    #    future = executor.submit(self.onReceive)
+                    #    print("RESULT")
+                    #    print(future.result())
+                    #    print("FINISHED")
                     t = threading.Thread(target=self.onReceive, args=())
                     t.start()
                     r'''
@@ -322,7 +360,7 @@ class SpeckleQGIS:
                     '''
                 except: self.onReceive()
 
-    def onSend(self, message):
+    def onSend(self, message: str):
         """Handles action when Send button is pressed."""
         #logToUser("Some message here", level = 0, func = inspect.stack()[0][3], plugin=self.dockwidget )
         try: 
@@ -389,8 +427,28 @@ class SpeckleQGIS:
                 object_id=objId,
                 branch_name=branchName,
                 message="Sent objects from QGIS" if len(message) == 0 else message,
-                source_application="QGIS",
+                source_application="QGIS " + self.gis_version,
             )
+            r'''
+            try:
+                metr_filter = "Selected" if bySelection is True else "Saved"
+                metr_main = True if branchName=="main" else False
+                metr_saved_streams = len(self.current_streams)
+                metr_branches = len(self.active_stream[1].branches.items)
+                metr_collab = len(self.active_stream[1].collaborators)
+                metr_projected = True if not projectCRS.isGeographic() else False
+                if self.qgis_project.crs().isValid() is False: metr_projected = None
+                
+                try:
+                    metr_crs = True if self.lat!=0 and self.lon!=0 and str(self.lat) in projectCRS.toWkt() and str(self.lon) in projectCRS.toWkt() else False
+                except:
+                    metr_crs = False
+
+                metrics.track(metrics.SEND, self.active_account, {"branches":metr_branches, "collaborators":metr_collab,"connector_version": str(self.version), "filter": metr_filter, "isMain": metr_main, "savedStreams": metr_saved_streams, "projectedCRS": metr_projected, "customCRS": metr_crs})
+            except:
+                metrics.track(metrics.SEND, self.active_account)
+            '''
+            
             if isinstance(commit_id, SpeckleException):
                 logToUser("Error creating commit: "+str(commit_id.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
@@ -451,21 +509,37 @@ class SpeckleQGIS:
                 return 
             
             objId = commit.referencedObject
-            #commitDetailed = client.commit.get(streamId, commit.id)
-            app = commit.sourceApplication
             if branch.name is None or commit.id is None or objId is None: 
                 return 
 
-            commitObj = operations.receive(objId, transport, None)
+            #commitDetailed = client.commit.get(streamId, commit.id)
+            app_full = commit.sourceApplication
+            app = getAppName(commit.sourceApplication)
+            client_id = client.account.userInfo.id
 
+            commitObj = operations._untracked_receive(objId, transport, None)
+            
+            projectCRS = self.qgis_project.crs()
+            try:
+                metr_crs = True if self.lat!=0 and self.lon!=0 and str(self.lat) in projectCRS.toWkt() and str(self.lon) in projectCRS.toWkt() else False
+            except:
+                metr_crs = False
+            
+            metr_projected = True if not projectCRS.isGeographic() else False
+            if self.qgis_project.crs().isValid() is False: metr_projected = None
+            try:
+                metrics.track(metrics.RECEIVE, self.active_account, {"sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
+            except:
+                metrics.track(metrics.RECEIVE, self.active_account)
+            
             client.commit.received(
             streamId,
             commit.id,
-            source_application="QGIS",
+            source_application="QGIS " + self.gis_version,
             message="Received commit in QGIS",
             )
 
-            if app != "QGIS" and app != "ArcGIS": 
+            if app.lower() != "qgis" and app.lower() != "arcgis": 
                 if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
                     logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD/BIM geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
             #logger.log(f"Succesfully received {objId}")
@@ -475,8 +549,8 @@ class SpeckleQGIS:
             newGroupName = removeSpecialCharacters(newGroupName)
             findAndClearLayerGroup(self.qgis_project, newGroupName)
 
-            if app == "QGIS" or app == "ArcGIS": check: Callable[[Base], bool] = lambda base: isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer)
-            else: check: Callable[[Base], bool] = lambda base: isinstance(base, Base)
+            if app.lower() == "qgis" or app.lower() == "arcgis": check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
+            else: check: Callable[[Base], bool] = lambda base: (base.speckle_type and base.speckle_type.endswith("Base") )
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
@@ -484,7 +558,7 @@ class SpeckleQGIS:
             return 
             
         except Exception as e:
-            if self.dockwidget.experimental.isChecked(): time.sleep(1)
+            #if self.dockwidget.experimental.isChecked(): time.sleep(1)
             logToUser("Receive failed: "+ str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
             return
 
@@ -512,7 +586,7 @@ class SpeckleQGIS:
             accounts = get_local_accounts()
             self.accounts = accounts
             if len(accounts) == 0:
-                logToUser("No accounts were found. Please remember to install the Speckle Manager and setup at least one account", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget) #, action_text="Download Manager", callback=go_to_manager)
+                logToUser("No accounts were found. Please remember to install the Speckle Manager and setup at least one account", level = 1, url="https://speckle-releases.netlify.app/", func = inspect.stack()[0][3], plugin = self.dockwidget) #, action_text="Download Manager", callback=go_to_manager)
                 return False
             for acc in accounts:
                 if acc.isDefault: 
@@ -539,6 +613,8 @@ class SpeckleQGIS:
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
+                self.dockwidget.addLabel(self)
+                self.dockwidget.addProps(self)
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
 

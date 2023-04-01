@@ -1,7 +1,7 @@
 
 import threading
 import time
-from typing import List
+from typing import Any, List
 from plugin_utils.helpers import splitTextIntoLines
 from qgis.PyQt import QtCore
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, pyqtSignal, QTranslator, QRect, QObject
@@ -9,6 +9,8 @@ from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget, QPus
 from qgis.PyQt import QtWidgets
 from qgis.PyQt.QtGui import QPainter
 import webbrowser
+from specklepy.logging import metrics
+from specklepy.api.credentials import Account
 
 import inspect
 
@@ -28,6 +30,9 @@ class LogWidget(QWidget):
     max_msg: int
     sendMessage = pyqtSignal(str, int, str, bool)
 
+    active_account: Account
+    speckle_version: str
+    
     # constructor
     def __init__(self, parent=None):
         super(LogWidget, self).__init__(parent)
@@ -112,6 +117,12 @@ class LogWidget(QWidget):
             if url == "": return
 
             webbrowser.open(url, new=0, autoraise=True)
+            
+            try:
+                metrics.track("Connector Action", self.active_account, {"name": "Open In Web", "connector_version": str(self.speckle_version)})
+            except:
+                pass   
+               
             self.hide()
         except Exception as e: 
             pass #logger.logToUser(str(e), level=2, func = inspect.stack()[0][3])
