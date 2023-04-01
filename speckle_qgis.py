@@ -296,8 +296,8 @@ class SpeckleQGIS:
                     self.active_account = client.account
                     try:
                         metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "connector_version": str(self.version)})
-                    except:
-                        pass
+                    except Exception as e:
+                        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                     
                     #with ThreadPoolExecutor(max_workers=1) as executor:
                     #    future = executor.submit(self.onSend, message)
@@ -323,8 +323,8 @@ class SpeckleQGIS:
                     self.active_account = client.account
                     try:
                         metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "connector_version": str(self.version)})
-                    except:
-                        pass
+                    except Exception as e:
+                        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                     #with ThreadPoolExecutor(max_workers=1) as executor:
                     #    future = executor.submit(self.onReceive)
                     #    print("RESULT")
