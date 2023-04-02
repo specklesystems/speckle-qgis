@@ -27,6 +27,8 @@ import os
 import threading
 from plugin_utils.helpers import splitTextIntoLines
 from speckle.converter.layers import getLayers
+from speckle.DataStorage import DataStorage
+from speckle.notifications.UpdatesLogger import UpdatesLogger
 from ui.LogWidget import LogWidget
 from ui.logger import logToUser
 #from speckle_qgis import SpeckleQGIS
@@ -46,7 +48,7 @@ from specklepy.api.wrapper import StreamWrapper
 from specklepy.api.client import SpeckleClient
 from specklepy.logging import metrics
 
-from ui.validation import tryGetStream
+from ui.validation import tryGetBranch, tryGetStream
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(
@@ -91,6 +93,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     runButton: QtWidgets.QPushButton
     experimental: QCheckBox
     msgLog: LogWidget = None
+    updLog: UpdatesLogger = None
+    dataStorage: DataStorage = None
     
     def __init__(self, parent=None):
         """Constructor."""
@@ -163,8 +167,16 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         logWidget = LogWidget(parent=self)
         self.layout().addWidget(logWidget)
         self.msgLog = logWidget 
+
     
     def addProps(self, plugin):
+        self.dataStorage = plugin.dataStorage
+        
+        # add notification trigger widget 
+        updateWidget = UpdatesLogger(parent=self)
+        #self.layout().addWidget(logWidget)
+        self.updLog = updateWidget 
+
         self.msgLog.active_account = plugin.active_account
         self.msgLog.speckle_version = plugin.version
 
@@ -276,12 +288,25 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         #t_name = threading.current_thread().getName()
         #print(t_name)
         self.msgLog.addButton(text, level, url, blue)
+    
+    def addUpdate(self, branch_name: str, latest_commit_id: str):
+        #t_name = threading.current_thread().getName()
+        #print(t_name)
+        self.msgLog.addButton(f"Branch \"{branch_name}\" was updated", 0, "", True)
+        for i, tup in enumerate(self.dataStorage.streamsToFollow):
+            (url, uuid, commit_id) = tup
+            url = url.split(" ")[0].split("?")[0].split("&")[0]
+            branch = tryGetBranch(url)
+            if branch_name == branch.name:
+                self.dataStorage.streamsToFollow[i] = (url, uuid, latest_commit_id)
+        return
 
     def setupOnFirstLoad(self, plugin):
         try:
             self.runButton.clicked.connect(plugin.onRunButtonClicked)
 
             self.msgLog.sendMessage.connect(self.addMsg)
+            self.updLog.sendUpdate.connect(self.addUpdate)
 
             self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
             self.reloadButton.clicked.connect(lambda: self.refreshClicked(plugin))

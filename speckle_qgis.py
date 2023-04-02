@@ -49,6 +49,7 @@ from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.layers.Layer import Layer, VectorLayer, RasterLayer
 from speckle.converter.layers import convertSelectedLayers, getLayers
 from speckle.converter.layers.utils import findAndClearLayerGroup
+from speckle.DataStorage import DataStorage
 
 from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
@@ -101,6 +102,7 @@ class SpeckleQGIS:
         
         #self.lock = threading.Lock() 
         self.dockwidget = None
+        self.dataStorage = None
         self.version = "0.0.99"
         self.gis_version = Qgis.QGIS_VERSION.encode('iso-8859-1', errors='ignore').decode('utf-8')
         self.iface = iface
@@ -564,6 +566,8 @@ class SpeckleQGIS:
 
     def reloadUI(self):
         print("___RELOAD UI")
+        self.run()
+        return
         try:
             from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection
 
@@ -607,31 +611,41 @@ class SpeckleQGIS:
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         self.is_setup = self.check_for_accounts()
             
-        if self.pluginIsActive:
-            self.reloadUI()
-        else:
-            self.pluginIsActive = True
-            if self.dockwidget is None:
-                self.dockwidget = SpeckleQGISDialog()
-                self.dockwidget.addLabel(self)
-                self.dockwidget.addProps(self)
-                self.qgis_project.fileNameChanged.connect(self.reloadUI)
-                self.qgis_project.homePathChanged.connect(self.reloadUI)
+        #if self.pluginIsActive:
+        #    self.reloadUI()
+        #else:
+        self.pluginIsActive = True
 
-            get_project_streams(self)
-            get_survey_point(self)
-            get_project_layer_selection(self)
+        get_project_streams(self)
+        get_survey_point(self)
+        get_project_layer_selection(self)
+
+        if self.dockwidget is None:
+            self.dataStorage = DataStorage()
+            self.dataStorage.project  = self.qgis_project
+            self.dataStorage.addDashboardTable()
+            self.dockwidget = SpeckleQGISDialog()
+            self.dockwidget.addLabel(self)
+            self.dockwidget.addProps(self)
+            self.qgis_project.fileNameChanged.connect(self.reloadUI)
+            self.qgis_project.homePathChanged.connect(self.reloadUI)
 
             self.dockwidget.run(self)
+        else:
+            self.active_stream = None
+            self.dataStorage.project  = self.qgis_project
+            self.dataStorage.addDashboardTable()
 
-            # Setup reload of UI dropdowns when layers change.
-            #layerRoot = QgsProject.instance()
-            #layerRoot.layersAdded.connect(self.reloadUI)
-            #layerRoot.layersRemoved.connect(self.reloadUI)
 
-            # show the dockwidget
-            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
-            self.dockwidget.enableElements(self)
+
+        # Setup reload of UI dropdowns when layers change.
+        #layerRoot = QgsProject.instance()
+        #layerRoot.layersAdded.connect(self.reloadUI)
+        #layerRoot.layersRemoved.connect(self.reloadUI)
+
+        # show the dockwidget
+        self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
+        self.dockwidget.enableElements(self)
 
     def onStreamAddButtonClicked(self):
         try:

@@ -21,6 +21,20 @@ def tryGetStream (sw: StreamWrapper) -> Stream:
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
+  
+def tryGetBranch (url: str) -> Branch:
+    try:
+        sw = StreamWrapper(url)
+        client = sw.get_client()
+        #branch_name = url.split("/branches/")[1].split("/")[0] 
+
+        branch = client.branch.get(stream_id = sw.stream_id, name = sw.branch_name, commits_limit = 100)
+        if isinstance(branch, GraphQLException):
+            raise SpeckleException(branch.errors[0]['message'])
+        return branch
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return
 
 def validateStream(streamWrapper: StreamWrapper) -> Union[Stream, None]:
     try: 
