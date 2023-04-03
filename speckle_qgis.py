@@ -444,7 +444,7 @@ class SpeckleQGIS:
                 except:
                     metr_crs = False
 
-                metrics.track(metrics.SEND, self.active_account, {"branches":metr_branches, "collaborators":metr_collab,"connector_version": str(self.version), "filter": metr_filter, "isMain": metr_main, "savedStreams": metr_saved_streams, "projectedCRS": metr_projected, "customCRS": metr_crs})
+                metrics.track(metrics.SEND, self.active_account, {"hostAppFullVersion":self.gis_version, "branches":metr_branches, "collaborators":metr_collab,"connector_version": str(self.version), "filter": metr_filter, "isMain": metr_main, "savedStreams": metr_saved_streams, "projectedCRS": metr_projected, "customCRS": metr_crs})
             except:
                 metrics.track(metrics.SEND, self.active_account)
             '''
@@ -528,7 +528,7 @@ class SpeckleQGIS:
             metr_projected = True if not projectCRS.isGeographic() else False
             if self.qgis_project.crs().isValid() is False: metr_projected = None
             try:
-                metrics.track(metrics.RECEIVE, self.active_account, {"sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
+                metrics.track(metrics.RECEIVE, self.active_account, {"hostAppFullVersion":self.gis_version, "sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
             except:
                 metrics.track(metrics.RECEIVE, self.active_account)
             
