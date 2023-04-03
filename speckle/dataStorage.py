@@ -46,12 +46,15 @@ class DataStorage:
         if "Branch URL" not in field_names:
             fields = QgsFields()
             fields.append(QgsField("Branch URL", QVariant.String))
+            fields.append(QgsField("commit_id", QVariant.String))
+            fields.append(QgsField("area", QVariant.Double))
+            fields.append(QgsField("floors", QVariant.Double))
 
             pr = layer.dataProvider()
             layer.startEditing()
 
             pr.addAttributes(fields)
-            
+
             layer.updateFields()
             layer.commitChanges()
 
