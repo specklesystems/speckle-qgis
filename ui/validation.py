@@ -10,7 +10,13 @@ from specklepy.logging.exceptions import SpeckleException, GraphQLException
 from speckle.logging import logger
 from qgis.core import Qgis
 from ui.logger import logToUser
-  
+
+def tryGetObject(url: str, ref_id: str):
+    sw = StreamWrapper(url)
+    client = sw.get_client()
+    object = client.object.get(stream_id=sw.stream_id, object_id=ref_id)
+    return object
+
 def tryGetStream (sw: StreamWrapper) -> Stream:
     try:
         client = sw.get_client()

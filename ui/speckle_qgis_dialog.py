@@ -292,26 +292,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def addUpdate(self, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
         #t_name = threading.current_thread().getName()
         #print(t_name)
-
-        layer = getLayerByName(self.dataStorage.project, "Speckle_dashboard")
-
-        #for i, tup in enumerate(self.dataStorage.streamsToFollow):
-        for i, f in enumerate(layer.getFeatures()):
-            #(url, uuid, commit_id) = tup
-            url = f["Branch URL"].split(" ")[0].split("?")[0].split("&")[0]
-            commit_id = f["commit_id"]
-            branch = tryGetBranch(url)
-            if branch_name == branch.name:
-                if commit_id is not None:
-                    logToUser(f"Branch \"{branch_name}\" was updated by \"{user}\"", level=0, url = url_commit, plugin=self)
-                
-                layer.startEditing()
-                f["commit_id"] = latest_commit_id
-                layer.updateFeature(f)
-                layer.commitChanges()
-                    
-                #self.dataStorage.streamsToFollow[i] = (url, uuid, latest_commit_id)
-        return
+        self.updLog.addUpdate(self, branch_name, latest_commit_id, user, url_commit)
 
     def setupOnFirstLoad(self, plugin):
         try:

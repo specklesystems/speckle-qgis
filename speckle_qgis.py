@@ -52,6 +52,7 @@ from speckle.converter.layers.utils import findAndClearLayerGroup
 from speckle.DataStorage import DataStorage
 
 from speckle.logging import logger
+from speckle.notifications.utils import addDashboardTable
 from ui.add_stream_modal import AddStreamModalDialog
 from ui.create_stream import CreateStreamModalDialog
 from ui.create_branch import CreateBranchModalDialog
@@ -623,7 +624,7 @@ class SpeckleQGIS:
         if self.dockwidget is None:
             self.dataStorage = DataStorage()
             self.dataStorage.project  = self.qgis_project
-            self.dataStorage.addDashboardTable()
+            addDashboardTable(self.qgis_project)
             self.dockwidget = SpeckleQGISDialog()
             self.dockwidget.addLabel(self)
             self.dockwidget.addProps(self)
@@ -632,9 +633,10 @@ class SpeckleQGIS:
 
             self.dockwidget.run(self)
         else:
+            self.dataStorage.runUpdates = False
             self.active_stream = None
             self.dataStorage.project  = self.qgis_project
-            self.dataStorage.addDashboardTable()
+            addDashboardTable(self.qgis_project)
 
 
 
