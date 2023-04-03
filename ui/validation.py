@@ -11,8 +11,8 @@ from speckle.logging import logger
 from qgis.core import Qgis
 from ui.logger import logToUser
 
-def tryGetObject(url: str, ref_id: str):
-    sw = StreamWrapper(url)
+def tryGetObject(url: str = "", ref_id: str = "", sw = None):
+    if sw is None: sw = StreamWrapper(url)
     client = sw.get_client()
     object = client.object.get(stream_id=sw.stream_id, object_id=ref_id)
     return object
@@ -28,9 +28,9 @@ def tryGetStream (sw: StreamWrapper) -> Stream:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
   
-def tryGetBranch (url: str) -> Branch:
+def tryGetBranch (url: str = "", sw = None) -> Branch:
     try:
-        sw = StreamWrapper(url)
+        if sw is None: sw = StreamWrapper(url)
         client = sw.get_client()
         #branch_name = url.split("/branches/")[1].split("/")[0] 
 

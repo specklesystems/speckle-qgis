@@ -3,6 +3,7 @@ import threading
 import time
 from typing import List
 from plugin_utils.helpers import getLayerByName
+from plugin_utils.traversal import traverseObj
 
 from qgis.core import (QgsProject, QgsLayerTreeLayer,
                        QgsRasterLayer, QgsVectorLayer)
@@ -15,6 +16,7 @@ from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget, QPus
 from specklepy.logging import metrics
 from specklepy.api.credentials import Account
 from specklepy.api.models import Stream, Branch, Commit 
+from specklepy.objects import Base
 
 from specklepy.logging.exceptions import SpeckleException 
 from specklepy.api.wrapper import StreamWrapper
@@ -47,7 +49,7 @@ class UpdatesLogger(QWidget):
         while True:
             if dataStorage.runUpdates == False: 
                 return
-            time.sleep(5)
+            time.sleep(10)
             #print("check")
             try:
                 table = self.findDashboardTable(dataStorage)
@@ -104,13 +106,14 @@ class UpdatesLogger(QWidget):
         for i, f in enumerate(layer.getFeatures()):
             #(url, uuid, commit_id) = tup
             url = f["Branch URL"].split(" ")[0].split("?")[0].split("&")[0]
+            sw = StreamWrapper(url)
             commit_id = f["commit_id"]
             branch = tryGetBranch(url)
             if branch_name == branch.name:
                 if commit_id is not None:
                     logToUser(f"Branch \"{branch_name}\" was updated by \"{user}\"", level=0, url = url_commit, plugin=dockwidget)
                 
-                self.addTraverseProps(layer, f, url, branch.commits.items[0].referencedObject)
+                self.addTraverseProps(sw, layer, f, url, branch.commits.items[0].referencedObject)
 
                 # overwrite 
                 layer.startEditing()
@@ -121,12 +124,13 @@ class UpdatesLogger(QWidget):
 
         return
     
-    def addTraverseProps(self, layer, f, url, ref_id):
-        obj = tryGetObject(url, ref_id)
+    def addTraverseProps(self, sw, layer, f, url, ref_id):
+        obj: Base = tryGetObject(url, ref_id)
 
         layer.startEditing()
-        for attr in TABLE_ATTRS:
-            f = updateFeat(f, layer.fields(), obj)
+        updated_f: dict = traverseObj(sw = sw, base = obj, attrs = TABLE_ATTRS)
+        for i, (key,value) in enumerate(updated_f.items()):
+            f[key] = value
 
         layer.updateFeature(f)
         layer.commitChanges()
