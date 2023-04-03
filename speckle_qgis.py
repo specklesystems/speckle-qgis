@@ -427,7 +427,7 @@ class SpeckleQGIS:
                 object_id=objId,
                 branch_name=branchName,
                 message="Sent objects from QGIS" if len(message) == 0 else message,
-                source_application="QGIS " + self.gis_version,
+                source_application="QGIS " + self.gis_version.split(".")[0],
             )
             r'''
             try:
@@ -535,7 +535,7 @@ class SpeckleQGIS:
             client.commit.received(
             streamId,
             commit.id,
-            source_application="QGIS " + self.gis_version,
+            source_application="QGIS " + self.gis_version.split(".")[0],
             message="Received commit in QGIS",
             )
 
