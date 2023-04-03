@@ -95,6 +95,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     msgLog: LogWidget = None
     updLog: UpdatesLogger = None
     dataStorage: DataStorage = None
+    iface = None
     
     def __init__(self, parent=None):
         """Constructor."""

@@ -23,6 +23,7 @@ from specklepy.api.wrapper import StreamWrapper
 
 import inspect
 from speckle.converter.layers.feature import updateFeat
+from speckle.notifications.SpeckleDashboard import SpeckleDashboard
 from speckle.notifications.utils import TABLE_ATTRS
 
 from ui.logger import logToUser
@@ -31,6 +32,7 @@ from ui.validation import tryGetBranch, tryGetObject
 class UpdatesLogger(QWidget):
     
     sendUpdate = pyqtSignal(str, str, str, str) #branch, commit, user, url
+    dashboard = None
 
     # constructor
     def __init__(self, parent=None):
@@ -110,8 +112,6 @@ class UpdatesLogger(QWidget):
             commit_id = f["commit_id"]
             branch = tryGetBranch(url)
             if branch_name == branch.name:
-                if commit_id is not None:
-                    logToUser(f"Branch \"{branch_name}\" was updated by \"{user}\"", level=0, url = url_commit, plugin=dockwidget)
                 
                 self.addTraverseProps(sw, layer, f, url, branch.commits.items[0].referencedObject)
 
@@ -122,6 +122,16 @@ class UpdatesLogger(QWidget):
                 layer.updateFeature(f)
                 layer.commitChanges()
 
+                if commit_id is not None:
+                    logToUser(f"Branch \"{branch_name}\" was updated by \"{user}\"", level=0, url = url_commit, plugin=dockwidget)
+                
+                if self.dashboard is None:
+                    self.dashboard = SpeckleDashboard()
+                    dockwidget.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dashboard)
+                    self.dashboard.show()
+                else: 
+                    self.dashboard.update(layer)
+
         return
     
     def addTraverseProps(self, sw, layer, f, url, ref_id):
@@ -130,7 +140,9 @@ class UpdatesLogger(QWidget):
         layer.startEditing()
         updated_f: dict = traverseObj(sw = sw, base = obj, attrs = TABLE_ATTRS)
         for i, (key,value) in enumerate(updated_f.items()):
-            f[key] = value
+            if isinstance(value, List):f[key] = str(value)
+            else: f[key] = value
 
         layer.updateFeature(f)
         layer.commitChanges()
+    

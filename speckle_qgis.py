@@ -626,6 +626,7 @@ class SpeckleQGIS:
             self.dataStorage.project  = self.qgis_project
             addDashboardTable(self.qgis_project)
             self.dockwidget = SpeckleQGISDialog()
+            self.dockwidget.iface = self.iface
             self.dockwidget.addLabel(self)
             self.dockwidget.addProps(self)
             self.qgis_project.fileNameChanged.connect(self.reloadUI)

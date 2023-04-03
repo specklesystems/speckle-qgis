@@ -8,7 +8,13 @@ from PyQt5.QtCore import QVariant, QDate, QDateTime
 from ui.validation import tryGetStream
 from specklepy.api.wrapper import StreamWrapper
 
-TABLE_ATTRS = [("custom_area",QVariant.Double,0),("custom_land_use",QVariant.String,[])]
+TABLE_ATTRS = [
+               ("area_residential",QVariant.Double,0),
+               ("area_office",QVariant.Double,0),
+               ("area_commercial",QVariant.Double,0),
+               ("area_natural",QVariant.Double,0),
+               ("custom_land_use",QVariant.String,[])
+               ]
 
 def addDashboardTable(project):
     #EXPERIMENTAL - add a table for a Dashboard
