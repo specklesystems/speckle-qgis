@@ -20,12 +20,14 @@ try:
     #import pyqtgraph as pg
     import plotly.express as px
     from PyQt5.QtWebKitWidgets import QWebView
+    import pandas as pd
     #from PyQtWebEngine import * 
 except: 
     import os; import sys; import subprocess; pythonExec = os.path.dirname(sys.executable) + "\\python3"
     #result = subprocess.run([pythonExec, "-m", "pip", "install", "pyqtgraph"], capture_output=True, text=True, shell=True, timeout=1000); print(result)
     result = subprocess.run([pythonExec, "-m", "pip", "install", "plotly"], capture_output=True, text=True, shell=True, timeout=1000); print(result)
     result = subprocess.run([pythonExec, "-m", "pip", "install", "PyQtWebEngine"], capture_output=True, text=True, shell=True, timeout=1000); print(result)
+    result = subprocess.run([pythonExec, "-m", "pip", "install", "pandas"], capture_output=True, text=True, shell=True, timeout=1000); print(result)
 
     #from pyqtgraph import PlotWidget, plot
     #import pyqtgraph as pg
@@ -61,11 +63,11 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
         self.setupUi(self)
     
     def setup(self):
+        self.dataWidget.clear()
         for i, (key, val) in enumerate(self.dataNumeric.items()): 
             listItem = QListWidgetItem( f"{key}: {val}" ) 
             self.dataWidget.addItem(listItem)
         
-
     def update(self, layer):
 
         self.dataNumeric = {}
@@ -96,9 +98,18 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
     def createChart(self):
 
         # https://stackoverflow.com/questions/60522103/how-to-have-plotly-graph-as-pyqt5-widget 
-        df = px.data.tips()
-        fig = px.box(df, x="day", y="total_bill", color="smoker")
-        fig.update_traces(quartilemethod="exclusive") # or "inclusive", or "linear" by default
+        #df = px.data.tips()
+        #fig = px.box(df, x="day", y="total_bill", color="smoker")
+        #fig.update_traces(quartilemethod="exclusive") # or "inclusive", or "linear" by default
+
+        #df2.rename(columns={"index": "key"})
+        #df.loc[df['pop'] < 2.e6, 'country'] = 'Other countries' # Represent only large countries
+        
+        df = pd.DataFrame.from_dict(self.dataNumeric, orient='index', columns=['value'])
+        df2=df.reset_index()
+        fig = px.pie(df2, values='value', names='index', title='Land use distribution')
+
+        self.browser = QWebView(self)
         self.browser.setHtml(fig.to_html(include_plotlyjs='cdn'))
 
         # remove all buttons

@@ -33,6 +33,8 @@ class UpdatesLogger(QWidget):
     
     sendUpdate = pyqtSignal(str, str, str, str) #branch, commit, user, url
     dashboard = None
+    iface = None
+    dataStorage = None
 
     # constructor
     def __init__(self, parent=None):
@@ -42,19 +44,21 @@ class UpdatesLogger(QWidget):
         self.layout = QVBoxLayout(self)
         self.setGeometry(0, 0, 0, 0)
 
-        dataStorage = self.parentWidget.dataStorage
 
-        t = threading.Thread(target=self.runChecks, args=(dataStorage,))
+        self.dataStorage = self.parentWidget.dataStorage
+        self.iface = self.parentWidget.iface 
+        
+        t = threading.Thread(target=self.runChecks, args=())
         t.start()
 
-    def runChecks(self, dataStorage):
+    def runChecks(self):
         while True:
-            if dataStorage.runUpdates == False: 
+            if self.dataStorage.runUpdates == False: 
                 return
             time.sleep(10)
             #print("check")
             try:
-                table = self.findDashboardTable(dataStorage)
+                table = self.findDashboardTable()
                 if table is None: continue
                 
                 #for url, uuid, commit_id in dataStorage.streamsToFollow:
@@ -75,18 +79,18 @@ class UpdatesLogger(QWidget):
                                         self.parentWidget.updLog.sendUpdate.emit(branch.name, latest_commit_id, branch.commits.items[0].authorName, url_commit)
                                 except Exception as e:
                                     logToUser(e, level = 1, func = inspect.stack()[0][3])
-                                    self.runChecks(dataStorage)
+                                    self.runChecks()
                         except Exception as e:
                             logToUser(e, level = 1, func = inspect.stack()[0][3])
-                            self.runChecks(dataStorage)
+                            self.runChecks()
             except Exception as e:
                 logToUser(e, level = 1, func = inspect.stack()[0][3])
-                self.runChecks(dataStorage)
+                self.runChecks()
     
-    def findDashboardTable(self, dataStorage):
+    def findDashboardTable(self):
         
         newLayerName = "Speckle_dashboard"
-        root = dataStorage.project.layerTreeRoot()
+        root = self.dataStorage.project.layerTreeRoot()
         new_layer = None
 
         found = 0
@@ -100,9 +104,9 @@ class UpdatesLogger(QWidget):
         if found == 0:
             return None 
         
-    def addUpdate(self, dockwidget, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
-
-        layer = getLayerByName(dockwidget.dataStorage.project, "Speckle_dashboard")
+    def showUpdMessage(self, dockwidget, branch_name: str, latest_commit_id: str, user: str, url_commit: str): 
+        
+        layer = getLayerByName(self.dataStorage.project, "Speckle_dashboard")
 
         #for i, tup in enumerate(self.dataStorage.streamsToFollow):
         for i, f in enumerate(layer.getFeatures()):
@@ -113,9 +117,6 @@ class UpdatesLogger(QWidget):
             branch = tryGetBranch(url)
             if branch_name == branch.name:
                 
-                self.addTraverseProps(sw, layer, f, url, branch.commits.items[0].referencedObject)
-
-                # overwrite 
                 layer.startEditing()
                 f["Branch URL"] = url
                 f["commit_id"] = latest_commit_id
@@ -125,12 +126,34 @@ class UpdatesLogger(QWidget):
                 if commit_id is not None:
                     logToUser(f"Branch \"{branch_name}\" was updated by \"{user}\"", level=0, url = url_commit, plugin=dockwidget)
                 
-                if self.dashboard is None:
-                    self.dashboard = SpeckleDashboard()
-                    dockwidget.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dashboard)
-                    self.dashboard.show()
-                else: 
-                    self.dashboard.update(layer)
+    def addUpdate(self): #, dockwidget, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
+
+        layer = getLayerByName(self.dataStorage.project, "Speckle_dashboard")
+
+        #for i, tup in enumerate(self.dataStorage.streamsToFollow):
+        for i, f in enumerate(layer.getFeatures()):
+            #(url, uuid, commit_id) = tup
+            url = f["Branch URL"].split(" ")[0].split("?")[0].split("&")[0]
+            sw = StreamWrapper(url)
+            commit_id = f["commit_id"]
+            branch = tryGetBranch(url)
+            #if branch_name == branch.name:
+                
+            self.addTraverseProps(sw, layer, f, url, branch.commits.items[0].referencedObject)
+
+            # overwrite 
+            layer.startEditing()
+            f["Branch URL"] = url
+            f["commit_id"] = commit_id
+            layer.updateFeature(f)
+            layer.commitChanges()
+
+            if self.dashboard is None:
+                self.dashboard = SpeckleDashboard()
+                self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dashboard)
+                self.dashboard.show()
+            else: 
+                self.dashboard.update(layer)
 
         return
     

@@ -96,6 +96,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     updLog: UpdatesLogger = None
     dataStorage: DataStorage = None
     iface = None
+    runDashboard: QtWidgets.QPushButton 
     
     def __init__(self, parent=None):
         """Constructor."""
@@ -168,6 +169,21 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         logWidget = LogWidget(parent=self)
         self.layout().addWidget(logWidget)
         self.msgLog = logWidget 
+
+        runDash = QtWidgets.QPushButton("Update Dashboard")
+        runDash.setStyleSheet("border: 0px;"
+                            #"border-radius: 8px;"
+                            "color: white;"
+                            "background-color: darkgrey;"
+                            "top-margin: 40 px;"
+                            "padding: 10px;"
+                            "padding-left: 20px;"
+                            "font-size: 15px;"
+                            "height: 30px;"
+                            "text-align: left;"
+                            )
+        self.formLayout.insertRow(15,runDash)
+        self.runDashboard = runDash
 
     
     def addProps(self, plugin):
@@ -290,17 +306,23 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         #print(t_name)
         self.msgLog.addButton(text, level, url, blue)
     
-    def addUpdate(self, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
+    def addUpdateMsg(self, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
         #t_name = threading.current_thread().getName()
         #print(t_name)
-        self.updLog.addUpdate(self, branch_name, latest_commit_id, user, url_commit)
+        self.updLog.showUpdMessage(self, branch_name, latest_commit_id, user, url_commit)
+
+    def addUpdate(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
+        #t_name = threading.current_thread().getName()
+        #print(t_name)
+        self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
 
     def setupOnFirstLoad(self, plugin):
         try:
             self.runButton.clicked.connect(plugin.onRunButtonClicked)
 
             self.msgLog.sendMessage.connect(self.addMsg)
-            self.updLog.sendUpdate.connect(self.addUpdate)
+            self.updLog.sendUpdate.connect(self.addUpdateMsg)
+            self.runDashboard.clicked.connect(lambda: self.addUpdate())
 
             self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
             self.reloadButton.clicked.connect(lambda: self.refreshClicked(plugin))
