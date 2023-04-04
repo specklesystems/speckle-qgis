@@ -3,7 +3,7 @@ import inspect
 import math
 from tokenize import String
 from typing import List
-from qgis._core import QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, QgsRasterBandStats, QgsFeature, QgsFields, \
+from qgis._core import QgsCoordinateTransform, Qgis,QgsPoint, QgsPointXY, QgsGeometry, QgsRasterBandStats, QgsFeature, QgsFields, \
     QgsField, QgsVectorLayer, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsProject
 from specklepy.objects import Base
 
@@ -356,6 +356,163 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         if(b['displayValue'] is None):
             b['displayValue'] = []
         b['displayValue'].append(mesh)
+
+
+        #####################################################
+        try:
+            if dataStorage.savedTransforms is not None:
+                for item in dataStorage.savedTransforms:
+                    layer_name = item.split("  ->  ")[0]
+                    transform_name = item.split("  ->  ")[1]
+                    if layer_name == selectedLayer.name():
+                        print("Apply transform: " + transform_name)
+                        if transform_name == "Terrain to mesh":
+                            
+                            # add a cap
+                            # creating a mesh
+                            vertices = []
+                            faces = []
+                            colors = []
+                            count = 0
+
+                            
+                            vertices_cap = []
+                            faces_cap = []
+
+                            vertices_side1 = []
+                            faces_side1 = []
+
+                            for v in range(rasterDimensions[1] ): #each row, Y
+                                for h in range(rasterDimensions[0] ): #item in a row, X
+
+                                    # color vertices according to QGIS renderer
+                                    color = (0<<16) + (0<<8) + 0
+                                    noValColor = selectedLayer.renderer().nodataColor().getRgb()
+
+                                    if rendererType == "multibandcolor":
+                                        redBand = int(selectedLayer.renderer().redBand())
+                                        greenBand = int(selectedLayer.renderer().greenBand())
+                                        blueBand = int(selectedLayer.renderer().blueBand())
+                                        rVal = 0
+                                        gVal = 0
+                                        bVal = 0
+                                        for k in range(rasterBandCount):
+                                            if rasterBandVals[k][int(count/4)] >= rasterBandMinVal[k]: 
+                                                #### REMAP band values to (0,255) range
+                                                valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
+                                                if valRange == 0: 
+                                                    if rasterBandMinVal[k] ==0: colorVal = 0
+                                                    else: colorVal = 255
+                                                else: colorVal = int( (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / valRange * 255 )
+                                                
+                                                if k+1 == redBand: rVal = colorVal
+                                                if k+1 == greenBand: gVal = colorVal
+                                                if k+1 == blueBand: bVal = colorVal
+                                        color =  (rVal<<16) + (gVal<<8) + bVal
+                                        # for missing values (check by 1st band)
+                                        if rasterBandVals[0][int(count/4)] != rasterBandVals[0][int(count/4)]:
+                                            color = (noValColor[0]<<16) + (noValColor[1]<<8) + noValColor[2]
+
+                                    elif rendererType == "paletted":
+                                        bandIndex = selectedLayer.renderer().band()-1 #int
+                                        value = rasterBandVals[bandIndex][int(count/4)] #find in the list and match with color
+
+                                        rendererClasses = selectedLayer.renderer().classes()
+                                        for c in range(len(rendererClasses)-1):
+                                            if value >= rendererClasses[c].value and value <= rendererClasses[c+1].value :
+                                                rgb = rendererClasses[c].color.getRgb()
+                                                color =  (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
+                                                break
+
+                                    elif rendererType == "singlebandpseudocolor":
+                                        bandIndex = selectedLayer.renderer().band()-1 #int
+                                        value = rasterBandVals[bandIndex][int(count/4)] #find in the list and match with color
+
+                                        rendererClasses = selectedLayer.renderer().legendSymbologyItems()
+                                        for c in range(len(rendererClasses)-1):
+                                            if value >= float(rendererClasses[c][0]) and value <= float(rendererClasses[c+1][0]) :
+                                                rgb = rendererClasses[c][1].getRgb()
+                                                color =  (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
+                                                break
+
+                                    else:
+                                        if rendererType == "singlebandgray":
+                                            bandIndex = selectedLayer.renderer().grayBand()-1
+                                        if rendererType == "hillshade":
+                                            bandIndex = selectedLayer.renderer().band()-1
+                                        if rendererType == "contour":
+                                            try: bandIndex = selectedLayer.renderer().inputBand()-1
+                                            except:
+                                                try: bandIndex = selectedLayer.renderer().band()-1
+                                                except: bandIndex = 0
+                                        else: # e.g. single band data
+                                            bandIndex = 0
+                                        
+                                        if rasterBandVals[bandIndex][int(count/4)] >= rasterBandMinVal[bandIndex]: 
+                                            # REMAP band values to (0,255) range
+                                            valRange = (rasterBandMaxVal[bandIndex] - rasterBandMinVal[bandIndex])
+                                            if valRange == 0: 
+                                                if rasterBandMinVal[bandIndex] ==0: colorVal = 0
+                                                else: colorVal = 255
+                                            else: colorVal = int( (rasterBandVals[bandIndex][int(count/4)] - rasterBandMinVal[bandIndex]) / valRange * 255 )
+                                            color =  (colorVal<<16) + (colorVal<<8) + colorVal
+
+                                    colors.extend([color,color,color,color])
+                                    count += 4
+
+                                    ### adding a cap
+                                    try:
+                                        pt1 = QgsPointXY(rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1])
+                                        pt2 = QgsPointXY(rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1])
+                                        pt3 = QgsPointXY(rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1])
+                                        pt4 = QgsPointXY(rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1])
+                                        # first, get point coordinates with correct position and resolution, then reproject each:
+                                        if selectedLayer.crs()!= projectCRS:
+                                            pt1 = transform.transform(project, src = pt1, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                                            pt2 = transform.transform(project, src = pt2, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                                            pt3 = transform.transform(project, src = pt3, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                                            pt4 = transform.transform(project, src = pt4, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                                        
+                                        height = rasterBandVals[0][int(count/4)]
+
+                                        vertices_cap.extend([pt1.x(), pt1.y(), height, pt2.x(), pt2.y(), height, pt3.x(), pt3.y(), height, pt4.x(), pt4.y(), height]) ## add 4 points
+                                        faces_cap.extend([4, count, count+1, count+2, count+3])
+                                    except Exception as e:
+                                        logToUser(e, level = 2, func = inspect.stack()[0][3])
+
+
+                                    ######## adding side1
+                                    r'''
+                                    try: 
+                                        pt1 = QgsPointXY(rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1])
+                                        pt2 = QgsPointXY(rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1])
+                                        #pt3 = QgsPointXY(rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1])
+                                        #pt4 = QgsPointXY(rasterOriginPoint.x()+(h+1)*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1])
+                                        # first, get point coordinates with correct position and resolution, then reproject each:
+                                        if selectedLayer.crs()!= projectCRS:
+                                            pt1 = transform.transform(project, src = pt1, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                                            pt2 = transform.transform(project, src = pt2, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
+                                            pt3 = QgsPoint(pt2.x(), pt2.x(), height)
+                                            pt4 = QgsPoint(pt1.x(), pt1.x(), height)
+                                        
+                                        height = rasterBandVals[0][int(count/4)]
+
+                                        vertices_side1.extend([pt1.x(), pt1.y(), 0, pt2.x(), pt2.y(), 0, pt3.x(), pt3.y(), pt3.z(), pt4.x(), pt4.y(), pt4.z()]) ## add 4 points
+                                        faces_side1.extend([4, count, count+1, count+2, count+3])
+                                    except Exception as e:
+                                        logToUser(e, level = 2, func = inspect.stack()[0][3])
+                                    '''
+                            #mesh_cap = constructMeshFromRaster(vertices_cap, faces_cap, colors)
+                            #b['displayValue'].append(mesh_cap)
+
+                            #mesh_side1 = constructMeshFromRaster(vertices_side1, faces_side1, colors)
+                            #b['displayValue'].append(mesh_side1)
+
+
+        except Exception as e: 
+            logToUser(str(e), level = 1, func = inspect.stack()[0][3])
+        #########################################################################
+
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         

@@ -20,8 +20,7 @@ class DataStorage:
         self.streamsToFollow.append(("https://speckle.xyz/streams/17b0b76d13/branches/random_tests", "", "09a0f3e41a"))
         self.transformsCatalog = ["Extrude polygons by 10-30m",
                                   "Extrude polylines by \"height\"",
-                                  "Some transform",
-                                  "Last transform"]
+                                  "Terrain to mesh"]
         self.savedTransforms = []
         all_layers = []
         
