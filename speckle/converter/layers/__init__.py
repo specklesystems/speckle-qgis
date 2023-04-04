@@ -41,6 +41,23 @@ from ui.logger import logToUser
 GEOM_LINE_TYPES = ["Objects.Geometry.Line", "Objects.Geometry.Polyline", "Objects.Geometry.Curve", "Objects.Geometry.Arc", "Objects.Geometry.Circle", "Objects.Geometry.Ellipse", "Objects.Geometry.Polycurve"]
 
 
+def getAllLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode = None):
+    if parent is None:
+        parent = tree 
+    children = parent.children()
+    layers = []
+    for node in children:
+        if tree.isLayer(node):
+            if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
+                layers.append(node)
+            continue
+        if tree.isGroup(node):
+            for lyr in getAllLayers(tree, node):
+                if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer): 
+                    layers.append(lyr) 
+            #layers.extend( [ lyr for lyr in getAllLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
+    return layers
+
 def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
     

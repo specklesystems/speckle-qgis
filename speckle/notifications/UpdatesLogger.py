@@ -136,6 +136,8 @@ class UpdatesLogger(QWidget):
                 f["updated"] = 1
                 layer.updateFeature(f)
                 layer.commitChanges()
+                
+            self.cache.clear()
         return
 
     def showDashboard(self): 

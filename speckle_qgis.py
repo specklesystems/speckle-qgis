@@ -47,7 +47,7 @@ import webbrowser
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.layers.Layer import Layer, VectorLayer, RasterLayer
-from speckle.converter.layers import convertSelectedLayers, getLayers
+from speckle.converter.layers import convertSelectedLayers, getAllLayers, getLayers
 from speckle.converter.layers.utils import findAndClearLayerGroup
 from speckle.DataStorage import DataStorage
 
@@ -624,6 +624,8 @@ class SpeckleQGIS:
         if self.dockwidget is None:
             self.dataStorage = DataStorage()
             self.dataStorage.project  = self.qgis_project
+            root = self.dataStorage.project.layerTreeRoot()
+            self.dataStorage.all_layers = getAllLayers(root)
             addDashboardTable(self.qgis_project)
             self.dockwidget = SpeckleQGISDialog()
             self.dockwidget.iface = self.iface
@@ -634,7 +636,9 @@ class SpeckleQGIS:
 
             self.dockwidget.run(self)
         else:
-            self.dataStorage.runUpdates = False
+            root = self.dataStorage.project.layerTreeRoot()
+            self.dataStorage.all_layers = getAllLayers(root)
+            #self.dataStorage.runUpdates = False
             self.active_stream = None
             self.dataStorage.project  = self.qgis_project
             addDashboardTable(self.qgis_project)

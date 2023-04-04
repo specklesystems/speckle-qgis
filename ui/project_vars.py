@@ -69,6 +69,7 @@ def get_project_layer_selection(plugin: SpeckleQGIS):
                 if found == 0: 
                     logToUser(f'Saved layer not found: "{id}"', level = 1, func = inspect.stack()[0][3])
         plugin.current_layers = temp
+        plugin.dataStorage.current_layers = temp
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget)
         return

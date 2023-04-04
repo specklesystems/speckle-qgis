@@ -9,6 +9,7 @@ from plugin_utils.helpers import splitTextIntoLines
 
 def logToUser(msg: str, func=None, level: int = 2, plugin = None, url = "", blue = False):
       print("Log to user")
+      print(msg)
       #time.sleep(0.3)
       #t_name = threading.current_thread().getName()
 

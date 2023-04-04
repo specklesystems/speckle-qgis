@@ -26,6 +26,7 @@ import inspect
 import os
 import threading
 from plugin_utils.helpers import getLayerByName, splitTextIntoLines
+from speckle.automation.mapping_send import MappingSendDialog
 from speckle.converter.layers import getLayers
 from speckle.DataStorage import DataStorage
 from speckle.notifications.UpdatesLogger import UpdatesLogger
@@ -96,6 +97,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     updLog: UpdatesLogger = None
     dataStorage: DataStorage = None
     iface = None
+
+    mappingSendDialog: MappingSendDialog = None
     example1: QtWidgets.QPushButton 
     example2: QtWidgets.QPushButton 
     example3: QtWidgets.QPushButton 
@@ -187,7 +190,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.formLayout.insertRow(17,runDash)
         self.example2 = runDash
         
-        runDash = QtWidgets.QPushButton("#3 - Mapping on send")
+        runDash = QtWidgets.QPushButton("#3 - Object mapping on send")
         runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: rgb(224,224,224); }")
         self.formLayout.insertRow(18,runDash)
         self.example3 = runDash
@@ -329,6 +332,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
 
     def addUpdate3(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
+        self.mappingSendDialog = MappingSendDialog(None)
+        self.mappingSendDialog.dataStorage = self.dataStorage
+        self.mappingSendDialog.runSetup()
+        self.mappingSendDialog.show()
         return
         self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
 
@@ -378,7 +385,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
                 metrics.track("Connector Action", plugin.active_account, {"name": "Close", "connector_version": str(plugin.version)})
             except Exception as e:
                 logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
-            
+            plugin.dataStorage.runUpdates = False 
             plugin.onClosePlugin()
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
@@ -492,6 +499,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         try:
             if self.layerSendModeDropdown.currentIndex() == 0 or runMode == 1: # by manual selection OR receive mode
                 self.current_layers = []
+                self.dataStorage.current_layers = []
                 self.layersWidget.setEnabled(False)
                 self.saveLayerSelection.setEnabled(False)
                 
@@ -531,9 +539,11 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
                 # Fetch selected layers
 
                 plugin.current_layers = []
+                plugin.dataStorage.current_layers = []
                 layers = getLayers(plugin, bySelection) # List[QgsLayerTreeNode]
                 for i, layer in enumerate(layers):
                     plugin.current_layers.append((layer.name(), layer)) 
+                    plugin.dataStorage.current_layers.append((layer.name(), layer)) 
                     listItem = self.fillLayerList(layer)
                     self.layersWidget.addItem(listItem)
 
