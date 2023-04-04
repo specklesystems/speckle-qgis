@@ -163,7 +163,7 @@ class UpdatesLogger(QWidget):
         layer.startEditing()
         updated_f: dict = traverseObj(sw = sw, base = obj, attrs = TABLE_ATTRS)
         for i, (key,value) in enumerate(updated_f.items()):
-            if isinstance(value, List):f[key] = str(value)
+            if isinstance(value, List): f[key] = str(value)
             else: f[key] = value
 
         layer.updateFeature(f)

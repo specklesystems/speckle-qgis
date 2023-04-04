@@ -15,8 +15,6 @@ from speckle.notifications.utils import TABLE_ATTRS
 from ui.logger import logToUser
 from ui.validation import tryGetObject
 
-SPECKLE_TYPES_TO_READ = ["Objects.Geometry.", "Objects.BuiltElements.", "IFC"] # will properly traverse and check for displayValue
-
 def traverseObj(sw: StreamWrapper, base: Base, attrs: List) -> dict:
     object = {}
 
@@ -50,12 +48,12 @@ def loopObj(sw: StreamWrapper, object: dict, baseToTraverse: Base, attrs: List) 
                             for (name_attr, type_attr, result_attr) in TABLE_ATTRS:
                                 if name == name_attr or ("@"+name) == name_attr:
 
-                                    if type_attr == 6:
+                                    if "area" in name: #type_attr == 6:
                                         try:
                                             object[name] += float(baseToTraverse[name])
                                         except Exception as e: print(e) 
                                     
-                                    elif type_attr == 10:
+                                    elif "value" in name: #type_attr == 10:
                                         try:
                                             object[name].append(str(baseToTraverse[name]))
                                         except Exception as e: print(e) 

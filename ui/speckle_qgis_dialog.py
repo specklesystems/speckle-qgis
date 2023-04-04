@@ -171,7 +171,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.msgLog = logWidget 
 
         runDash = QtWidgets.QPushButton("Update Dashboard")
-        runDash.setStyleSheet("border: 0px;"
+        runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: darkgrey; }")
+        r'''"border: 0px;"
                             #"border-radius: 8px;"
                             "color: white;"
                             "background-color: darkgrey;"
@@ -182,6 +183,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
                             "height: 30px;"
                             "text-align: left;"
                             )
+        '''
         self.formLayout.insertRow(15,runDash)
         self.runDashboard = runDash
 

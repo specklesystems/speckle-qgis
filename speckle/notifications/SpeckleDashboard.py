@@ -1,4 +1,5 @@
 
+from typing import List
 from qgis.core import Qgis, QgsProject,QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
 from specklepy.logging.exceptions import (SpeckleException, GraphQLException)
 from qgis.PyQt import QtWidgets, uic
@@ -46,9 +47,14 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
 
     dataNumeric: dict
     dataText: dict 
+
+    current_filter: str = ""
+    current_index: int = -1
+    selectionDropdown: QtWidgets.QComboBox
     dataWidget: QtWidgets.QListWidget
     chart: QWidget
     browser = None
+    existing_web: int = 0
     
     def __init__(self, parent=None):
         """Constructor."""
@@ -62,12 +68,38 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
         self.browser = QWebView(self) # https://github.com/qgis/QGIS/issues/26048
         self.setupUi(self)
     
+        
+        self.selectionDropdown.clear()
+        self.selectionDropdown.addItems(["area", "property value"])
+        self.selectionDropdown.setCurrentIndex(0)
+
+        self.selectionDropdown.currentIndexChanged.connect( self.populateUI )
+
     def setup(self):
         self.dataWidget.clear()
         for i, (key, val) in enumerate(self.dataNumeric.items()): 
-            listItem = QListWidgetItem( f"{key}: {val}" ) 
-            self.dataWidget.addItem(listItem)
+            #property_filter = self.selectionDropdown.currentText()
+            if self.current_filter in key or key in self.current_filter:
+
+                listItem = QListWidgetItem( f"{key}: {val}" ) 
+                self.dataWidget.addItem(listItem)
         
+    def populateUI(self):
+        print(self.selectionDropdown.currentIndex())
+        print(self.current_filter)
+        if self.selectionDropdown.currentText() == "":
+            self.current_filter = "area"
+            self.current_index = 0
+            self.setup()
+            self.selectionDropdown.setIndex(0)
+
+            self.createChart()
+        elif self.selectionDropdown.currentText() != self.current_filter:
+            self.current_filter = self.selectionDropdown.currentText()
+            self.current_index = self.selectionDropdown.currentIndex()
+            self.setup()
+            self.createChart()
+    
     def update(self, layer):
 
         self.dataNumeric = {}
@@ -80,47 +112,74 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
             value = None
             variant = fields.at(i).type()
 
-            if variant == 10: value = []
-            if variant == 6: value = 0
+            if "value" in key: value = []
+            if "area" in key: value = 0
 
             for feat in layer.getFeatures():
-                if variant == 10:
-                    value.extend(feat[key].replace("[","").replace("]","").split(","))
-                elif variant == 6:
+                if isinstance(value, List):
+                #if variant == 10:
+                    list_vals = feat[key].replace("[","").replace("]","").replace("\'","").split(",")
+                    value.extend([x for x in list_vals if x!=""])
+                    print(value)
+                    #value.extend(feat[key].replace("[","").replace("]","").replace("\'","").split(","))
+                elif isinstance(value, float) or isinstance(value, int):
+                #elif variant == 6:
                     value += feat[key]
             
-            if variant == 10: self.dataText.update({key: value})
-            if variant == 6: self.dataNumeric.update({key: value})
+            self.dataNumeric.update({key: value})
+            #if "value" in key: self.dataText.update({key: value})
+            #if variant == 6: self.dataNumeric.update({key: value})
 
-        self.setup()
-        self.createChart()
+        self.populateUI()
         
     def createChart(self):
 
         # https://stackoverflow.com/questions/60522103/how-to-have-plotly-graph-as-pyqt5-widget 
-        #df = px.data.tips()
-        #fig = px.box(df, x="day", y="total_bill", color="smoker")
-        #fig.update_traces(quartilemethod="exclusive") # or "inclusive", or "linear" by default
-
-        #df2.rename(columns={"index": "key"})
-        #df.loc[df['pop'] < 2.e6, 'country'] = 'Other countries' # Represent only large countries
         
         df = pd.DataFrame.from_dict(self.dataNumeric, orient='index', columns=['value'])
         df2=df.reset_index()
-        fig = px.pie(df2, values='value', names='index', title='Land use distribution')
+        print(df2)
 
-        self.browser = QWebView(self)
-        self.browser.setHtml(fig.to_html(include_plotlyjs='cdn'))
+        property_filter = str(self.selectionDropdown.currentText()) 
+        if len(property_filter) <= 1: 
+            property_filter = "area"
+        df2 = df2[df2['index'].str.lower().str.contains(property_filter)]
+        print(df2)
 
+        if "area" in property_filter:
+            fig = px.pie(df2, values='value', names='index', title='Land use distribution')
+
+        elif "value" in property_filter:
+            all_column_vals = df2['value'].to_list()
+
+            all_column_vals_separated = [] 
+            [all_column_vals_separated.extend(x) for x in all_column_vals]
+
+            all_vals = [float(x.replace(" ","")) for x in all_column_vals_separated] 
+            df2 = pd.DataFrame([ {property_filter: val} for val in all_vals ] )
+            fig = px.histogram(df2, x= property_filter, nbins = 20)
+        else:
+            df2 = df2.loc["area" in df2['index']]
+            fig = px.pie(df2, values='value', names='index', title='Land use distribution')
+        print(df2)
+        
         # remove all buttons
-        try:
-            for i in reversed(range(self.chart.layout.count())): 
-                self.chart.layout.itemAt(i).widget().setParent(None)
-        except: pass 
+        #try:
+        #    for i in reversed(range(self.chart.layout.count())): 
+        #        self.chart.layout.itemAt(i).widget().setParent(None)
+        #except: pass 
+
+        if self.existing_web == 0:
+            self.browser = QWebView(self)
+        
+        self.browser.setHtml(fig.to_html(include_plotlyjs='cdn'))
 
         self.chart.layout = QHBoxLayout(self.chart)
         self.browser.setMaximumHeight(400)
-        self.chart.layout.addWidget(self.browser)
+
+        if self.existing_web == 0:
+            self.chart.layout.addWidget(self.browser)
+            self.existing_web = 1
 
         return 
         # https://www.pythonguis.com/tutorials/plotting-pyqtgraph/

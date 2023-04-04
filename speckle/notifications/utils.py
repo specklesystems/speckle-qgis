@@ -7,12 +7,14 @@ from PyQt5.QtCore import QVariant, QDate, QDateTime
 
 from ui.validation import tryGetStream
 from specklepy.api.wrapper import StreamWrapper
+from specklepy.api.models import Stream, Branch, Commit 
 
 TABLE_ATTRS = [
                ("area_residential",QVariant.Double,0),
                ("area_office",QVariant.Double,0),
                ("area_commercial",QVariant.Double,0),
                ("area_natural",QVariant.Double,0),
+               ("property value",QVariant.String,[]),
                ("custom_land_use",QVariant.String,[])
                ]
 
@@ -59,12 +61,13 @@ def addBranchFeatures(layer):
     fets = []
     stream_url = "https://speckle.xyz/streams/62973cd221"
     sw = StreamWrapper(stream_url)
-    stream = tryGetStream(sw)
+    stream: Stream = tryGetStream(sw)
     for branch in stream.branches.items:
         url = stream_url + "/branches/" + branch.name
         feat = QgsFeature()
         feat.setFields(layer.fields()) 
         feat["Branch URL"] = url 
+        feat["commit_id"] = branch.commits.items[0].id
         fets.append(feat)
     
     layer.startEditing()
