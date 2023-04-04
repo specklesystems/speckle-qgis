@@ -1,5 +1,6 @@
 
 from typing import List
+from plugin_utils.helpers import getLayerByName
 from qgis.core import Qgis, QgsProject,QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
 from specklepy.logging.exceptions import (SpeckleException, GraphQLException)
 from qgis.PyQt import QtWidgets, uic
@@ -12,6 +13,8 @@ from qgis.PyQt.QtCore import pyqtSignal, Qt
 #from qgis.PyQt import QtCore, QtWidgets #, QtWebEngineWidgets
 from PyQt5 import *
 from PyQt5.QtCore import QUrl
+
+from speckle.notifications.utils import addDashboardTable
 
 
 try:
@@ -45,9 +48,10 @@ FORM_CLASS, _ = uic.loadUiType(
 class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
+    dataStorage = None 
 
-    dataNumeric: dict
-    dataText: dict 
+    dataNumeric: dict = {}
+    dataText: dict = {}
 
     current_filter: str = ""
     current_index: int = -1
@@ -85,7 +89,7 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
                 listItem = QListWidgetItem( f"{key}: {val}" ) 
                 self.dataWidget.addItem(listItem)
         
-    def populateUI(self):
+    def populateUI(self, force = 0):
         print(self.selectionDropdown.currentIndex())
         print(self.current_filter)
         if self.selectionDropdown.currentText() == "":
@@ -100,15 +104,21 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
             self.current_index = self.selectionDropdown.currentIndex()
             self.setup()
             self.createChart()
+        if force == 1:
+            self.setup()
+            self.createChart()
+
     
-    def update(self, layer):
+    def update(self):
+
+        layer = getLayerByName(self.dataStorage.project, "Speckle_dashboard")
 
         self.dataNumeric = {}
         self.dataText = {}
 
         fields = layer.fields()
         for i, key in enumerate(fields.names()): 
-            if key in ["Branch URL","commit_id"]: continue
+            if key in ["Branch URL","commit_id", "updated"]: continue
 
             value = None
             variant = fields.at(i).type()
@@ -118,20 +128,18 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
 
             for feat in layer.getFeatures():
                 if isinstance(value, List):
-                #if variant == 10:
-                    list_vals = feat[key].replace("[","").replace("]","").replace("\'","").split(",")
-                    value.extend([x for x in list_vals if x!=""])
-                    print(value)
-                    #value.extend(feat[key].replace("[","").replace("]","").replace("\'","").split(","))
+                    if feat[key] is not None:
+                        list_vals = feat[key].replace("[","").replace("]","").replace("\'","").split(",")
+                        value.extend([x for x in list_vals if x!=""])
+                        print(value)
+                        
                 elif isinstance(value, float) or isinstance(value, int):
-                #elif variant == 6:
-                    value += feat[key]
+                    if feat[key] is not None:
+                        value += feat[key]
             
             self.dataNumeric.update({key: value})
-            #if "value" in key: self.dataText.update({key: value})
-            #if variant == 6: self.dataNumeric.update({key: value})
 
-        self.populateUI()
+        self.populateUI(force = 1)
         
     def createChart(self):
 
@@ -158,7 +166,7 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
 
             all_vals = [float(x.replace(" ","")) for x in all_column_vals_separated] 
             df2 = pd.DataFrame([ {property_filter: val} for val in all_vals ] )
-            fig = px.histogram(df2, x= property_filter, nbins = 10, title='Property values')
+            fig = px.histogram(df2, x= property_filter, title='Property values')
         else:
             df2 = df2.loc["area" in df2['index']]
             fig = px.pie(df2, values='value', names='index', title='Land use distribution')

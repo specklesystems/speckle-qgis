@@ -96,7 +96,9 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     updLog: UpdatesLogger = None
     dataStorage: DataStorage = None
     iface = None
-    runDashboard: QtWidgets.QPushButton 
+    example1: QtWidgets.QPushButton 
+    example2: QtWidgets.QPushButton 
+    example3: QtWidgets.QPushButton 
     
     def __init__(self, parent=None):
         """Constructor."""
@@ -170,10 +172,25 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.layout().addWidget(logWidget)
         self.msgLog = logWidget 
 
+        
+        examples_label = QtWidgets.QPushButton("Automation examples")
+        examples_label.setStyleSheet("color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;")
+        self.formLayout.insertRow(15,examples_label)
+
         runDash = QtWidgets.QPushButton("#1 - Update Dashboard")
-        runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: darkgrey; }")
-        self.formLayout.insertRow(15,runDash)
-        self.runDashboard = runDash
+        runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: rgb(224,224,224); }")
+        self.formLayout.insertRow(16,runDash)
+        self.example1 = runDash
+        
+        runDash = QtWidgets.QPushButton("#2 - Example")
+        runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: rgb(224,224,224); }")
+        self.formLayout.insertRow(17,runDash)
+        self.example2 = runDash
+        
+        runDash = QtWidgets.QPushButton("#3 - Mapping on send")
+        runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: rgb(224,224,224); }")
+        self.formLayout.insertRow(18,runDash)
+        self.example3 = runDash
 
     
     def addProps(self, plugin):
@@ -297,13 +314,22 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.msgLog.addButton(text, level, url, blue)
     
     def addUpdateMsg(self, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
-        #t_name = threading.current_thread().getName()
-        #print(t_name)
-        self.updLog.showUpdMessage(self, branch_name, latest_commit_id, user, url_commit)
+        logToUser(f"Branch \"{branch_name}\" was updated by \"{user}\"", level=0, url = url_commit, plugin=self)
+        #self.updLog.showUpdMessage(self, branch_name, latest_commit_id, user, url_commit)
 
-    def addUpdate(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
-        #t_name = threading.current_thread().getName()
-        #print(t_name)
+    def addUpdate1(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
+        self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
+        if self.updLog.dashboard is not None: 
+            self.updLog.dashboard.update()
+            #self.updLog.dashboard.populateUI(force = 1)
+        self.updLog.showDashboard()
+
+    def addUpdate2(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
+        return
+        self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
+
+    def addUpdate3(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
+        return
         self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
 
     def setupOnFirstLoad(self, plugin):
@@ -312,7 +338,9 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
             self.msgLog.sendMessage.connect(self.addMsg)
             self.updLog.sendUpdate.connect(self.addUpdateMsg)
-            self.runDashboard.clicked.connect(lambda: self.addUpdate())
+            self.example1.clicked.connect(lambda: self.addUpdate1())
+            self.example2.clicked.connect(lambda: self.addUpdate2())
+            self.example3.clicked.connect(lambda: self.addUpdate3())
 
             self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
             self.reloadButton.clicked.connect(lambda: self.refreshClicked(plugin))

@@ -47,6 +47,7 @@ def addDashboardField(layer):
         fields = QgsFields()
         fields.append(QgsField("Branch URL", QVariant.String))
         fields.append(QgsField("commit_id", QVariant.String))
+        fields.append(QgsField("updated", QVariant.LongLong))
         addTableAttrs(layer)
 
         pr = layer.dataProvider()
@@ -67,7 +68,9 @@ def addBranchFeatures(layer):
         feat = QgsFeature()
         feat.setFields(layer.fields()) 
         feat["Branch URL"] = url 
-        feat["commit_id"] = branch.commits.items[0].id
+        try: feat["commit_id"] = branch.commits.items[0].id
+        except: pass
+        feat["updated"] = 0
         fets.append(feat)
     
     layer.startEditing()
