@@ -27,7 +27,7 @@ import os
 import threading
 from plugin_utils.helpers import getLayerByName, splitTextIntoLines
 from speckle.automation.mapping_send import MappingSendDialog
-from speckle.converter.layers import getLayers
+from speckle.converter.layers import getAllLayers, getLayers
 from speckle.DataStorage import DataStorage
 from speckle.notifications.UpdatesLogger import UpdatesLogger
 from ui.LogWidget import LogWidget
@@ -332,6 +332,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
 
     def addUpdate3(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
+        root = self.dataStorage.project.layerTreeRoot()
+        self.dataStorage.all_layers = getAllLayers(root)
         self.mappingSendDialog = MappingSendDialog(None)
         self.mappingSendDialog.dataStorage = self.dataStorage
         self.mappingSendDialog.runSetup()
