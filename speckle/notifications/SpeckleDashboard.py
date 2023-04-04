@@ -11,6 +11,7 @@ from qgis.PyQt.QtCore import pyqtSignal, Qt
 
 #from qgis.PyQt import QtCore, QtWidgets #, QtWebEngineWidgets
 from PyQt5 import *
+from PyQt5.QtCore import QUrl
 
 
 try:
@@ -157,7 +158,7 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
 
             all_vals = [float(x.replace(" ","")) for x in all_column_vals_separated] 
             df2 = pd.DataFrame([ {property_filter: val} for val in all_vals ] )
-            fig = px.histogram(df2, x= property_filter, nbins = 20)
+            fig = px.histogram(df2, x= property_filter, nbins = 10, title='Property values')
         else:
             df2 = df2.loc["area" in df2['index']]
             fig = px.pie(df2, values='value', names='index', title='Land use distribution')
@@ -173,7 +174,8 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
             self.browser = QWebView(self)
         
         self.browser.setHtml(fig.to_html(include_plotlyjs='cdn'))
-
+        #self.browser.setUrl(QUrl("https://speckle.xyz/streams/e2effcfa27/commits/f76cedd9a6"))
+        
         self.chart.layout = QHBoxLayout(self.chart)
         self.browser.setMaximumHeight(400)
 
