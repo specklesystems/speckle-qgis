@@ -84,6 +84,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         else: 
             logToUser("Mesh creation from Polygon failed. Boundaries will be used as displayValue", level = 1, func = inspect.stack()[0][3])
         
+        #############################################################
         try:
             if dataStorage.savedTransforms is not None:
                 for item in dataStorage.savedTransforms:
@@ -91,9 +92,11 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
                     transform_name = item.split("  ->  ")[1]
                     if layer_name == layer.name():
                         print("Apply transform: " + transform_name)
-                        if transform_name == "Extrude polygons by 10-30m":
-
-                            height = random.randint(10, 30)
+                        if transform_name == "Extrude polygons by \'height\'":
+                            
+                            height = feature["height"]
+                            if height is None or height == 0: 
+                                height = random.randint(10, 20)
                             
                             # add a cap
                             polyBorder2 = []
@@ -161,7 +164,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
 
         except Exception as e: 
             logToUser(str(e), level = 1, func = inspect.stack()[0][3])
-
+        ############################################
         return polygon
     
     except Exception as e:
