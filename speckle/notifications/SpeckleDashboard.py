@@ -156,7 +156,7 @@ class SpeckleDashboard(QtWidgets.QDockWidget, FORM_CLASS):
         print(df2)
 
         if "area" in property_filter:
-            fig = px.pie(df2, values='value', names='index', title='Land use distribution')
+            fig = px.pie(df2, values='value', names='index', title='Land use distribution', hole=.5)
 
         elif "value" in property_filter:
             all_column_vals = df2['value'].to_list()
