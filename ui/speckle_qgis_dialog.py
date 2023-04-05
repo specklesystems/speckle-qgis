@@ -26,6 +26,7 @@ import inspect
 import os
 import threading
 from plugin_utils.helpers import getLayerByName, splitTextIntoLines
+from speckle.automation.addContext import ContextVisualsDialog
 from speckle.automation.mapping_send import MappingSendDialog
 from speckle.converter.layers import getAllLayers, getLayers
 from speckle.DataStorage import DataStorage
@@ -99,6 +100,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     iface = None
 
     mappingSendDialog: MappingSendDialog = None
+    contextVisualDialog: ContextVisualsDialog = None
     example1: QtWidgets.QPushButton 
     example2: QtWidgets.QPushButton 
     example3: QtWidgets.QPushButton 
@@ -328,6 +330,17 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.updLog.showDashboard()
 
     def addUpdate2(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
+        root = self.dataStorage.project.layerTreeRoot()
+        self.dataStorage.all_layers = getAllLayers(root)
+        self.contextVisualDialog = ContextVisualsDialog(None)
+        self.contextVisualDialog.dataStorage = self.dataStorage
+        self.contextVisualDialog.runSetup()
+        self.contextVisualDialog.show()
+
+        #if self.contextVisualDialog.dashboard is not None: 
+        #    self.contextVisualDialog.dashboard.update()
+        #    #self.updLog.dashboard.populateUI(force = 1)
+        self.contextVisualDialog.createChart()
         return
         self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
 
