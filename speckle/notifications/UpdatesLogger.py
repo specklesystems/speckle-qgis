@@ -24,7 +24,7 @@ from specklepy.api.wrapper import StreamWrapper
 import inspect
 from speckle.converter.layers.feature import updateFeat
 from speckle.notifications.SpeckleDashboard import SpeckleDashboard
-from speckle.notifications.utils import TABLE_ATTRS
+from speckle.notifications.utils import TABLE_ATTRS, addDashboardTable
 
 from ui.logger import logToUser
 from ui.validation import tryGetBranch, tryGetObject
@@ -112,6 +112,9 @@ class UpdatesLogger(QWidget):
     def addUpdate(self): #, dockwidget, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
         """Updata table layer properties"""
         layer = getLayerByName(self.dataStorage.project, "Speckle_dashboard")
+        if layer is None:
+            addDashboardTable(self.dataStorage.project)
+            layer = getLayerByName(self.dataStorage.project, "Speckle_dashboard")
 
         for i, f in enumerate(layer.getFeatures()):
             #(url, uuid, commit_id) = tup

@@ -626,7 +626,6 @@ class SpeckleQGIS:
             self.dataStorage.project  = self.qgis_project
             root = self.dataStorage.project.layerTreeRoot()
             self.dataStorage.all_layers = getAllLayers(root)
-            addDashboardTable(self.qgis_project)
             self.dockwidget = SpeckleQGISDialog()
             self.dockwidget.iface = self.iface
             self.dockwidget.addLabel(self)
@@ -641,7 +640,6 @@ class SpeckleQGIS:
             #self.dataStorage.runUpdates = False
             self.active_stream = None
             self.dataStorage.project  = self.qgis_project
-            addDashboardTable(self.qgis_project)
 
 
 
