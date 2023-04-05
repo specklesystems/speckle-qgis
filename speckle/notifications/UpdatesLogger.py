@@ -152,6 +152,7 @@ class UpdatesLogger(QWidget):
             self.dashboard.show()
         else: 
             self.dashboard.update()
+            self.dashboard.show()
 
     
     def addTraverseProps(self, sw, layer, f, url, ref_id):

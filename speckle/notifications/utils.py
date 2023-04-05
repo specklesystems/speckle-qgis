@@ -64,14 +64,15 @@ def addBranchFeatures(layer):
     sw = StreamWrapper(stream_url)
     stream: Stream = tryGetStream(sw)
     for branch in stream.branches.items:
-        url = stream_url + "/branches/" + branch.name
-        feat = QgsFeature()
-        feat.setFields(layer.fields()) 
-        feat["Branch URL"] = url 
-        try: feat["commit_id"] = branch.commits.items[0].id
-        except: pass
-        feat["updated"] = 0
-        fets.append(feat)
+        if branch.name == "land_use" or branch.name == "economic":
+            url = stream_url + "/branches/" + branch.name
+            feat = QgsFeature()
+            feat.setFields(layer.fields()) 
+            feat["Branch URL"] = url 
+            try: feat["commit_id"] = branch.commits.items[0].id
+            except: pass
+            feat["updated"] = 0
+            fets.append(feat)
     
     layer.startEditing()
     pr = layer.dataProvider()

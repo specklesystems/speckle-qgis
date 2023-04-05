@@ -187,7 +187,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.formLayout.insertRow(16,runDash)
         self.example1 = runDash
         
-        runDash = QtWidgets.QPushButton("#2 - Example")
+        runDash = QtWidgets.QPushButton("#2 - Add georeferencing to branches")
         runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: rgb(224,224,224); }")
         self.formLayout.insertRow(17,runDash)
         self.example2 = runDash
@@ -335,7 +335,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.contextVisualDialog = ContextVisualsDialog(None)
         self.contextVisualDialog.dataStorage = self.dataStorage
         self.contextVisualDialog.runSetup()
-        self.contextVisualDialog.show()
+        
 
         #if self.contextVisualDialog.dashboard is not None: 
         #    self.contextVisualDialog.dashboard.update()

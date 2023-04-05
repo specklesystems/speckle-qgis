@@ -1,5 +1,6 @@
 import inspect
 import os
+import time
 from typing import Any, List, Tuple, Union
 from ui.logger import logToUser
 import ui.speckle_qgis_dialog
@@ -21,9 +22,11 @@ from gql import gql
 #from qgis.PyQt import QtCore, QtWidgets #, QtWebEngineWidgets
 from PyQt5 import *
 from PyQt5.QtCore import QUrl
+from PyQt5.QtNetwork import QNetworkProxyFactory
 
 from speckle.notifications.utils import addDashboardTable
 
+from PyQt5.QtWebKit import QWebSettings
 
 try:
     import plotly.express as px
@@ -63,7 +66,7 @@ class ContextVisualsDialog(QtWidgets.QWidget, FORM_CLASS):
     existing_web: int = 0
 
     #Events
-    #handleStreamCreate = pyqtSignal(Account, str, str, bool)
+    pageLoaded = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super(ContextVisualsDialog,self).__init__(parent,QtCore.Qt.WindowStaysOnTopHint)
@@ -88,19 +91,37 @@ class ContextVisualsDialog(QtWidgets.QWidget, FORM_CLASS):
         if self.existing_web == 0:
             self.browser = QWebView(self)
         
+        QNetworkProxyFactory.setUseSystemConfiguration(True)
+        QWebSettings.globalSettings().setAttribute(QWebSettings.PluginsEnabled, True)
+        QWebSettings.globalSettings().setAttribute(QWebSettings.DnsPrefetchEnabled, True)
+        QWebSettings.globalSettings().setAttribute(QWebSettings.JavascriptEnabled, True)
+        QWebSettings.globalSettings().setAttribute(QWebSettings.OfflineStorageDatabaseEnabled, True)
+        QWebSettings.globalSettings().setAttribute(QWebSettings.AutoLoadImages, True)
+        QWebSettings.globalSettings().setAttribute(QWebSettings.LocalStorageEnabled, True)
+        QWebSettings.globalSettings().setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
+        QWebSettings.globalSettings().setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
+
         #self.browser.setHtml(fig.to_html(include_plotlyjs='cdn'))
         self.browser.setUrl(QUrl("https://speckle.xyz/streams/e2effcfa27/commits/f76cedd9a6"))
+        #self.browser.setUrl(QUrl("https://www.google.com/"))
+        #self.browser.load(QUrl("https://www.google.com/"))
         
         self.chart.layout = QHBoxLayout(self.chart)
         self.chart.layout.setContentsMargins(0,0,0,0)
-        self.browser.setMaximumHeight(400)
+        self.browser.setMaximumHeight(500)
 
         if self.existing_web == 0:
             self.chart.layout.addWidget(self.browser)
             self.existing_web = 1
+            self.browser.loadFinished.connect(self.displayPage)
 
         return 
     
+    def displayPage(self):
+        print(self.browser.loadFinished)
+        self.show()
+        return
+
     def runSetup(self):
         
         self.populateLayers()

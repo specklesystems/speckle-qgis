@@ -95,7 +95,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
                         if transform_name == "Extrude polygons by \'height\'":
                             
                             height = feature["height"]
-                            if height is None or height == 0: 
+                            if height is None or height == 0 or str(height) == "NULL": 
                                 height = random.randint(10, 20)
                             
                             # add a cap
