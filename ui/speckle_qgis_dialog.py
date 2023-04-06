@@ -27,7 +27,7 @@ import os
 import threading
 from plugin_utils.helpers import splitTextIntoLines
 from speckle.automation.mapping_send import MappingSendDialog
-from speckle.converter.layers import getLayers
+from speckle.converter.layers import getAllLayers, getLayers
 from ui.LogWidget import LogWidget
 from ui.logger import logToUser
 #from speckle_qgis import SpeckleQGIS
@@ -161,12 +161,21 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.formLayout.insertRow(10,box)
         self.experimental = btn
 
+
+    def runSetup(self, plugin):
+        
+        self.addDataStorage(plugin)
+        self.addLabel(plugin)
+        self.addProps(plugin)
+
+    def addProps(self, plugin):
+        
         # add widgets that will only show on event trigger 
         logWidget = LogWidget(parent=self)
         self.layout().addWidget(logWidget)
         self.msgLog = logWidget 
-    
-    def addProps(self, plugin):
+        self.msgLog.dockwidget = self 
+        
         self.msgLog.active_account = plugin.active_account
         self.msgLog.speckle_version = plugin.version
     

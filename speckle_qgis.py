@@ -614,9 +614,7 @@ class SpeckleQGIS:
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
-                self.dockwidget.addDataStorage(self)
-                self.dockwidget.addLabel(self)
-                self.dockwidget.addProps(self)
+                self.dockwidget.dockwidget(self)
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
 

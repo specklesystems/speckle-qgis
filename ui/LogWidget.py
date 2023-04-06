@@ -32,6 +32,7 @@ class LogWidget(QWidget):
 
     active_account: Account
     speckle_version: str
+    dockwidget: Any
     
     # constructor
     def __init__(self, parent=None):
