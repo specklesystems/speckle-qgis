@@ -144,7 +144,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
 
             # write feature attributes
             for f in selectedLayer.getFeatures():
-                b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer)
+                b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer, plugin.dataStorage)
                 layerObjs.append(b)
             # Convert layer to speckle
             layerBase = VectorLayer(units = "m", name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
@@ -156,7 +156,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
 
         if isinstance(selectedLayer, QgsRasterLayer):
             # write feature attributes
-            b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project)
+            b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin.dataStorage)
             layerObjs.append(b)
             # Convert layer to speckle
             layerBase = RasterLayer(units = "m", name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, elements=layerObjs, type="RasterLayer")

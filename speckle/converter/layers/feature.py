@@ -21,7 +21,7 @@ from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-pac
 
 from ui.logger import logToUser
 
-def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer):
+def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage = None):
     b = Base(units = "m")
     try:
         #apply transformation if needed
@@ -33,7 +33,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
 
         # Try to extract geometry
         try:
-            geom = convertToSpeckle(f, selectedLayer)
+            geom = convertToSpeckle(f, selectedLayer, dataStorage)
             
             b["geometry"] = [] 
             if geom is not None and geom!="None": 
@@ -166,7 +166,7 @@ def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, 
     return feat 
 
 
-def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordinateReferenceSystem, project: QgsProject) -> Base:
+def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordinateReferenceSystem, project: QgsProject, dataStorage = None) -> Base:
     
     b = Base(units = "m")
     try:
@@ -190,7 +190,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             reprojectedPt = rasterOriginPoint
             if selectedLayer.crs()!= projectCRS: reprojectedPt = transform.transform(project, rasterOriginPoint, selectedLayer.crs(), projectCRS)
             pt = QgsGeometry.fromPointXY(reprojectedPt)
-            geom = convertToSpeckle(pt, selectedLayer)
+            geom = convertToSpeckle(pt, selectedLayer, dataStorage)
             if (geom != None):
                 b['displayValue'] = [geom]
         except Exception as error:

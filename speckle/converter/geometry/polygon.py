@@ -1,6 +1,7 @@
 """ This module contains all geometry conversion functionality To and From Speckle."""
 
 import inspect
+import random
 from qgis.core import Qgis, QgsGeometry, QgsPolygon, QgsPointXY, QgsPoint, QgsFeature, QgsVectorLayer
 
 from typing import List, Sequence
@@ -60,7 +61,7 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
     
-def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer):
+def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None):
     """Converts a QgsPolygon to Speckle"""
     polygon = Base(units = "m")
     try:
@@ -75,13 +76,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         for v in voids:
             pts = speckleBoundaryToSpecklePts(v)
             voidsAsPts.append(pts)
-        r'''
 
-                                height = random.randint(10, 20)
-                                all_vals = [f["height"] for f in layer.getFeatures() if (f["height"] is not None and (isinstance(f["height"], float) or isinstance(f["height"], int) ) ) ]
-                                height = all_vals[int(len(all_vals)/2)]
-                                #height = random.randint(10, 20)
-        '''
         total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, layer)
 
         mesh = constructMesh(vertices, faces, colors)
@@ -89,6 +84,108 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
             polygon.displayValue = [ mesh ] 
         else: 
             logToUser("Mesh creation from Polygon failed. Boundaries will be used as displayValue", level = 1, func = inspect.stack()[0][3])
+        
+        
+        #############################################################
+        try:
+            if dataStorage.savedTransforms is not None:
+                for item in dataStorage.savedTransforms:
+                    layer_name = item.split("  ->  ")[0]
+                    transform_name = item.split("  ->  ")[1]
+                    if layer_name == layer.name():
+                        print("Apply transform: " + transform_name)
+                        if "extrude polygons" in transform_name.lower():
+                            
+                            try:
+                                if dataStorage.projectCRS.isGeographic():
+                                    logToUser("Extrusion can only be applied when project CRS is using metric units", level = 1, func = inspect.stack()[0][3])
+                                    return polygon
+                            except: pass
+                            
+                            height = feature["height"]
+                            if height is None or height == 0 or str(height) == "NULL":
+                                #height = random.randint(10, 20)
+                                all_vals = [f["height"] for f in layer.getFeatures() if (f["height"] is not None and (isinstance(f["height"], float) or isinstance(f["height"], int) ) ) ]
+                                try: 
+                                    height_average = all_vals[int(len(all_vals)/2)]
+                                    height = random.randint(height_average-5, height_average+5)
+                                except: 
+                                    height = random.randint(10, 20)
+                            if height is None or height == 0 or str(height) == "NULL": 
+                                height = random.randint(10, 20)
+                            
+                            # add a cap
+                            polyBorder2 = []
+                            universal_z_value = polyBorder[0].z
+                            for pt in polyBorder:
+                                if pt.z != universal_z_value:
+                                    logToUser("Extrusion can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
+                                    return polygon
+                                polyBorder2.append(Point(x=pt.x, y=pt.y, z= height, units="m"))
+
+                            voidsAsPts2 = []
+                            for v in voidsAsPts:
+                                void =[]
+                                for pt in v:
+                                    void.append(Point(x=pt.x, y=pt.y, z= height, units="m"))
+                                voidsAsPts2.append(void)
+
+                            total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder2, voidsAsPts2, 0, feature, layer)
+                            mesh_cap = constructMesh(vertices, faces, colors)
+                            polygon.displayValue.append(mesh_cap)  
+
+                            # add extrusions
+                            for k, pt in enumerate(polyBorder):
+                                polyBorder2 = []
+                                try:
+                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z=polyBorder[k].z, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z= height, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[k+1].x, y=polyBorder[k+1].y, z= height, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[k+1].x, y=polyBorder[k+1].y, z=polyBorder[k+1].z, units="m"))
+
+                                    total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder2, [], 0, feature, layer)
+                                    mesh_side = constructMesh(vertices, faces, colors)
+                                    polygon.displayValue.append(mesh_side) 
+                                except: 
+                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z=polyBorder[k].z, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z= height, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[0].x, y=polyBorder[0].y, z= height, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[0].x, y=polyBorder[0].y, z=polyBorder[0].z, units="m"))
+
+                                    total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder2, [], 0, feature, layer)
+                                    mesh_side = constructMesh(vertices, faces, colors)
+                                    polygon.displayValue.append(mesh_side) 
+                                    break
+
+                            voidsAsPts2 = []
+                            for v in voidsAsPts:
+                                for k, pt in enumerate(v):
+                                    void =[]
+                                    try:
+                                        void.append(Point(x=v[k].x, y=v[k].y, z=v[k].z, units="m"))
+                                        void.append(Point(x=v[k].x, y=v[k].y, z= height, units="m"))
+                                        void.append(Point(x=v[k+1].x, y=v[k+1].y, z= height, units="m"))
+                                        void.append(Point(x=v[k+1].x, y=v[k+1].y, z=v[k+1].z, units="m"))
+
+                                        total_vert, vertices, faces, colors = meshPartsFromPolygon(void, [], 0, feature, layer)
+                                        mesh_side_void = constructMesh(vertices, faces, colors)
+                                        polygon.displayValue.append(mesh_side_void)  
+                                    except:
+                                        void.append(Point(x=v[k].x, y=v[k].y, z=v[k].z, units="m"))
+                                        void.append(Point(x=v[k].x, y=v[k].y, z= height, units="m"))
+                                        void.append(Point(x=v[0].x, y=v[0].y, z= height, units="m"))
+                                        void.append(Point(x=v[0].x, y=v[0].y, z=v[0].z, units="m"))
+
+                                        total_vert, vertices, faces, colors = meshPartsFromPolygon(void, [], 0, feature, layer)
+                                        mesh_side_void = constructMesh(vertices, faces, colors)
+                                        polygon.displayValue.append(mesh_side_void)  
+                                        break
+
+
+        except Exception as e: 
+            logToUser(str(e), level = 1, func = inspect.stack()[0][3])
+        ############################################
+        
         return polygon
     
     except Exception as e:
