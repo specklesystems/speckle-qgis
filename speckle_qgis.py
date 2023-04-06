@@ -50,6 +50,7 @@ from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.layers.Layer import Layer, VectorLayer, RasterLayer
 from speckle.converter.layers import convertSelectedLayers, getLayers
 from speckle.converter.layers.utils import findAndClearLayerGroup
+from speckle.DataStorage import DataStorage
 
 from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
@@ -89,6 +90,8 @@ class SpeckleQGIS:
     active_account: Account
 
     theads_total: int
+
+    dataStorage: DataStorage
 
     def __init__(self, iface):
         """Constructor.
@@ -386,8 +389,8 @@ class SpeckleQGIS:
                 return
 
             base_obj = Collection(units = "m")
-            base_obj.layers = convertSelectedLayers(layers, [],[], projectCRS, self)
-            if base_obj.layers is None:
+            base_obj.elements = convertSelectedLayers(layers, [],[], projectCRS, self)
+            if base_obj.elements is None:
                 return 
 
             # Get the stream wrapper
@@ -607,6 +610,8 @@ class SpeckleQGIS:
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         self.is_setup = self.check_for_accounts()
+        self.dataStorage = DataStorage()
+        self.dataStorage.project = self.qgis_project
             
         if self.pluginIsActive:
             self.reloadUI()
@@ -614,7 +619,7 @@ class SpeckleQGIS:
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
-                self.dockwidget.dockwidget(self)
+                self.dockwidget.runSetup(self)
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
 

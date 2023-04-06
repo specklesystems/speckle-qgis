@@ -97,7 +97,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
                         if "extrude polygons" in transform_name.lower():
                             
                             try:
-                                if dataStorage.projectCRS.isGeographic():
+                                if dataStorage.project.crs().isGeographic():
                                     logToUser("Extrusion can only be applied when project CRS is using metric units", level = 1, func = inspect.stack()[0][3])
                                     return polygon
                             except: pass

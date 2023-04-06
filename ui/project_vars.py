@@ -68,7 +68,8 @@ def get_project_layer_selection(plugin: SpeckleQGIS):
                         break
                 if found == 0: 
                     logToUser(f'Saved layer not found: "{id}"', level = 1, func = inspect.stack()[0][3])
-        plugin.current_layers = temp
+        #plugin.current_layers = temp
+        plugin.dataStorage.current_layers = temp
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget)
         return
@@ -77,7 +78,7 @@ def set_project_layer_selection(plugin: SpeckleQGIS):
     try:
         proj = plugin.qgis_project
         #value = ",".join([x.id() for x in self.iface.layerTreeView().selectedLayers()]) #'points_qgis2_b22ed3d0_0ff9_40d2_97f2_bd17a350d698' <qgis._core.QgsVectorDataProvider object at 0x000002627D9D4790>
-        value = ",".join([x[1].id() for x in plugin.current_layers]) 
+        value = ",".join([x[1].id() for x in plugin.dataStorage.current_layers]) 
         proj.writeEntry("speckle-qgis", "project_layer_selection", value)
         try:
             metrics.track("Connector Action", plugin.active_account, {"name": "Save Layer Selection", "connector_version": str(plugin.version)})

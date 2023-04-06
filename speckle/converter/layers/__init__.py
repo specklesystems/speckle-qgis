@@ -70,7 +70,7 @@ def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, Qg
         else: # from project data 
             project = plugin.qgis_project
             #all_layers_ids = [l.id() for l in project.mapLayers().values()]
-            for item in plugin.current_layers:
+            for item in plugin.dataStorage.current_layers:
                 try: 
                     id = item[1].id()
                 except:
