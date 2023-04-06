@@ -75,7 +75,13 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         for v in voids:
             pts = speckleBoundaryToSpecklePts(v)
             voidsAsPts.append(pts)
+        r'''
 
+                                height = random.randint(10, 20)
+                                all_vals = [f["height"] for f in layer.getFeatures() if (f["height"] is not None and (isinstance(f["height"], float) or isinstance(f["height"], int) ) ) ]
+                                height = all_vals[int(len(all_vals)/2)]
+                                #height = random.randint(10, 20)
+        '''
         total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, layer)
 
         mesh = constructMesh(vertices, faces, colors)
