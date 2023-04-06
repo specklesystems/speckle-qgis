@@ -1,6 +1,7 @@
 
 import time
-from typing import Any, Callable, List, Optional 
+from typing import Any, Callable, List, Optional
+from plugin_utils.helpers import removeSpecialCharacters 
 
 from speckle.logging import logger
 from qgis.core import Qgis, QgsProject
@@ -76,13 +77,14 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin):
             if not isinstance(base, Base): continue
             if (name == "displayValue" or name == "@displayValue") and base.speckle_type.startswith(tuple(SPECKLE_TYPES_TO_READ)): continue 
 
-            try: loopVal(base[name], baseName + "/" + name, streamBranch, plugin)
+            try: loopVal(base[name], baseName + "_" + name, streamBranch, plugin)
             except: pass
     except: pass
 
 def loopVal(value: Any, name: str, streamBranch: str, plugin): # "name" is the parent object/property/layer name
 
     try: 
+        name = removeSpecialCharacters(name)
         if isinstance(value, Base): 
             try: # loop through objects with Speckletype prop, but don't go through parts of Speckle Geometry object
                 if not value.speckle_type.startswith("Objects.Geometry."): 
