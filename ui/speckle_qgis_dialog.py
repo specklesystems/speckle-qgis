@@ -26,6 +26,7 @@ import inspect
 import os
 import threading
 from plugin_utils.helpers import splitTextIntoLines
+from speckle.automation.mapping_send import MappingSendDialog
 from speckle.converter.layers import getLayers
 from ui.LogWidget import LogWidget
 from ui.logger import logToUser
@@ -91,6 +92,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     runButton: QtWidgets.QPushButton
     experimental: QCheckBox
     msgLog: LogWidget = None
+    dataStorage = None
     
     def __init__(self, parent=None):
         """Constructor."""
@@ -167,6 +169,18 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def addProps(self, plugin):
         self.msgLog.active_account = plugin.active_account
         self.msgLog.speckle_version = plugin.version
+    
+    def addDataStorage(self, plugin):
+        self.dataStorage = plugin.dataStorage
+        root = self.dataStorage.project.layerTreeRoot()
+        self.dataStorage.all_layers = getAllLayers(root)
+    
+    def showMappingDialog(self):
+        
+        self.mappingSendDialog = MappingSendDialog(None)
+        self.mappingSendDialog.dataStorage = self.dataStorage
+        self.mappingSendDialog.runSetup()
+        self.mappingSendDialog.show()
 
     def addLabel(self, plugin): 
         try:
