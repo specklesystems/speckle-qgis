@@ -130,7 +130,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer)
                 layerObjs.append(b)
             # Convert layer to speckle
-            layerBase = VectorLayer(units = "m", name=layerName, crs=speckleReprojectedCrs, features=layerObjs, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
+            layerBase = VectorLayer(units = "m", name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
             layerBase.type="VectorLayer"
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
@@ -142,7 +142,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project)
             layerObjs.append(b)
             # Convert layer to speckle
-            layerBase = RasterLayer(units = "m", name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, features=layerObjs, type="RasterLayer")
+            layerBase = RasterLayer(units = "m", name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, elements=layerObjs, type="RasterLayer")
             layerBase.type="RasterLayer"
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
@@ -543,7 +543,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         layerGroup.setItemVisibilityChecked(True)
 
         #find ID of the layer with a matching name in the "latest" group 
-        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
+        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
         # particularly if the layer comes from ArcGIS
         geomType = layer.geomType # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
@@ -599,7 +599,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         project = plugin.qgis_project
         layerName = removeSpecialCharacters(layer.name) + "_Speckle"
 
-        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
+        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten

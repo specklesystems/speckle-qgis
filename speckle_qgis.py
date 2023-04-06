@@ -37,6 +37,7 @@ from specklepy.logging.exceptions import SpeckleException, GraphQLException
 from specklepy.api.models import Stream
 from specklepy.api.wrapper import StreamWrapper
 from specklepy.objects import Base
+from specklepy.objects.other import Collection
 from specklepy.transports.server import ServerTransport
 from specklepy.api.credentials import Account, get_local_accounts #, StreamWrapper
 from specklepy.api.client import SpeckleClient
@@ -384,7 +385,7 @@ class SpeckleQGIS:
                 logToUser("No layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
 
-            base_obj = Base(units = "m")
+            base_obj = Collection(units = "m")
             base_obj.layers = convertSelectedLayers(layers, [],[], projectCRS, self)
             if base_obj.layers is None:
                 return 
