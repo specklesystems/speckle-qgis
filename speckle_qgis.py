@@ -550,7 +550,7 @@ class SpeckleQGIS:
             findAndClearLayerGroup(self.qgis_project, newGroupName)
 
             if app.lower() == "qgis" or app.lower() == "arcgis": check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
-            else: check: Callable[[Base], bool] = lambda base: (base.speckle_type and base.speckle_type.endswith("Base") )
+            else: check: Callable[[Base], bool] = lambda base: (base.speckle_type) # and base.speckle_type.endswith("Base") )
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
