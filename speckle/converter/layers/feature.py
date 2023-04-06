@@ -274,7 +274,37 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     pt2 = transform.transform(project, src = pt2, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
                     pt3 = transform.transform(project, src = pt3, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
                     pt4 = transform.transform(project, src = pt4, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
-                vertices.extend([pt1.x(), pt1.y(), 0, pt2.x(), pt2.y(), 0, pt3.x(), pt3.y(), 0, pt4.x(), pt4.y(), 0]) ## add 4 points
+                
+                
+                z1 = z2 = z3 = z4 = 0
+                #############################################################
+                if dataStorage.savedTransforms is not None:
+                    for item in dataStorage.savedTransforms:
+                        layer_name = item.split("  ->  ")[0]
+                        transform_name = item.split("  ->  ")[1]
+                        if layer_name == selectedLayer.name():
+                            print("Apply transform: " + transform_name)
+                            if "elevation to mesh" in transform_name.lower():
+
+                                height_list = rasterBandVals[0]
+                                try: # top vertices
+                                    z1 = height_list[int( count/4 ) - rasterDimensions[0] -1 ]
+                                except: 
+                                    z1 = height_list[int( count/4 )]
+                                try:
+                                    z4 = height_list[int( count/4 ) - rasterDimensions[0] ]
+                                except:
+                                    z4 = height_list[int( count/4 )]
+
+                                try: # bottom vertices
+                                    z3 = height_list[int( count/4 )] # the only one advancing
+                                    z2 = height_list[int( count/4 ) -1 ]
+                                except: 
+                                    z2 = height_list[int( count/4 )]
+
+                ########################################################
+
+                vertices.extend([pt1.x(), pt1.y(), z1, pt2.x(), pt2.y(), z2, pt3.x(), pt3.y(), z3, pt4.x(), pt4.y(), z4]) ## add 4 points
                 faces.extend([4, count, count+1, count+2, count+3])
 
                 # color vertices according to QGIS renderer

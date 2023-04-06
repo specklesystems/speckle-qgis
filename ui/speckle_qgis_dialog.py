@@ -184,7 +184,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         # add row with "experimental" checkbox 
         box = QWidget()
         box.layout = QHBoxLayout(box)
-        btn = QtWidgets.QPushButton("Apply transformation on Send")
+        btn = QtWidgets.QPushButton("Apply transformations on Send")
         btn.setFlat(True)
         btn.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{COLOR}" + " }")
         box.layout.addWidget(btn)
@@ -388,6 +388,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             self.commitDropdown.setEnabled(False)
             self.messageInput.setEnabled(True)
             self.layerSendModeDropdown.setEnabled(True)
+            self.setMapping.setEnabled(True)
 
             self.runBtnStatusChanged(plugin)
             return
@@ -416,6 +417,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             self.messageInput.setEnabled(False)
             self.saveLayerSelection.setEnabled(False)
             self.layerSendModeDropdown.setEnabled(False)
+            self.setMapping.setEnabled(False)
 
             self.runBtnStatusChanged(plugin)
             return
