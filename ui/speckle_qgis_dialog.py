@@ -91,6 +91,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     layersWidget: QtWidgets.QListWidget
     saveLayerSelection: QtWidgets.QPushButton
     runButton: QtWidgets.QPushButton
+    setMapping: QtWidgets.QPushButton
     experimental: QCheckBox
     msgLog: LogWidget = None
     dataStorage: DataStorage = None
@@ -179,6 +180,17 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         
         self.msgLog.active_account = plugin.active_account
         self.msgLog.speckle_version = plugin.version
+
+        # add row with "experimental" checkbox 
+        box = QWidget()
+        box.layout = QHBoxLayout(box)
+        btn = QtWidgets.QPushButton("Apply transformation on Send")
+        btn.setFlat(True)
+        btn.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{COLOR}" + " }")
+        box.layout.addWidget(btn)
+        box.layout.setContentsMargins(65, 0, 0, 0)
+        self.formLayout.insertRow(9,box)
+        self.setMapping = btn
     
     def addDataStorage(self, plugin):
         self.dataStorage = plugin.dataStorage
@@ -310,6 +322,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             self.runButton.clicked.connect(plugin.onRunButtonClicked)
 
             self.msgLog.sendMessage.connect(self.addMsg)
+            self.setMapping.clicked.connect(self.showMappingDialog)
 
             self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
             self.reloadButton.clicked.connect(lambda: self.refreshClicked(plugin))
