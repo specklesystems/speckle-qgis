@@ -101,13 +101,13 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
                             # add a cap
                             polyBorder2 = []
                             for pt in polyBorder:
-                                polyBorder2.append(Point(x=pt.x, y=pt.y, z= height))
+                                polyBorder2.append(Point(x=pt.x, y=pt.y, z= height, units="m"))
 
                             voidsAsPts2 = []
                             for v in voidsAsPts:
                                 void =[]
                                 for pt in v:
-                                    void.append(Point(x=pt.x, y=pt.y, z= height))
+                                    void.append(Point(x=pt.x, y=pt.y, z= height, units="m"))
                                 voidsAsPts2.append(void)
 
                             total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder2, voidsAsPts2, 0, feature, layer)
@@ -118,19 +118,19 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
                             for k, pt in enumerate(polyBorder):
                                 polyBorder2 = []
                                 try:
-                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z=polyBorder[k].z))
-                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z= height))
-                                    polyBorder2.append(Point(x=polyBorder[k+1].x, y=polyBorder[k+1].y, z= height))
-                                    polyBorder2.append(Point(x=polyBorder[k+1].x, y=polyBorder[k+1].y, z=polyBorder[k+1].z))
+                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z=polyBorder[k].z, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z= height, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[k+1].x, y=polyBorder[k+1].y, z= height, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[k+1].x, y=polyBorder[k+1].y, z=polyBorder[k+1].z, units="m"))
 
                                     total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder2, [], 0, feature, layer)
                                     mesh_side = constructMesh(vertices, faces, colors)
                                     polygon.displayValue.append(mesh_side) 
                                 except: 
-                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z=polyBorder[k].z))
-                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z= height))
-                                    polyBorder2.append(Point(x=polyBorder[0].x, y=polyBorder[0].y, z= height))
-                                    polyBorder2.append(Point(x=polyBorder[0].x, y=polyBorder[0].y, z=polyBorder[0].z))
+                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z=polyBorder[k].z, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z= height, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[0].x, y=polyBorder[0].y, z= height, units="m"))
+                                    polyBorder2.append(Point(x=polyBorder[0].x, y=polyBorder[0].y, z=polyBorder[0].z, units="m"))
 
                                     total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder2, [], 0, feature, layer)
                                     mesh_side = constructMesh(vertices, faces, colors)
@@ -142,19 +142,19 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
                                 for k, pt in enumerate(v):
                                     void =[]
                                     try:
-                                        void.append(Point(x=v[k].x, y=v[k].y, z=v[k].z))
-                                        void.append(Point(x=v[k].x, y=v[k].y, z= height))
-                                        void.append(Point(x=v[k+1].x, y=v[k+1].y, z= height))
-                                        void.append(Point(x=v[k+1].x, y=v[k+1].y, z=v[k+1].z))
+                                        void.append(Point(x=v[k].x, y=v[k].y, z=v[k].z, units="m"))
+                                        void.append(Point(x=v[k].x, y=v[k].y, z= height, units="m"))
+                                        void.append(Point(x=v[k+1].x, y=v[k+1].y, z= height, units="m"))
+                                        void.append(Point(x=v[k+1].x, y=v[k+1].y, z=v[k+1].z, units="m"))
 
                                         total_vert, vertices, faces, colors = meshPartsFromPolygon(void, [], 0, feature, layer)
                                         mesh_side_void = constructMesh(vertices, faces, colors)
                                         polygon.displayValue.append(mesh_side_void)  
                                     except:
-                                        void.append(Point(x=v[k].x, y=v[k].y, z=v[k].z))
-                                        void.append(Point(x=v[k].x, y=v[k].y, z= height))
-                                        void.append(Point(x=v[0].x, y=v[0].y, z= height))
-                                        void.append(Point(x=v[0].x, y=v[0].y, z=v[0].z))
+                                        void.append(Point(x=v[k].x, y=v[k].y, z=v[k].z, units="m"))
+                                        void.append(Point(x=v[k].x, y=v[k].y, z= height, units="m"))
+                                        void.append(Point(x=v[0].x, y=v[0].y, z= height, units="m"))
+                                        void.append(Point(x=v[0].x, y=v[0].y, z=v[0].z, units="m"))
 
                                         total_vert, vertices, faces, colors = meshPartsFromPolygon(void, [], 0, feature, layer)
                                         mesh_side_void = constructMesh(vertices, faces, colors)
