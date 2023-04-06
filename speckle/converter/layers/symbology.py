@@ -35,6 +35,8 @@ def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer) -
                 if sSymb is not None: color = sSymb.color()
                 category = renderer.classAttribute() # get the name of attribute used for classification
                 for obj in renderer.categories():
+                    print(obj.value()) # None
+                    print(feature.attribute( category )) # NULL
                     try: 
                         if float(obj.value()) == float(feature.attribute( category )):
                             color = obj.symbol().color()
@@ -43,6 +45,8 @@ def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer) -
                         if str(obj.value()) == str(feature.attribute( category )): 
                             color = obj.symbol().color()
                             break
+                    if str(obj.value()) == "None" or str(obj.value()) == "": # other category
+                        color = obj.symbol().color() 
             elif renderer.type() == 'graduatedSymbol':
                 color = renderer.sourceSymbol().color()
                 category = renderer.legendClassificationAttribute() # get the name of attribute used for classification
