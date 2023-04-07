@@ -8,6 +8,7 @@ from specklepy.objects.other import RenderMaterial
 import shapefile
 from shapefile import TRIANGLE_STRIP, TRIANGLE_FAN, OUTER_RING
 from speckle.converter.geometry.point import pointToNative
+from speckle.converter.geometry.utils import fix_orientation
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_scale_factor
 from speckle.logging import logger
@@ -196,17 +197,10 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
         col = featureColorfromNativeRenderer(feature, layer)
             
         if len(voidsAsPts) == 0: # only if there is a mesh with no voids and large amount of points
-            sum_orientation = 0 # floor: need positive - clockwise (looking down); cap need negative (counter-clockwise)
-            for k, ptt in enumerate(polyBorder): #pointList:
-                try: 
-                    pt = polyBorder[k*coef]
-                    pt2 = polyBorder[(k+1)*coef]
-                    sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)
-                except: break
-            if sum_orientation < 0:
-                polyBorder.reverse()
+            # floor: need positive - clockwise (looking down); cap need negative (counter-clockwise)
+            polyBorder = fix_orientation(polyBorder, True, coef) # clockwise
 
-            if height is None: polyBorder.reverse() # when no extrusions: face up
+            if height is None: polyBorder.reverse() # when no extrusions: face up, counter-clockwise
 
             for k, ptt in enumerate(polyBorder): #pointList:
                 pt = polyBorder[k*coef]
@@ -277,15 +271,14 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                 return total_vertices, vertices, faces, colors
 
             # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
-        else: # if there are voids: face should be clockwise (walls also)
+        else: # if there are voids: face should be clockwise 
             # if its a large polygon with voids to be triangualted, lower the coef even more:
             maxPoints = 100
             if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
 
             trianglator = Triangulator()
-
             pt_count = 0
-            # add extra middle point for border
+            
             for k, ptt in enumerate(polyBorder): #pointList:
                 pt = polyBorder[k*coef]
                 if k < maxPoints:
@@ -297,8 +290,7 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                     vertices.extend([pt.x, pt.y, pt.z])
                     if height is not None: 
                         vertices_cap.extend([pt.x, pt.y, pt.z + height])
-                    #trianglator.addPolygonVertex(trianglator.addVertex((pt.x+pt2.x)/2, (pt.y+pt2.y)/2))
-                    #vertices.extend([(pt.x+pt2.x)/2, (pt.y+pt2.y)/2, (pt.z+pt2.z)/2])
+                    
                     total_vertices += 1
                     pt_count += 1
                 else: break
@@ -322,22 +314,23 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             trianglator.triangulate()
             i = 0
             print(trianglator.getNumTriangles())
+            faces_reversed = []
             total_tr = trianglator.getNumTriangles()
             while i < trianglator.getNumTriangles():
                 tr = [trianglator.getTriangleV0(i),trianglator.getTriangleV1(i),trianglator.getTriangleV2(i)]
                 faces.extend([3, tr[0] + existing_vert, tr[1] + existing_vert, tr[2] + existing_vert])
+                faces_reversed.extend([3, tr[2] + existing_vert, tr[1] + existing_vert, tr[0] + existing_vert])
                 faces_cap.extend([3, tr[0] + existing_vert + total_tr, tr[1] + existing_vert + total_tr, tr[2] + existing_vert + total_tr])
                 i+=1
-            
-            #####################################
-            if height is not None: 
 
+            if height is not None: 
+                faces = faces_reversed # if extrusion, flip the base to look down 
                 total_vertices *= 2
                 
                 # add extrusions
+                polyBorder = fix_orientation(polyBorder, True, coef) # clockwise
                 universal_z_value = polyBorder[0].z
                 for k, pt in enumerate(polyBorder):
-                    polyBorder2 = []
                     try:
                         vertices_side.extend([polyBorder[k].x, polyBorder[k].y, universal_z_value,
                                          polyBorder[k].x, polyBorder[k].y, height + universal_z_value,
@@ -356,8 +349,8 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
 
                         break
 
-                voidsAsPts2 = []
                 for v in voidsAsPts:
+                    v = fix_orientation(v, False, coef) # counter-clockwise
                     for k, pt in enumerate(v):
                         void =[]
                         try:

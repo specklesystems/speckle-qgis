@@ -9,6 +9,23 @@ from typing import List, Union
 from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
 from ui.logger import logToUser
 
+def fix_orientation(polyBorder: List, positive = True, coef = 1): 
+    sum_orientation = 0 
+    for k, ptt in enumerate(polyBorder): #pointList:
+        try: 
+            pt = polyBorder[k*coef]
+            pt2 = polyBorder[(k+1)*coef]
+            sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)
+        except: break
+    if positive is True: 
+        if sum_orientation < 0:
+            polyBorder.reverse()
+    else: 
+        if sum_orientation > 0:
+            polyBorder.reverse()
+    
+    return polyBorder
+    
 def getPolygonFeatureHeight(feature, layer):
     
     try:
