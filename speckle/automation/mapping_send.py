@@ -1,12 +1,15 @@
 import inspect
 import os
 from typing import Any, List, Tuple, Union
+from plugin_utils.helpers import getFirstMatchingLayerByName
+from speckle.converter.layers.utils import getLayerGeomType
 from ui.logger import displayUserMsg, logToUser
 import ui.speckle_qgis_dialog
-from qgis.core import Qgis
+from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
 
 from speckle.logging import logger
 from qgis.PyQt import QtWidgets, uic, QtCore
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QCheckBox, QListWidgetItem
 from qgis.PyQt.QtCore import pyqtSignal
 from specklepy.api.models import Stream
@@ -84,8 +87,24 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                     displayUserMsg("Selected layer already has a transformation applied", level=1) 
                     break
             if exists == 0:
-                self.dataStorage.savedTransforms.append(listItem)
-                self.populateSavedTransforms()
+                layer = getFirstMatchingLayerByName(self.dataStorage.project, listItem.split("  ->  ")[0])
+                if layer is not None:
+                    if "extrude" in listItem.split("  ->  ")[1].lower():
+                        try:
+                            geom_type = getLayerGeomType(layer)
+                            if "polygon" not in geom_type.lower():
+                                displayUserMsg("Selected transformation can only be applied to Polygon layers", level=1) 
+                                return
+                        except:
+                            displayUserMsg("Selected transformation can only be applied to Polygon layers", level=1) 
+                            return
+
+                    if "elevation" in listItem.split("  ->  ")[1].lower():
+                        if not isinstance(layer, QgsRasterLayer):
+                            displayUserMsg("Selected transformation can only be applied to Raster layers", level=1) 
+                            return
+                    self.dataStorage.savedTransforms.append(listItem)
+                    self.populateSavedTransforms()
     
     def onRemoveTransform(self):
 
@@ -109,9 +128,12 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     def populateLayers(self):
         try:
             self.layerDropdown.clear()
-            for layer in self.dataStorage.all_layers:
+            for i, layer in enumerate(self.dataStorage.all_layers):
                 listItem = layer.name()
-                self.layerDropdown.addItem(listItem)    
+                self.layerDropdown.addItem(listItem)  
+                icon = QgsIconUtils().iconForLayer(layer.layer())
+                self.layerDropdown.setItemIcon(i, icon)  
+
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3])
             return

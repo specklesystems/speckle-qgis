@@ -1,6 +1,19 @@
 import os
 from typing import List
 
+def getFirstMatchingLayerByName(project, name: str):
+    from qgis.core import QgsLayerTreeLayer
+    
+    root = project.layerTreeRoot()
+    new_layer = None
+    for child in root.children():
+        if isinstance(child, QgsLayerTreeLayer): 
+            if child.name() == name:
+                new_layer = child.layer()
+                try: new_layer = new_layer.layer()
+                except: pass
+                return new_layer
+
 def getAppName(name: str) -> str:
     new_name = ""
     for i, x in enumerate(str(name)):
