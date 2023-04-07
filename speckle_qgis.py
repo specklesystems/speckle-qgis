@@ -85,9 +85,9 @@ class SpeckleQGIS:
     lat: float
     lon: float
 
-    default_account: Account
+    #default_account: Account
     accounts: List[Account]
-    active_account: Account
+    #active_account: Account
 
     theads_total: int
 
@@ -111,9 +111,9 @@ class SpeckleQGIS:
         self.qgis_project = QgsProject.instance()
         self.current_streams = []
         self.active_stream = None
-        self.default_account = None 
-        self.accounts = [] 
-        self.active_account = None 
+        #self.default_account = None 
+        #self.accounts = [] 
+        #self.active_account = None 
 
         self.theads_total = 0
 
@@ -292,7 +292,7 @@ class SpeckleQGIS:
             if not self.dockwidget.experimental.isChecked(): 
                 
                 try:
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": False, "connector_version": str(self.version)})
+                    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Send", "is": False, "connector_version": str(self.version)})
                 except Exception as e:
                     logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                 
@@ -304,9 +304,10 @@ class SpeckleQGIS:
                         return
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
-                    self.active_account = client.account
+                    self.dataStorage.active_account = client.account
+                    
                     try:
-                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
+                        metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
                     except Exception as e:
                         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                     
@@ -326,7 +327,7 @@ class SpeckleQGIS:
             if not self.dockwidget.experimental.isChecked(): 
                 
                 try:
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": False, "connector_version": str(self.version)})
+                    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": False, "connector_version": str(self.version)})
                 except Exception as e:
                     logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                 
@@ -338,9 +339,9 @@ class SpeckleQGIS:
                         return
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
-                    self.active_account = client.account
+                    self.dataStorage.active_account = client.account
                     try:
-                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
+                        metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
                     except Exception as e:
                         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                     #with ThreadPoolExecutor(max_workers=1) as executor:
@@ -448,9 +449,9 @@ class SpeckleQGIS:
                 except:
                     metr_crs = False
 
-                metrics.track(metrics.SEND, self.active_account, {"hostAppFullVersion":self.gis_version, "branches":metr_branches, "collaborators":metr_collab,"connector_version": str(self.version), "filter": metr_filter, "isMain": metr_main, "savedStreams": metr_saved_streams, "projectedCRS": metr_projected, "customCRS": metr_crs})
+                metrics.track(metrics.SEND, self.dataStorage.active_account, {"hostAppFullVersion":self.gis_version, "branches":metr_branches, "collaborators":metr_collab,"connector_version": str(self.version), "filter": metr_filter, "isMain": metr_main, "savedStreams": metr_saved_streams, "projectedCRS": metr_projected, "customCRS": metr_crs})
             except:
-                metrics.track(metrics.SEND, self.active_account)
+                metrics.track(metrics.SEND, self.dataStorage.active_account)
             '''
             
             if isinstance(commit_id, SpeckleException):
@@ -532,9 +533,9 @@ class SpeckleQGIS:
             metr_projected = True if not projectCRS.isGeographic() else False
             if self.qgis_project.crs().isValid() is False: metr_projected = None
             try:
-                metrics.track(metrics.RECEIVE, self.active_account, {"hostAppFullVersion":self.gis_version, "sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
+                metrics.track(metrics.RECEIVE, self.dataStorage.active_account, {"hostAppFullVersion":self.gis_version, "sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
             except:
-                metrics.track(metrics.RECEIVE, self.active_account)
+                metrics.track(metrics.RECEIVE, self.dataStorage.active_account)
             
             client.commit.received(
             streamId,
@@ -588,14 +589,14 @@ class SpeckleQGIS:
             def go_to_manager():
                 webbrowser.open("https://speckle-releases.netlify.app/")
             accounts = get_local_accounts()
-            self.accounts = accounts
+            self.dataStorage.accounts = accounts
             if len(accounts) == 0:
                 logToUser("No accounts were found. Please remember to install the Speckle Manager and setup at least one account", level = 1, url="https://speckle-releases.netlify.app/", func = inspect.stack()[0][3], plugin = self.dockwidget) #, action_text="Download Manager", callback=go_to_manager)
                 return False
             for acc in accounts:
                 if acc.isDefault: 
-                    self.default_account = acc 
-                    self.active_account = acc 
+                    self.dataStorage.default_account = acc 
+                    self.dataStorage.active_account = acc 
                     break 
             return True
         except Exception as e:
@@ -605,13 +606,17 @@ class SpeckleQGIS:
     def run(self):
         """Run method that performs all the real work"""
         from ui.speckle_qgis_dialog import SpeckleQGISDialog
-        from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection
+        from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection, get_transformations
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        self.is_setup = self.check_for_accounts()
         self.dataStorage = DataStorage()
+        self.dataStorage.plugin_version = self.version
         self.dataStorage.project = self.qgis_project
+    
+        get_transformations(self.dataStorage)
+
+        self.is_setup = self.check_for_accounts()
             
         if self.pluginIsActive:
             self.reloadUI()

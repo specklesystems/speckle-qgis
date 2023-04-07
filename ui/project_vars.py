@@ -3,6 +3,8 @@
 # Persist added streams in project
 import inspect
 import time
+from typing import List
+from plugin_utils.helpers import getFirstMatchingLayerByName
 from speckle.converter.layers.utils import saveCRS
 from speckle_qgis import SpeckleQGIS
 
@@ -12,7 +14,7 @@ from specklepy.logging import metrics
 
 from speckle.logging import logger
 from qgis.core import (Qgis, QgsProject, QgsCoordinateReferenceSystem)
-from ui.logger import logToUser
+from ui.logger import displayUserMsg, logToUser
 from ui.validation import tryGetStream
 
 def get_project_streams(plugin: SpeckleQGIS):
@@ -81,7 +83,7 @@ def set_project_layer_selection(plugin: SpeckleQGIS):
         value = ",".join([x[1].id() for x in plugin.dataStorage.current_layers]) 
         proj.writeEntry("speckle-qgis", "project_layer_selection", value)
         try:
-            metrics.track("Connector Action", plugin.active_account, {"name": "Save Layer Selection", "connector_version": str(plugin.version)})
+            metrics.track("Connector Action", plugin.dataStorage.active_account, {"name": "Save Layer Selection", "connector_version": str(plugin.version)})
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
 
@@ -95,7 +97,7 @@ def get_survey_point(plugin: SpeckleQGIS):
         proj = plugin.qgis_project
         points = proj.readEntry("speckle-qgis", "survey_point", "")
         if points[1] and len(points[0])>0: 
-            vals: list[str] = points[0].replace(" ","").split(";")[:2]
+            vals: List[str] = points[0].replace(" ","").split(";")[:2]
             plugin.lat, plugin.lon = [float(i) for i in vals]
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget)
@@ -115,13 +117,39 @@ def set_survey_point(plugin: SpeckleQGIS):
         proj.writeEntry("speckle-qgis", "survey_point", pt)
         setProjectReferenceSystem(plugin)
         try:
-            metrics.track("Connector Action", plugin.active_account, {"name": "Set As Center Point", "connector_version": str(plugin.version)})
+            metrics.track("Connector Action", plugin.dataStorage.active_account, {"name": "Set As Center Point", "connector_version": str(plugin.version)})
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
         return True
     
     except Exception as e:
         logToUser("Lat, Lon values invalid: " + str(e), level = 2, plugin=plugin.dockwidget)
+        return False 
+    
+def get_transformations(dataStorage):
+    try:
+        # get from saved project, set to local vars
+        proj = dataStorage.project
+        record = proj.readEntry("speckle-qgis", "transformations", "")
+        if record[1] and len(record[0])>0: 
+            vals: List[str] = record[0].split(";")
+            dataStorage.savedTransforms.extend(vals)
+
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return
+    
+def set_transformations(dataStorage):
+    try: 
+        # from widget (3 strings) to local vars AND memory (1 string)
+        proj = dataStorage.project
+        vals = dataStorage.savedTransforms
+        transforms = ";".join(vals)
+        proj.writeEntry("speckle-qgis", "transformations", transforms)
+        return True
+    
+    except Exception as e:
+        logToUser("Transformations cannot be saved: " + str(e), level = 2)
         return False 
     
 def setProjectReferenceSystem(plugin: SpeckleQGIS):

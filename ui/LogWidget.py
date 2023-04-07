@@ -120,7 +120,7 @@ class LogWidget(QWidget):
             webbrowser.open(url, new=0, autoraise=True)
             
             try:
-                metrics.track("Connector Action", self.active_account, {"name": "Open In Web", "connector_version": str(self.speckle_version)})
+                metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Open In Web", "connector_version": str(self.speckle_version)})
             except:
                 pass   
                

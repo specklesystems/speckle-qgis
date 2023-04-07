@@ -95,6 +95,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     experimental: QCheckBox
     msgLog: LogWidget = None
     dataStorage: DataStorage = None
+    mappingSendDialog = None 
     
     def __init__(self, parent=None):
         """Constructor."""
@@ -178,7 +179,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.msgLog = logWidget 
         self.msgLog.dockwidget = self 
         
-        self.msgLog.active_account = plugin.active_account
+        self.msgLog.active_account = plugin.dataStorage.active_account
         self.msgLog.speckle_version = plugin.version
 
         # add row with "experimental" checkbox 
@@ -203,8 +204,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         root = self.dataStorage.project.layerTreeRoot()
         self.dataStorage.all_layers = getAllLayers(root)
 
-        self.mappingSendDialog = MappingSendDialog(None)
-        self.mappingSendDialog.dataStorage = self.dataStorage
+        if self.mappingSendDialog is None:
+            self.mappingSendDialog = MappingSendDialog(None)
+            self.mappingSendDialog.dataStorage = self.dataStorage
+        
         self.mappingSendDialog.runSetup()
         self.mappingSendDialog.show()
 
@@ -345,7 +348,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def refreshClicked(self, plugin):
         try:
             try:
-                metrics.track("Connector Action", plugin.active_account, {"name": "Refresh", "connector_version": str(plugin.version)})
+                metrics.track("Connector Action", plugin.dataStorage.active_account, {"name": "Refresh", "connector_version": str(plugin.version)})
             except Exception as e:
                 logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
             
@@ -357,7 +360,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def closeClicked(self, plugin):
         try:
             try:
-                metrics.track("Connector Action", plugin.active_account, {"name": "Close", "connector_version": str(plugin.version)})
+                metrics.track("Connector Action", plugin.dataStorage.active_account, {"name": "Close", "connector_version": str(plugin.version)})
             except Exception as e:
                 logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
             
@@ -437,6 +440,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def populateUI(self, plugin):
         try:
+
             self.populateLayerSendModeDropdown()
             self.populateLayerDropdown(plugin, False)
             #items = [self.layersWidget.item(x).text() for x in range(self.layersWidget.count())]
@@ -445,6 +449,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
             self.runBtnStatusChanged(plugin)
             self.runButton.setEnabled(False) 
+            
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
             return

@@ -19,6 +19,7 @@ from speckle.utils import logger
 from specklepy.api.credentials import Account, get_local_accounts #, StreamWrapper
 from specklepy.api.wrapper import StreamWrapper
 from gql import gql
+from specklepy.logging import metrics
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(
@@ -65,6 +66,8 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     
     def runSetup(self):
         
+        #get_transformations(self.dataStorage)
+
         self.populateLayers()
         self.populateTransforms()
         self.populateSavedTransforms()
@@ -72,11 +75,31 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     def populateSavedTransforms(self): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
 
         self.transformationsList.clear()
-        if self.dataStorage.savedTransforms is not None and isinstance(self.dataStorage.savedTransforms, List):
-            for item in self.dataStorage.savedTransforms:
-                self.transformationsList.addItem(QListWidgetItem(item))
+        vals = self.dataStorage.savedTransforms  
+
+        for item in vals:
+            layer_name = item.split("  ->  ")[0]
+            transform_name = item.split("  ->  ")[1]
+
+            layer = getFirstMatchingLayerByName(self.dataStorage.project, layer_name)
+            if layer is None: 
+                displayUserMsg(f"Layer \'{layer_name}\' not found in the project", level=2) 
+                self.dataStorage.savedTransforms.remove(item)
+            else:
+                if transform_name not in self.dataStorage.transformsCatalog:
+                    displayUserMsg(f"Saved transformation \'{transform_name}\' is not valid", level=1) 
+                    self.dataStorage.savedTransforms.remove(item)
+                else: 
+                     self.transformationsList.addItem(QListWidgetItem(item)) 
+
+        #if self.dataStorage.savedTransforms is not None and isinstance(self.dataStorage.savedTransforms, List):
+        #    for item in self.dataStorage.savedTransforms:
+        #        self.transformationsList.addItem(QListWidgetItem(item))
 
     def onAddTransform(self):
+        
+        from ui.project_vars import set_transformations
+
         if len(self.layerDropdown.currentText())>1 and len(self.transformDropdown.currentText())>1:
             listItem = str(self.layerDropdown.currentText()) + "  ->  " + str(self.transformDropdown.currentText())
             
@@ -90,12 +113,12 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                 layer = getFirstMatchingLayerByName(self.dataStorage.project, listItem.split("  ->  ")[0])
                 if layer is not None:
                     if "extrude" in listItem.split("  ->  ")[1].lower():
-                        try:
-                            geom_type = getLayerGeomType(layer)
-                            if "polygon" not in geom_type.lower():
-                                displayUserMsg("Selected transformation can only be applied to Polygon layers", level=1) 
-                                return
-                        except:
+                        
+                        if not isinstance(layer, QgsVectorLayer):
+                            displayUserMsg("Selected transformation can only be applied to Polygon layers", level=1) 
+                            return
+                        geom_type = getLayerGeomType(layer)
+                        if "polygon" not in geom_type.lower():
                             displayUserMsg("Selected transformation can only be applied to Polygon layers", level=1) 
                             return
 
@@ -105,6 +128,13 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                             return
                     self.dataStorage.savedTransforms.append(listItem)
                     self.populateSavedTransforms()
+                    
+                    try:
+                        metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Add transformation on Send", "Transformation": listItem.split("  ->  ")[1], "connector_version": str(self.dataStorage.plugin_version)})
+                    except Exception as e:
+                        logToUser(e, level = 2, func = inspect.stack()[0][3] )
+                    
+                    set_transformations(self.dataStorage)
     
     def onRemoveTransform(self):
 
