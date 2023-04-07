@@ -196,6 +196,18 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
         col = featureColorfromNativeRenderer(feature, layer)
             
         if len(voidsAsPts) == 0: # only if there is a mesh with no voids and large amount of points
+            sum_orientation = 0 # floor: need positive - clockwise (looking down); cap need negative (counter-clockwise)
+            for k, ptt in enumerate(polyBorder): #pointList:
+                try: 
+                    pt = polyBorder[k*coef]
+                    pt2 = polyBorder[(k+1)*coef]
+                    sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)
+                except: break
+            if sum_orientation < 0:
+                polyBorder.reverse()
+
+            if height is None: polyBorder.reverse() # when no extrusions: face up
+
             for k, ptt in enumerate(polyBorder): #pointList:
                 pt = polyBorder[k*coef]
                 if k < maxPoints:
@@ -216,10 +228,13 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
 
             # a cap
             ##################################
+            #polyBorder.reverse()
             if height is not None:
                 ran = range(total_vertices, 2*total_vertices)
                 faces.append(total_vertices) 
-                faces.extend([i + existing_vert for i in ran]) 
+                faces2 = [i + existing_vert for i in ran]
+                faces2.reverse()
+                faces.extend(faces2) 
 
                 vertices_copy = vertices.copy()
                 count = 0
@@ -228,10 +243,10 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                         vertices.extend([vertices_copy[count], vertices_copy[count+1], vertices_copy[count+2] + height])
                         count += 3 
                     except: break 
-                
+                total_vertices *= 2
                 
                 # add extrusions
-                total_vertices *= 2
+                #polyBorder.reverse()
                 universal_z_value = polyBorder[0].z
                 for k, pt in enumerate(polyBorder):
                     polyBorder2 = []
@@ -262,7 +277,7 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                 return total_vertices, vertices, faces, colors
 
             # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
-        else: # if there are voids 
+        else: # if there are voids: face should be clockwise (walls also)
             # if its a large polygon with voids to be triangualted, lower the coef even more:
             maxPoints = 100
             if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
