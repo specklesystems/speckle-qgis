@@ -43,7 +43,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     def __init__(self, parent=None):
         super(MappingSendDialog,self).__init__(parent,QtCore.Qt.WindowStaysOnTopHint)
         self.setupUi(self)
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(500)
         #self.setWindowTitle("Add custom transformations")
 
         self.addTransform.setStyleSheet("QPushButton {color: black; padding:3px;padding-left:5px;border: none; } QPushButton:hover { background-color: lightgrey}")

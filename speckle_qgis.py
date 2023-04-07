@@ -277,6 +277,7 @@ class SpeckleQGIS:
 
         # set the project instance 
         self.qgis_project = QgsProject.instance()
+        self.dataStorage.project = self.qgis_project
         self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
 
         # https://www.opengis.ch/2016/09/07/using-threads-in-qgis-python-plugins/
@@ -572,11 +573,15 @@ class SpeckleQGIS:
         try:
             from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection, get_transformations 
 
+            self.qgis_project = QgsProject.instance()
+            
             self.dataStorage = DataStorage()
             self.dataStorage.plugin_version = self.version
             self.dataStorage.project = self.qgis_project
         
             get_transformations(self.dataStorage)
+            
+            self.dockwidget.addDataStorage(self)
 
             self.is_setup = self.check_for_accounts()
             if self.dockwidget is not None:
@@ -616,7 +621,7 @@ class SpeckleQGIS:
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-       
+        self.qgis_project = QgsProject.instance()
         self.dataStorage = DataStorage()
         self.dataStorage.plugin_version = self.version
         self.dataStorage.project = self.qgis_project
@@ -634,6 +639,9 @@ class SpeckleQGIS:
                 self.dockwidget.runSetup(self)
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
+            
+            else: 
+                self.dockwidget.addDataStorage(self)
 
             get_project_streams(self)
             get_survey_point(self)

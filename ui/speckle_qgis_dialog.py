@@ -387,7 +387,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
             # enable sections only if in "saved streams" mode 
             if self.layerSendModeDropdown.currentIndex() == 1: self.layersWidget.setEnabled(True)
-            if self.layerSendModeDropdown.currentIndex() == 1: self.saveLayerSelection.setEnabled(True)
+            #if self.layerSendModeDropdown.currentIndex() == 1: 
+            self.saveLayerSelection.setEnabled(True)
             self.commitDropdown.setEnabled(False)
             self.messageInput.setEnabled(True)
             self.layerSendModeDropdown.setEnabled(True)
@@ -468,7 +469,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             if plugin.btnAction == 0: # on send 
                 if branchStr == "": 
                     self.runButton.setEnabled(False) 
-                elif branchStr != "" and self.layerSendModeDropdown.currentIndex() == 1 and len(plugin.dataStorage.current_layers) == 0: # saved layers; but the list is empty 
+                elif self.layerSendModeDropdown.currentIndex() == 1 and len(plugin.dataStorage.current_layers) == 0: # saved layers; but the list is empty 
                     self.runButton.setEnabled(False)
                 else:
                     self.runButton.setEnabled(True)
@@ -481,13 +482,13 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         try:
             if self.layerSendModeDropdown.currentIndex() == 0 or runMode == 1: # by manual selection OR receive mode
                 #self.current_layers = []
-                self.dataStorage.current_layers = []
+                #self.dataStorage.current_layers = []
                 self.layersWidget.setEnabled(False)
-                self.saveLayerSelection.setEnabled(False)
+                #self.saveLayerSelection.setEnabled(False)
                 
             elif self.layerSendModeDropdown.currentIndex() == 1 and (runMode == 0 or runMode is None): # by saved AND when Send mode
                 self.layersWidget.setEnabled(True)
-                self.saveLayerSelection.setEnabled(True)
+                #self.saveLayerSelection.setEnabled(True)
             
             branchStr = str(self.streamBranchDropdown.currentText())
             if self.layerSendModeDropdown.currentIndex() == 0:
@@ -521,7 +522,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
                 # Fetch selected layers
 
                 #plugin.current_layers = []
-                self.dataStorage.current_layers = []
+                self.dataStorage.current_layers.clear() 
                 layers = getLayers(plugin, bySelection) # List[QgsLayerTreeNode]
                 for i, layer in enumerate(layers):
                     #plugin.current_layers.append((layer.name(), layer)) 
