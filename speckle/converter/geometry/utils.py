@@ -16,7 +16,11 @@ def fix_orientation(polyBorder: List, positive = True, coef = 1):
             pt = polyBorder[k*coef]
             pt2 = polyBorder[(k+1)*coef]
             sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)
-        except: break
+        except: 
+            pt = polyBorder[k*coef]
+            pt2 = polyBorder[0]
+            sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)
+            break
     if positive is True: 
         if sum_orientation < 0:
             polyBorder.reverse()
