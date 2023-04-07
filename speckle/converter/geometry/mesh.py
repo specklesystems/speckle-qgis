@@ -177,14 +177,19 @@ def constructMesh(vertices, faces, colors):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, layer: QgsVectorLayer):
+def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, layer: QgsVectorLayer, height = None):
     try:
+        faces = []
+        faces_cap = []
         vertices = []
+        vertices_cap = []
         total_vertices = 0
 
         coef = 1
         maxPoints = 5000
         if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
+
+        col = featureColorfromNativeRenderer(feature, layer)
             
         if len(voidsAsPts) == 0: # only if there is a mesh with no voids and large amount of points
             for k, ptt in enumerate(polyBorder): #pointList:
@@ -204,6 +209,29 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             ran = range(0, total_vertices)
             faces = [total_vertices]
             faces.extend([i + existing_vert for i in ran])
+
+            # a cap
+            ##################################
+            if height is not None:
+                ran = range(total_vertices, 2*total_vertices)
+                faces.append(total_vertices) 
+                faces.extend([i + existing_vert for i in ran]) 
+
+                vertices_copy = vertices.copy()
+                count = 0
+                for item in vertices_copy:
+                    try: 
+                        vertices.extend([vertices_copy[count], vertices_copy[count+1], vertices_copy[count+2] + height])
+                        count += 3 
+                    except: break 
+                ran = range(0, total_vertices)
+                colors = [col for i in ran] # apply same color for all vertices
+                return 2*total_vertices, vertices, faces, colors
+                ######################################
+            else:
+                colors = [col for i in ran] # apply same color for all vertices
+                return total_vertices, vertices, faces, colors
+
             # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
         else: # if there are voids 
             # if its a large polygon with voids to be triangualted, lower the coef even more:
@@ -211,7 +239,6 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
 
             trianglator = Triangulator()
-            faces = []
 
             pt_count = 0
             # add extra middle point for border
@@ -224,9 +251,11 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                             
                     trianglator.addPolygonVertex(trianglator.addVertex(pt.x, pt.y))
                     vertices.extend([pt.x, pt.y, pt.z])
-                    trianglator.addPolygonVertex(trianglator.addVertex((pt.x+pt2.x)/2, (pt.y+pt2.y)/2))
-                    vertices.extend([(pt.x+pt2.x)/2, (pt.y+pt2.y)/2, (pt.z+pt2.z)/2])
-                    total_vertices += 2
+                    if height is not None: 
+                        vertices_cap.extend([pt.x, pt.y, pt.z + height])
+                    #trianglator.addPolygonVertex(trianglator.addVertex((pt.x+pt2.x)/2, (pt.y+pt2.y)/2))
+                    #vertices.extend([(pt.x+pt2.x)/2, (pt.y+pt2.y)/2, (pt.z+pt2.z)/2])
+                    total_vertices += 1
                     pt_count += 1
                 else: break
 
@@ -241,22 +270,33 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                     if k < maxPoints:
                         trianglator.addHoleVertex(trianglator.addVertex(pt.x, pt.y))
                         vertices.extend([pt.x, pt.y, pt.z])
+                        if height is not None: 
+                            vertices_cap.extend([pt.x, pt.y, pt.z + height])
                         total_vertices += 1
                     else: break
             
             trianglator.triangulate()
             i = 0
-            #print(trianglator.getNumTriangles())
+            print(trianglator.getNumTriangles())
+            total_tr = trianglator.getNumTriangles()
             while i < trianglator.getNumTriangles():
                 tr = [trianglator.getTriangleV0(i),trianglator.getTriangleV1(i),trianglator.getTriangleV2(i)]
                 faces.extend([3, tr[0] + existing_vert, tr[1] + existing_vert, tr[2] + existing_vert])
+                faces_cap.extend([3, tr[0] + existing_vert + total_tr, tr[1] + existing_vert + total_tr, tr[2] + existing_vert + total_tr])
                 i+=1
-            ran = range(0, total_vertices)
+            
+            if height is not None: 
+                ran = range(0, 2*total_vertices)
+                colors = [col for i in ran] # apply same color for all vertices
+                return total_vertices, vertices + vertices_cap, faces + faces_cap, colors
+                
+            else: 
+                ran = range(0, total_vertices)
+                colors = [col for i in ran] # apply same color for all vertices
+                
+                return total_vertices, vertices, faces, colors
 
-        col = featureColorfromNativeRenderer(feature, layer)
-        colors = [col for i in ran] # apply same color for all vertices
-
-        return total_vertices, vertices, faces, colors
+            
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

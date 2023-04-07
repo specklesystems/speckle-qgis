@@ -14,7 +14,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Create custom mappings on Send</string>
+   <string>Create custom transformations on Send</string>
   </property>
 
   <layout class="QGridLayout" name="gridLayout_2">

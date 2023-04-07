@@ -7,6 +7,7 @@ from typing import List, Union
 from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint, 
     QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon,
     QgsCircularString, QgsLineString, QgsRasterLayer,QgsVectorLayer, QgsFeature)
+from speckle.converter.geometry.utils import getPolygonFeatureHeight
 from speckle.converter.geometry.mesh import meshToNative, writeMeshToShp
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from speckle.converter.geometry.polygon import *
@@ -52,10 +53,11 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
         elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_Mesh") and "Speckle_ID" in layer.fields().names():
             return polygonToSpeckleMesh(geom, feature, layer)
         elif geomType == QgsWkbTypes.PolygonGeometry: # 2
+            height = getPolygonFeatureHeight(feature, layer)
             if geomSingleType:
-                return polygonToSpeckle(geom, feature, layer, dataStorage)
+                return polygonToSpeckle(geom, feature, layer, dataStorage, height)
             else:
-                return [polygonToSpeckle(poly, feature, layer, dataStorage) for poly in geom.parts()]
+                return [polygonToSpeckle(poly, feature, layer, dataStorage, height) for poly in geom.parts()]
         else:
             logToUser("Unsupported or invalid geometry", level = 1, func = inspect.stack()[0][3])
         return None
