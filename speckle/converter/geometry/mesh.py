@@ -181,8 +181,12 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
     try:
         faces = []
         faces_cap = []
+        faces_side = []
+
         vertices = []
         vertices_cap = []
+        vertices_side = []
+
         total_vertices = 0
 
         coef = 1
@@ -224,9 +228,34 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                         vertices.extend([vertices_copy[count], vertices_copy[count+1], vertices_copy[count+2] + height])
                         count += 3 
                     except: break 
+                
+                
+                # add extrusions
+                total_vertices *= 2
+                universal_z_value = polyBorder[0].z
+                for k, pt in enumerate(polyBorder):
+                    polyBorder2 = []
+                    try:
+                        vertices_side.extend([polyBorder[k].x, polyBorder[k].y, universal_z_value,
+                                         polyBorder[k].x, polyBorder[k].y, height + universal_z_value,
+                                         polyBorder[k+1].x, polyBorder[k+1].y, height + universal_z_value,
+                                         polyBorder[k+1].x, polyBorder[k+1].y, universal_z_value])
+                        faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                        total_vertices +=4
+
+                    except: 
+                        vertices_side.extend([polyBorder[k].x, polyBorder[k].y, universal_z_value,
+                                         polyBorder[k].x, polyBorder[k].y, height + universal_z_value,
+                                         polyBorder[0].x, polyBorder[0].y, height + universal_z_value,
+                                         polyBorder[0].x, polyBorder[0].y, universal_z_value])
+                        faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                        total_vertices +=4
+
+                        break
+                
                 ran = range(0, total_vertices)
                 colors = [col for i in ran] # apply same color for all vertices
-                return 2*total_vertices, vertices, faces, colors
+                return total_vertices, vertices + vertices_side, faces + faces_side, colors
                 ######################################
             else:
                 colors = [col for i in ran] # apply same color for all vertices
@@ -285,10 +314,60 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                 faces_cap.extend([3, tr[0] + existing_vert + total_tr, tr[1] + existing_vert + total_tr, tr[2] + existing_vert + total_tr])
                 i+=1
             
+            #####################################
             if height is not None: 
-                ran = range(0, 2*total_vertices)
+
+                total_vertices *= 2
+                
+                # add extrusions
+                universal_z_value = polyBorder[0].z
+                for k, pt in enumerate(polyBorder):
+                    polyBorder2 = []
+                    try:
+                        vertices_side.extend([polyBorder[k].x, polyBorder[k].y, universal_z_value,
+                                         polyBorder[k].x, polyBorder[k].y, height + universal_z_value,
+                                         polyBorder[k+1].x, polyBorder[k+1].y, height + universal_z_value,
+                                         polyBorder[k+1].x, polyBorder[k+1].y, universal_z_value])
+                        faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                        total_vertices +=4
+
+                    except: 
+                        vertices_side.extend([polyBorder[k].x, polyBorder[k].y, universal_z_value,
+                                         polyBorder[k].x, polyBorder[k].y, height + universal_z_value,
+                                         polyBorder[0].x, polyBorder[0].y, height + universal_z_value,
+                                         polyBorder[0].x, polyBorder[0].y, universal_z_value])
+                        faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                        total_vertices +=4
+
+                        break
+
+                voidsAsPts2 = []
+                for v in voidsAsPts:
+                    for k, pt in enumerate(v):
+                        void =[]
+                        try:
+                            vertices_side.extend([v[k].x, v[k].y, universal_z_value,
+                                            v[k].x, v[k].y, height + universal_z_value,
+                                            v[k+1].x, v[k+1].y, height + universal_z_value,
+                                            v[k+1].x, v[k+1].y, universal_z_value])
+                            faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                            total_vertices +=4
+ 
+                        except:
+                            vertices_side.extend([v[k].x, v[k].y, universal_z_value,
+                                            v[k].x, v[k].y, height + universal_z_value,
+                                            v[0].x, v[0].y, height + universal_z_value,
+                                            v[0].x, v[0].y, universal_z_value])
+                            faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                            total_vertices +=4
+
+                            break
+                            
+                ############################################
+
+                ran = range(0, total_vertices)
                 colors = [col for i in ran] # apply same color for all vertices
-                return total_vertices, vertices + vertices_cap, faces + faces_cap, colors
+                return total_vertices, vertices + vertices_cap + vertices_side, faces + faces_cap + faces_side, colors
                 
             else: 
                 ran = range(0, total_vertices)

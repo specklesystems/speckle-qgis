@@ -114,57 +114,6 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         else: 
             logToUser("Mesh creation from Polygon failed. Boundaries will be used as displayValue", level = 1, func = inspect.stack()[0][3])
         
-        
-        r'''
-        # add extrusions
-        for k, pt in enumerate(polyBorder):
-            polyBorder2 = []
-            try:
-                polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z=universal_z_value, units="m"))
-                polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z= height + universal_z_value, units="m"))
-                polyBorder2.append(Point(x=polyBorder[k+1].x, y=polyBorder[k+1].y, z= height + universal_z_value, units="m"))
-                polyBorder2.append(Point(x=polyBorder[k+1].x, y=polyBorder[k+1].y, z=universal_z_value, units="m"))
-
-                total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder2, [], 0, feature, layer)
-                mesh_side = constructMesh(vertices, faces, colors)
-                polygon.displayValue.append(mesh_side) 
-            except: 
-                polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z=universal_z_value, units="m"))
-                polyBorder2.append(Point(x=polyBorder[k].x, y=polyBorder[k].y, z= height + universal_z_value, units="m"))
-                polyBorder2.append(Point(x=polyBorder[0].x, y=polyBorder[0].y, z= height + universal_z_value, units="m"))
-                polyBorder2.append(Point(x=polyBorder[0].x, y=polyBorder[0].y, z=universal_z_value, units="m"))
-
-                total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder2, [], 0, feature, layer)
-                mesh_side = constructMesh(vertices, faces, colors)
-                polygon.displayValue.append(mesh_side) 
-                break
-
-        voidsAsPts2 = []
-        for v in voidsAsPts:
-            for k, pt in enumerate(v):
-                void =[]
-                try:
-                    void.append(Point(x=v[k].x, y=v[k].y, z=universal_z_value, units="m"))
-                    void.append(Point(x=v[k].x, y=v[k].y, z= height + universal_z_value, units="m"))
-                    void.append(Point(x=v[k+1].x, y=v[k+1].y, z= height + universal_z_value, units="m"))
-                    void.append(Point(x=v[k+1].x, y=v[k+1].y, z=universal_z_value, units="m"))
-
-                    total_vert, vertices, faces, colors = meshPartsFromPolygon(void, [], 0, feature, layer)
-                    mesh_side_void = constructMesh(vertices, faces, colors)
-                    polygon.displayValue.append(mesh_side_void)  
-                except:
-                    void.append(Point(x=v[k].x, y=v[k].y, z=universal_z_value, units="m"))
-                    void.append(Point(x=v[k].x, y=v[k].y, z= height + universal_z_value, units="m"))
-                    void.append(Point(x=v[0].x, y=v[0].y, z= height + universal_z_value, units="m"))
-                    void.append(Point(x=v[0].x, y=v[0].y, z=universal_z_value, units="m"))
-
-                    total_vert, vertices, faces, colors = meshPartsFromPolygon(void, [], 0, feature, layer)
-                    mesh_side_void = constructMesh(vertices, faces, colors)
-                    polygon.displayValue.append(mesh_side_void)  
-                    break
-                    '''
-        ############################################
-        
         return polygon
     
     except Exception as e:

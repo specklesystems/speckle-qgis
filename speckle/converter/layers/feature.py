@@ -60,8 +60,8 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
             if isinstance(f[name], list): 
                 x = ""
                 for i, attr in enumerate(f[name]): 
-                    if i==0: x += attr
-                    else: x += ", " + attr
+                    if i==0: x += str(attr)
+                    else: x += ", " + str(attr)
                 f_name = x 
             b[corrected] = f_name
         return b
