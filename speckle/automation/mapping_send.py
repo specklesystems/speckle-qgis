@@ -1,7 +1,7 @@
 import inspect
 import os
 from typing import Any, List, Tuple, Union
-from plugin_utils.helpers import getFirstMatchingLayerByName
+from speckle.converter.layers import getAllLayers
 from speckle.converter.layers.utils import getLayerGeomType
 from ui.logger import displayUserMsg, logToUser
 import ui.speckle_qgis_dialog
@@ -44,7 +44,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         super(MappingSendDialog,self).__init__(parent,QtCore.Qt.WindowStaysOnTopHint)
         self.setupUi(self)
         self.setMinimumWidth(400)
-        self.setWindowTitle("Create custom transformations")
+        #self.setWindowTitle("Add custom transformations")
 
         self.addTransform.setStyleSheet("QPushButton {color: black; padding:3px;padding-left:5px;border: none; } QPushButton:hover { background-color: lightgrey}")
         self.removeTransform.setStyleSheet("QPushButton {color: black; padding:3px;padding-left:5px;border: none; } QPushButton:hover { background-color: lightgrey}")
@@ -81,7 +81,10 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
             layer_name = item.split("  ->  ")[0]
             transform_name = item.split("  ->  ")[1]
 
-            layer = getFirstMatchingLayerByName(self.dataStorage.project, layer_name)
+            layer = None
+            for l in self.dataStorage.all_layers: 
+                if layer_name == l.name():
+                    layer = l
             if layer is None: 
                 displayUserMsg(f"Layer \'{layer_name}\' not found in the project", level=2) 
                 self.dataStorage.savedTransforms.remove(item)
@@ -90,7 +93,11 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                     displayUserMsg(f"Saved transformation \'{transform_name}\' is not valid", level=1) 
                     self.dataStorage.savedTransforms.remove(item)
                 else: 
-                     self.transformationsList.addItem(QListWidgetItem(item)) 
+                    listItem = QListWidgetItem(item)
+                    icon = QgsIconUtils().iconForLayer(layer)
+                    listItem.setIcon(icon)
+
+                    self.transformationsList.addItem(listItem) 
 
         #if self.dataStorage.savedTransforms is not None and isinstance(self.dataStorage.savedTransforms, List):
         #    for item in self.dataStorage.savedTransforms:
@@ -110,7 +117,10 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                     displayUserMsg("Selected layer already has a transformation applied", level=1) 
                     break
             if exists == 0:
-                layer = getFirstMatchingLayerByName(self.dataStorage.project, listItem.split("  ->  ")[0])
+                layer = None
+                for l in self.dataStorage.all_layers: 
+                    if listItem.split("  ->  ")[0] == l.name():
+                        layer = l
                 if layer is not None:
                     if "extrude" in listItem.split("  ->  ")[1].lower():
                         
@@ -158,10 +168,12 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     def populateLayers(self):
         try:
             self.layerDropdown.clear()
+            root = self.dataStorage.project.layerTreeRoot()
+            self.dataStorage.all_layers = getAllLayers(root)
             for i, layer in enumerate(self.dataStorage.all_layers):
                 listItem = layer.name()
                 self.layerDropdown.addItem(listItem)  
-                icon = QgsIconUtils().iconForLayer(layer.layer())
+                icon = QgsIconUtils().iconForLayer(layer)
                 self.layerDropdown.setItemIcon(i, icon)  
 
         except Exception as e:

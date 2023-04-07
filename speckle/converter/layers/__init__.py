@@ -42,21 +42,31 @@ GEOM_LINE_TYPES = ["Objects.Geometry.Line", "Objects.Geometry.Polyline", "Object
 
 
 def getAllLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode = None):
-    if parent is None:
-        parent = tree 
-    children = parent.children()
-    layers = []
-    for node in children:
-        if tree.isLayer(node):
-            if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
-                layers.append(node)
-            continue
-        if tree.isGroup(node):
-            for lyr in getAllLayers(tree, node):
-                if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer): 
-                    layers.append(lyr) 
-            #layers.extend( [ lyr for lyr in getAllLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
-    return layers
+    try:
+        if parent is None:
+            parent = tree 
+        
+        if isinstance(parent, QgsLayerTreeLayer): 
+            return [parent.layer()] 
+        
+        elif isinstance(parent, QgsLayerTreeGroup): 
+            children = parent.children()
+            layers = []
+            for node in children:            
+                if tree.isLayer(node):
+                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
+                        layers.append(node.layer())
+                    continue
+                if tree.isGroup(node):
+                    for lyr in getAllLayers(tree, node):
+                        if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
+                            layers.append(lyr) 
+                    #layers.extend( [ lyr for lyr in getAllLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
+        return layers
+    
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return [parent] 
 
 def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
@@ -66,7 +76,13 @@ def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, Qg
         #print("___ get layers list ___")
         self = plugin.dockwidget
         if bySelection is True: # by selection 
-            layers = plugin.iface.layerTreeView().selectedLayers()
+            selected_layers = plugin.iface.layerTreeView().selectedNodes()
+            layers = []
+            
+            for item in selected_layers:
+                root = self.dataStorage.project.layerTreeRoot()
+                layers.extend(getAllLayers(root, item))
+
         else: # from project data 
             project = plugin.qgis_project
             #all_layers_ids = [l.id() for l in project.mapLayers().values()]

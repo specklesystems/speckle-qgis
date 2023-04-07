@@ -4,7 +4,6 @@
 import inspect
 import time
 from typing import List
-from plugin_utils.helpers import getFirstMatchingLayerByName
 from speckle.converter.layers.utils import saveCRS
 from speckle_qgis import SpeckleQGIS
 

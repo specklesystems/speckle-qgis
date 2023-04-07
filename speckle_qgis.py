@@ -570,7 +570,13 @@ class SpeckleQGIS:
     def reloadUI(self):
         print("___RELOAD UI")
         try:
-            from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection
+            from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection, get_transformations 
+
+            self.dataStorage = DataStorage()
+            self.dataStorage.plugin_version = self.version
+            self.dataStorage.project = self.qgis_project
+        
+            get_transformations(self.dataStorage)
 
             self.is_setup = self.check_for_accounts()
             if self.dockwidget is not None:
@@ -610,6 +616,7 @@ class SpeckleQGIS:
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+       
         self.dataStorage = DataStorage()
         self.dataStorage.plugin_version = self.version
         self.dataStorage.project = self.qgis_project
