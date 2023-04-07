@@ -76,37 +76,18 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         voidsAsPts = []
         for v in voids:
             pts = speckleBoundaryToSpecklePts(v)
-            voidsAsPts.append(pts)
-
-
-        #############################################################
-        extrusion_height = None
-        if dataStorage.savedTransforms is not None:
-            for item in dataStorage.savedTransforms:
-                layer_name = item.split("  ->  ")[0]
-                transform_name = item.split("  ->  ")[1]
-                if layer_name == layer.name():
-                    print("Apply transform: " + transform_name)
-                    if "extrude polygons" in transform_name.lower():
-                        extrusion_height = height
-
-                        # 2 additional checks: 
-                        try:
-                            if dataStorage.project.crs().isGeographic():
-                                logToUser("Extrusion can only be applied when project CRS is using metric units", level = 1, func = inspect.stack()[0][3])
-                                extrusion_height = None
-                        except: extrusion_height = None
-                        
-                        universal_z_value = polyBorder[0].z
-                        for i, pt in enumerate(polyBorder):
-                            ########## check for non-flat polygons 
-                            if pt.z != universal_z_value:
-                                logToUser("Extrusion can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
-                                extrusion_height = None
-
-        ##########################################################                        
+            voidsAsPts.append(pts)                      
         
-        total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, layer, extrusion_height)
+        # check efore extrusion
+        if height is not None:
+            universal_z_value = polyBorder[0].z
+            for i, pt in enumerate(polyBorder):
+                ########## check for non-flat polygons 
+                if pt.z != universal_z_value:
+                    logToUser("Extrusion can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
+                    height = None
+        
+        total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, layer, height)
 
         mesh = constructMesh(vertices, faces, colors)
         if mesh is not None: 

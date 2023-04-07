@@ -1,7 +1,7 @@
 
-#import PyQt5 
-#from PyQt5.QtWidgets import QMainWindow, QMessageBox, QPushButton, QPushButton, QLabel, QVBoxLayout, QWidget
-#from PyQt5 import QtCore
+import qgis.PyQt 
+from qgis.PyQt.QtWidgets import QMainWindow, QMessageBox, QPushButton, QPushButton, QLabel, QVBoxLayout, QWidget
+from qgis.PyQt import QtCore
 import threading
 import time
 
@@ -44,28 +44,12 @@ def writeToLog(msg: str = "", level: int = 2):
       from speckle.logging import logger
       logger.log(msg, level)
        
-r'''
+
 def displayUserMsg(msg: str, func=None, level: int = 2): 
       try:
             window = createWindow(msg, func, level)
             window.exec_() 
       except Exception as e: print(e)
-
-def logToUserWithAction(msg: str, func=None, level: int = 2, action_text="Click", callback=None):
-      print("Log to user with action")
-      window = createWindow(msg, func, level)
-      
-      if window is not None: 
-            window.exec_() 
-      return 
-      
-      if callback is not None:
-            button = QPushButton(window)
-            button.setText(action_text)
-            button.pressed.connect(callback)
-            window.layout().addWidget(button)
-      window.exec_() 
-      return
 
 def createWindow(msg_old: str, func=None, level: int = 2):
       print("Create window")
@@ -102,4 +86,4 @@ def createWindow(msg_old: str, func=None, level: int = 2):
             print(window)
       except Exception as e: print(e)
       return window 
-'''
+

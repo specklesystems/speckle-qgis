@@ -53,7 +53,9 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
         elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_Mesh") and "Speckle_ID" in layer.fields().names():
             return polygonToSpeckleMesh(geom, feature, layer)
         elif geomType == QgsWkbTypes.PolygonGeometry: # 2
-            height = getPolygonFeatureHeight(feature, layer)
+
+            height = getPolygonFeatureHeight(feature, layer, dataStorage)
+
             if geomSingleType:
                 return polygonToSpeckle(geom, feature, layer, dataStorage, height)
             else:

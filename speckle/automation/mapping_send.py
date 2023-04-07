@@ -1,7 +1,7 @@
 import inspect
 import os
 from typing import Any, List, Tuple, Union
-from ui.logger import logToUser
+from ui.logger import displayUserMsg, logToUser
 import ui.speckle_qgis_dialog
 from qgis.core import Qgis
 
@@ -77,7 +77,13 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         if len(self.layerDropdown.currentText())>1 and len(self.transformDropdown.currentText())>1:
             listItem = str(self.layerDropdown.currentText()) + "  ->  " + str(self.transformDropdown.currentText())
             
-            if listItem not in self.dataStorage.savedTransforms:
+            exists = 0
+            for record in self.dataStorage.savedTransforms:
+                if listItem.split("  ->  ")[0] == record.split("  ->  ")[0]: # and listItem.split("  ->  ")[1][:15] in record: 
+                    exists +=1
+                    displayUserMsg("Selected layer already has a transformation applied", level=1) 
+                    break
+            if exists == 0:
                 self.dataStorage.savedTransforms.append(listItem)
                 self.populateSavedTransforms()
     

@@ -26,25 +26,50 @@ def fix_orientation(polyBorder: List, positive = True, coef = 1):
     
     return polyBorder
     
-def getPolygonFeatureHeight(feature, layer):
+def getPolygonFeatureHeight(feature, layer, dataStorage):
     
-    try:
-        existing_height = feature["height"]
-        if existing_height is None or str(existing_height) == "NULL": # if attribute value invalid
-            #height = random.randint(10, 20)
-            all_existing_vals = [f["height"] for f in layer.getFeatures() if (f["height"] is not None and (isinstance(f["height"], float) or isinstance(f["height"], int) ) ) ]
-            try: 
-                if len(all_existing_vals) > 5:
-                    height_average = all_existing_vals[int(len(all_existing_vals)/2)]
-                    height = random.randint(height_average-5, height_average+5)
-                else:
-                    height = random.randint(10, 20)
-            except: 
-                height = random.randint(10, 20)
-        else: # reading from existing attribute 
-            height = existing_height
-    except: # if no Height attribute
-        height = random.randint(10, 20)
+    height = None
+    ignore = False
+    if dataStorage.savedTransforms is not None:
+        for item in dataStorage.savedTransforms:
+            layer_name = item.split("  ->  ")[0]
+            transform_name = item.split("  ->  ")[1]
+            if layer_name == layer.name():
+                if "ignore" in transform_name: ignore = True
+                
+                print("Apply transform: " + transform_name)
+                if "extrude polygons" in transform_name.lower():
+
+                    # additional check: 
+                    try:
+                        if dataStorage.project.crs().isGeographic():
+                            logToUser("Extrusion can only be applied when project CRS is using metric units", level = 1, func = inspect.stack()[0][3])
+                            return None
+                    except: return None
+                    
+                    try:
+                        existing_height = feature["height"]
+                        if existing_height is None or str(existing_height) == "NULL": # if attribute value invalid
+                            if ignore is True:
+                                return None
+                            else: # find approximate value
+                                all_existing_vals = [f["height"] for f in layer.getFeatures() if (f["height"] is not None and (isinstance(f["height"], float) or isinstance(f["height"], int) ) ) ]
+                                try: 
+                                    if len(all_existing_vals) > 5:
+                                        height_average = all_existing_vals[int(len(all_existing_vals)/2)]
+                                        height = random.randint(height_average-5, height_average+5)
+                                    else:
+                                        height = random.randint(10, 20)
+                                except: 
+                                    height = random.randint(10, 20)
+                        else: # reading from existing attribute 
+                            height = existing_height
+
+                    except: # if no Height attribute
+                        if ignore is True:
+                            height = None
+                        else:
+                            height = random.randint(10, 20)
         
     return height
 
