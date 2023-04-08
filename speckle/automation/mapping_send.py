@@ -76,6 +76,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
 
         self.transformationsList.clear()
         vals = self.dataStorage.savedTransforms  
+        all_l_names = [l.name() for l in self.dataStorage.all_layers]
 
         for item in vals:
             layer_name = item.split("  ->  ")[0]
@@ -91,6 +92,9 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
             else:
                 if transform_name not in self.dataStorage.transformsCatalog:
                     displayUserMsg(f"Saved transformation \'{transform_name}\' is not valid", level=1) 
+                    self.dataStorage.savedTransforms.remove(item)
+                elif all_l_names.count(layer.name()) > 1:
+                    displayUserMsg(f"Layer name \'{layer.name()}\' is used for more than 1 layer in the project", level=1) 
                     self.dataStorage.savedTransforms.remove(item)
                 else: 
                     listItem = QListWidgetItem(item)
