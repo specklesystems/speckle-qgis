@@ -111,3 +111,14 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
         )
     except Exception as e:
         logger.log(e.with_traceback)
+
+    ################################################# 
+    #pkgVersion = "2.3.1"
+    pkgName = "triangle"
+    try:
+        import triangle
+    except Exception as e:
+        logger.log("triangle not installed")
+        subprocess_call(
+            [pythonExec, "-m", "pip", "install", f"{pkgName}"]
+        )
