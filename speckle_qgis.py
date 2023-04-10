@@ -390,6 +390,8 @@ class SpeckleQGIS:
                 logToUser("No layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
 
+            self.dockwidget.mappingSendDialog.populateSavedTransforms()
+            
             base_obj = Collection(units = "m")
             base_obj.elements = convertSelectedLayers(layers, [],[], projectCRS, self)
             if base_obj.elements is None:

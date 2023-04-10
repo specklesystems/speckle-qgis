@@ -154,18 +154,12 @@ def getPolyBoundaryVoids(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
         else: return boundary, voids
 
         try:
-            for i in range(geom.numInteriorRings()):
-                intRing = unknownLineToSpeckle(geom.interiorRing(i), True, feature, layer)
-                #intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True, feature, layer)
-                voids.append(intRing)
-        except: 
-            try:
-                geom = geom.constGet()
-                for i in range(geom.numInteriorRings()):
-                    intRing = unknownLineToSpeckle(geom.interiorRing(i), True, feature, layer)
-                    #intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True, feature, layer)
-                    voids.append(intRing)
-            except: pass     
+            geom = geom.constGet()
+        except: pass
+        for i in range(geom.numInteriorRings()):
+            intRing = unknownLineToSpeckle(geom.interiorRing(i), True, feature, layer)
+            #intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True, feature, layer)
+            voids.append(intRing)   
 
         return boundary, voids
     

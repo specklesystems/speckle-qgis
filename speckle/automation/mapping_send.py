@@ -87,11 +87,11 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                 if layer_name == l.name():
                     layer = l
             if layer is None: 
-                displayUserMsg(f"Layer \'{layer_name}\' not found in the project", level=2) 
+                displayUserMsg(f"Layer \'{layer_name}\' not found in the project.\nTransformation is removed.", level=2) 
                 self.dataStorage.savedTransforms.remove(item)
             else:
                 if transform_name not in self.dataStorage.transformsCatalog:
-                    displayUserMsg(f"Saved transformation \'{transform_name}\' is not valid", level=1) 
+                    displayUserMsg(f"Saved transformation \'{transform_name}\' is not valid.\n. Transformation is removed.", level=1) 
                     self.dataStorage.savedTransforms.remove(item)
                 elif all_l_names.count(layer.name()) > 1:
                     displayUserMsg(f"Layer name \'{layer.name()}\' is used for more than 1 layer in the project", level=1) 

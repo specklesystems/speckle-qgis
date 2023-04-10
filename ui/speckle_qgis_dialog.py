@@ -170,6 +170,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.addDataStorage(plugin)
         self.addLabel(plugin)
         self.addProps(plugin)
+        self.createMappingDialog()
 
     def addProps(self, plugin):
         
@@ -199,16 +200,18 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         root = self.dataStorage.project.layerTreeRoot()
         self.dataStorage.all_layers = getAllLayers(root)
     
-    def showMappingDialog(self):
-        # updata DataStorage
+    def createMappingDialog(self):
         root = self.dataStorage.project.layerTreeRoot()
         self.dataStorage.all_layers = getAllLayers(root)
 
         if self.mappingSendDialog is None:
             self.mappingSendDialog = MappingSendDialog(None)
             self.mappingSendDialog.dataStorage = self.dataStorage
-        
+
         self.mappingSendDialog.runSetup()
+
+    def showMappingDialog(self):
+        # updata DataStorage
         self.mappingSendDialog.show()
 
     def addLabel(self, plugin): 
