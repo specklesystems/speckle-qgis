@@ -269,12 +269,20 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
 
             universal_z_value = polyBorder[0].z
             
-            triangulated_geom = triangulatePolygon(feature_geom)
-            pt_list = [ [p[0], p[1], universal_z_value] for p in triangulated_geom['vertices']]
-            #for pt in pt_list: 
-            #    vertices.extend(pt)
-            #    total_vertices += 1
-                #if total_vertices==3: break 
+            triangulated_geom, vertices3d = triangulatePolygon(feature_geom)
+
+            any_existing_z = 0
+            for i, p in enumerate(vertices3d): 
+                if p[2] is not None:
+                    any_existing_z = p[2]
+                    break
+            
+            pt_list = []
+            for i, p in enumerate(triangulated_geom['vertices']): 
+                z_val = vertices3d[i][2]
+                if z_val is None: z_val = any_existing_z
+                # TODO add here a projected point
+                pt_list.append( [p[0], p[1], z_val] ) 
 
             triangle_list = [ trg for trg in triangulated_geom['triangles']]
             

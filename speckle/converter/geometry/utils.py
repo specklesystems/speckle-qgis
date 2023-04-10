@@ -16,13 +16,13 @@ def triangulatePolygon(geom):
         vertices = []
         segments = []
         holes = []
-        vertices, segments, holes = getPolyPtsSegments(geom)
+        vertices, vertices3d, segments, holes = getPolyPtsSegments(geom)
         if len(holes)>0: 
             dict_shape= {'vertices': vertices, 'segments': segments ,'holes': holes}
         else: 
             dict_shape= {'vertices': vertices, 'segments': segments }
         t = tr.triangulate(dict_shape, 'p')
-        return t 
+        return t, vertices3d 
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
@@ -30,6 +30,7 @@ def triangulatePolygon(geom):
 
 def getPolyPtsSegments(geom):
     vertices = []
+    vertices3d = []
     segmList = []
     holes = []
     try: 
@@ -53,6 +54,7 @@ def getPolyPtsSegments(geom):
     for i,pt in enumerate(pointListLocal):
         #print(pt)
         vertices.append([pt.x(),pt.y()])
+        vertices3d.append([pt.x(),pt.y(), pt.z()])
         if i>0: 
             segmList.append([startLen+i-1, startLen+i])
         if i == len(pointListLocal)-1: #also add a cap
@@ -79,13 +81,14 @@ def getPolyPtsSegments(geom):
 
             for i,pt in enumerate(pointListLocal):
                 vertices.append([pt.x(),pt.y()])
+                vertices3d.append([pt.x(),pt.y(), None])
                 if i>0: 
                     segmList.append([startLen+i-1, startLen+i])
                 if i == len(pointListLocal)-1: #also add a cap
                     segmList.append([startLen+i, startLen])
     except Exception as e: 
         logToUser(e, level = 1, func = inspect.stack()[0][3])
-    return vertices, segmList, holes
+    return vertices, vertices3d, segmList, holes
 
 def fix_orientation(polyBorder, positive = True, coef = 1): 
     #polyBorder = [QgsPoint(-1.42681236722918436,0.25275926575812246), QgsPoint(-1.42314917758289616,0.78756097253123281), QgsPoint(-0.83703883417681257,0.77290957257654203), QgsPoint(-0.85169159276196471,0.24176979917208921), QgsPoint(-1.42681236722918436,0.25275926575812246)]
