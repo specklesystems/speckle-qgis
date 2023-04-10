@@ -548,6 +548,18 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         try: vl.setRenderer(rendererNew)
         except: pass
 
+        try: 
+            ################################### RENDERER 3D ###########################################
+            #rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
+
+            plugin_dir = os.path.dirname(__file__)
+            renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
+            print(renderer3d)
+
+            vl.loadNamedStyle(renderer3d)
+            vl.triggerRepaint()
+        except: pass 
+        
         return vl
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
@@ -621,6 +633,18 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
 
         try: vl.setRenderer(rendererNew)
         except: pass
+
+        try: 
+            ################################### RENDERER 3D ###########################################
+            #rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
+
+            plugin_dir = os.path.dirname(__file__)
+            renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
+            print(renderer3d)
+
+            vl.loadNamedStyle(renderer3d)
+            vl.triggerRepaint()
+        except: pass 
         
         return vl
     except Exception as e:
