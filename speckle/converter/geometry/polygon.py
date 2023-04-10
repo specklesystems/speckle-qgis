@@ -20,7 +20,7 @@ from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.logging import logger
 import math
 
-from panda3d.core import Triangulator
+#from panda3d.core import Triangulator
 
 from PyQt5.QtGui import QColor
 
@@ -42,7 +42,7 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
             for v in voids:
                 pts = speckleBoundaryToSpecklePts(v)
                 voidsAsPts.append(pts)
-            total_vert, vertices_x, faces_x, colors_x = meshPartsFromPolygon(polyBorder, voidsAsPts, existing_vert, feature, layer, None)
+            total_vert, vertices_x, faces_x, colors_x = meshPartsFromPolygon(polyBorder, voidsAsPts, existing_vert, feature, geom, layer, None)
             
             if total_vert is None:
                 return None 
@@ -78,7 +78,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
             pts = speckleBoundaryToSpecklePts(v)
             voidsAsPts.append(pts)                      
         
-        # check efore extrusion
+        # check before extrusion
         if height is not None:
             universal_z_value = polyBorder[0].z
             for i, pt in enumerate(polyBorder):
@@ -87,7 +87,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
                     logToUser("Extrusion can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
                     height = None
         
-        total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, layer, height)
+        total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, geom, layer, height)
 
         mesh = constructMesh(vertices, faces, colors)
         if mesh is not None: 

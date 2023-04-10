@@ -9,27 +9,122 @@ from typing import List, Union
 from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
 from ui.logger import logToUser
 
-def fix_orientation(polyBorder: List, positive = True, coef = 1): 
+import triangle as tr
+
+def triangulatePolygon(geom): 
+    try:
+        vertices = []
+        segments = []
+        holes = []
+        vertices, segments, holes = getPolyPtsSegments(geom)
+        if len(holes)>0: 
+            dict_shape= {'vertices': vertices, 'segments': segments ,'holes': holes}
+        else: 
+            dict_shape= {'vertices': vertices, 'segments': segments }
+        t = tr.triangulate(dict_shape, 'p')
+        return t 
+    
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+
+
+def getPolyPtsSegments(geom):
+    vertices = []
+    segmList = []
+    holes = []
+    try: 
+        extRing = geom.exteriorRing()
+        pt_iterator = extRing.vertices()
+    except: 
+        try:  
+            extRing = geom.constGet().exteriorRing()
+            pt_iterator = geom.vertices()
+        except: 
+            extRing = geom
+            pt_iterator = geom.vertices()
+    
+    pointListLocal = []
+    startLen = len(vertices)
+    for i, pt in enumerate(pt_iterator): 
+        if len(pointListLocal)>0 and pt.x()==pointListLocal[0].x() and pt.y()==pointListLocal[0].y(): #don't repeat 1st point
+            pass
+        else: 
+            pointListLocal.append(pt)
+    for i,pt in enumerate(pointListLocal):
+        #print(pt)
+        vertices.append([pt.x(),pt.y()])
+        if i>0: 
+            segmList.append([startLen+i-1, startLen+i])
+        if i == len(pointListLocal)-1: #also add a cap
+            segmList.append([startLen+i, startLen])
+    
+    ########### get voids 
+    try:
+        geom = geom.constGet()
+    except: pass
+    try:
+        intRingsNum = geom.numInteriorRings()
+        for i in range(intRingsNum):
+            intRing = geom.interiorRing(i)
+            pt_iterator = intRing.vertices()
+
+            pointListLocal = []
+            startLen = len(vertices)
+            for i, pt in enumerate(pt_iterator): 
+                if len(pointListLocal)>0 and pt.x()==pointListLocal[0].x() and pt.y()==pointListLocal[0].y(): #don't repeat 1st point
+                    pass
+                else: 
+                    pointListLocal.append(pt) 
+            holes.append(getHolePt(pointListLocal))
+
+            for i,pt in enumerate(pointListLocal):
+                vertices.append([pt.x(),pt.y()])
+                if i>0: 
+                    segmList.append([startLen+i-1, startLen+i])
+                if i == len(pointListLocal)-1: #also add a cap
+                    segmList.append([startLen+i, startLen])
+    except Exception as e: 
+        logToUser(e, level = 1, func = inspect.stack()[0][3])
+    return vertices, segmList, holes
+
+def fix_orientation(polyBorder, positive = True, coef = 1): 
+    #polyBorder = [QgsPoint(-1.42681236722918436,0.25275926575812246), QgsPoint(-1.42314917758289616,0.78756097253123281), QgsPoint(-0.83703883417681257,0.77290957257654203), QgsPoint(-0.85169159276196471,0.24176979917208921), QgsPoint(-1.42681236722918436,0.25275926575812246)]
     sum_orientation = 0 
     for k, ptt in enumerate(polyBorder): #pointList:
-        try: 
-            pt = polyBorder[k*coef]
-            pt2 = polyBorder[(k+1)*coef]
-            sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)
-        except: 
-            pt = polyBorder[k*coef]
-            pt2 = polyBorder[0]
-            sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)
-            break
+        index = k+1
+        if k == len(polyBorder)-1: index = 0
+        pt = polyBorder[k*coef]
+        pt2 = polyBorder[index*coef]
+        #print(pt)
+        try: sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y) # if Speckle Points
+        except: sum_orientation += (pt2.x() - pt.x()) * (pt2.y() + pt.y()) # if QGIS Points
     if positive is True: 
         if sum_orientation < 0:
             polyBorder.reverse()
     else: 
         if sum_orientation > 0:
             polyBorder.reverse()
-    
     return polyBorder
-    
+ 
+def getHolePt(pointListLocal):
+    pointListLocal = fix_orientation(pointListLocal, True, 1)
+    minXpt = pointListLocal[0]
+    index = 0
+    index2 = 1
+    for i, pt in enumerate(pointListLocal):
+        if pt.x() < minXpt.x(): 
+            minXpt = pt
+            index = i
+            if i == len(pointListLocal)-1: index2 = 0
+            else: index2 = index+1
+    x_range = pointListLocal[index2].x() - minXpt.x()
+    y_range = pointListLocal[index2].y() - minXpt.y()
+    if y_range > 0:
+        sidePt = [ minXpt.x() + abs(x_range/2) + 0.00000000001, minXpt.y() + y_range/2 ]
+    else:
+        sidePt = [ minXpt.x() + abs(x_range/2) - 0.00000000001, minXpt.y() + y_range/2 ]
+    return sidePt
+   
 def getPolygonFeatureHeight(feature, layer, dataStorage):
     
     height = None

@@ -8,7 +8,7 @@ from specklepy.objects.other import RenderMaterial
 import shapefile
 from shapefile import TRIANGLE_STRIP, TRIANGLE_FAN, OUTER_RING
 from speckle.converter.geometry.point import pointToNative
-from speckle.converter.geometry.utils import fix_orientation
+from speckle.converter.geometry.utils import fix_orientation, triangulatePolygon
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_scale_factor
 from speckle.logging import logger
@@ -17,7 +17,7 @@ from ui.logger import logToUser
 from qgis.core import (
     Qgis, QgsPoint, QgsPointXY, QgsMultiPolygon, QgsPolygon, QgsLineString, QgsFeature, QgsVectorLayer
     )
-from panda3d.core import Triangulator
+#from panda3d.core import Triangulator
 
 def meshToNative(meshes: List[Mesh]) -> QgsMultiPolygon:
     try:
@@ -178,7 +178,7 @@ def constructMesh(vertices, faces, colors):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, layer: QgsVectorLayer, height = None):
+def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height = None):
     try:
         faces = []
         faces_cap = []
@@ -205,14 +205,7 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             for k, ptt in enumerate(polyBorder): #pointList:
                 pt = polyBorder[k*coef]
                 if k < maxPoints:
-                    if isinstance(pt, QgsPointXY):
-                        pt = QgsPoint(pt)
-                    if isinstance(pt,Point):
-                        pt = pointToNative(pt)
-                    x = pt.x()
-                    y = pt.y()
-                    z = 0 if math.isnan(pt.z()) else pt.z()
-                    vertices.extend([x, y, z])
+                    vertices.extend([pt.x, pt.y, pt.z])
                     total_vertices += 1
                 else: break
 
@@ -222,7 +215,6 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
 
             # a cap
             ##################################
-            #polyBorder.reverse()
             if height is not None:
                 ran = range(total_vertices, 2*total_vertices)
                 faces.append(total_vertices) 
@@ -239,8 +231,7 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                     except: break 
                 total_vertices *= 2
                 
-                # add extrusions
-                #polyBorder.reverse()
+                ###################################### add extrusions
                 universal_z_value = polyBorder[0].z
                 for k, pt in enumerate(polyBorder):
                     polyBorder2 = []
@@ -276,58 +267,49 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             maxPoints = 100
             if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
 
-            trianglator = Triangulator()
-            pt_count = 0
+            universal_z_value = polyBorder[0].z
             
-            for k, ptt in enumerate(polyBorder): #pointList:
-                pt = polyBorder[k*coef]
-                if k < maxPoints:
-                    if pt_count < len(polyBorder)-1 and k < (maxPoints-1): 
-                        pt2 = polyBorder[(k+1)*coef]
-                    else: pt2 = polyBorder[0]
-                            
-                    trianglator.addPolygonVertex(trianglator.addVertex(pt.x, pt.y))
-                    vertices.extend([pt.x, pt.y, pt.z])
-                    if height is not None: 
-                        vertices_cap.extend([pt.x, pt.y, pt.z + height])
+            triangulated_geom = triangulatePolygon(feature_geom)
+            pt_list = [ [p[0], p[1], universal_z_value] for p in triangulated_geom['vertices']]
+            #for pt in pt_list: 
+            #    vertices.extend(pt)
+            #    total_vertices += 1
+                #if total_vertices==3: break 
+
+            triangle_list = [ trg for trg in triangulated_geom['triangles']]
+            
+            try:
+                for trg in triangle_list:
+                    a = trg[0]
+                    b = trg[1]
+                    c = trg[2]
+                    vertices.extend(pt_list[a] + pt_list[b] + pt_list[c])
+                    total_vertices += 3
+                    # all faces are counter-clockwise now
+                    if height is None:
+                        faces.extend([3, total_vertices-3, total_vertices-2, total_vertices-1])
+                    else: # if extruding
+                        faces.extend([3, total_vertices-1, total_vertices-2, total_vertices-3]) # reverse to clock-wise (facing down)
                     
-                    total_vertices += 1
-                    pt_count += 1
-                else: break
-
-            #add void points
-            for pts in voidsAsPts:
-                trianglator.beginHole()
-
-                coefVoid = 1
-                if len(pts) >= maxPoints: coefVoid = int(len(pts)/maxPoints)
-                for k, ptt in enumerate(pts):
-                    pt = pts[k*coefVoid]
-                    if k < maxPoints:
-                        trianglator.addHoleVertex(trianglator.addVertex(pt.x, pt.y))
-                        vertices.extend([pt.x, pt.y, pt.z])
-                        if height is not None: 
-                            vertices_cap.extend([pt.x, pt.y, pt.z + height])
-                        total_vertices += 1
-                    else: break
-            
-            trianglator.triangulate()
-            i = 0
-            print(trianglator.getNumTriangles())
-            faces_reversed = []
-            total_tr = trianglator.getNumTriangles()
-            while i < trianglator.getNumTriangles():
-                tr = [trianglator.getTriangleV0(i),trianglator.getTriangleV1(i),trianglator.getTriangleV2(i)]
-                faces.extend([3, tr[0] + existing_vert, tr[1] + existing_vert, tr[2] + existing_vert])
-                faces_reversed.extend([3, tr[2] + existing_vert, tr[1] + existing_vert, tr[0] + existing_vert])
-                faces_cap.extend([3, tr[0] + existing_vert + total_tr, tr[1] + existing_vert + total_tr, tr[2] + existing_vert + total_tr])
-                i+=1
-
-            if height is not None: 
-                faces = faces_reversed # if extrusion, flip the base to look down 
-                total_vertices *= 2
+                ran = range(0, total_vertices)
+            except Exception as e:
+                logToUser(e, level = 2, func = inspect.stack()[0][3])
+            # a cap
+            ##################################
+            if height is not None:
+                # change the pt list to height 
+                pt_list = [ [p[0], p[1], universal_z_value + height] for p in triangulated_geom['vertices']]
                 
-                # add extrusions
+                for trg in triangle_list: 
+                    a = trg[0]
+                    b = trg[1]
+                    c = trg[2]
+                    # all faces are counter-clockwise now
+                    vertices.extend(pt_list[a] + pt_list[b] + pt_list[c])
+                    total_vertices += 3
+                    faces_cap.extend([3, total_vertices-3, total_vertices-2, total_vertices-1]) 
+
+                ###################################### add extrusions
                 polyBorder = fix_orientation(polyBorder, True, coef) # clockwise
                 universal_z_value = polyBorder[0].z
                 for k, pt in enumerate(polyBorder):
