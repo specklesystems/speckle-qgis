@@ -273,14 +273,15 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
 
             any_existing_z = 0
             for i, p in enumerate(vertices3d): 
-                if p[2] is not None:
+                if p[2] is not None and str(p[2])!="" and str(p[2]).lower()!="nan":
                     any_existing_z = p[2]
                     break
             
             pt_list = []
             for i, p in enumerate(triangulated_geom['vertices']): 
                 z_val = vertices3d[i][2]
-                if z_val is None: z_val = any_existing_z
+                if z_val is None or str(z_val)!="" or str(z_val).lower()!="nan": 
+                    z_val = any_existing_z
                 # TODO add here a projected point
                 pt_list.append( [p[0], p[1], z_val] ) 
 
