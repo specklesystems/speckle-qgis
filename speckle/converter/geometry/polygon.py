@@ -12,6 +12,7 @@ from specklepy.objects.geometry import Point
 
 from speckle.converter.geometry.mesh import meshPartsFromPolygon, constructMesh
 from speckle.converter.geometry.polyline import (
+    polylineFromVerticesToSpeckle,
     polylineToNative,
     unknownLineToSpeckle
 )
@@ -36,12 +37,30 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
         colors = []
         existing_vert = 0
         for p in geom.parts():
-            boundary, voids = getPolyBoundaryVoids(p, feature, layer)
+            boundary, voidsNative = getPolyBoundaryVoids(p, feature, layer)
             polyBorder = speckleBoundaryToSpecklePts(boundary)
+            voids = []
             voidsAsPts = []
-            for v in voids:
-                pts = speckleBoundaryToSpecklePts(v)
-                voidsAsPts.append(pts)
+            
+            for v in voidsNative:
+                pts_fixed = []
+                v_speckle = unknownLineToSpeckle(v, True, feature, layer)
+                pts = speckleBoundaryToSpecklePts(v_speckle)
+                
+                plane_pts = [ [polyBorder[0].x, polyBorder[0].y, polyBorder[0].z],
+                                [polyBorder[1].x, polyBorder[1].y, polyBorder[1].z],
+                                [polyBorder[2].x, polyBorder[2].y, polyBorder[2].z] ]
+                for pt in pts:
+                    z_val = pt.z
+                    print(str(z_val))
+                    # project the pts on the plane
+                    point = [pt.x, pt.y, 0]
+                    z_val = projectToPolygon( point , plane_pts)
+                    pts_fixed.append(Point(units = "m", x = pt.x, y = pt.y, z = z_val))
+
+                voids.append(polylineFromVerticesToSpeckle(pts_fixed, True, feature, layer))
+                voidsAsPts.append(pts_fixed) 
+
             total_vert, vertices_x, faces_x, colors_x = meshPartsFromPolygon(polyBorder, voidsAsPts, existing_vert, feature, geom, layer, None)
             
             if total_vert is None:
@@ -66,17 +85,34 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
     """Converts a QgsPolygon to Speckle"""
     polygon = Base(units = "m")
     try:
-        boundary, voids = getPolyBoundaryVoids(geom, feature, layer)
-    
+        boundary, voidsNative = getPolyBoundaryVoids(geom, feature, layer)
+        polyBorder = speckleBoundaryToSpecklePts(boundary)
+        voids = []
+        voidsAsPts = []
+
+        for v in voidsNative:
+            pts_fixed = []
+            v_speckle = unknownLineToSpeckle(v, True, feature, layer)
+            pts = speckleBoundaryToSpecklePts(v_speckle)
+            
+            plane_pts = [ [polyBorder[0].x, polyBorder[0].y, polyBorder[0].z],
+                            [polyBorder[1].x, polyBorder[1].y, polyBorder[1].z],
+                            [polyBorder[2].x, polyBorder[2].y, polyBorder[2].z] ]
+            for pt in pts:
+                z_val = pt.z
+                print(str(z_val))
+                # project the pts on the plane
+                point = [pt.x, pt.y, 0]
+                z_val = projectToPolygon( point , plane_pts)
+                pts_fixed.append(Point(units = "m", x = pt.x, y = pt.y, z = z_val))
+
+            voids.append(polylineFromVerticesToSpeckle(pts_fixed, True, feature, layer))
+            voidsAsPts.append(pts_fixed) 
+
         polygon.boundary = boundary
         polygon.voids = voids
         polygon.displayValue = [ boundary ] + voids
         
-        polyBorder = speckleBoundaryToSpecklePts(boundary)
-        voidsAsPts = []
-        for v in voids:
-            pts = speckleBoundaryToSpecklePts(v)
-            voidsAsPts.append(pts)                      
         
         # check before extrusion
         if height is not None:
@@ -159,7 +195,7 @@ def getPolyBoundaryVoids(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
         for i in range(geom.numInteriorRings()):
             intRing = unknownLineToSpeckle(geom.interiorRing(i), True, feature, layer)
             #intRing = polylineFromVerticesToSpeckle(geom.interiorRing(i).vertices(), True, feature, layer)
-            voids.append(intRing)   
+            voids.append(geom.interiorRing(i))   
 
         return boundary, voids
     

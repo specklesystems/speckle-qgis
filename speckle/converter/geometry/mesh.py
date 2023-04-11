@@ -8,7 +8,7 @@ from specklepy.objects.other import RenderMaterial
 import shapefile
 from shapefile import TRIANGLE_STRIP, TRIANGLE_FAN, OUTER_RING
 from speckle.converter.geometry.point import pointToNative
-from speckle.converter.geometry.utils import fix_orientation, triangulatePolygon
+from speckle.converter.geometry.utils import fix_orientation, projectToPolygon, triangulatePolygon
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_scale_factor
 from speckle.logging import logger
@@ -271,19 +271,19 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             
             triangulated_geom, vertices3d = triangulatePolygon(feature_geom)
 
-            any_existing_z = 0
+            # get substitute value for missing z-val
+            existing_3d_pts = []
             for i, p in enumerate(vertices3d): 
                 if p[2] is not None and str(p[2])!="" and str(p[2]).lower()!="nan":
-                    any_existing_z = p[2]
-                    break
-            
+                    existing_3d_pts.append(p)
+                    if len(existing_3d_pts) == 3: break
             pt_list = []
             for i, p in enumerate(triangulated_geom['vertices']): 
                 z_val = vertices3d[i][2]
                 if z_val is None or str(z_val)!="" or str(z_val).lower()!="nan": 
-                    z_val = any_existing_z
-                # TODO add here a projected point
-                pt_list.append( [p[0], p[1], z_val] ) 
+                #    #z_val = any_existing_z
+                    z_val = projectToPolygon(vertices3d[i], existing_3d_pts)
+                pt_list.append( [p[0], p[1], z_val ] ) 
 
             triangle_list = [ trg for trg in triangulated_geom['triangles']]
             

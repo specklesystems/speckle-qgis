@@ -4,12 +4,53 @@ import inspect
 import random
 from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve
 from specklepy.objects import Base
-from typing import List, Union
+from typing import List, Union, Dict 
 
 from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
 from ui.logger import logToUser
 
 import triangle as tr
+
+
+def cross_product(pt1, pt2):
+    return [ (pt1[1] * pt2[2]) - (pt1[2] * pt2[1]),
+             (pt1[2] * pt2[0]) - (pt1[0] * pt2[2]),
+             (pt1[0] * pt2[1]) - (pt1[1] * pt2[0]) ]
+
+def dot(pt1: List, pt2: List):
+    return (pt1[0] * pt2[0]) + (pt1[1] * pt2[1]) + (pt1[2] * pt2[2])
+
+def normalize(pt: List, tolerance= 1e-10):
+    magnitude = dot(pt, pt) ** 0.5
+    if abs(magnitude - 1) < tolerance:
+        return pt
+
+    scale = 1.0 / magnitude
+    normalized_vector = [coordinate * scale for coordinate in pt]
+    return normalized_vector 
+
+def createPlane(pt1: List, pt2: List, pt3: List):
+    vector1to2 = [ pt2[0]-pt1[0], pt2[1]-pt1[1], pt2[2]-pt1[2] ]
+    vector1to3 = [ pt3[0]-pt1[0], pt3[1]-pt1[1], pt3[2]-pt1[2] ]
+
+    u_direction = normalize(vector1to2)
+    normal = cross_product( u_direction, vector1to3 )
+    return {'origin': pt1, 'normal': normal}
+
+def project_to_plane_on_z(point: List, plane: Dict):
+    d = dot(plane["normal"], plane["origin"])
+    z_value_on_plane = (d - (plane["normal"][0] * point[0]) - (plane["normal"][1] * point[1])) / plane["normal"][2] 
+    return z_value_on_plane
+
+def projectToPolygon(point: List, polygonPts: List):
+    if len(polygonPts)<3: return 0
+    pt1 = polygonPts[0]
+    pt2 = polygonPts[1]
+    pt3 = polygonPts[2]
+    plane = createPlane(pt1, pt2, pt3)
+    z = project_to_plane_on_z(point, plane)
+    return z 
+
 
 def triangulatePolygon(geom): 
     try:
@@ -54,7 +95,8 @@ def getPolyPtsSegments(geom):
     for i,pt in enumerate(pointListLocal):
         #print(pt)
         vertices.append([pt.x(),pt.y()])
-        vertices3d.append([pt.x(),pt.y(), pt.z()])
+        try: vertices3d.append([pt.x(),pt.y(),pt.z()])
+        except: vertices3d.append([pt.x(),pt.y(), 0]) # project boundary to 0
         if i>0: 
             segmList.append([startLen+i-1, startLen+i])
         if i == len(pointListLocal)-1: #also add a cap
@@ -81,7 +123,8 @@ def getPolyPtsSegments(geom):
 
             for i,pt in enumerate(pointListLocal):
                 vertices.append([pt.x(),pt.y()])
-                vertices3d.append([pt.x(),pt.y(), None])
+                try: vertices3d.append([pt.x(),pt.y(), pt.z()])
+                except: vertices3d.append([pt.x(),pt.y(), None]) # leave voids Z as None, fill later
                 if i>0: 
                     segmList.append([startLen+i-1, startLen+i])
                 if i == len(pointListLocal)-1: #also add a cap
