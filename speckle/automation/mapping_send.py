@@ -52,6 +52,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(self.onOkClicked)
         self.addTransform.clicked.connect(self.onAddTransform)
         self.removeTransform.clicked.connect(self.onRemoveTransform)
+        self.transformDropdown.currentIndexChanged.connect(self.populateLayersByTransform)
 
 
         return
@@ -61,15 +62,16 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(True) 
         self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(self.onOkClicked)
         self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(self.onCancelClicked)
-        self.accounts_dropdown.currentIndexChanged.connect(self.onAccountSelected)
+        
         self.populate_accounts_dropdown()
     
     def runSetup(self):
         
         #get_transformations(self.dataStorage)
 
-        self.populateLayers()
         self.populateTransforms()
+        #self.populateLayers()
+        self.populateLayersByTransform()
         self.populateSavedTransforms()
 
     def populateSavedTransforms(self): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
@@ -179,6 +181,39 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                 self.layerDropdown.addItem(listItem)  
                 icon = QgsIconUtils().iconForLayer(layer)
                 self.layerDropdown.setItemIcon(i, icon)  
+
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3])
+            return
+    
+    def populateLayersByTransform(self):
+        try:
+            self.layerDropdown.clear()
+            root = self.dataStorage.project.layerTreeRoot()
+            self.dataStorage.all_layers = getAllLayers(root)
+
+            transform = str(self.transformDropdown.currentText())
+            layers_dropdown = []
+
+            for i, layer in enumerate(self.dataStorage.all_layers):
+
+                listItem = None
+                if "extrude" in transform.lower():
+                    
+                    if isinstance(layer, QgsVectorLayer):
+                        geom_type = getLayerGeomType(layer)
+                        if "polygon" in geom_type.lower():
+                            listItem = layer.name()
+                        
+                elif "elevation" in transform.lower():
+                    if isinstance(layer, QgsRasterLayer):
+                        listItem = layer.name()
+                
+                if listItem is not None:
+                    layers_dropdown.append(listItem)
+                    self.layerDropdown.addItem(listItem)  
+                    icon = QgsIconUtils().iconForLayer(layer)
+                    self.layerDropdown.setItemIcon(len(layers_dropdown)-1, icon)  
 
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3])

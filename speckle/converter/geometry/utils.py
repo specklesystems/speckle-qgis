@@ -25,7 +25,8 @@ def normalize(pt: List, tolerance= 1e-10):
     if abs(magnitude - 1) < tolerance:
         return pt
 
-    scale = 1.0 / magnitude
+    if magnitude !=0: scale = 1.0 / magnitude
+    else: scale = 1.0
     normalized_vector = [coordinate * scale for coordinate in pt]
     return normalized_vector 
 
