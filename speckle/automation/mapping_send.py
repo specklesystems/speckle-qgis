@@ -1,9 +1,11 @@
 import inspect
 import os
 from typing import Any, List, Tuple, Union
+from speckle.converter.layers import getAllLayers
+from speckle.converter.layers.utils import getLayerGeomType
 from ui.logger import logToUser
 import ui.speckle_qgis_dialog
-from qgis.core import Qgis
+from qgis.core import Qgis, QgsIconUtils, QgsVectorLayer, QgsRasterLayer
 
 from speckle.logging import logger
 from qgis.PyQt import QtWidgets, uic, QtCore
@@ -39,7 +41,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     def __init__(self, parent=None):
         super(MappingSendDialog,self).__init__(parent,QtCore.Qt.WindowStaysOnTopHint)
         self.setupUi(self)
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(500)
         self.setWindowTitle("Create custom mappings")
 
         self.addTransform.setStyleSheet("QPushButton {color: black; padding:3px;padding-left:5px;border: none; } QPushButton:hover { background-color: lightgrey}")
@@ -48,6 +50,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(self.onOkClicked)
         self.addTransform.clicked.connect(self.onAddTransform)
         self.removeTransform.clicked.connect(self.onRemoveTransform)
+        self.transformDropdown.currentIndexChanged.connect(self.populateLayersByTransform)
 
 
         return
@@ -62,16 +65,9 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     
     def runSetup(self):
         
-        self.populateLayers()
         self.populateTransforms()
+        self.populateLayersByTransform()
         self.populateSavedTransforms()
-
-    def populateSavedTransforms(self): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
-
-        self.transformationsList.clear()
-        if self.dataStorage.savedTransforms is not None and isinstance(self.dataStorage.savedTransforms, List):
-            for item in self.dataStorage.savedTransforms:
-                self.transformationsList.addItem(QListWidgetItem(item))
 
     def onAddTransform(self):
         if len(self.layerDropdown.currentText())>1 and len(self.transformDropdown.currentText())>1:
@@ -119,15 +115,66 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
             logToUser(e, level = 2, func = inspect.stack()[0][3])
             return
 
-    def nameCheck(self):
-        return
+###########################################################
+
+    def populateSavedTransforms(self): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
+
+        self.transformationsList.clear()
+        vals = self.dataStorage.savedTransforms  
+        all_l_names = [l.name() for l in self.dataStorage.all_layers]
+
+        for item in vals:
+            layer_name = item.split("  ->  ")[0]
+            transform_name = item.split("  ->  ")[1]
+
+            layer = None
+            for l in self.dataStorage.all_layers: 
+                if layer_name == l.name():
+                    layer = l
+            if layer is None: 
+                self.dataStorage.savedTransforms.remove(item)
+            else:
+                if transform_name not in self.dataStorage.transformsCatalog: 
+                    self.dataStorage.savedTransforms.remove(item)
+                elif all_l_names.count(layer.name()) > 1:
+                    self.dataStorage.savedTransforms.remove(item)
+                else: 
+                    listItem = QListWidgetItem(item)
+                    icon = QgsIconUtils().iconForLayer(layer)
+                    listItem.setIcon(icon)
+
+                    self.transformationsList.addItem(listItem) 
+
+    def populateLayersByTransform(self):
         try:
-            if len(self.name_field.text()) == 0 or len(self.name_field.text()) >= 3:
-                self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(True) 
-            else: 
-                self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(False) 
-            return
+            self.layerDropdown.clear()
+            root = self.dataStorage.project.layerTreeRoot()
+            self.dataStorage.all_layers = getAllLayers(root)
+
+            transform = str(self.transformDropdown.currentText())
+            layers_dropdown = []
+
+            for i, layer in enumerate(self.dataStorage.all_layers):
+
+                listItem = None
+                if "extrude" in transform.lower():
+                    
+                    if isinstance(layer, QgsVectorLayer):
+                        geom_type = getLayerGeomType(layer)
+                        if "polygon" in geom_type.lower():
+                            listItem = layer.name()
+                        
+                elif "elevation" in transform.lower():
+                    if isinstance(layer, QgsRasterLayer):
+                        listItem = layer.name()
+                
+                if listItem is not None:
+                    layers_dropdown.append(listItem)
+                    self.layerDropdown.addItem(listItem)  
+                    icon = QgsIconUtils().iconForLayer(layer)
+                    self.layerDropdown.setItemIcon(len(layers_dropdown)-1, icon)  
+
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3])
             return
-
+    
