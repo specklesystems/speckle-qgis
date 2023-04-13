@@ -51,7 +51,6 @@ if LINUX and (PYQT4 or PYSIDE):
     # noinspection PyUnresolvedReferences
     CefWidgetParent = QX11EmbedContainer
 
-
 def main():
     check_versions()
     sys.excepthook = cef.ExceptHook  # To shutdown all CEF processes on error
@@ -153,8 +152,7 @@ class CefWidget(CefWidgetParent):
         if cef.GetAppSetting("debug"):
             print("[qt.py] CefWidget.focusInEvent")
         if self.browser:
-            if WINDOWS:
-                WindowUtils.OnSetFocus(self.getHandle(), 0, 0, 0)
+            WindowUtils.OnSetFocus(self.getHandle(), 0, 0, 0)
             self.browser.SetFocus(True)
 
     def focusOutEvent(self, event):
@@ -166,9 +164,6 @@ class CefWidget(CefWidgetParent):
             self.browser.SetFocus(False)
 
     def embedBrowser(self):
-        if (PYSIDE2 or PYQT5) and LINUX:
-            # noinspection PyUnresolvedReferences
-            self.hidden_window = QWindow()
         window_info = cef.WindowInfo()
         rect = [0, 0, self.width(), self.height()]
         window_info.SetAsChild(self.getHandle(), rect)
@@ -188,21 +183,14 @@ class CefWidget(CefWidgetParent):
             # PySide:
             # | QWidget.winId() returns <PyCObject object at 0x02FD8788>
             # | Converting it to int using ctypes.
-            if sys.version_info[0] == 2:
-                # Python 2
-                ctypes.pythonapi.PyCObject_AsVoidPtr.restype = (
-                        ctypes.c_void_p)
-                ctypes.pythonapi.PyCObject_AsVoidPtr.argtypes = (
-                        [ctypes.py_object])
-                return ctypes.pythonapi.PyCObject_AsVoidPtr(self.winId())
-            else:
-                # Python 3
-                ctypes.pythonapi.PyCapsule_GetPointer.restype = (
-                        ctypes.c_void_p)
-                ctypes.pythonapi.PyCapsule_GetPointer.argtypes = (
-                        [ctypes.py_object])
-                return ctypes.pythonapi.PyCapsule_GetPointer(
-                        self.winId(), None)
+
+            # Python 3
+            ctypes.pythonapi.PyCapsule_GetPointer.restype = (
+                    ctypes.c_void_p)
+            ctypes.pythonapi.PyCapsule_GetPointer.argtypes = (
+                    [ctypes.py_object])
+            return ctypes.pythonapi.PyCapsule_GetPointer(
+                    self.winId(), None)
 
     def moveEvent(self, _):
         self.x = 0
