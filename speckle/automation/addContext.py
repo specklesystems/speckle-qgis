@@ -21,7 +21,9 @@ from gql import gql
 
 #from qgis.PyQt import QtCore, QtWidgets #, QtWebEngineWidgets
 from PyQt5 import *
-from PyQt5.QtCore import QUrl
+from PyQt5.Qt import QWebPage
+#from PyQt5.QtGui import *
+from PyQt5.QtCore import QUrl, QFile
 from PyQt5.QtNetwork import QNetworkProxyFactory
 
 from speckle.notifications.utils import addDashboardTable
@@ -63,6 +65,8 @@ class ContextVisualsDialog(QtWidgets.QWidget, FORM_CLASS):
     
     chart: QWidget
     browser = None
+    page = None
+    mainUrl: str = ""
     existing_web: int = 0
 
     #Events
@@ -87,22 +91,35 @@ class ContextVisualsDialog(QtWidgets.QWidget, FORM_CLASS):
 
         # https://stackoverflow.com/questions/60522103/how-to-have-plotly-graph-as-pyqt5-widget 
         
-
+       
+        #QNetworkProxyFactory.setUseSystemConfiguration(True)
+        #QWebSettings.globalSettings().setAttribute(QWebSettings.PluginsEnabled, True)
+        #QWebSettings.globalSettings().setAttribute(QWebSettings.DnsPrefetchEnabled, True)
+        QWebSettings.globalSettings().setAttribute(QWebSettings.JavascriptEnabled, True)
+        print(QWebSettings.JavascriptEnabled)
+        #QWebSettings.globalSettings().setAttribute(QWebSettings.OfflineStorageDatabaseEnabled, True)
+        #QWebSettings.globalSettings().setAttribute(QWebSettings.AutoLoadImages, True)
+        #QWebSettings.globalSettings().setAttribute(QWebSettings.LocalStorageEnabled, True)
+        #QWebSettings.globalSettings().setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
+        QWebSettings.globalSettings().setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
+        QWebSettings.globalSettings().setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
+        
         if self.existing_web == 0:
             self.browser = QWebView(self)
-        
-        QNetworkProxyFactory.setUseSystemConfiguration(True)
-        QWebSettings.globalSettings().setAttribute(QWebSettings.PluginsEnabled, True)
-        QWebSettings.globalSettings().setAttribute(QWebSettings.DnsPrefetchEnabled, True)
-        QWebSettings.globalSettings().setAttribute(QWebSettings.JavascriptEnabled, True)
-        QWebSettings.globalSettings().setAttribute(QWebSettings.OfflineStorageDatabaseEnabled, True)
-        QWebSettings.globalSettings().setAttribute(QWebSettings.AutoLoadImages, True)
-        QWebSettings.globalSettings().setAttribute(QWebSettings.LocalStorageEnabled, True)
-        QWebSettings.globalSettings().setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
-        QWebSettings.globalSettings().setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
+            self.page = QWebPage()
 
         #self.browser.setHtml(fig.to_html(include_plotlyjs='cdn'))
-        self.browser.setUrl(QUrl("https://speckle.xyz/streams/e2effcfa27/commits/f76cedd9a6"))
+        # https://speckle.xyz/streams/e2effcfa27/commits/f76cedd9a6
+        #self.browser.setUrl(QUrl("https://speckle.xyz/embed?stream=62973cd221&commit=ffc7f53f6a"))"https://speckle.xyz/embed?stream=62973cd221&commit=ffc7f53f6a"
+        #js_text = str( QFile("https://speckle.xyz/assets/index.52ca9f7c.js").readAll(), 'utf-8')
+        #print(js_text)
+
+        self.mainUrl = "https://speckle.xyz/embed?stream=62973cd221&commit=ffc7f53f6a"
+        self.page.mainFrame().setUrl(QUrl(self.mainUrl))
+                
+
+        #self.page.mainFrame().setHtml(r'<iframe src="https://speckle.xyz/embed?stream=62973cd221&commit=ffc7f53f6a" width="600" height="400" frameborder="0"></iframe>')
+        self.browser.setPage(self.page)
         #self.browser.setUrl(QUrl("https://www.google.com/"))
         #self.browser.load(QUrl("https://www.google.com/"))
         
@@ -114,11 +131,65 @@ class ContextVisualsDialog(QtWidgets.QWidget, FORM_CLASS):
             self.chart.layout.addWidget(self.browser)
             self.existing_web = 1
             self.browser.loadFinished.connect(self.displayPage)
-
         return 
     
+    def getUrlsFromPage(self, pageUrl: str):
+        import urllib
+        
+        indices = []
+        links = []
+
+        page = urllib.request.urlopen(pageUrl)
+        page_text = page.read().decode('utf-8')
+        
+        parts = page_text.split("<link ")
+        for p in parts:
+            try: 
+                url = p.split(" href=\"")[1].split("\"")[0]
+                if len(url)<50:
+                    if url.startswith("/") and ".js" in url: link = "https://speckle.xyz" + url
+                    #else:                   link = url
+                    indices.append( page_text.find(link) )
+                    links.append(link)
+            except: pass
+
+        parts = page_text.split("<script ")
+        for p in parts:
+            try: 
+                url = p.split(" src=\"")[1].split("\"")[0]
+                if len(url)<50:
+                    if url.startswith("/") and ".js" in url: link = "https://speckle.xyz" + url
+                    #else:                   link = url 
+                    indices.append( page_text.find(link) )
+                    links.append(link)
+            except: pass
+        
+        urls = [x for _,x in sorted(zip(indices,links))]
+        return urls
+
+    def getFilesContentFromUrls(self, urls: List[str]):
+        import urllib.request
+        texts = []
+        for url in urls:
+            data = urllib.request.urlopen(url)
+            try:
+                text_data = "".join([line.decode('utf-8') for line in data])
+                texts.append(text_data)
+            except Exception as e:
+                print(e)
+                print(url) # e.g. .ico files 
+        return texts
+
+
     def displayPage(self):
         print(self.browser.loadFinished)
+        
+        urls = self.getUrlsFromPage(self.mainUrl)
+        js_scripts = self.getFilesContentFromUrls(urls)
+
+        for j in js_scripts:
+            self.page.mainFrame().evaluateJavaScript(j)
+        
         self.show()
         return
 
