@@ -63,11 +63,12 @@ def main():
     main_window.activateWindow()
     main_window.raise_()
     app.exec_()
-    if not cef.GetAppSetting("external_message_pump"):
-        app.stopTimer()
+    #if not cef.GetAppSetting("external_message_pump"):
+    #    app.stopTimer()
+    main_window.navigation_bar.onGoUrl()
     #del main_window  # Just to be safe, similarly to "del app"
     #del app  # Must destroy app object before calling Shutdown
-    cef.Shutdown()
+    #cef.Shutdown()
 
 
 def check_versions():
@@ -247,20 +248,11 @@ class LoadHandler(object):
         self.initial_app_loading = True
         self.navigation_bar = navigation_bar
 
-    def OnLoadingStateChange(self, **_):
-        self.navigation_bar.updateState()
-
     def OnLoadStart(self, browser, **_):
         self.navigation_bar.url.setText(browser.GetUrl())
         if self.initial_app_loading:
             self.navigation_bar.cef_widget.setFocus()
-            # Temporary fix no. 2 for focus issue on Linux (Issue #284)
-            if LINUX:
-                print("[qt.py] LoadHandler.OnLoadStart:"
-                      " keyboard focus fix no. 2 (Issue #284)")
-                browser.SetFocus(True)
             self.initial_app_loading = False
-
 
 class FocusHandler(object):
     def __init__(self, cef_widget):
@@ -293,46 +285,12 @@ class NavigationBar(QFrame):
         layout = QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-
-        # Back button
-        self.back = self.createButton("back")
-        # noinspection PyUnresolvedReferences
-        self.back.clicked.connect(self.onBack)
-        # noinspection PyArgumentList
-        layout.addWidget(self.back, 0, 0)
-
-        # Forward button
-        self.forward = self.createButton("forward")
-        # noinspection PyUnresolvedReferences
-        self.forward.clicked.connect(self.onForward)
-        # noinspection PyArgumentList
-        layout.addWidget(self.forward, 0, 1)
-
-        # Reload button
-        self.reload = self.createButton("reload")
-        # noinspection PyUnresolvedReferences
-        self.reload.clicked.connect(self.onReload)
-        # noinspection PyArgumentList
-        layout.addWidget(self.reload, 0, 2)
+        self.setLayout(layout)
 
         # Url input
         self.url = QLineEdit("")
         # noinspection PyUnresolvedReferences
         self.url.returnPressed.connect(self.onGoUrl)
-        # noinspection PyArgumentList
-        layout.addWidget(self.url, 0, 3)
-
-        # Layout
-        self.setLayout(layout)
-        self.updateState()
-
-    def onBack(self):
-        if self.cef_widget.browser:
-            self.cef_widget.browser.GoBack()
-
-    def onForward(self):
-        if self.cef_widget.browser:
-            self.cef_widget.browser.GoForward()
 
     def onReload(self):
         if self.cef_widget.browser:
@@ -340,28 +298,7 @@ class NavigationBar(QFrame):
 
     def onGoUrl(self):
         if self.cef_widget.browser:
-            self.cef_widget.browser.LoadUrl(self.url.text())
+            self.cef_widget.browser.LoadUrl("https://github.com/cztomczak/cefpython/blob/master/src/cefpython.pyx")
 
-    def updateState(self):
-        browser = self.cef_widget.browser
-        if not browser:
-            self.back.setEnabled(False)
-            self.forward.setEnabled(False)
-            self.reload.setEnabled(False)
-            self.url.setEnabled(False)
-            return
-        self.back.setEnabled(browser.CanGoBack())
-        self.forward.setEnabled(browser.CanGoForward())
-        self.reload.setEnabled(True)
-        self.url.setEnabled(True)
-        self.url.setText(browser.GetUrl())
 
-    def createButton(self, name):
-        resources = os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                                 "resources")
-        pixmap = QPixmap(os.path.join(resources, "{0}.png".format(name)))
-        icon = QIcon(pixmap)
-        button = QPushButton()
-        button.setIcon(icon)
-        button.setIconSize(pixmap.rect().size())
-        return button
+
