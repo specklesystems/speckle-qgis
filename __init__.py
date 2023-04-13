@@ -47,7 +47,7 @@ def classFactory(iface):  # pylint: disable=invalid-name
     
     # Ensure dependencies are installed in the machine
     from speckle.utils import enable_remote_debugging
-    enable_remote_debugging()
+    #enable_remote_debugging()
     setup()
     from speckle_qgis import SpeckleQGIS
     #from specklepy.logging import metrics

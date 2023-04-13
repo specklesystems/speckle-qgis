@@ -340,7 +340,9 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         #if self.contextVisualDialog.dashboard is not None: 
         #    self.contextVisualDialog.dashboard.update()
         #    #self.updLog.dashboard.populateUI(force = 1)
-        main()
+        t = threading.Thread(target=main, args=())
+        t.start()
+        
         return
         self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
 
