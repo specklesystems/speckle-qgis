@@ -9,7 +9,7 @@ from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget, QPus
 from qgis.PyQt import QtWidgets
 from qgis.PyQt.QtGui import QPainter
 import webbrowser
-from specklepy.logging import metrics
+#from specklepy.logging import metrics
 from specklepy.api.credentials import Account
 
 import inspect
@@ -118,10 +118,10 @@ class LogWidget(QWidget):
 
             webbrowser.open(url, new=0, autoraise=True)
             
-            try:
-                metrics.track("Connector Action", self.active_account, {"name": "Open In Web", "connector_version": str(self.speckle_version)})
-            except:
-                pass   
+            #try:
+            #    metrics.track("Connector Action", self.active_account, {"name": "Open In Web", "connector_version": str(self.speckle_version)})
+            #except:
+            #    pass   
                
             self.hide()
         except Exception as e: 

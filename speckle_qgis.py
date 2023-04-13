@@ -40,7 +40,7 @@ from specklepy.objects import Base
 from specklepy.transports.server import ServerTransport
 from specklepy.api.credentials import Account, get_local_accounts #, StreamWrapper
 from specklepy.api.client import SpeckleClient
-from specklepy.logging import metrics
+#from specklepy.logging import metrics
 import webbrowser
 
 # Initialize Qt resources from file resources.py
@@ -290,10 +290,10 @@ class SpeckleQGIS:
             
             if not self.dockwidget.experimental.isChecked(): 
                 
-                try:
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": False, "connector_version": str(self.version)})
-                except Exception as e:
-                    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                #try:
+                #    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": False, "connector_version": str(self.version)})
+                #except Exception as e:
+                #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                 
                 self.onSend(message)
             else:
@@ -304,10 +304,10 @@ class SpeckleQGIS:
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.active_account = client.account
-                    try:
-                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
-                    except Exception as e:
-                        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                    #try:
+                    #    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
+                    #except Exception as e:
+                    #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                     
                     #with ThreadPoolExecutor(max_workers=1) as executor:
                     #    future = executor.submit(self.onSend, message)
@@ -324,10 +324,10 @@ class SpeckleQGIS:
             
             if not self.dockwidget.experimental.isChecked(): 
                 
-                try:
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": False, "connector_version": str(self.version)})
-                except Exception as e:
-                    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                #try:
+                #    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": False, "connector_version": str(self.version)})
+                #except Exception as e:
+                #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                 
                 self.onReceive()
             else:
@@ -338,10 +338,10 @@ class SpeckleQGIS:
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.active_account = client.account
-                    try:
-                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
-                    except Exception as e:
-                        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                    #try:
+                    #    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
+                    #except Exception as e:
+                    #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                     #with ThreadPoolExecutor(max_workers=1) as executor:
                     #    future = executor.submit(self.onReceive)
                     #    print("RESULT")
@@ -530,10 +530,10 @@ class SpeckleQGIS:
             
             metr_projected = True if not projectCRS.isGeographic() else False
             if self.qgis_project.crs().isValid() is False: metr_projected = None
-            try:
-                metrics.track(metrics.RECEIVE, self.active_account, {"hostAppFullVersion":self.gis_version, "sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
-            except:
-                metrics.track(metrics.RECEIVE, self.active_account)
+            #try:
+            #    metrics.track(metrics.RECEIVE, self.active_account, {"hostAppFullVersion":self.gis_version, "sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
+            #except:
+            #    metrics.track(metrics.RECEIVE, self.active_account)
             
             client.commit.received(
             streamId,

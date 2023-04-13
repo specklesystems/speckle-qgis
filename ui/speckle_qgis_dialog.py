@@ -26,7 +26,7 @@ import inspect
 import os
 import threading
 from plugin_utils.helpers import getLayerByName, splitTextIntoLines
-from speckle.automation.addContext import ContextVisualsDialog
+from speckle.automation.addContext import main
 from speckle.automation.mapping_send import MappingSendDialog
 from speckle.converter.layers import getAllLayers, getLayers
 from speckle.DataStorage import DataStorage
@@ -48,7 +48,7 @@ from specklepy.api.credentials import get_local_accounts
 
 from specklepy.api.wrapper import StreamWrapper
 from specklepy.api.client import SpeckleClient
-from specklepy.logging import metrics
+#from specklepy.logging import metrics
 
 from ui.validation import tryGetBranch, tryGetStream
 
@@ -100,7 +100,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     iface = None
 
     mappingSendDialog: MappingSendDialog = None
-    contextVisualDialog: ContextVisualsDialog = None
+    contextVisualDialog = None
     example1: QtWidgets.QPushButton 
     example2: QtWidgets.QPushButton 
     example3: QtWidgets.QPushButton 
@@ -332,15 +332,15 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def addUpdate2(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
         root = self.dataStorage.project.layerTreeRoot()
         self.dataStorage.all_layers = getAllLayers(root)
-        self.contextVisualDialog = ContextVisualsDialog(None)
-        self.contextVisualDialog.dataStorage = self.dataStorage
-        self.contextVisualDialog.runSetup()
+        #self.contextVisualDialog = ContextVisualsDialog(None)
+        #self.contextVisualDialog.dataStorage = self.dataStorage
+        #self.contextVisualDialog.runSetup()
         
 
         #if self.contextVisualDialog.dashboard is not None: 
         #    self.contextVisualDialog.dashboard.update()
         #    #self.updLog.dashboard.populateUI(force = 1)
-        self.contextVisualDialog.createChart()
+        main()
         return
         self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
 
@@ -384,10 +384,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def refreshClicked(self, plugin):
         try:
-            try:
-                metrics.track("Connector Action", plugin.active_account, {"name": "Refresh", "connector_version": str(plugin.version)})
-            except Exception as e:
-                logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
+            #try:
+            #    metrics.track("Connector Action", plugin.active_account, {"name": "Refresh", "connector_version": str(plugin.version)})
+            #except Exception as e:
+            #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
             
             plugin.reloadUI()
         except Exception as e:
@@ -396,10 +396,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def closeClicked(self, plugin):
         try:
-            try:
-                metrics.track("Connector Action", plugin.active_account, {"name": "Close", "connector_version": str(plugin.version)})
-            except Exception as e:
-                logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
+            #try:
+            #    metrics.track("Connector Action", plugin.active_account, {"name": "Close", "connector_version": str(plugin.version)})
+            #except Exception as e:
+            #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
             plugin.dataStorage.runUpdates = False 
             plugin.onClosePlugin()
         except Exception as e:
