@@ -54,7 +54,7 @@ if LINUX and (PYQT4 or PYSIDE):
 
 def main():
     check_versions()
-    #sys.excepthook = cef.ExceptHook  # To shutdown all CEF processes on error
+    sys.excepthook = cef.ExceptHook  # To shutdown all CEF processes on error
     settings = {}
 
     cef.Initialize(settings)
@@ -64,9 +64,9 @@ def main():
     main_window.activateWindow()
     main_window.raise_()
     app.exec_()
-    #if not cef.GetAppSetting("external_message_pump"):
-    #    app.stopTimer()
-    del main_window  # Just to be safe, similarly to "del app"
+    if not cef.GetAppSetting("external_message_pump"):
+        app.stopTimer()
+    #del main_window  # Just to be safe, similarly to "del app"
     #del app  # Must destroy app object before calling Shutdown
     cef.Shutdown()
 
@@ -93,18 +93,11 @@ class MainWindow(QMainWindow):
         # noinspection PyArgumentList
         super(MainWindow, self).__init__(None)
         # Avoids crash when shutting down CEF (issue #360)
-        if PYSIDE:
-            self.setAttribute(Qt.WA_DeleteOnClose, True)
+        #if PYSIDE:
+        #    self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.cef_widget = None
         self.navigation_bar = None
-        if PYQT4:
-            self.setWindowTitle("PyQt4 example")
-        elif PYQT5:
-            self.setWindowTitle("PyQt5 example")
-        elif PYSIDE:
-            self.setWindowTitle("PySide example")
-        elif PYSIDE2:
-            self.setWindowTitle("PySide2 example")
+        self.setWindowTitle("PyQt5 example")
         self.setFocusPolicy(Qt.StrongFocus)
         self.setupLayout()
 
@@ -126,28 +119,14 @@ class MainWindow(QMainWindow):
         frame.setLayout(layout)
         self.setCentralWidget(frame)
 
-        if (PYSIDE2 or PYQT5) and WINDOWS:
-            # On Windows with PyQt5 main window must be shown first
-            # before CEF browser is embedded, otherwise window is
-            # not resized and application hangs during resize.
-            self.show()
+        self.show()
 
         # Browser can be embedded only after layout was set up
         self.cef_widget.embedBrowser()
 
-        if (PYSIDE2 or PYQT5) and LINUX:
-            # On Linux with PyQt5 the QX11EmbedContainer widget is
-            # no more available. An equivalent in Qt5 is to create
-            # a hidden window, embed CEF browser in it and then
-            # create a container for that hidden window and replace
-            # cef widget in the layout with the container.
-            # noinspection PyUnresolvedReferences, PyArgumentList
-            self.container = QWidget.createWindowContainer(
-                    self.cef_widget.hidden_window, parent=self)
-            # noinspection PyArgumentList
-            layout.addWidget(self.container, 1, 0)
 
     def closeEvent(self, event):
+        return
         # Close browser (force=True) and free CEF reference
         if self.cef_widget.browser:
             self.cef_widget.browser.CloseBrowser(True)
@@ -250,8 +229,8 @@ class CefWidget(CefWidgetParent):
 class CefApplication(QApplication):
     def __init__(self, args):
         super(CefApplication, self).__init__(args)
-        #if not cef.GetAppSetting("external_message_pump"):
-        #    self.timer = self.createTimer()
+        if not cef.GetAppSetting("external_message_pump"):
+            self.timer = self.createTimer()
         #self.setupIcon()
 
     def createTimer(self):
