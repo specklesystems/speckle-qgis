@@ -85,6 +85,19 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
     except Exception as e:
         logger.log(e.with_traceback)
 
+    ############################################
+
+    pkgVersion = "66.0"  # "2.5.3"
+    pkgName = "cefpython3"
+    try:
+        from cefpython3 import cefpython as cef
+    except Exception as e:
+        logger.log("cefpython not installed")
+        subprocess_call(
+            [pythonExec, "-m", "pip", "install", "--upgrade", f"{pkgName}"]
+        )
+
+
     ################################################# 
     pkgVersion = "2.3.1"
     pkgName = "pyshp"
