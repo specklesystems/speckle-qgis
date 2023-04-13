@@ -13,6 +13,7 @@
 # - Mac: Keyboard focus issues when switching between controls (Issue #284)
 # - Mac: Mouse cursor never changes when hovering over links (Issue #311)
 
+import time
 from cefpython3 import cefpython as cef
 import ctypes
 import os
@@ -249,8 +250,9 @@ class LoadHandler(object):
         self.navigation_bar = navigation_bar
 
     def OnLoadStart(self, browser, **_):
-        self.navigation_bar.url.setText(browser.GetUrl())
+        #self.navigation_bar.url.setText(browser.GetUrl())
         if self.initial_app_loading:
+            time.sleep(0.5)
             self.navigation_bar.cef_widget.setFocus()
             self.initial_app_loading = False
 
@@ -288,17 +290,16 @@ class NavigationBar(QFrame):
         self.setLayout(layout)
 
         # Url input
-        self.url = QLineEdit("")
+        #self.url = QLineEdit("")
         # noinspection PyUnresolvedReferences
-        self.url.returnPressed.connect(self.onGoUrl)
+        #self.url.returnPressed.connect(self.onGoUrl)
 
     def onReload(self):
         if self.cef_widget.browser:
             self.cef_widget.browser.Reload()
 
     def onGoUrl(self):
+        time.sleep(0.5)
         if self.cef_widget.browser:
-            self.cef_widget.browser.LoadUrl("https://github.com/cztomczak/cefpython/blob/master/src/cefpython.pyx")
-
-
+            self.cef_widget.browser.LoadUrl("https://speckle.xyz/embed?stream=62973cd221&commit=ffc7f53f6a")
 
