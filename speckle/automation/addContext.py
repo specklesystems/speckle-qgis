@@ -15,7 +15,17 @@
 
 # https://github.com/cztomczak/cefpython/blob/5679f28cec18a57a56e298da2927aac8d8f83ad6/examples/qt.py#L360
 
+import threading
 from specklepy.api.wrapper import StreamWrapper
+from specklepy.api import operations
+from specklepy.objects import Base
+
+
+SPECKLE_COLOR = (59,130,246)
+SPECKLE_COLOR_LIGHT = (69,140,255)
+COLOR = f"color: rgb{str(SPECKLE_COLOR)};"
+BACKGR_COLOR = f"background-color: rgb{str(SPECKLE_COLOR)};"
+BACKGR_COLOR_LIGHT = f"background-color: rgb{str(SPECKLE_COLOR_LIGHT)};"
 
 import time
 from cefpython3 import cefpython as cef
@@ -24,7 +34,7 @@ import os
 import platform
 import sys
 
-from ui.validation import tryGetBranch, tryGetStream
+from ui.validation import tryGetBranch, tryGetStream, validateTransport
 
 # GLOBALS
 PYQT4 = False
@@ -58,7 +68,7 @@ if LINUX and (PYQT4 or PYSIDE):
     # noinspection PyUnresolvedReferences
     CefWidgetParent = QX11EmbedContainer
 
-def main(dataStorage):
+def main(dataStorage, all_threads):
     check_versions()
     sys.excepthook = cef.ExceptHook  # To shutdown all CEF processes on error
     settings = {}
@@ -67,6 +77,7 @@ def main(dataStorage):
     app = CefApplication(sys.argv)
     main_window = MainWindow()
     main_window.dataStorage = dataStorage
+    main_window.all_threads = all_threads
     main_window.setupLayout()
     main_window.show()
     main_window.activateWindow()
@@ -74,10 +85,17 @@ def main(dataStorage):
     app.exec_()
     if not cef.GetAppSetting("external_message_pump"):
         app.stopTimer()
-    #del main_window  # Just to be safe, similarly to "del app"
-    #del app  # Must destroy app object before calling Shutdown
-    #cef.Shutdown()
+    if main_window.closed is True:
+        app.stopTimer()
+        del main_window  # Just to be safe, similarly to "del app"
+        del app  # Must destroy app object before calling Shutdown
+        cef.Shutdown()
+        return 
+    del main_window  # Just to be safe, similarly to "del app"
+    del app  # Must destroy app object before calling Shutdown
+    cef.Shutdown()
     return 
+
 
 
 def check_versions():
@@ -109,6 +127,9 @@ class MainWindow(QMainWindow):
         self.branchDropdown = None
         self.branch2Dropdown = None
         self.dataStorage = None
+        self.overlayBtn = None
+        self.all_threads = None
+        self.closed = False
         self.setWindowTitle("3D VIEWER")
         self.setFocusPolicy(Qt.StrongFocus)
 
@@ -122,22 +143,34 @@ class MainWindow(QMainWindow):
         if self.branchDropdown is None:
             self.branchDropdown = QComboBox()
         else: self.branchDropdown.clear()
+        
+        # populate branch2 !!!! dropdown
+        if self.branch2Dropdown is None:
+            self.branch2Dropdown = QComboBox()
+        else: self.branch2Dropdown.clear()
 
-        stream_url = StreamWrapper("https://speckle.xyz/streams/62973cd221")
-        stream = tryGetStream(stream_url)
+        stream_wr = StreamWrapper("https://speckle.xyz/streams/62973cd221")
+        stream = tryGetStream(stream_wr)
         self.dataStorage.active_stream = (None, stream)
         branches = stream.branches.items
 
         br_names = [br.name for br in branches]
         for item in br_names:
             self.branchDropdown.addItem(item)
+            self.branch2Dropdown.addItem(item)
         self.branchDropdown.currentIndexChanged.connect( self.reload )
+        self.overlayBtn = QPushButton("Overlay")
+        self.overlayBtn.setStyleSheet("QPushButton {color: white;border: 0px;border-radius: 17px;padding: 10px;"+ f"{BACKGR_COLOR}" + "} QPushButton:hover { "+ f"{BACKGR_COLOR_LIGHT}" + " }")
+        
+        self.overlayBtn.clicked.connect( self.overlay )
         widget = QWidget() 
         widget.layout = QHBoxLayout(widget)
         widget.layout.addWidget(QLabel("Select branch to preview"))
         widget.layout.addWidget(self.branchDropdown)
+        widget.layout.addWidget(QLabel("Select branch to overlay"))
+        widget.layout.addWidget(self.branch2Dropdown)
         widget.layout.addWidget(QLabel("   "))
-        widget.layout.addWidget(QLabel("   "))
+        widget.layout.addWidget(self.overlayBtn)
         layout.addWidget(widget, 0, 0)
         
 
@@ -160,26 +193,64 @@ class MainWindow(QMainWindow):
         # Browser can be embedded only after layout was set up
         self.cef_widget.embedBrowser()
 
-    def reload(self):
+    def overlay(self):
+
+        stream_wr = StreamWrapper("https://speckle.xyz/streams/62973cd221")
+        streamId = stream_wr.stream_id
+        client = stream_wr.get_client()
+        transport = validateTransport(client, streamId)
+
+        url1 = "https://speckle.xyz/streams/" + self.dataStorage.active_stream[1].id + "/branches/" + self.branchDropdown.currentText()
+        url2 = "https://speckle.xyz/streams/" + self.dataStorage.active_stream[1].id + "/branches/" + self.branch2Dropdown.currentText()
+        
+        if url1 == url2: return
+
+        branch1 = tryGetBranch(url1)
+        try: objId1 = branch1.commits.items[0].referencedObject
+        except: return
+        commitObj1 = operations._untracked_receive(objId1, transport, None)
+
+        branch2 = tryGetBranch(url2)
+        try: objId2 = branch2.commits.items[0].referencedObject
+        except: return
+        commitObj2 = operations._untracked_receive(objId2, transport, None)
+
+        base_obj = Base(units = "m")
+        base_obj.layers = [commitObj1, commitObj2]
+
+        objId_Send = operations.send(base=base_obj, transports=[transport])
+        self.reload(objId_Send)
+        return
+    
+    def reload(self, obj_id = None):
         try: 
             url = "https://speckle.xyz/streams/" + self.dataStorage.active_stream[1].id + "/branches/" + self.branchDropdown.currentText()
             branch = tryGetBranch(url)
-            obj_id = branch.commits.items[0].referencedObject
-            #url_commit = "https://speckle.xyz/streams/" + self.dataStorage.active_stream[1].id + "/objects/" + obj_id
+            if obj_id is None or not isinstance(obj_id, str): objId = branch.commits.items[0].referencedObject
+            else: objId = obj_id
+            #url_commit = "https://speckle.xyz/streams/" + self.dataStorage.active_stream[1].id + "/objects/" + objId
             #"https://speckle.xyz/embed?stream=62973cd221&object=b89c5c1dd1b3e2fd09e1dd0743bbb283"
-            url_commit = "https://speckle.xyz/embed?stream=" + self.dataStorage.active_stream[1].id + "&object=" + obj_id
+            url_commit = "https://speckle.xyz/embed?stream=" + self.dataStorage.active_stream[1].id + "&object=" + objId
             self.cef_widget.browser.LoadUrl(url_commit)
         except: pass
         return
     
     def closeEvent(self, event):
         # Close browser (force=True) and free CEF reference
+        self.closed = True 
         if self.cef_widget.browser:
             self.cef_widget.browser.CloseBrowser(True)
             self.clear_browser_references()
+        return
+        if threading.active_count()  > self.all_threads:
+            count = 0
+            for t in threading.enumerate(): 
+                if count >= self.all_threads:
+                    t.join()
+                count +=1
         #app.stopTimer()
-        cef.Shutdown()
-        del self  # Just to be safe, similarly to "del app"
+        #cef.Shutdown()
+        #del self  # Just to be safe, similarly to "del app"
         #del app  # Must destroy app object before calling Shutdown
         return 
 

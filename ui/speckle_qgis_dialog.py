@@ -187,12 +187,12 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         self.formLayout.insertRow(16,runDash)
         self.example1 = runDash
         
-        runDash = QtWidgets.QPushButton("#2 - 3D Viewer")
+        runDash = QtWidgets.QPushButton("#2 - Object Transformations")
         runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: rgb(224,224,224); }")
         self.formLayout.insertRow(17,runDash)
         self.example2 = runDash
         
-        runDash = QtWidgets.QPushButton("#3 - Object Transformations")
+        runDash = QtWidgets.QPushButton("#3 - 3D Viewer")
         runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: rgb(224,224,224); }")
         self.formLayout.insertRow(18,runDash)
         self.example3 = runDash
@@ -332,6 +332,18 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def addUpdate2(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
         root = self.dataStorage.project.layerTreeRoot()
         self.dataStorage.all_layers = getAllLayers(root)
+        self.mappingSendDialog = MappingSendDialog(None)
+        self.mappingSendDialog.dataStorage = self.dataStorage
+        self.mappingSendDialog.runSetup()
+        self.mappingSendDialog.show()
+        return
+        self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
+
+        
+    def addUpdate3(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
+        
+        root = self.dataStorage.project.layerTreeRoot()
+        self.dataStorage.all_layers = getAllLayers(root)
         #self.contextVisualDialog = ContextVisualsDialog(None)
         #self.contextVisualDialog.dataStorage = self.dataStorage
         #self.contextVisualDialog.runSetup()
@@ -340,19 +352,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         #if self.contextVisualDialog.dashboard is not None: 
         #    self.contextVisualDialog.dashboard.update()
         #    #self.updLog.dashboard.populateUI(force = 1)
-        t = threading.Thread(target=main, args=(self.dataStorage,))
+        all_threads = threading.active_count()
+        t = threading.Thread(target=main, args=(self.dataStorage,all_threads,))
         t.start()
         
-        return
-        self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
-
-    def addUpdate3(self): #, branch_name: str, latest_commit_id: str, user: str, url_commit: str):
-        root = self.dataStorage.project.layerTreeRoot()
-        self.dataStorage.all_layers = getAllLayers(root)
-        self.mappingSendDialog = MappingSendDialog(None)
-        self.mappingSendDialog.dataStorage = self.dataStorage
-        self.mappingSendDialog.runSetup()
-        self.mappingSendDialog.show()
         return
         self.updLog.addUpdate() #, branch_name, latest_commit_id, user, url_commit)
 
