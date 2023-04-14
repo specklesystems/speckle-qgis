@@ -15,12 +15,16 @@
 
 # https://github.com/cztomczak/cefpython/blob/5679f28cec18a57a56e298da2927aac8d8f83ad6/examples/qt.py#L360
 
+from specklepy.api.wrapper import StreamWrapper
+
 import time
 from cefpython3 import cefpython as cef
 import ctypes
 import os
 import platform
 import sys
+
+from ui.validation import tryGetBranch, tryGetStream
 
 # GLOBALS
 PYQT4 = False
@@ -54,7 +58,7 @@ if LINUX and (PYQT4 or PYSIDE):
     # noinspection PyUnresolvedReferences
     CefWidgetParent = QX11EmbedContainer
 
-def main():
+def main(dataStorage):
     check_versions()
     sys.excepthook = cef.ExceptHook  # To shutdown all CEF processes on error
     settings = {}
@@ -62,15 +66,17 @@ def main():
     cef.Initialize(settings)
     app = CefApplication(sys.argv)
     main_window = MainWindow()
+    main_window.dataStorage = dataStorage
+    main_window.setupLayout()
     main_window.show()
     main_window.activateWindow()
     main_window.raise_()
     app.exec_()
     if not cef.GetAppSetting("external_message_pump"):
         app.stopTimer()
-    del main_window  # Just to be safe, similarly to "del app"
-    del app  # Must destroy app object before calling Shutdown
-    cef.Shutdown()
+    #del main_window  # Just to be safe, similarly to "del app"
+    #del app  # Must destroy app object before calling Shutdown
+    #cef.Shutdown()
     return 
 
 
@@ -101,9 +107,10 @@ class MainWindow(QMainWindow):
         self.cef_widget = None
         self.navigation_bar = None
         self.branchDropdown = None
-        self.setWindowTitle("PyQt5 example")
+        self.branch2Dropdown = None
+        self.dataStorage = None
+        self.setWindowTitle("3D VIEWER")
         self.setFocusPolicy(Qt.StrongFocus)
-        self.setupLayout()
 
     def setupLayout(self):
         self.resize(WIDTH, HEIGHT)
@@ -115,17 +122,24 @@ class MainWindow(QMainWindow):
         if self.branchDropdown is None:
             self.branchDropdown = QComboBox()
         else: self.branchDropdown.clear()
-        for item in ["new_design","land_use", "context_buildings"]:
-            self.branchDropdown.addItem(item)
-        label = QLabel("Select branch to overlay")
 
+        stream_url = StreamWrapper("https://speckle.xyz/streams/62973cd221")
+        stream = tryGetStream(stream_url)
+        self.dataStorage.active_stream = (None, stream)
+        branches = stream.branches.items
+
+        br_names = [br.name for br in branches]
+        for item in br_names:
+            self.branchDropdown.addItem(item)
+        self.branchDropdown.currentIndexChanged.connect( self.reload )
         widget = QWidget() 
         widget.layout = QHBoxLayout(widget)
-        widget.layout.addWidget(label)
+        widget.layout.addWidget(QLabel("Select branch to preview"))
         widget.layout.addWidget(self.branchDropdown)
         widget.layout.addWidget(QLabel("   "))
         widget.layout.addWidget(QLabel("   "))
         layout.addWidget(widget, 0, 0)
+        
 
         # noinspection PyArgumentList
         #layout.addWidget(self.navigation_bar, 0, 0)
@@ -135,7 +149,6 @@ class MainWindow(QMainWindow):
         layout.setSpacing(0)
         layout.setRowStretch(0, 0)
         layout.setRowStretch(1, 1)
-
 
         # noinspection PyArgumentList
         frame = QFrame()
@@ -147,12 +160,28 @@ class MainWindow(QMainWindow):
         # Browser can be embedded only after layout was set up
         self.cef_widget.embedBrowser()
 
-    def closeEvent(self, event):
+    def reload(self):
+        try: 
+            url = "https://speckle.xyz/streams/" + self.dataStorage.active_stream[1].id + "/branches/" + self.branchDropdown.currentText()
+            branch = tryGetBranch(url)
+            obj_id = branch.commits.items[0].referencedObject
+            #url_commit = "https://speckle.xyz/streams/" + self.dataStorage.active_stream[1].id + "/objects/" + obj_id
+            #"https://speckle.xyz/embed?stream=62973cd221&object=b89c5c1dd1b3e2fd09e1dd0743bbb283"
+            url_commit = "https://speckle.xyz/embed?stream=" + self.dataStorage.active_stream[1].id + "&object=" + obj_id
+            self.cef_widget.browser.LoadUrl(url_commit)
+        except: pass
         return
+    
+    def closeEvent(self, event):
         # Close browser (force=True) and free CEF reference
         if self.cef_widget.browser:
             self.cef_widget.browser.CloseBrowser(True)
             self.clear_browser_references()
+        #app.stopTimer()
+        cef.Shutdown()
+        del self  # Just to be safe, similarly to "del app"
+        #del app  # Must destroy app object before calling Shutdown
+        return 
 
     def clear_browser_references(self):
         # Clear browser references that you keep anywhere in your

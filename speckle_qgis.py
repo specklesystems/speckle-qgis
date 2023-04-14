@@ -626,6 +626,7 @@ class SpeckleQGIS:
             self.dataStorage.project  = self.qgis_project
             root = self.dataStorage.project.layerTreeRoot()
             self.dataStorage.all_layers = getAllLayers(root)
+            self.dataStorage.active_stream = self.active_stream
             self.dockwidget = SpeckleQGISDialog()
             self.dockwidget.iface = self.iface
             self.dockwidget.addLabel(self)
@@ -639,6 +640,7 @@ class SpeckleQGIS:
             self.dataStorage.all_layers = getAllLayers(root)
             #self.dataStorage.runUpdates = False
             self.active_stream = None
+            self.dataStorage.active_stream = self.active_stream
             self.dataStorage.project  = self.qgis_project
 
 
@@ -725,6 +727,8 @@ class SpeckleQGIS:
 
             self.active_stream = (sw, tryGetStream(sw))
             self.current_streams[0] = self.active_stream
+
+            self.dataStorage.active_stream = self.active_stream
 
             self.dockwidget.populateActiveStreamBranchDropdown(self)
             self.dockwidget.populateActiveCommitDropdown(self)

@@ -9,6 +9,8 @@ class DataStorage:
     project = None
     runUpdates: bool = True
 
+    active_stream = None
+
     current_layers: Union[List, None] = None 
     all_layers: Union[List, None] = None 
     savedTransforms: Union[List, None] = None

@@ -182,17 +182,17 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         examples_label.setStyleSheet("color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;")
         self.formLayout.insertRow(15,examples_label)
 
-        runDash = QtWidgets.QPushButton("#1 - Update Dashboard")
+        runDash = QtWidgets.QPushButton("#1 - Dashboard")
         runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: rgb(224,224,224); }")
         self.formLayout.insertRow(16,runDash)
         self.example1 = runDash
         
-        runDash = QtWidgets.QPushButton("#2 - Add georeferencing to branches")
+        runDash = QtWidgets.QPushButton("#2 - 3D Viewer")
         runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: rgb(224,224,224); }")
         self.formLayout.insertRow(17,runDash)
         self.example2 = runDash
         
-        runDash = QtWidgets.QPushButton("#3 - Object mapping on send")
+        runDash = QtWidgets.QPushButton("#3 - Object Transformations")
         runDash.setStyleSheet("QPushButton {color: black;border: 0px;height: 50px;padding: 10px;font-size: 15px;background-color: lightgrey;} QPushButton:hover { background-color: rgb(224,224,224); }")
         self.formLayout.insertRow(18,runDash)
         self.example3 = runDash
@@ -340,7 +340,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         #if self.contextVisualDialog.dashboard is not None: 
         #    self.contextVisualDialog.dashboard.update()
         #    #self.updLog.dashboard.populateUI(force = 1)
-        t = threading.Thread(target=main, args=())
+        t = threading.Thread(target=main, args=(self.dataStorage,))
         t.start()
         
         return
@@ -637,7 +637,9 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             if index == -1: self.streams_remove_button.setEnabled(False)
             else: self.streams_remove_button.setEnabled(True)
 
-            if len(plugin.current_streams)>0: plugin.active_stream = plugin.current_streams[0]
+            if len(plugin.current_streams)>0: 
+                plugin.active_stream = plugin.current_streams[0]
+                self.dataStorage.active_stream = plugin.active_stream
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
             return
@@ -655,6 +657,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
             try: plugin.active_stream = plugin.current_streams[index]
             except: plugin.active_stream = None
+            self.dataStorage.active_stream = plugin.active_stream
 
             self.populateActiveStreamBranchDropdown(plugin)
             self.populateActiveCommitDropdown(plugin)
@@ -727,6 +730,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             index = self.streamList.currentIndex()
             if len(plugin.current_streams) > 0: plugin.current_streams.pop(index)
             plugin.active_stream = None
+            self.dataStorage.active_stream = plugin.active_stream
             self.streamBranchDropdown.clear()
             self.commitDropdown.clear()
             #self.streamIdField.setText("")
