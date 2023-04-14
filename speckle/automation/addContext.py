@@ -100,6 +100,7 @@ class MainWindow(QMainWindow):
         #    self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.cef_widget = None
         self.navigation_bar = None
+        self.branchDropdown = None
         self.setWindowTitle("PyQt5 example")
         self.setFocusPolicy(Qt.StrongFocus)
         self.setupLayout()
@@ -109,14 +110,33 @@ class MainWindow(QMainWindow):
         self.cef_widget = CefWidget(self)
         self.navigation_bar = NavigationBar(self.cef_widget)
         layout = QGridLayout()
+        
+        # populate branch dropdown
+        if self.branchDropdown is None:
+            self.branchDropdown = QComboBox()
+        else: self.branchDropdown.clear()
+        for item in ["new_design","land_use", "context_buildings"]:
+            self.branchDropdown.addItem(item)
+        label = QLabel("Select branch to overlay")
+
+        widget = QWidget() 
+        widget.layout = QHBoxLayout(widget)
+        widget.layout.addWidget(label)
+        widget.layout.addWidget(self.branchDropdown)
+        widget.layout.addWidget(QLabel("   "))
+        widget.layout.addWidget(QLabel("   "))
+        layout.addWidget(widget, 0, 0)
+
         # noinspection PyArgumentList
-        layout.addWidget(self.navigation_bar, 0, 0)
+        #layout.addWidget(self.navigation_bar, 0, 0)
         # noinspection PyArgumentList
         layout.addWidget(self.cef_widget, 1, 0)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.setRowStretch(0, 0)
         layout.setRowStretch(1, 1)
+
+
         # noinspection PyArgumentList
         frame = QFrame()
         frame.setLayout(layout)
@@ -126,7 +146,6 @@ class MainWindow(QMainWindow):
 
         # Browser can be embedded only after layout was set up
         self.cef_widget.embedBrowser()
-
 
     def closeEvent(self, event):
         return
@@ -254,7 +273,7 @@ class LoadHandler(object):
     def OnLoadStart(self, browser, **_):
         #self.navigation_bar.url.setText(browser.GetUrl())
         if self.initial_app_loading:
-            time.sleep(0.5)
+            #time.sleep(0.5)
             self.navigation_bar.cef_widget.setFocus()
             self.initial_app_loading = False
 
@@ -301,7 +320,7 @@ class NavigationBar(QFrame):
             self.cef_widget.browser.Reload()
 
     def onGoUrl(self):
-        time.sleep(0.5)
+        #time.sleep(0.5)
         url = "https://speckle.xyz/embed?stream=62973cd221&commit=ffc7f53f6a"
         if self.cef_widget.browser:
             self.cef_widget.browser.LoadUrl(url)
