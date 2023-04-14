@@ -14,7 +14,7 @@ from specklepy.logging.exceptions import SpeckleException
 from speckle.utils import logger
 from specklepy.api.credentials import get_local_accounts #, StreamWrapper
 from specklepy.api.wrapper import StreamWrapper
-#from specklepy.logging import metrics
+from specklepy.logging import metrics
 from gql import gql
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer

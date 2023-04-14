@@ -13,7 +13,7 @@ from qgis._core import Qgis, QgsProject, QgsLayerTreeLayer, QgsVectorLayer, QgsR
 from qgis.PyQt import QtCore
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, pyqtSignal, QTranslator, QRect, QObject
 from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget, QPushButton
-#from specklepy.logging import metrics
+from specklepy.logging import metrics
 from specklepy.api.credentials import Account
 from specklepy.api.models import Stream, Branch, Commit 
 from specklepy.objects import Base
@@ -48,8 +48,8 @@ class UpdatesLogger(QWidget):
         self.dataStorage = self.parentWidget.dataStorage
         self.iface = self.parentWidget.iface 
         
-        #t = threading.Thread(target=self.runChecks, args=())
-        #t.start()
+        t = threading.Thread(target=self.runChecks, args=())
+        t.start()
 
     def runChecks(self):
         while True:

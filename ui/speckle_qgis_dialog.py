@@ -48,7 +48,7 @@ from specklepy.api.credentials import get_local_accounts
 
 from specklepy.api.wrapper import StreamWrapper
 from specklepy.api.client import SpeckleClient
-#from specklepy.logging import metrics
+from specklepy.logging import metrics
 
 from ui.validation import tryGetBranch, tryGetStream
 
@@ -386,10 +386,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def refreshClicked(self, plugin):
         try:
-            #try:
-            #    metrics.track("Connector Action", plugin.active_account, {"name": "Refresh", "connector_version": str(plugin.version)})
-            #except Exception as e:
-            #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
+            try:
+                metrics.track("Connector Action", plugin.active_account, {"name": "Refresh", "connector_version": str(plugin.version)})
+            except Exception as e:
+                logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
             
             plugin.reloadUI()
         except Exception as e:
@@ -398,10 +398,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def closeClicked(self, plugin):
         try:
-            #try:
-            #    metrics.track("Connector Action", plugin.active_account, {"name": "Close", "connector_version": str(plugin.version)})
-            #except Exception as e:
-            #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
+            try:
+                metrics.track("Connector Action", plugin.active_account, {"name": "Close", "connector_version": str(plugin.version)})
+            except Exception as e:
+                logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
             plugin.dataStorage.runUpdates = False 
             plugin.onClosePlugin()
         except Exception as e:
