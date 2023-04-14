@@ -64,12 +64,12 @@ def main():
     main_window.activateWindow()
     main_window.raise_()
     app.exec_()
-    #if not cef.GetAppSetting("external_message_pump"):
-    #    app.stopTimer()
-    main_window.navigation_bar.onGoUrl()
-    #del main_window  # Just to be safe, similarly to "del app"
-    #del app  # Must destroy app object before calling Shutdown
-    #cef.Shutdown()
+    if not cef.GetAppSetting("external_message_pump"):
+        app.stopTimer()
+    del main_window  # Just to be safe, similarly to "del app"
+    del app  # Must destroy app object before calling Shutdown
+    cef.Shutdown()
+    return 
 
 
 def check_versions():
@@ -300,6 +300,7 @@ class NavigationBar(QFrame):
 
     def onGoUrl(self):
         time.sleep(0.5)
+        url = "https://speckle.xyz/embed?stream=62973cd221&commit=ffc7f53f6a"
         if self.cef_widget.browser:
-            self.cef_widget.browser.LoadUrl("https://speckle.xyz/embed?stream=62973cd221&commit=ffc7f53f6a")
+            self.cef_widget.browser.LoadUrl(url)
 
