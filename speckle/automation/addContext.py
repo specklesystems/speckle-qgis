@@ -208,30 +208,35 @@ class MainWindow(QMainWindow):
         branch1 = tryGetBranch(url1)
         try: objId1 = branch1.commits.items[0].referencedObject
         except: return
-        commitObj1 = operations._untracked_receive(objId1, transport, None)
+        #commitObj1 = operations._untracked_receive(objId1, transport, None)
 
         branch2 = tryGetBranch(url2)
         try: objId2 = branch2.commits.items[0].referencedObject
         except: return
-        commitObj2 = operations._untracked_receive(objId2, transport, None)
+        #commitObj2 = operations._untracked_receive(objId2, transport, None)
 
-        base_obj = Base(units = "m")
-        base_obj.layers = [commitObj1, commitObj2]
-
-        objId_Send = operations.send(base=base_obj, transports=[transport])
-        self.reload(objId_Send)
+        #base_obj = Base(units = "m")
+        #base_obj.layers = [commitObj1, commitObj2]
+        #objId_Send = operations.send(base=base_obj, transports=[transport])
+        self.reload(branch1.commits.items[0].id, branch2.commits.items[0].id)
         return
     
-    def reload(self, obj_id = None):
+    def reload(self, commit_id = None, overlay_url = None):
         try: 
             url = "https://speckle.xyz/streams/" + self.dataStorage.active_stream[1].id + "/branches/" + self.branchDropdown.currentText()
             branch = tryGetBranch(url)
-            if obj_id is None or not isinstance(obj_id, str): objId = branch.commits.items[0].referencedObject
-            else: objId = obj_id
-            #url_commit = "https://speckle.xyz/streams/" + self.dataStorage.active_stream[1].id + "/objects/" + objId
-            #"https://speckle.xyz/embed?stream=62973cd221&object=b89c5c1dd1b3e2fd09e1dd0743bbb283"
-            url_commit = "https://speckle.xyz/embed?stream=" + self.dataStorage.active_stream[1].id + "&object=" + objId
-            self.cef_widget.browser.LoadUrl(url_commit)
+            if commit_id is None or not isinstance(commit_id, str): 
+                if overlay_url is None or not isinstance(overlay_url, str): 
+                    objId = branch.commits.items[0].referencedObject
+                    #url_commit = "https://speckle.xyz/streams/" + self.dataStorage.active_stream[1].id + "/objects/" + objId
+                    #"https://speckle.xyz/embed?stream=62973cd221&object=b89c5c1dd1b3e2fd09e1dd0743bbb283"
+                    url_commit = "https://speckle.xyz/embed?stream=" + self.dataStorage.active_stream[1].id + "&object=" + objId
+                    self.cef_widget.browser.LoadUrl(url_commit)
+            else: 
+                url_commit = "https://speckle.xyz/embed?stream=" + self.dataStorage.active_stream[1].id + "&commit=" + commit_id + "&overlay=" + overlay_url
+                #url_commit = "https://speckle.xyz/streams/" + self.dataStorage.active_stream[1].id + "/commits/" + commit_id + "?overlay=" + overlay_url
+                self.cef_widget.browser.LoadUrl(url_commit)
+                
         except: pass
         return
     
