@@ -296,7 +296,7 @@ class CefWidget(CefWidgetParent):
         rect = [0, 0, self.width(), self.height()]
         window_info.SetAsChild(self.getHandle(), rect)
         self.browser = cef.CreateBrowserSync(window_info,
-                                             url="https://speckle.xyz/embed?stream=62973cd221&commit=ffc7f53f6a")
+                                             url="https://speckle.xyz/embed?stream=62973cd221&commit=e5a5940f9e")
         self.browser.SetClientHandler(LoadHandler(self.parent.navigation_bar))
         self.browser.SetClientHandler(FocusHandler(self))
 
@@ -426,7 +426,7 @@ class NavigationBar(QFrame):
 
     def onGoUrl(self):
         #time.sleep(0.5)
-        url = "https://speckle.xyz/embed?stream=62973cd221&commit=ffc7f53f6a"
+        url = "https://speckle.xyz/embed?stream=62973cd221&commit=e5a5940f9e"
         if self.cef_widget.browser:
             self.cef_widget.browser.LoadUrl(url)
 
