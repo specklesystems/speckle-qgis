@@ -9,6 +9,9 @@ from typing import List, Union, Dict
 from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
 from ui.logger import logToUser
 
+from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer, QgsFeature,
+                       QgsRasterLayer, QgsVectorLayer, QgsPoint )
+
 import triangle as tr
 
 
@@ -59,6 +62,26 @@ def triangulatePolygon(geom):
         segments = []
         holes = []
         vertices, vertices3d, segments, holes = getPolyPtsSegments(geom)
+
+        r'''
+        # add layer with hole points (for debugging) 
+        proj = QgsProject.instance()
+        crs = proj.crs()
+        vl = QgsVectorLayer("PointZ"+ "?crs=" + crs.authid(), "Points", "memory") # do something to distinguish: stream_id_latest_name
+        vl.setCrs(crs)
+        pr = vl.dataProvider()
+        vl.startEditing()
+        fets = []
+        for pt in holes:
+            feat = QgsFeature()
+            feat.setGeometry(QgsPoint(pt[0], pt[1], 0))
+            fets.append(feat)
+        pr.addFeatures(fets)
+        vl.updateExtents()
+        vl.commitChanges()
+        proj.addMapLayer(vl, True)
+        '''
+
         if len(holes)>0: 
             dict_shape= {'vertices': vertices, 'segments': segments ,'holes': holes}
         else: 
@@ -167,9 +190,9 @@ def getHolePt(pointListLocal):
     x_range = pointListLocal[index2].x() - minXpt.x()
     y_range = pointListLocal[index2].y() - minXpt.y()
     if y_range > 0:
-        sidePt = [ minXpt.x() + abs(x_range/2) + 0.00000000001, minXpt.y() + y_range/2 ]
+        sidePt = [ minXpt.x() + abs(x_range/2) + 0.001, minXpt.y() + y_range/2 ]
     else:
-        sidePt = [ minXpt.x() + abs(x_range/2) - 0.00000000001, minXpt.y() + y_range/2 ]
+        sidePt = [ minXpt.x() + abs(x_range/2) - 0.001, minXpt.y() + y_range/2 ]
     return sidePt
    
 def getPolygonFeatureHeight(feature, layer, dataStorage):

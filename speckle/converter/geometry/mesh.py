@@ -264,7 +264,7 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
         else: # if there are voids: face should be clockwise 
             # if its a large polygon with voids to be triangualted, lower the coef even more:
-            maxPoints = 100
+            #maxPoints = 100
             if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
 
             universal_z_value = polyBorder[0].z
