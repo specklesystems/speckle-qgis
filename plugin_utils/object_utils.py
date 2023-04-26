@@ -64,11 +64,11 @@ def callback(base: Base, streamBranch: str, plugin) -> bool:
             #if layer is not None:
             #    .logToUser("Layer created: " + layer.name(), Qgis.Info)
         else:
-            loopObj(base, "", streamBranch, plugin)   
+            loopObj(base, "", streamBranch, plugin, [])   
         return True 
     except: return 
 
-def loopObj(base: Base, baseName: str, streamBranch: str, plugin):
+def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
     try:
         memberNames = base.get_member_names()
         for name in memberNames:
@@ -81,27 +81,33 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin):
             
             if (name == "displayValue" or name == "@displayValue") and base.speckle_type.startswith(tuple(SPECKLE_TYPES_TO_READ)): continue 
 
-            try: loopVal(base[name], baseName + "_" + name, streamBranch, plugin)
+            try: 
+                loopVal(base[name], baseName + "_" + name, streamBranch, plugin, used_ids)
             except: pass
     except: pass
 
-def loopVal(value: Any, name: str, streamBranch: str, plugin): # "name" is the parent object/property/layer name
-
+def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids): # "name" is the parent object/property/layer name
+    
     try: 
         name = removeSpecialCharacters(name)
         if isinstance(value, Base): 
             try: # loop through objects with Speckletype prop, but don't go through parts of Speckle Geometry object
                 if not value.speckle_type.startswith("Objects.Geometry."): 
-                    loopObj(value, name, streamBranch, plugin)
+                    loopObj(value, name, streamBranch, plugin, used_ids)
+                elif value.id not in used_ids: # if geometry
+                    used_ids.append(value.id)
+                    loopVal([value], name, streamBranch, plugin, used_ids)
             except: 
-                loopObj(value, name, streamBranch, plugin)
+                loopObj(value, name, streamBranch, plugin, used_ids)
 
         elif isinstance(value, List):
             streamBranch = streamBranch.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
 
             objectListConverted = 0
             for i, item in enumerate(value):
-                loopVal(item, name, streamBranch, plugin)
+                used_ids.append(item.id)
+                loopVal(item, name, streamBranch, plugin, used_ids)
+
                 if not isinstance(item, Base): continue
                 if "View" in item.speckle_type: continue
                 if item.speckle_type and item.speckle_type.startswith("IFC"): 
@@ -139,6 +145,6 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin): # "name" is the p
                             cadLayerToNative(value, name, streamBranch, plugin)
                             time.sleep(0.3)
                             break
-                    except: pass
+                    except: pass 
     except: pass 
 
