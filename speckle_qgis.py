@@ -23,7 +23,8 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 import threading
 from plugin_utils.helpers import getAppName, removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
-                       QgsRasterLayer, QgsVectorLayer)
+                       QgsRasterLayer, QgsVectorLayer,
+                       QgsUnitTypes)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QApplication, QAction, QDockWidget, QVBoxLayout, QWidget
@@ -392,7 +393,11 @@ class SpeckleQGIS:
 
             self.dockwidget.mappingSendDialog.populateSavedTransforms()
             
-            base_obj = Collection(units = "m")
+            units = QgsUnitTypes.encodeUnit(projectCRS.mapUnits())
+            if units is None or units == 'degrees': units = 'm'
+            self.dataStorage.currentUnits = units 
+
+            base_obj = Collection(units = units)
             base_obj.elements = convertSelectedLayers(layers, [],[], projectCRS, self)
             if base_obj.elements is None:
                 return 
@@ -465,6 +470,10 @@ class SpeckleQGIS:
             #self.dockwidget.hideWait()
             #self.dockwidget.showLink(url, streamName)
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
+
+            if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
+                    logToUser("Data has been sent in the units 'degrees'. It is advisable to set the project CRS to Projected type (e.g. EPSG:32631) to be able to receive geometry correctly in CAD/BIM software. You can also create a custom CRS by setting geographic coordinates and using 'Set as a project center' function.", level = 1, plugin = self.dockwidget)
+            
             logToUser(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
 
             return url

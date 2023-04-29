@@ -8,6 +8,8 @@ class DataStorage:
     accounts = None
     active_account = None
     default_account = None
+    currentCRS = None
+    currentUnits = "m"
     current_layers: Union[List, None] = None 
     all_layers: Union[List, None] = None 
     savedTransforms: Union[List, None] = None

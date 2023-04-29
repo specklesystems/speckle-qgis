@@ -22,7 +22,7 @@ from qgis.core import (Qgis, QgsProject, QgsRasterLayer,
                        QgsFields, 
                        QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
                        QgsRendererCategory,
-                       QgsSymbol)
+                       QgsSymbol, QgsUnitTypes)
 from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
@@ -144,12 +144,16 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         #try: selectedLayer = selectedLayer.layer()
         #except: pass 
         crs = selectedLayer.crs()
-        units = "m"
-        if crs.isGeographic(): units = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
+        #units = "m"
+        units_proj = plugin.dataStorage.currentUnits
+        units_layer = QgsUnitTypes.encodeUnit(crs.mapUnits())
+        #plugin.dataStorage.currentUnits = units_proj 
+
+        if crs.isGeographic(): units_layer = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
         layerObjs = []
         # Convert CRS to speckle, use the projectCRS
-        speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units) 
-        layerCRS = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units) 
+        speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units_proj) 
+        layerCRS = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units_layer) 
         
         renderer = selectedLayer.renderer()
         layerRenderer = rendererToSpeckle(renderer) 
@@ -163,7 +167,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer, plugin.dataStorage)
                 layerObjs.append(b)
             # Convert layer to speckle
-            layerBase = VectorLayer(units = "m", name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
+            layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
             layerBase.type="VectorLayer"
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
@@ -175,7 +179,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin.dataStorage)
             layerObjs.append(b)
             # Convert layer to speckle
-            layerBase = RasterLayer(units = "m", name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, elements=layerObjs, type="RasterLayer")
+            layerBase = RasterLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, elements=layerObjs, type="RasterLayer")
             layerBase.type="RasterLayer"
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
@@ -188,6 +192,11 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
 def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: str, plugin) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
     try:
         project: QgsProject = plugin.qgis_project
+        #plugin.dataStorage.currentCRS = project.crs()
+        plugin.dataStorage.currentUnits = layer.crs.units 
+        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
+            plugin.dataStorage.currentUnits = 'm'
+
         if layer.type is None:
             # Handle this case
             return
@@ -267,6 +276,10 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
 
 
         crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+        plugin.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
+        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
+            plugin.dataStorage.currentUnits = 'm'
+
         #authid = saveCRS(crs, streamBranch)
 
         if crs.isGeographic is True: 
@@ -447,6 +460,9 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         layerName = layerName + "_" + geomType
         print(layerName)
         crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+        plugin.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
+        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
+            plugin.dataStorage.currentUnits = 'm'
         #authid = saveCRS(crs, streamBranch)
 
         if crs.isGeographic is True: 
@@ -491,7 +507,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         fetIds = []
         fetColors = []
         for f in geomList[:]: 
-            new_feat = cadFeatureToNative(f, newFields)
+            new_feat = cadFeatureToNative(f, newFields, plugin.dataStorage)
             # update attrs for the next feature (if more fields were added from previous feature)
 
             print("________cad feature to add")
@@ -611,7 +627,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         fets = []
         newFields = getLayerAttributes(layer.features)
         for f in layer.features: 
-            new_feat = featureToNative(f, newFields)
+            new_feat = featureToNative(f, newFields, plugin.dataStorage)
             if new_feat is not None and new_feat != "": fets.append(new_feat)
             else:
                 logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
@@ -735,7 +751,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
             band.WriteArray(rasterband) # or "rasterband.T"
         
         # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
-        pt = pointToNative(feat["displayValue"][0])
+        pt = pointToNative(feat["displayValue"][0], plugin.dataStorage)
         xform = QgsCoordinateTransform(crs, crsRaster, project)
         pt.transform(xform)
         ds.SetGeoTransform([pt.x(), feat["X resolution"], 0, pt.y(), 0, feat["Y resolution"]])
