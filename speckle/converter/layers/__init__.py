@@ -27,7 +27,7 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, saveCRS
+from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, trySaveCRS
 from speckle.logging import logger
 from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
 
@@ -280,7 +280,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
             plugin.dataStorage.currentUnits = 'm'
 
-        #authid = saveCRS(crs, streamBranch)
+        #authid = trySaveCRS(crs, streamBranch)
 
         if crs.isGeographic is True: 
             logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
@@ -463,7 +463,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         plugin.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
         if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
             plugin.dataStorage.currentUnits = 'm'
-        #authid = saveCRS(crs, streamBranch)
+        #authid = trySaveCRS(crs, streamBranch)
 
         if crs.isGeographic is True: 
             logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
@@ -588,7 +588,9 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
 
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
-        authid = saveCRS(crs, streamBranch)
+        srsid = trySaveCRS(crs, streamBranch)
+        crs_new = QgsCoordinateReferenceSystem().fromSrsId(srsid)
+        authid = crs_new.authid()
 
         #CREATE A GROUP "received blabla" with sublayers
         newGroupName = f'{streamBranch}'

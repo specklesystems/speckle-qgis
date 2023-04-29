@@ -4,7 +4,7 @@
 import inspect
 import time
 from typing import List
-from speckle.converter.layers.utils import saveCRS
+from speckle.converter.layers.utils import trySaveCRS
 from speckle_qgis import SpeckleQGIS
 
 from specklepy.logging.exceptions import SpeckleException 
@@ -161,11 +161,10 @@ def setProjectReferenceSystem(plugin: SpeckleQGIS):
         validate = QgsCoordinateReferenceSystem().createFromProj(newCrsString)
 
         if validate: 
-            authid = saveCRS(newCrs, "latlon_"+str(plugin.lat)+"_"+str(plugin.lon))
-
-            newID = int(authid.replace("USER:",""))
-            crs = QgsCoordinateReferenceSystem().fromSrsId(newID)
+            srsid = trySaveCRS(newCrs, "latlon_"+str(plugin.lat)+"_"+str(plugin.lon))
+            crs = QgsCoordinateReferenceSystem().fromSrsId(srsid)
             plugin.qgis_project.setCrs(crs) 
+            
             #listCrs = QgsCoordinateReferenceSystem().validSrsIds()
             #if exists == 0: newCrs.saveAsUserCrs("SpeckleCRS_lon=" + str(sPoint.x()) + "_lat=" + str(sPoint.y())) # srsid() #https://gis.stackexchange.com/questions/341500/creating-custom-crs-in-qgis
             logToUser("Custom project CRS successfully applied", level = 0, plugin=plugin.dockwidget)

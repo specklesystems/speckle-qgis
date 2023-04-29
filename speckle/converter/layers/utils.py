@@ -362,10 +362,14 @@ def validateAttributeName(name: str, fieldnames: List[str]) -> str:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
 
-def saveCRS(crs, streamBranch:str = ""):
+def trySaveCRS(crs, streamBranch:str = ""):
     try:
-        crs_id = crs.saveAsUserCrs("SpeckleCRS_" + streamBranch)
-        return "USER:" + str(crs_id)
+        authid = crs.authid() 
+        if authid =='': 
+            crs_id = crs.saveAsUserCrs("SpeckleCRS_" + streamBranch)
+            return crs_id
+        else:
+            return crs.srsid()  
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return

@@ -34,6 +34,13 @@ def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer) -
                 sSymb = renderer.sourceSymbol()
                 if sSymb is not None: color = sSymb.color()
                 category = renderer.classAttribute() # get the name of attribute used for classification
+                try: 
+                    feature.attribute( category )
+                    renderer.categories() 
+                except: 
+                    logToUser(f"Attribute '{category}' used for the layer '{layer.name()}' symbology is not found", level = 2, func = inspect.stack()[0][3])
+                    return (245<<16) + (245<<8) + 245
+                
                 for obj in renderer.categories():
                     try: 
                         if float(obj.value()) == float(feature.attribute( category )):

@@ -298,11 +298,11 @@ def polylineToNative(poly: Polyline, dataStorage = None) -> QgsLineString:
         # this function can be called from Multipolyline, hence extra check if the type of segment in not Polyline
         if isinstance(poly, Polycurve): 
             return polycurveToNative(poly)
-        if isinstance(poly, Arc): 
+        elif isinstance(poly, Arc): 
             return arcToNative(poly)
-        if isinstance(poly, Circle): 
+        elif isinstance(poly, Circle): 
             return circleToNative(poly)
-        if isinstance(poly, Ellipse): 
+        elif isinstance(poly, Ellipse): 
             return ellipseToNative(poly)
 
         if poly.closed is False: 
