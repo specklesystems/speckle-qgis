@@ -86,7 +86,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
         elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_Mesh") and "Speckle_ID" in layer.fields().names():
             result = polygonToSpeckleMesh(geom, feature, layer, dataStorage)
             result.units = units
-            for v in r['displayValue']: v.units = units
+            for v in result['displayValue']: v.units = units
             return result
         elif geomType == QgsWkbTypes.PolygonGeometry: # 2
             height = getPolygonFeatureHeight(feature, layer, dataStorage)
@@ -95,7 +95,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 result.units = units
                 result.boundary.units = units
                 for v in result.voids: v.units = units
-                for v in r['displayValue']: v.units = units
+                for v in result['displayValue']: v.units = units
                 return result
             else:
                 result = [polygonToSpeckle(poly, feature, layer, height, dataStorage) for poly in geom.parts()]
@@ -131,11 +131,19 @@ def convertToNative(base: Base, dataStorage = None) -> Union[QgsGeometry, None]:
         ]
 
         for conversion in conversions:
+            # distinguish normal QGIS polygons and the ones sent as Mesh only
             try: 
+                # if normal polygon
+                boundary = base.boundary
+                if boundary is not None and isinstance(base, conversion[0]):
+                    converted = conversion[1](base, dataStorage)
+                    break
+            except:
+                # if sent as Mesh 
                 if isinstance(base.displayValue[0], Mesh):
                     converted: QgsMultiPolygon = meshToNative(base.displayValue, dataStorage ) # only called for Meshes created in QGIS before
-            except:
-                if isinstance(base, conversion[0]):
+                # if other geometry 
+                elif isinstance(base, conversion[0]):
                     #print(conversion[0])
                     converted = conversion[1](base, dataStorage)
                     break

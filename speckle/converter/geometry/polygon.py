@@ -111,7 +111,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
 
         polygon.boundary = boundary
         polygon.voids = voids
-        #polygon.displayValue = [ boundary ] + voids
+        polygon.displayValue = []
         
         
         # check before extrusion
