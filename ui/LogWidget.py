@@ -144,9 +144,9 @@ class LogWidget(QWidget):
     def resizeToText(self, btn):
         try:
             text = btn.text()
-            if len(text.split("\n"))>2:
-                height = len(text.split("\n"))*30
-                btn.setMinimumHeight(height)
+            #if len(text.split("\n"))>2:
+            height = len(text.split("\n"))*20 + 20 
+            btn.setMinimumHeight(height)
             return btn 
         except Exception as e: 
             print(e)

@@ -1,5 +1,6 @@
 import os
 from typing import List
+from textwrap import wrap
 
 def getAppName(name: str) -> str:
     new_name = ""
@@ -25,9 +26,11 @@ def splitTextIntoLines(text: str = "", number: int= 40) -> str:
     try:
         if len(text)>number:
             try:
-                for i, x in enumerate(text):
+                lines = wrap(text, number)
+                for i, x in enumerate(lines):
                     msg += x
-                    if i!=0 and i%number == 0: msg += "\n"
+                    if i!= len(lines): 
+                        msg += "\n"
             except Exception as e: print(e)
         else: 
             msg = text
