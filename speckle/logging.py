@@ -3,6 +3,7 @@ import inspect
 from qgis.core import Qgis, QgsMessageLog
 from qgis.PyQt.QtWidgets import QPushButton
 from ui.logger import logToUser
+import webbrowser
 
 
 class Logging:
@@ -28,28 +29,46 @@ class Logging:
             except: pass
 
 
-    def logToUserWithAction(self, message: str, action_text:str, callback: bool, level: Qgis.MessageLevel = Qgis.Info, duration:int =10):
-        return
+    def logToUserWithAction(self, message: str, action_text:str, url: str = "", level: Qgis.MessageLevel = Qgis.Info, duration:int =20):
+        
+        self.log(message, level)
+
         if not self.qgisInterface:
             return
+        
+        if level==0: level = Qgis.Info
+        if level==1: level = Qgis.Warning
+        if level==2: level = Qgis.Critical
+        
+        def openLink(url):
+            try:
+                if url == "": return
+                webbrowser.open(url, new=0, autoraise=True)
+            except Exception as e: 
+                pass 
+
         widget = self.qgisInterface.messageBar().createMessage("Speckle", message)
         button = QPushButton(widget)
         button.setText(action_text)
-        button.pressed.connect(callback)
+        button.pressed.connect(lambda: openLink(url))
         widget.layout().addWidget(button)
         self.qgisInterface.messageBar().pushWidget(widget, level, duration)
 
-    def logToUser(self, message: str, level: Qgis.MessageLevel = Qgis.Info, duration: int =10, func=None, plugin=None):
-        """Logs a specific message to the user in QGIS"""
-        return
-        if level==Qgis.Info: level = 0
-        if level==Qgis.Warning: level = 1
-        if level==Qgis.Critical: level = 2
 
-        logToUser(msg = message, level = level, func = func, plugin = plugin)
+    def logToUser(self, message: str, level: Qgis.MessageLevel = Qgis.Info, duration: int =10, func=None, plugin=None):
         return
+    
+    def logToUserPanel(self, message: str, level: Qgis.MessageLevel = Qgis.Info, duration: int =20, func=None, plugin=None):
+        """Logs a specific message to the user in QGIS"""
 
         self.log(message, level)
+        
+        if not self.qgisInterface: return
+        
+        if level==0: level = Qgis.Info
+        if level==1: level = Qgis.Warning
+        if level==2: level = Qgis.Critical
+        
         if self.qgisInterface:
             self.qgisInterface.messageBar().pushMessage(
                 "Speckle", message, level=level, duration=duration
