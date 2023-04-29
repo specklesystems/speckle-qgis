@@ -75,7 +75,7 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
             if name in ["id", "applicationId", "units", "speckle_type"]: continue
             # skip if traversal goes to displayValue of an object, that will be readable anyway:
             try: 
-                if not isinstance(base, Base) and "Objects.Organization.Collection" not in base.speckle_type: continue
+                if not isinstance(base, Base) and "Collection" not in base.speckle_type: continue
             except: 
                 if not isinstance(base, Base): continue
             
