@@ -3,8 +3,9 @@ import inspect
 import math
 from tokenize import String
 from typing import List
-from qgis._core import QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, QgsRasterBandStats, QgsFeature, QgsFields, \
-    QgsField, QgsVectorLayer, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsProject
+from qgis._core import (QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, QgsRasterBandStats, QgsFeature, QgsFields, 
+    QgsField, QgsVectorLayer, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsProject,
+    QgsUnitTypes )
 from specklepy.objects import Base
 
 from typing import Dict, Any
@@ -22,7 +23,7 @@ from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-pac
 from ui.logger import logToUser
 
 def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage = None):
-    b = Base(units = "m")
+    b = Base(units = dataStorage.currentUnits)
     try:
         #apply transformation if needed
         if sourceCRS != targetCRS:
@@ -69,7 +70,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return b
           
-def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields, crs, path: str):
+def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields, crs, path: str, dataStorage = None):
     print("04_________BIM Feature To Native____________")
     try:
         exist_feat.setFields(fields)  
@@ -168,7 +169,7 @@ def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, 
 
 def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordinateReferenceSystem, project: QgsProject, dataStorage = None) -> Base:
     
-    b = Base(units = "m")
+    b = Base(units = dataStorage.currentUnits)
     try:
         rasterBandCount = selectedLayer.bandCount()
         rasterBandNames = []
@@ -382,7 +383,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 colors.extend([color,color,color,color])
                 count += 4
 
-        mesh = constructMeshFromRaster(vertices, faces, colors)
+        mesh = constructMeshFromRaster(vertices, faces, colors, dataStorage)
         if(b['displayValue'] is None):
             b['displayValue'] = []
         b['displayValue'].append(mesh)
@@ -392,16 +393,20 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
     return b
 
 
-def featureToNative(feature: Base, fields: QgsFields):
+def featureToNative(feature: Base, fields: QgsFields, dataStorage = None):
     feat = QgsFeature()
     try:
         try: speckle_geom = feature["geometry"] # for created in QGIS / ArcGIS Layer type
         except:  speckle_geom = feature # for created in other software
 
-        if isinstance(speckle_geom, list):
-            qgsGeom = geometry.convertToNativeMulti(speckle_geom)
-        else:
-            qgsGeom = geometry.convertToNative(speckle_geom)
+        if not isinstance(speckle_geom, list):
+            qgsGeom = geometry.convertToNative(speckle_geom, dataStorage)
+        
+        elif isinstance(speckle_geom, list):
+            if len(speckle_geom)==1:
+                qgsGeom = geometry.convertToNative(speckle_geom[0], dataStorage)
+            else: 
+                qgsGeom = geometry.convertToNativeMulti(speckle_geom, dataStorage)
 
         if qgsGeom is not None: feat.setGeometry(qgsGeom)
         else: return None 
@@ -442,7 +447,7 @@ def featureToNative(feature: Base, fields: QgsFields):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return feat
 
-def cadFeatureToNative(feature: Base, fields: QgsFields):
+def cadFeatureToNative(feature: Base, fields: QgsFields, dataStorage = None):
     try:
         print("______________cadFeatureToNative")
         exist_feat = QgsFeature()
@@ -450,9 +455,9 @@ def cadFeatureToNative(feature: Base, fields: QgsFields):
         except:  speckle_geom = feature # for created in other software
 
         if isinstance(speckle_geom, list):
-            qgsGeom = geometry.convertToNativeMulti(speckle_geom)
+            qgsGeom = geometry.convertToNativeMulti(speckle_geom, dataStorage)
         else:
-            qgsGeom = geometry.convertToNative(speckle_geom)
+            qgsGeom = geometry.convertToNative(speckle_geom, dataStorage)
 
         if qgsGeom is not None: exist_feat.setGeometry(qgsGeom)
         else: return

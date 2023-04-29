@@ -27,7 +27,7 @@ from PyQt5.QtGui import QColor
 
 from ui.logger import logToUser
 
-def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer):
+def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None):
 
     polygon = Base(units = "m")
     try: 
@@ -81,7 +81,7 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
     
-def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None, height = None):
+def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, height = None, dataStorage = None):
     """Converts a QgsPolygon to Speckle"""
     polygon = Base(units = "m")
     try:
@@ -127,8 +127,8 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
 
         mesh = constructMesh(vertices, faces, colors)
         if mesh is not None: 
-            #polygon.displayValue = [ mesh ] 
-            polygon["baseGeometry"] = mesh 
+            polygon.displayValue = [ mesh ] 
+            #polygon["baseGeometry"] = mesh 
             # https://latest.speckle.dev/streams/85bc4f61c6/commits/2a5d23a277
             # https://speckle.community/t/revit-add-new-parameters/5170/2 
         else: 
@@ -142,7 +142,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
     
 
 
-def polygonToNative(poly: Base) -> QgsPolygon:
+def polygonToNative(poly: Base, dataStorage = None) -> QgsPolygon:
     """Converts a Speckle Polygon base object to QgsPolygon.
     This object must have a 'boundary' and 'voids' properties.
     Each being a Speckle Polyline and List of polylines respectively."""
@@ -151,12 +151,12 @@ def polygonToNative(poly: Base) -> QgsPolygon:
     polygon = QgsPolygon()
     try:
         try: # if it's indeed a polygon with QGIS properties
-            polygon.setExteriorRing(polylineToNative(poly["boundary"]))
+            polygon.setExteriorRing(polylineToNative(poly["boundary"], dataStorage ))
         except: return
         try:
             for void in poly["voids"]: 
                 #print(polylineToNative(void))
-                polygon.addInteriorRing(polylineToNative(void))
+                polygon.addInteriorRing(polylineToNative(void, dataStorage ))
         except:pass
         #print(polygon)
         #print()
@@ -170,7 +170,7 @@ def polygonToNative(poly: Base) -> QgsPolygon:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return polygon 
 
-def getPolyBoundaryVoids(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer):
+def getPolyBoundaryVoids(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None):
     boundary = None
     voids: List[Union[None, Polyline, Arc, Line, Polycurve]] = []
     try: 

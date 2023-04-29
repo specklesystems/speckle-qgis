@@ -10,7 +10,7 @@ from shapefile import TRIANGLE_STRIP, TRIANGLE_FAN, OUTER_RING
 from speckle.converter.geometry.point import pointToNative
 from speckle.converter.geometry.utils import fix_orientation, projectToPolygon, triangulatePolygon
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
-from speckle.converter.layers.utils import get_scale_factor
+from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
 from speckle.logging import logger
 from ui.logger import logToUser
 
@@ -19,7 +19,7 @@ from qgis.core import (
     )
 #from panda3d.core import Triangulator
 
-def meshToNative(meshes: List[Mesh]) -> QgsMultiPolygon:
+def meshToNative(meshes: List[Mesh], dataStorage = None) -> QgsMultiPolygon:
     try:
         multiPolygon = QgsMultiPolygon()
         for mesh in meshes:
@@ -28,7 +28,7 @@ def meshToNative(meshes: List[Mesh]) -> QgsMultiPolygon:
                 polygon = QgsPolygon()
                 pts = [Point(x=pt[0], y=pt[1], z=pt[2], units="m") for pt in part]
                 pts.append(pts[0])
-                boundary = QgsLineString([pointToNative(pt) for pt in pts])
+                boundary = QgsLineString([pointToNative(pt, dataStorage) for pt in pts])
                 polygon.setExteriorRing(boundary)
 
                 if polygon is not None:
@@ -38,7 +38,7 @@ def meshToNative(meshes: List[Mesh]) -> QgsMultiPolygon:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
     
-def writeMeshToShp(meshes: List[Mesh], path: str):
+def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage = None):
     """Converts a Speckle Mesh to QgsGeometry"""
     try:
         print("06___________________Mesh to Native")
@@ -87,7 +87,7 @@ def writeMeshToShp(meshes: List[Mesh], path: str):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str):
+def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str, dataStorage = None):
     
     print("07___________________fill_multi_mesh_parts")
     try:
@@ -110,7 +110,7 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str)
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
+def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage = None):
     
     try:
         #if len(mesh.faces) % 4 == 0 and (mesh.faces[0] == 0 or mesh.faces[0] == 3):
@@ -125,11 +125,11 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
 
     return w
 
-def deconstructSpeckleMesh(mesh: Mesh):
+def deconstructSpeckleMesh(mesh: Mesh, dataStorage = None):
     
     #print("deconstructSpeckleMesh")
     try:
-        scale = get_scale_factor(mesh.units)
+        scale = get_scale_factor(mesh.units, dataStorage)
         parts_list = []
         types_list = []
 
@@ -157,7 +157,7 @@ def deconstructSpeckleMesh(mesh: Mesh):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return [],[]
 
-def constructMeshFromRaster(vertices, faces, colors):
+def constructMeshFromRaster(vertices, faces, colors, dataStorage = None):
     try:
         mesh = Mesh.create(vertices, faces, colors)
         mesh.units = "m"
@@ -166,7 +166,7 @@ def constructMeshFromRaster(vertices, faces, colors):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def constructMesh(vertices, faces, colors):
+def constructMesh(vertices, faces, colors, dataStorage = None):
     try:
         mesh = Mesh.create(vertices, faces, colors)
         mesh.units = "m"
@@ -178,7 +178,7 @@ def constructMesh(vertices, faces, colors):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height = None):
+def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height = None, dataStorage = None):
     try:
         faces = []
         faces_cap = []

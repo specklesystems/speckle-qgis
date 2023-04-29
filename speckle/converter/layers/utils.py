@@ -310,7 +310,15 @@ def traverseDict(newF: dict[Any, Any], newVals: dict[Any, Any], nam: str, val: A
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
 
-def get_scale_factor(units: str) -> float:
+def get_scale_factor(units: str, dataStorage ) -> float:
+    scale_to_meter = get_scale_factor_to_meter(units)
+    if dataStorage is not None:
+        scale_back = scale_to_meter / get_scale_factor_to_meter(dataStorage.currentUnits)
+        return scale_back
+    else:
+        return scale_to_meter
+
+def get_scale_factor_to_meter(units: str ) -> float:
     try:
         unit_scale = {
         "meters": 1.0,
@@ -328,7 +336,7 @@ def get_scale_factor(units: str) -> float:
         "yd": 0.9144,
         "mi": 1609.340,
         }
-        if units is not None and units.lower() in unit_scale.keys():
+        if units is not None and isinstance(units, str) and units.lower() in unit_scale.keys():
             return unit_scale[units]
         logToUser(f"Units {units} are not supported. Meters will be applied by default.", level = 1, func = inspect.stack()[0][3])
         return 1.0

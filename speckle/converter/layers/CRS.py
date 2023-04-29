@@ -13,4 +13,4 @@ class CRS(Base):
 
         self.name = name if name != None else ""
         self.wkt = wkt if wkt != None else ""
-        #self.units = units if units != None else "m"
+        self.units = units if units != None else "m"

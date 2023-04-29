@@ -1,12 +1,14 @@
 
 
 import inspect
+from math import asin, cos, sin, atan
+import math
 import random
 from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve
 from specklepy.objects import Base
-from typing import List, Union, Dict 
+from typing import List, Tuple, Union, Dict 
 
-from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
+#from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
 from ui.logger import logToUser
 
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer, QgsFeature,
@@ -243,19 +245,182 @@ def getPolygonFeatureHeight(feature, layer, dataStorage):
     return height
 
 
-def speckleBoundaryToSpecklePts(boundary: Union[None, Polyline, Arc, Line, Polycurve]) -> List[Point]:
+def specklePolycurveToPoints(poly: Polycurve, dataStorage = None) -> List[Point]:
+    #print("_____Speckle Polycurve to points____")
+    try:
+        points = []
+        for i, segm in enumerate(poly.segments):
+            pts = []
+            if isinstance(segm, Arc) or isinstance(segm, Circle): # or isinstance(segm, Curve):
+                pts: List[Point] = speckleArcCircleToPoints(segm) 
+            elif isinstance(segm, Line): 
+                pts: List[Point] = [segm.start, segm.end]
+            elif isinstance(segm, Polyline): 
+                pts: List[Point] = segm.as_points()
+
+            if i==0: points.extend(pts)
+            else: points.extend(pts[1:])
+        return points
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return
+    
+
+def speckleArcCircleToPoints(poly: Union[Arc, Circle], dataStorage = None) -> List[Point]: 
+    try:
+        #print("__Arc or Circle to Points___")
+        points = []
+        #print(poly.plane) 
+        #print(poly.plane.normal) 
+        if poly.plane is None or poly.plane.normal.z == 0: normal = 1 
+        else: normal = poly.plane.normal.z 
+
+        if isinstance(poly, Circle):
+            interval = 2*math.pi
+            range_start = 0
+            angle1 = 0
+
+        else: # if Arc
+            points.append(poly.startPoint)
+            range_start = 0 
+
+            #angle1, angle2 = getArcAngles(poly)
+            interval, angle1, angle2 = getArcRadianAngle(poly)
+
+            if (angle1 > angle2 and normal == -1) or (angle2 > angle1 and normal == 1): pass
+            if angle1 > angle2 and normal == 1: interval = abs( (2*math.pi-angle1) + angle2)
+            if angle2 > angle1 and normal == -1: interval = abs( (2*math.pi-angle2) + angle1)
+
+        pointsNum = math.floor( abs(interval)) * 12
+        if pointsNum <4: pointsNum = 4
+
+        for i in range(range_start, pointsNum + 1): 
+            k = i/pointsNum # to reset values from 1/10 to 1
+            angle = angle1 + k * interval * normal
+
+            pt = Point( x = poly.plane.origin.x + poly.radius * cos(angle), y = poly.plane.origin.y + poly.radius * sin(angle), z = 0) 
+            
+            pt.units = poly.plane.origin.units 
+            points.append(pt)
+
+        if isinstance(poly, Arc): points.append(poly.endPoint)
+        return points
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return [] 
+    
+
+def speckleBoundaryToSpecklePts(boundary: Union[None, Polyline, Arc, Line, Polycurve], dataStorage = None) -> List[Point]:
     # add boundary points
     try:
         polyBorder = []
         if isinstance(boundary, Circle) or isinstance(boundary, Arc): 
-            polyBorder = speckleArcCircleToPoints(boundary) 
+            polyBorder = speckleArcCircleToPoints(boundary, dataStorage ) 
         elif isinstance(boundary, Polycurve): 
-            polyBorder = specklePolycurveToPoints(boundary) 
+            polyBorder = specklePolycurveToPoints(boundary, dataStorage ) 
         elif isinstance(boundary, Line): pass
         else: 
             try: polyBorder = boundary.as_points()
             except: pass # if Line or None
         return polyBorder
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return
+
+def addCorrectUnits(geom, dataStorage):
+    if not isinstance(geom, Base): return None
+    units = dataStorage.currentUnits
+    
+    geom.units = units
+    if isinstance(geom, Arc):
+        geom.plane.origin.units = units 
+        geom.startPoint.units = units
+        geom.midPoint.units = units
+        geom.endPoint.units = units
+    
+    elif isinstance(geom, Polycurve):
+        for s in geom.segments: 
+            s.units = units
+            if isinstance(s, Arc):
+                s.plane.origin.units = units 
+                s.startPoint.units = units
+                s.midPoint.units = units
+                s.endPoint.units = units
+    
+    return geom 
+
+
+
+def getArcRadianAngle(arc: Arc, dataStorage = None) -> List[float]:
+    try: 
+        interval = None
+        normal = arc.plane.normal.z 
+        angle1, angle2 = getArcAngles(arc)
+        if angle1 is None or angle2 is  None: return None
+        interval = abs(angle2 - angle1)
+
+        if (angle1 > angle2 and normal == -1) or (angle2 > angle1 and normal == 1): pass
+        if angle1 > angle2 and normal == 1: interval = abs( (2*math.pi-angle1) + angle2)
+        if angle2 > angle1 and normal == -1: interval = abs( (2*math.pi-angle2) + angle1)
+        return interval, angle1, angle2
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None, None, None 
+    
+
+def getArcAngles(poly: Arc, dataStorage = None) -> Tuple[float]: 
+    try: 
+        if poly.startPoint.x == poly.plane.origin.x: angle1 = math.pi/2
+        else: angle1 = atan( abs ((poly.startPoint.y - poly.plane.origin.y) / (poly.startPoint.x - poly.plane.origin.x) )) # between 0 and pi/2
+        
+        if poly.plane.origin.x < poly.startPoint.x and poly.plane.origin.y > poly.startPoint.y: angle1 = 2*math.pi - angle1
+        if poly.plane.origin.x > poly.startPoint.x and poly.plane.origin.y > poly.startPoint.y: angle1 = math.pi + angle1
+        if poly.plane.origin.x > poly.startPoint.x and poly.plane.origin.y < poly.startPoint.y: angle1 = math.pi - angle1
+
+        if poly.endPoint.x == poly.plane.origin.x: angle2 = math.pi/2
+        else: angle2 = atan( abs ((poly.endPoint.y - poly.plane.origin.y) / (poly.endPoint.x - poly.plane.origin.x) )) # between 0 and pi/2
+
+        if poly.plane.origin.x < poly.endPoint.x and poly.plane.origin.y > poly.endPoint.y: angle2 = 2*math.pi - angle2
+        if poly.plane.origin.x > poly.endPoint.x and poly.plane.origin.y > poly.endPoint.y: angle2 = math.pi + angle2
+        if poly.plane.origin.x > poly.endPoint.x and poly.plane.origin.y < poly.endPoint.y: angle2 = math.pi - angle2
+
+        return angle1, angle2 
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None, None 
+    
+
+
+def getArcNormal(poly: Arc, midPt: Point, dataStorage = None): 
+    #print("____getArcNormal___")
+    try:
+        angle1, angle2 = getArcAngles(poly)
+
+        if midPt.x == poly.plane.origin.x: angle = math.pi/2
+        else: angle = atan( abs ((midPt.y - poly.plane.origin.y) / (midPt.x - poly.plane.origin.x) )) # between 0 and pi/2
+        
+        if poly.plane.origin.x < midPt.x and poly.plane.origin.y > midPt.y: angle = 2*math.pi - angle
+        if poly.plane.origin.x > midPt.x and poly.plane.origin.y > midPt.y: angle = math.pi + angle
+        if poly.plane.origin.x > midPt.x and poly.plane.origin.y < midPt.y: angle = math.pi - angle
+
+        normal = Vector()
+        normal.x = normal.y = 0
+
+        if angle1 > angle > angle2: normal.z = -1  
+        if angle1 > angle2 > angle: normal.z = 1  
+
+        if angle2 > angle1 > angle: normal.z = -1  
+        if angle > angle1 > angle2: normal.z = 1  
+
+        if angle2 > angle > angle1: normal.z = 1  
+        if angle > angle2 > angle1: normal.z = -1  
+        
+        #print(angle1)
+        #print(angle)
+        #print(angle2)
+        #print(normal)
+
+        return normal
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
