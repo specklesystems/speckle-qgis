@@ -14,7 +14,7 @@ from qgis.core import (
 )
 
 from qgis._core import Qgis
-from speckle.converter.geometry.utils import addCorrectUnits, speckleArcCircleToPoints
+from speckle.converter.geometry.utils import addCorrectUnits, getArcNormal, getArcRadianAngle, speckleArcCircleToPoints
 
 from speckle.logging import logger
 from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
@@ -143,8 +143,8 @@ def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: Qg
                     en = pointToSpeckle(poly.childPoint(pt_len - segments_added + 1), feature, layer)
                     #print(poly.childPoint(pt_len+1))
                     #print(type(poly.childPoint(pt_len+1).x()))
-                    if "EMPTY" in str(poly.childPoint(pt_len+1)): 
-                        en = en = pointToSpeckle(poly.childPoint(0), feature, layer)
+                    if "EMPTY" in str(poly.childPoint(pt_len - segments_added + 1)): 
+                        en = pointToSpeckle(poly.childPoint(0), feature, layer)
                     newLine = Line(units = "m", start = st, end = en)
                     polycurve.segments.append(newLine)
                     #print(p)
@@ -392,6 +392,7 @@ def polycurveToNative(poly: Polycurve, dataStorage = None) -> QgsLineString:
                 elif isinstance(segm,Polyline):  
                     converted = polylineToNative(segm) # QgsLineString
                     if singleSegm == 1: return converted
+
                     #for k in range(converted.childCount()-1):
                     #    pts_comp.append(converted.childPoint(k))
                     #    curve.addVertex(converted.childPoint(k))
@@ -399,6 +400,7 @@ def polycurveToNative(poly: Polycurve, dataStorage = None) -> QgsLineString:
                 elif isinstance(segm,Curve):  
                     converted = curveToNative(segm) # QgsLineString
                     if singleSegm == 1: return converted
+
                     #for k in range(converted.childCount()):
                     #    pts_comp.append(converted.childPoint(k))
                     #    curve.addVertex(converted.childPoint(k))
@@ -410,9 +412,10 @@ def polycurveToNative(poly: Polycurve, dataStorage = None) -> QgsLineString:
                     else: return None
                     #converted = circleToNative(segm) # QgsLineString
                 elif isinstance(segm,Arc):  
-                    pts = [pointToNative(pt, dataStorage ) for pt in speckleArcCircleToPoints(segm)]
-                    #pts_comp.extend(pts)
-                    converted = QgsLineString(pts) # arcToNative(segm) # QgsLineString
+                    #pts = [pointToNative(pt, dataStorage ) for pt in speckleArcCircleToPoints(segm)]
+                    #converted = QgsLineString(pts) # arcToNative(segm) # QgsLineString
+                    converted = arcToNative(segm, dataStorage)
+                    
                     #curve.addCurve(converted.childPoint(0),converted.childPoint(1),converted.childPoint(2))
 
                     if singleSegm == 1: return arcToNative(segm)
@@ -421,23 +424,26 @@ def polycurveToNative(poly: Polycurve, dataStorage = None) -> QgsLineString:
                     converted =  QgsLineString(pts) # QgsLineString
                     if singleSegm == 1: return arcToNative(segm)
                     else: return None
-                else: # either return a part of the curve, of skip this segment and try next
+                else: # return a part of the curve 
                     logToUser(f"Part of the polycurve cannot be converted", level = 1, func = inspect.stack()[0][3])
                     curve = QgsLineString(points)
                     return curve
                 
+                # add converted segment 
                 if converted is not None: 
-                    for pt in converted.vertices():
-                        if len(points)>0 and pt.x()== points[len(points)-1].x() and pt.y()== points[len(points)-1].y() and pt.z()== points[len(points)-1].z(): pass
-                        else: points.append(pt)
+                    curve.addCurve(converted, extendPrevious = True)
+                    #for pt in converted.vertices():
+                    #    if len(points)>0 and pt.x()== points[len(points)-1].x() and pt.y()== points[len(points)-1].y() and pt.z()== points[len(points)-1].z(): pass
+                    #    else: points.append(pt)
                 else:
                     logToUser(f"Part of the polycurve cannot be converted", level = 1, func = inspect.stack()[0][3])
                     curve = QgsLineString(points)
                     return curve
         except: curve = None
 
-        new_curve = QgsLineString(points)
-        return new_curve
+        #new_curve = QgsLineString(points)
+        return curve
+    
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return

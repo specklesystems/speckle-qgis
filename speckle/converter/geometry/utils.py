@@ -4,7 +4,7 @@ import inspect
 from math import asin, cos, sin, atan
 import math
 import random
-from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve
+from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Vector
 from specklepy.objects import Base
 from typing import List, Tuple, Union, Dict 
 

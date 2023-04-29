@@ -134,19 +134,22 @@ def convertToNative(base: Base, dataStorage = None) -> Union[QgsGeometry, None]:
             # distinguish normal QGIS polygons and the ones sent as Mesh only
             try: 
                 # if normal polygon
-                boundary = base.boundary
+                boundary = base.boundary # will throw exception
                 if boundary is not None and isinstance(base, conversion[0]):
                     converted = conversion[1](base, dataStorage)
                     break
             except:
-                # if sent as Mesh 
-                if isinstance(base.displayValue[0], Mesh):
-                    converted: QgsMultiPolygon = meshToNative(base.displayValue, dataStorage ) # only called for Meshes created in QGIS before
-                # if other geometry 
-                elif isinstance(base, conversion[0]):
-                    #print(conversion[0])
-                    converted = conversion[1](base, dataStorage)
-                    break
+                try:
+                    # if sent as Mesh 
+                    colors = base.displayValue[0].colors # will throw exception
+                    if isinstance(base.displayValue[0], Mesh):
+                        converted: QgsMultiPolygon = meshToNative(base.displayValue, dataStorage ) # only called for Meshes created in QGIS before
+                except:
+                    # if other geometry 
+                    if isinstance(base, conversion[0]):
+                        #print(conversion[0])
+                        converted = conversion[1](base, dataStorage)
+                        break
 
         return converted
     except Exception as e:
