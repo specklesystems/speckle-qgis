@@ -122,4 +122,4 @@ zip-build*
 /typings/*
 *.csv
 *.json 
-
+*/PyQt-UI*

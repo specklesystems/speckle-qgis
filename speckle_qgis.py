@@ -49,7 +49,7 @@ import webbrowser
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.layers.Layer import Layer, VectorLayer, RasterLayer
-from speckle.converter.layers import convertSelectedLayers, getLayers
+from speckle.converter.layers import convertSelectedLayers, getAllLayers, getLayers
 from speckle.converter.layers.utils import findAndClearLayerGroup
 from speckle.DataStorage import DataStorage
 
@@ -301,7 +301,10 @@ class SpeckleQGIS:
                 self.onSend(message)
             else:
                 try:
-                    if threading.active_count() > self.theads_total:
+                    print(self.theads_total)
+                    print(threading.active_count())
+                    print(threading.enumerate())
+                    if threading.active_count() - 2 > self.theads_total:
                         logToUser("Please wait for other Send/Receive operations to finish", level = 1, plugin=self.dockwidget)
                         return
                     streamWrapper = self.active_stream[0]
@@ -391,6 +394,8 @@ class SpeckleQGIS:
                 logToUser("No layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
 
+            root = self.dataStorage.project.layerTreeRoot()
+            self.dataStorage.all_layers = getAllLayers(root)
             self.dockwidget.mappingSendDialog.populateSavedTransforms()
             
             units = QgsUnitTypes.encodeUnit(projectCRS.mapUnits())

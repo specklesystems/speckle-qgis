@@ -7,6 +7,8 @@ from typing import Any, List, Tuple, Union
 from specklepy.objects import Base
 from PyQt5.QtGui import QColor
 
+from osgeo import gdal, ogr, osr 
+
 from ui.logger import logToUser
 
 ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
@@ -373,3 +375,47 @@ def trySaveCRS(crs, streamBranch:str = ""):
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
+
+
+def reprojectPt(x, y, wkt_in, wkt_out):
+    srs_in = osr.SpatialReference()
+    srs_in.ImportFromWkt(wkt_in)
+    srs_out = osr.SpatialReference()
+    srs_out.ImportFromWkt(wkt_out)
+    if wkt_in != wkt_out: 
+        point = ogr.Geometry(ogr.wkbPoint)
+        point.AddPoint(x, y) 
+        point.AssignSpatialReference(srs_in) 
+        point.TransformTo(srs_out) 
+        newX = point.GetX()
+        newY = point.GetY()
+    else:
+        newX = x
+        newY = y
+    return newX, newY 
+
+def getArrayIndicesFromXY(settings, x, y):
+    resX, resY, minX, minY, sizeX, sizeY, wkt = settings 
+    index1 = int( (x - minX) / resX )
+    index2 = int( (y - minY) / resY )
+
+    if not 0 <= index1 < sizeX: # try deviating +- 1
+        index1 = int( (x - minX) / resX - resX )
+        if not 0 <= index1 < sizeX: 
+            index1 = int( (x - minX) / resX + resX )
+    if not 0 <= index2 < sizeY:
+        index2 = int( (y - minY) / resY - resY )
+        if not 0 <= index2 < sizeY:
+            index2 = int( (y - minY) / resY + resY )
+    if not 0 <= index1 < sizeX or not  0 <= index2 < sizeY:
+        return None, None 
+    else:
+        return index1, index2
+
+
+def getXYofArrayPoint(settings, indexX, indexY, targetWKT):
+    resX, resY, minX, minY, sizeX, sizeY, wkt = settings
+    x = minX + resX*indexX
+    y = minY + resY*indexY
+    newX, newY = reprojectPt(x, y, wkt, targetWKT)
+    return newX, newY

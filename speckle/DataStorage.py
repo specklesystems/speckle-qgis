@@ -22,7 +22,8 @@ class DataStorage:
         #self.streamsToFollow.append(("https://speckle.xyz/streams/17b0b76d13/branches/random_tests", "", "09a0f3e41a"))
         self.transformsCatalog = ["Extrude polygons by \'height\' attribute (fill NULL values)",
                                   "Extrude polygons by \'height\' attribute (ignore NULL values)",
-                                  "Elevation to mesh"]
+                                  "Elevation to 3d mesh",
+                                  "Set as a texture for elevation mesh(es) if available"] 
         self.savedTransforms = []
         all_layers = []
         current_layers = []

@@ -112,6 +112,9 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     def onAddTransform(self):
         
         from ui.project_vars import set_transformations
+        
+        root = self.dataStorage.project.layerTreeRoot()
+        self.dataStorage.all_layers = getAllLayers(root)
 
         if len(self.layerDropdown.currentText())>1 and len(self.transformDropdown.currentText())>1:
             listItem = str(self.layerDropdown.currentText()) + "  ->  " + str(self.transformDropdown.currentText())
