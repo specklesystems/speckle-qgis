@@ -393,10 +393,11 @@ class SpeckleQGIS:
             if len(layers) == 0: #len(selectedLayerNames) == 0:
                 logToUser("No layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
+            self.dataStorage.sending_layers = layers
 
             root = self.dataStorage.project.layerTreeRoot()
             self.dataStorage.all_layers = getAllLayers(root)
-            self.dockwidget.mappingSendDialog.populateSavedTransforms()
+            self.dockwidget.mappingSendDialog.populateSavedTransforms(self.dataStorage)
             
             units = QgsUnitTypes.encodeUnit(projectCRS.mapUnits())
             if units is None or units == 'degrees': units = 'm'
@@ -480,6 +481,7 @@ class SpeckleQGIS:
                     logToUser("Data has been sent in the units 'degrees'. It is advisable to set the project CRS to Projected type (e.g. EPSG:32631) to be able to receive geometry correctly in CAD/BIM software. You can also create a custom CRS by setting geographic coordinates and using 'Set as a project center' function.", level = 1, plugin = self.dockwidget)
             
             logToUser(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
+            self.dataStorage.sending_layers = None
 
             return url
 

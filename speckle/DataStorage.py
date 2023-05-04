@@ -11,6 +11,7 @@ class DataStorage:
     currentCRS = None
     currentUnits = "m"
     current_layers: Union[List, None] = None 
+    sending_layers: None
     all_layers: Union[List, None] = None 
     savedTransforms: Union[List, None] = None
     transformsCatalog: Union[List, None] = None

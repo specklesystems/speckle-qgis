@@ -256,6 +256,8 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         b["Y resolution"] = rasterResXY[1]
         b["X pixels"] = rasterDimensions[0]
         b["Y pixels"] = rasterDimensions[1]
+        b["X_min"] = reprojectedPt.x()
+        b["Y_min"] = reprojectedPt.y() 
         b["Band count"] = rasterBandCount
         b["Band names"] = rasterBandNames
         b["NoDataVal"] = rasterBandNoDataVal
@@ -268,45 +270,78 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         #print(rendererType)
         # identify symbology type and if Multiband, which band is which color
 
-        #############################################################
+        ############################################################# 
         terrain_transform = False
+        texture_transform = False
+        elevationLayer = None 
         textureLayer = None
-        height_list = rasterBandVals[0]
+        #height_list = rasterBandVals[0]
+        height_array = None 
         if dataStorage.savedTransforms is not None:
+            all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
+            all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
             for item in dataStorage.savedTransforms:
                 layer_name = item.split("  ->  ")[0]
                 transform_name = item.split("  ->  ")[1]
+
+                # identify existing elevation and texture layers 
+                if "texture" in transform_name.lower():
+                    # find a layer for texturing, if texture transformation exists 
+                    for l in dataStorage.all_layers: 
+                        if layer_name == l.name():
+
+                            # also check if the layer is selected for sending
+                            for sending_l in dataStorage.sending_layers:
+                                if sending_l.name() == l.name():
+                                    textureLayer = l 
+
+                if "elevation" in transform_name.lower() and "mesh" in transform_name.lower() and "texture" not in transform_name.lower(): 
+                    # find a layer for meshing, if mesh transformation exists 
+                    for l in dataStorage.all_layers: 
+                        if layer_name == l.name():
+                            
+                            # also check if the layer is selected for sending
+                            for sending_l in dataStorage.sending_layers:
+                                if sending_l.name() == l.name():
+                                    elevationLayer = l 
+                                    elevationSource = gdal.Open(l.source(), gdal.GA_ReadOnly)
+
+                                    elevationX, elevationY = (elevationSource.GetGeoTransform()[0], elevationSource.GetGeoTransform()[3])
+                                    elevationResX, elevationResY = (float(elevationSource.GetGeoTransform()[1]), float(elevationSource.GetGeoTransform()[5]))
+                                    elevationWkt = elevationSource.GetProjection() 
+                                    elevationBandCount = elevationLayer.bandCount()
+                                    elevation_arrays = []
+                                    elevation_mins = []
+                                    elevation_maxs = []
+                                    for txb in range(elevationBandCount):
+                                        txb_band = elevationSource.GetRasterBand(txb+1)
+                                        val_NA = txb_band.GetNoDataValue()
+                                        
+                                        array_band = txb_band.ReadAsArray()
+                                        val_Average = np.nanmean(array_band)
+                                        fakeArray = np.where( (array_band < const) | (array_band > -1*const) | (array_band == val_NA), val_Average, array_band)
+                                        val_Min = np.nanmin(fakeArray)
+                                        val_Max = np.nanmax(fakeArray)
+
+                                        array_band = np.where( (array_band < const) | (array_band == val_NA), val_Min, array_band)
+                                        
+                                        elevation_arrays.append(array_band)
+                                        elevation_mins.append(val_Min)
+                                        elevation_maxs.append(val_Max)
+                                    
+                                    height_array = elevation_arrays[0]
+                            
+                # get any transformation for the current layer 
                 if layer_name == selectedLayer.name():
                     print("Apply transform: " + transform_name)
                     if "elevation" in transform_name.lower() and "mesh" in transform_name.lower() and "texture" not in transform_name.lower():
-                        terrain_transform = True
-        
-        if dataStorage.savedTransforms is not None and terrain_transform is True:
-            for item in dataStorage.savedTransforms:
-                layer_name = item.split("  ->  ")[0]
-                transform_name = item.split("  ->  ")[1]
-                if "texture" in transform_name.lower():
-                    for l in dataStorage.all_layers: 
-                        if layer_name == l.name():
-                            textureLayer = l 
-                            textureSource = gdal.Open(l.source(), gdal.GA_ReadOnly)
-
-                            textureX, textureY = (textureSource.GetGeoTransform()[0], textureSource.GetGeoTransform()[3])
-                            textureResX, textureResY = (float(textureSource.GetGeoTransform()[1]), float(textureSource.GetGeoTransform()[5]))
-                            textureWkt = textureSource.GetProjection() 
-                            textureBandCount = textureLayer.bandCount()
-                            rendererType = textureLayer.renderer().type()
-                            texture_arrays = []
-                            texture_mins = []
-                            texture_maxs = []
-                            for txb in range(textureBandCount):
-                                array_band = textureSource.GetRasterBand(txb+1).ReadAsArray()
-                                texture_arrays.append(array_band)
-                                texture_mins.append(np.nanmin(array_band))
-                                texture_maxs.append(np.nanmax(array_band))
-                            break 
-
+                        terrain_transform = True 
+                    elif "texture" in transform_name.lower() and elevationLayer is not None:
+                        texture_transform = True 
+                
         ############################################################
+        z_vals_all = []
+        xy_vals_all = []
 
         for v in range(rasterDimensions[1] ): #each row, Y
             for h in range(rasterDimensions[0] ): #item in a row, X
@@ -324,47 +359,79 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 z1 = z2 = z3 = z4 = 0
         
                 #############################################################
-                if terrain_transform is True:
+                if terrain_transform is True and height_array is not None:
                     try: # top vertices
-                        z1 = height_list[int( count/4 ) - rasterDimensions[0] -1 ]
+                        if v>=1 and h>=1: z1 = height_array[v-1][h-1]
+                        else:
+                            z_index = xy_vals_all.index((pt1.x(), pt1.y())) # value error if not found 
+                            if z_index >=0: z1 = z_vals_all[z_index]
+                            else: 1/0
                     except: 
-                        z1 = height_list[int( count/4 )]
+                        z1 = height_array[v][h]
                     try:
-                        z4 = height_list[int( count/4 ) - rasterDimensions[0] ]
+                        if v>=1: z4 = height_array[v-1][h]
+                        else: 1/0
                     except:
-                        z4 = height_list[int( count/4 )]
+                        z4 = height_array[v][h]
 
                     try: # bottom vertices
-                        z3 = height_list[int( count/4 )] # the only one advancing
-                        z2 = height_list[int( count/4 ) -1 ]
+                        z3 = height_array[v][h] # the only one advancing
+                        if h>=1: z2 = height_array[v][h-1]
+                        else: 1/0
                     except: 
-                        z2 = height_list[int( count/4 )]
+                        z2 = height_array[v][h]
+                    z_vals_all.extend([z1, z2, z3, z4])
+                    xy_vals_all.extend([(pt1.x(), pt1.y()), (pt2.x(), pt2.y()), (pt3.x(), pt3.y()), (pt4.x(), pt4.y())])
+                
+                elif texture_transform is True and height_array is not None:
+                    posX, posY = getXYofArrayPoint((rasterResXY[0], rasterResXY[1], originX, originY, rasterDimensions[1], rasterDimensions[0], rasterWkt), v, h, elevationWkt)
+                    index1, index2 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationX, elevationY, elevation_arrays[0].shape[0], elevation_arrays[0].shape[1], elevationWkt), posX, posY )
+                    if index1 is None: 
+                        count += 4
+                        continue # skip the pixel
+                    
+                    # resolution might not match! Also pixels might be missing 
+                    try: # top vertices
+                        z_index = xy_vals_all.index((pt1.x(), pt1.y()))
+                        if z_index >=0: z1 = z_vals_all[z_index]
+                        else: 1/0
+                    except: 
+                        z1 = height_array[index1][index2]
+                    try:
+                        z_index = xy_vals_all.index((pt4.x(), pt4.y()))
+                        if z_index >=0: z4 = z_vals_all[z_index]
+                        else: 1/0
+                    except:
+                        z4 = height_array[index1][index2]
+
+                    try: # bottom vertices
+                        z3 = height_array[index1][index2] # the only one advancing
+                        
+                        z_index = xy_vals_all.index((pt2.x(), pt2.y()))
+                        if z_index >=0: z2 = z_vals_all[z_index]
+                        else: 1/0
+                    except: 
+                        z2 = height_array[index1][index2]
+                    
+                    z_vals_all.extend([z1, z2, z3, z4])
+                    xy_vals_all.extend([(pt1.x(), pt1.y()), (pt2.x(), pt2.y()), (pt3.x(), pt3.y()), (pt4.x(), pt4.y())])
+
                 ########################################################
 
                 vertices.extend([pt1.x(), pt1.y(), z1, pt2.x(), pt2.y(), z2, pt3.x(), pt3.y(), z3, pt4.x(), pt4.y(), z4]) ## add 4 points
-                faces.extend([4, count, count+1, count+2, count+3])
+                current_vertices = len(faces) * 4 / 5
+                faces.extend([4, current_vertices, current_vertices + 1, current_vertices + 2, current_vertices + 3])
 
                 # color vertices according to QGIS renderer
                 color = (0<<16) + (0<<8) + 0
-                noValColor = selectedLayer.renderer().nodataColor().getRgb()
+                noValColor = selectedLayer.renderer().nodataColor().getRgb() 
 
-                ############################################################
-                if textureLayer is not None: 
-                    posX, posY = getXYofArrayPoint((rasterResXY[0], rasterResXY[1], originX, originY, rasterDimensions[1], rasterDimensions[0], rasterWkt), v, h, textureWkt)
-                    index1, index2 = getArrayIndicesFromXY((textureResX, textureResY, textureX, textureY, texture_arrays[0].shape[0], texture_arrays[0].shape[1], textureWkt), posX, posY )
-                    if index1 is None: 
-                        color = (250<<16) + (250<<8) + 250
-                        colors.extend([color,color,color,color])
-                        count += 4 
-                        continue 
-                #############################################################
-
-                if textureLayer is not None:
-                    colorLayer = textureLayer
-                    currentRasterBandCount = textureBandCount
-                else: 
-                    colorLayer = selectedLayer
-                    currentRasterBandCount = rasterBandCount
+                #if textureLayer is not None:
+                #    colorLayer = textureLayer
+                #    currentRasterBandCount = textureBandCount
+                #else: 
+                colorLayer = selectedLayer
+                currentRasterBandCount = rasterBandCount
 
                 if rendererType == "multibandcolor": 
                     valR = 0
@@ -375,14 +442,14 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     bandBlue = int(colorLayer.renderer().blueBand())
 
                     for k in range(currentRasterBandCount): 
-                        if textureLayer is not None:
-                            valRange = texture_maxs[k] - texture_mins[k] 
-                            if valRange == 0: colorVal = 0
-                            else: colorVal = int( (texture_arrays[k][index1][index2] - texture_mins[k] ) / valRange * 255 )
-                        else: 
-                            valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
-                            if valRange == 0: colorVal = 0
-                            else: colorVal = int( (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / valRange * 255 )
+                        #if textureLayer is not None:
+                        #    valRange = texture_maxs[k] - texture_mins[k] 
+                        #    if valRange == 0: colorVal = 0
+                        #    else: colorVal = int( (texture_arrays[k][index1][index2] - texture_mins[k] ) / valRange * 255 )
+                        #else: 
+                        valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
+                        if valRange == 0: colorVal = 0
+                        else: colorVal = int( (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / valRange * 255 )
                             
                         if k+1 == bandRed: valR = colorVal
                         if k+1 == bandGreen: valG = colorVal
@@ -392,10 +459,10 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 
                 elif rendererType == "paletted":
                     bandIndex = colorLayer.renderer().band()-1 #int
-                    if textureLayer is not None:
-                        value = texture_arrays[bandIndex][index1][index2] 
-                    else:
-                        value = rasterBandVals[bandIndex][int(count/4)] #find in the list and match with color
+                    #if textureLayer is not None:
+                    #    value = texture_arrays[bandIndex][index1][index2] 
+                    #else:
+                    value = rasterBandVals[bandIndex][int(count/4)] #find in the list and match with color
 
                     rendererClasses = colorLayer.renderer().classes()
                     for c in range(len(rendererClasses)-1):
@@ -406,10 +473,10 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 
                 elif rendererType == "singlebandpseudocolor":
                     bandIndex = colorLayer.renderer().band()-1 #int
-                    if textureLayer is not None:
-                        value = texture_arrays[bandIndex][index1][index2] 
-                    else:
-                        value = rasterBandVals[bandIndex][int(count/4)] #find in the list and match with color
+                    #if textureLayer is not None:
+                    #    value = texture_arrays[bandIndex][index1][index2] 
+                    #else:
+                    value = rasterBandVals[bandIndex][int(count/4)] #find in the list and match with color
 
                     rendererClasses = colorLayer.renderer().legendSymbologyItems()
                     for c in range(len(rendererClasses)-1):
@@ -431,30 +498,33 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     else: # e.g. single band data
                         bandIndex = 0
                     
-                    if textureLayer is not None:
-                        value = texture_arrays[bandIndex][index1][index2] 
-                        valRange = texture_maxs[bandIndex] - texture_mins[bandIndex] 
+                    #if textureLayer is not None:
+                    #    value = texture_arrays[bandIndex][index1][index2] 
+                    #    valRange = texture_maxs[bandIndex] - texture_mins[bandIndex] 
+                    #    if valRange == 0: colorVal = 0
+                    #    else: colorVal = int( (texture_arrays[bandIndex][index1][index2] - texture_mins[bandIndex] ) / valRange * 255 )
+                    #    color =  (colorVal<<16) + (colorVal<<8) + colorVal
+                    #else: 
+                    if rasterBandVals[bandIndex][int(count/4)] >= rasterBandMinVal[bandIndex]: 
+                        # REMAP band values to (0,255) range
+                        valRange = (rasterBandMaxVal[bandIndex] - rasterBandMinVal[bandIndex])
                         if valRange == 0: colorVal = 0
-                        else: colorVal = int( (texture_arrays[bandIndex][index1][index2] - texture_mins[bandIndex] ) / valRange * 255 )
+                        else: colorVal = int( (rasterBandVals[bandIndex][int(count/4)] - rasterBandMinVal[bandIndex]) / valRange * 255 )
                         color =  (colorVal<<16) + (colorVal<<8) + colorVal
-                    else: 
-                        if rasterBandVals[bandIndex][int(count/4)] >= rasterBandMinVal[bandIndex]: 
-                            # REMAP band values to (0,255) range
-                            valRange = (rasterBandMaxVal[bandIndex] - rasterBandMinVal[bandIndex])
-                            if valRange == 0: colorVal = 0
-                            else: colorVal = int( (rasterBandVals[bandIndex][int(count/4)] - rasterBandMinVal[bandIndex]) / valRange * 255 )
-                            color =  (colorVal<<16) + (colorVal<<8) + colorVal
 
                 colors.extend([color,color,color,color])
                 count += 4
 
         mesh = constructMeshFromRaster(vertices, faces, colors, dataStorage)
-        if(b['displayValue'] is None):
+        if b['displayValue'] is None:
             b['displayValue'] = []
-        if terrain_transform is True: # don't included start pt for extruded terrain 
+        
+        if terrain_transform is True and textureLayer is not None: # hide DEM elevation if texture layer will repeat the shape 
+            b['displayValue'] = []
+        elif terrain_transform is True or texture_transform is True: # don't included start pt for extruded terrain 
             b['displayValue'] = [ mesh ]
         else: 
-            b['displayValue'].append(mesh) 
+            b['displayValue'] = [ mesh ]
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

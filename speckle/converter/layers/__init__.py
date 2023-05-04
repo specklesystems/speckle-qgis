@@ -6,7 +6,7 @@ import inspect
 import math
 from typing import List, Union
 from specklepy.objects import Base
-from specklepy.objects.geometry import Mesh
+from specklepy.objects.geometry import Mesh, Point
 import os
 import time
 from datetime import datetime
@@ -15,7 +15,7 @@ from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-pac
     gdal, osr)
 from plugin_utils.helpers import findFeatColors, findOrCreatePath, removeSpecialCharacters
 #from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
-from qgis.core import (Qgis, QgsProject, QgsRasterLayer, 
+from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint, 
                        QgsVectorLayer, QgsProject, QgsWkbTypes,
                        QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsLayerTreeLayer,
                        QgsCoordinateReferenceSystem, QgsCoordinateTransform,
@@ -753,7 +753,17 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
             band.WriteArray(rasterband) # or "rasterband.T"
         
         # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
-        pt = pointToNative(feat["displayValue"][0], plugin.dataStorage)
+        pt = None
+        try:
+            pt = QgsPoint(feat["X_min"], feat["Y_min"], 0)
+        except: 
+            if feat["displayValue"] is not None:
+                if isinstance(feat["displayValue"][0], Point): 
+                    pt = pointToNative(feat["displayValue"][0], plugin.dataStorage)
+        if pt is None:
+            logToUser("Raster layer doesn't have the origin point", level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+            return 
+        
         xform = QgsCoordinateTransform(crs, crsRaster, project)
         pt.transform(xform)
         ds.SetGeoTransform([pt.x(), feat["X resolution"], 0, pt.y(), 0, feat["Y resolution"]])

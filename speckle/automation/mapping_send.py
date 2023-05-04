@@ -74,8 +74,9 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         self.populateLayersByTransform()
         self.populateSavedTransforms()
 
-    def populateSavedTransforms(self): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
+    def populateSavedTransforms(self, dataStorage): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
 
+        self.dataStorage = dataStorage # making sure lists are synced 
         self.transformationsList.clear()
         vals = self.dataStorage.savedTransforms  
         all_l_names = [l.name() for l in self.dataStorage.all_layers]
@@ -112,7 +113,6 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     def onAddTransform(self):
         
         from ui.project_vars import set_transformations
-        
         root = self.dataStorage.project.layerTreeRoot()
         self.dataStorage.all_layers = getAllLayers(root)
 
