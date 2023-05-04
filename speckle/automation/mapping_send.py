@@ -43,7 +43,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     def __init__(self, parent=None):
         super(MappingSendDialog,self).__init__(parent,QtCore.Qt.WindowStaysOnTopHint)
         self.setupUi(self)
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(600)
         #self.setWindowTitle("Add custom transformations")
 
         self.addTransform.setStyleSheet("QPushButton {color: black; padding:3px;padding-left:5px;border: none; } QPushButton:hover { background-color: lightgrey}")
@@ -124,23 +124,23 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
             
             exists = 0
             for record in self.dataStorage.savedTransforms: 
-                current_layer_name = record.split("  ->  ")[0]
-                current_transf_name = record.split("  ->  ")[1]
+                current_layer_name = record.split("  ->  ")[0].lower()
+                current_transf_name = record.split("  ->  ")[1].lower()
                 if layer_name == current_layer_name: # in layers
                     exists +=1
                     displayUserMsg("Selected layer already has a transformation applied", level=1) 
                     break
-                if ("elevation" in transform_name.lower() and "mesh" in transform_name.lower() and "texture" not in transform_name.lower()) and transform_name == current_transf_name: # in transforms
+                if ("elevation" in transform_name and "mesh" in transform_name and "texture" not in transform_name) and transform_name == current_transf_name: # in transforms
                     exists +=1
                     displayUserMsg(f"Layer '{current_layer_name}' is already assigned as a 3d elevation", level=1) 
-                    break
+                    break 
             if exists == 0:
                 layer = None
                 for l in self.dataStorage.all_layers: 
                     if layer_name == l.name():
                         layer = l
                 if layer is not None:
-                    if "extrude" in listItem.split("  ->  ")[1].lower():
+                    if "extrude" in transform_name:
                         
                         if not isinstance(layer, QgsVectorLayer):
                             displayUserMsg("Selected transformation can only be applied to Polygon layers", level=1) 
@@ -150,7 +150,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                             displayUserMsg("Selected transformation can only be applied to Polygon layers", level=1) 
                             return
 
-                    if "elevation" in listItem.split("  ->  ")[1].lower():
+                    if "elevation" in transform_name and "polygon" not in transform_name:
                         if not isinstance(layer, QgsRasterLayer):
                             displayUserMsg("Selected transformation can only be applied to Raster layers", level=1) 
                             return

@@ -64,21 +64,6 @@ def unknownLineToSpeckle(poly: QgsCompoundCurve, closed: bool, feature: QgsFeatu
             actualGeom = actualGeom.segmentize()
             return polylineToSpeckle(actualGeom, feature, layer)
 
-            parts = poly.asGeometryCollection()
-            pts = []
-            for p in parts:
-                if isinstance(p, QgsCompoundCurve):
-                    p = compoudCurveToSpeckle(p, feature, layer)
-                    if p is not None: pts.extend(p.as_points()) 
-                elif isinstance(p, QgsCircularString):
-                    p = arcToSpeckle(poly, feature, layer)
-                    if p is not None: pts.extend(speckleArcCircleToPoints(p)) 
-                else:
-                    try: p = polylineFromVerticesToSpeckle(pts.vertices(), True, feature, layer)
-                    except: p = None
-                    if p is not None: pts.extend(p.as_points()) 
-            return polylineFromVerticesToSpeckle(pts, True, feature, layer)
-
         elif isinstance(poly, QgsCompoundCurve): return compoudCurveToSpeckle(poly, feature, layer)
         elif isinstance(poly, QgsCircularString): return arcToSpeckle(poly, feature, layer)
         #elif isinstance(poly, QgsCurvePolygon): 

@@ -89,17 +89,56 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
             for v in result['displayValue']: v.units = units
             return result
         elif geomType == QgsWkbTypes.PolygonGeometry: # 2
+
             height = getPolygonFeatureHeight(feature, layer, dataStorage)
+            translationZaxis = None 
+
             if geomSingleType:
-                result = polygonToSpeckle(geom, feature, layer, height, dataStorage)
+
+                try: boundaryPts = [ v[1] for v in enumerate(geom.exteriorRing().vertices())] 
+                except: boundaryPts = [ v[1] for v in enumerate(geom.constGet().exteriorRing().vertices())] 
+                if height is not None:
+                    if isFlat(boundaryPts) is False:
+                        logToUser("Extrusion can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
+                        height = None 
+                if isAppliedLayerTransformByKeywords(layer, ["extrude", "polygon", "project", "elevation"], [], dataStorage) is True:
+                    if isFlat(boundaryPts) is False:
+                        logToUser("Geometry projections can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
+                    else:
+                        translationZaxis = getZaxisTranslation(layer, boundaryPts, dataStorage)
+                        if translationZaxis is None: 
+                            logToUser("Some buildings are outside the elevation layer extent", level = 1, func = inspect.stack()[0][3])
+                            return 
+
+                result = polygonToSpeckle(geom, feature, layer, height, translationZaxis, dataStorage)
                 result.units = units
                 result.boundary.units = units
                 for v in result.voids: v.units = units
                 for v in result['displayValue']: v.units = units
                 return result
-            else:
-                result = [polygonToSpeckle(poly, feature, layer, height, dataStorage) for poly in geom.parts()]
+            
+            else: 
+                result = []
+                for poly in geom.parts():
+                    
+                    try: boundaryPts = [ v[1] for v in enumerate(poly.exteriorRing().vertices())] 
+                    except: boundaryPts = [ v[1] for v in enumerate(poly.constGet().exteriorRing().vertices())] 
+                    if height is not None:
+                        if isFlat(boundaryPts) is False:
+                            logToUser("Extrusion can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
+                            height = None 
+                    if isAppliedLayerTransformByKeywords(layer, ["extrude", "polygon", "project", "elevation"], [], dataStorage) is True: 
+                        if isFlat(boundaryPts) is False:
+                            logToUser("Geometry projections can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
+                        else:
+                            translationZaxis = getZaxisTranslation(layer, boundaryPts, dataStorage)
+                            if translationZaxis is None: 
+                                logToUser("Some buildings are outside the elevation layer extent", level = 1, func = inspect.stack()[0][3])
+                                continue 
+                            
+                    result.append(polygonToSpeckle(poly, feature, layer, height, translationZaxis, dataStorage) )
                 for r in result: 
+                    if r is None: continue 
                     r.units = units 
                     r.boundary.units = units
                     for v in r.voids: v.units = units 

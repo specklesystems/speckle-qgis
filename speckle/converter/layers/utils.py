@@ -5,9 +5,14 @@ from speckle.logging import logger
 from speckle.converter.layers import Layer
 from typing import Any, List, Tuple, Union
 from specklepy.objects import Base
+from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
+
 from PyQt5.QtGui import QColor
 
 from osgeo import gdal, ogr, osr 
+import math
+import numpy as np 
+
 
 from ui.logger import logToUser
 
@@ -419,3 +424,122 @@ def getXYofArrayPoint(settings, indexX, indexY, targetWKT):
     y = minY + resY*indexY
     newX, newY = reprojectPt(x, y, wkt, targetWKT)
     return newX, newY
+
+def isAppliedLayerTransformByKeywords(layer, keywordsYes: List[str], keywordsNo: List[str], dataStorage):
+    
+    correctTransform = False  
+    if dataStorage.savedTransforms is not None:
+        all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
+        all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
+
+        for item in dataStorage.savedTransforms:
+            layer_name_recorded = item.split("  ->  ")[0]
+            transform_name_recorded = item.split("  ->  ")[1]
+
+            if layer_name_recorded == layer.name():
+                if len(keywordsYes) > 0 or len(keywordsNo) > 0:
+                    correctTransform = True 
+                for word in keywordsYes:
+                    if word in transform_name_recorded.lower(): pass 
+                    else: correctTransform = False
+                    break 
+                for word in keywordsNo:
+                    if word not in transform_name_recorded.lower(): pass 
+                    else: correctTransform = False
+                    break 
+
+            #if correctTransform is True and layer_name_recorded == layer.name(): 
+            #    # find a layer for meshing, if mesh transformation exists 
+            #    for l in dataStorage.all_layers: 
+            #        if layer_name_recorded == l.name():
+            #            return l  
+    return correctTransform  
+
+def getElevationLayer(dataStorage):                 
+    
+    if dataStorage.savedTransforms is not None:
+        all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
+        all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
+        for item in dataStorage.savedTransforms:
+            layer_name = item.split("  ->  ")[0]
+            transform_name = item.split("  ->  ")[1]
+
+            if "elevation" in transform_name.lower() and "mesh" in transform_name.lower() and "texture" not in transform_name.lower(): 
+                # find a layer for meshing, if mesh transformation exists 
+                for l in dataStorage.all_layers: 
+                    if layer_name == l.name():
+                        
+                        # also check if the layer is selected for sending
+                        for sending_l in dataStorage.sending_layers:
+                            if sending_l.name() == l.name():
+                                return sending_l 
+    return None 
+
+def get_raster_stats(rasterLayer):
+    file_ds = gdal.Open(rasterLayer.source(), gdal.GA_ReadOnly)
+    xres,yres = (float(file_ds.GetGeoTransform()[1]), float(file_ds.GetGeoTransform()[5]) )
+    originX, originY = (file_ds.GetGeoTransform()[0], file_ds.GetGeoTransform()[3])
+    band = file_ds.GetRasterBand(1)
+    rasterWkt = file_ds.GetProjection()
+    sizeX, sizeY = (band.ReadAsArray().shape[0], band.ReadAsArray().shape[1])
+
+    return xres, yres, originX, originY, sizeX, sizeY, rasterWkt
+
+
+def getRasterArrays(elevationLayer): 
+    const = float(-1* math.pow(10,30))
+
+    elevationSource = gdal.Open(elevationLayer.source(), gdal.GA_ReadOnly)
+    settings_elevation_layer = get_raster_stats(elevationLayer)
+    xres, yres, originX, originY, sizeX, sizeY, rasterWkt = settings_elevation_layer
+    
+    all_arrays = []
+    all_mins = []
+    all_maxs = []
+    all_na = []
+
+    for b in range(elevationLayer.bandCount()):
+        band = elevationSource.GetRasterBand(b+1)
+        val_NA = band.GetNoDataValue()
+        
+        array_band = band.ReadAsArray()
+        fakeArray = np.where( (array_band < const) | (array_band > -1*const) | (array_band == val_NA) | (np.isinf(array_band) ), np.nan, array_band)
+        
+        val_Min = np.nanmin(fakeArray)
+        val_Max = np.nanmax(fakeArray)
+
+        all_arrays.append(fakeArray) 
+        all_mins.append(val_Min)
+        all_maxs.append(val_Max)  
+        all_na.append(val_NA)
+
+    return (all_arrays, all_mins, all_maxs, all_na)
+
+def moveVertically(poly, height):
+
+    if isinstance(poly, Polycurve):
+        for segm in poly.segments:
+            segm = moveVerticallySegment(segm, height)
+    else:
+        poly = moveVerticallySegment(poly, height)
+
+    return poly
+
+def moveVerticallySegment(poly, height):
+    if isinstance(poly, Arc) or isinstance(poly, Circle): # or isinstance(segm, Curve):
+        if poly.plane is not None:
+            poly.plane.normal.z += height
+            poly.plane.origin.z += height
+        poly.startPoint.z += height
+        try: 
+            poly.endPoint.z += height
+        except: pass 
+    elif isinstance(poly, Line): 
+        poly.start.z += height
+        poly.end.z += height
+    elif isinstance(poly, Polyline): 
+        for i in range(len(poly.value)): 
+            if (i-1) %3 == 0:
+                poly.value[i] += float(height) 
+    
+    return poly 

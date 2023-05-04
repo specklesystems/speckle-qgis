@@ -18,8 +18,11 @@ from speckle.converter.geometry.polyline import (
 )
 from speckle.converter.geometry.utils import *
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
+from speckle.converter.layers.utils import get_raster_stats, getArrayIndicesFromXY, getElevationLayer, getRasterArrays, isAppliedLayerTransformByKeywords, moveVertically, reprojectPt
 from speckle.logging import logger
 import math
+from osgeo import gdal 
+import numpy as np 
 
 #from panda3d.core import Triangulator
 
@@ -80,12 +83,60 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
+
+def getZaxisTranslation(layer, boundaryPts, dataStorage): 
+    #### check if elevation is applied and layer exists: 
+    elevationLayer = getElevationLayer(dataStorage) 
+    polygonWkt = dataStorage.project.crs().toWkt() 
     
-def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, height = None, dataStorage = None):
+    translationValue = 0
+    if elevationLayer is not None: 
+        all_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
+        settings_elevation_layer = get_raster_stats(elevationLayer)
+        xres, yres, originX, originY, sizeX, sizeY, rasterWkt = settings_elevation_layer
+
+        allElevations = []
+        for pt in boundaryPts: 
+            posX, posY = reprojectPt(pt.x(), pt.y(), polygonWkt, rasterWkt)
+            index1, index2 = getArrayIndicesFromXY( settings_elevation_layer, posX, posY )
+
+            if index1 is None:  continue 
+            else: 
+                h = all_arrays[0][index1][index2] 
+                allElevations.append(h) 
+
+        if len(allElevations) == 0:
+            translationValue = None 
+        else:
+            if np.isnan(boundaryPts[0].z()) :
+                translationValue = min(allElevations)
+            else:     
+                translationValue = min(allElevations) - boundaryPts[0].z()  
+    
+    return translationValue
+
+def isFlat(ptList):
+    flat = True
+    universal_z_value = ptList[0].z()
+    for i, pt in enumerate(ptList):
+        if isinstance(pt, QgsPointXY):
+            break 
+        elif np.isnan(pt.z()): 
+            break 
+        elif pt.z() != universal_z_value:
+            flat = False
+            break
+    return flat 
+
+def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, height = None, projectZval = None, dataStorage = None):
     """Converts a QgsPolygon to Speckle"""
     polygon = Base(units = "m")
     try:
         boundary, voidsNative = getPolyBoundaryVoids(geom, feature, layer)
+
+        if projectZval is not None: 
+            boundary = moveVertically(boundary, projectZval)
+        
         polyBorder = speckleBoundaryToSpecklePts(boundary)
         voids = []
         voidsAsPts = []
@@ -104,6 +155,8 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
                 # project the pts on the plane
                 point = [pt.x, pt.y, 0]
                 z_val = projectToPolygon( point , plane_pts)
+                if projectZval is not None:
+                    z_val += projectZval
                 pts_fixed.append(Point(units = "m", x = pt.x, y = pt.y, z = z_val))
 
             voids.append(polylineFromVerticesToSpeckle(pts_fixed, True, feature, layer))
@@ -112,16 +165,6 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         polygon.boundary = boundary
         polygon.voids = voids
         polygon.displayValue = []
-        
-        
-        # check before extrusion
-        if height is not None:
-            universal_z_value = polyBorder[0].z
-            for i, pt in enumerate(polyBorder):
-                ########## check for non-flat polygons 
-                if pt.z != universal_z_value:
-                    logToUser("Extrusion can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
-                    height = None
         
         total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, geom, layer, height)
 
@@ -137,7 +180,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         return polygon
     
     except Exception as e:
-        logToUser("Some polygons might be invalid" + str(e), level = 1, func = inspect.stack()[0][3])
+        logToUser("Some polygons might be invalid: " + str(e), level = 1, func = inspect.stack()[0][3])
         return None
     
 
