@@ -178,7 +178,7 @@ def constructMesh(vertices, faces, colors, dataStorage = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height = None, dataStorage = None):
+def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height = None, projectedZval = 0, dataStorage = None):
     try:
         faces = []
         faces_cap = []

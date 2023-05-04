@@ -204,12 +204,12 @@ def getPolygonFeatureHeight(feature, layer, dataStorage):
     if dataStorage.savedTransforms is not None:
         for item in dataStorage.savedTransforms:
             layer_name = item.split("  ->  ")[0]
-            transform_name = item.split("  ->  ")[1]
+            transform_name = item.split("  ->  ")[1].lower()
             if layer_name == layer.name():
                 if "ignore" in transform_name: ignore = True
                 
                 print("Apply transform: " + transform_name)
-                if "extrude polygons" in transform_name.lower():
+                if "extrude" in transform_name and "polygons" in transform_name:
 
                     # additional check: 
                     try:

@@ -405,13 +405,13 @@ def getArrayIndicesFromXY(settings, x, y):
     index2 = int( (y - minY) / resY )
 
     if not 0 <= index1 < sizeX: # try deviating +- 1
-        index1 = int( (x - minX) / resX - resX )
+        index1 = int( (x - minX) / resX - 1 )
         if not 0 <= index1 < sizeX: 
-            index1 = int( (x - minX) / resX + resX )
+            index1 = int( (x - minX) / resX + 1 )
     if not 0 <= index2 < sizeY:
-        index2 = int( (y - minY) / resY - resY )
+        index2 = int( (y - minY) / resY - 1 )
         if not 0 <= index2 < sizeY:
-            index2 = int( (y - minY) / resY + resY )
+            index2 = int( (y - minY) / resY + 1 )
     if not 0 <= index1 < sizeX or not  0 <= index2 < sizeY:
         return None, None 
     else:
@@ -539,7 +539,7 @@ def moveVerticallySegment(poly, height):
         poly.end.z += height
     elif isinstance(poly, Polyline): 
         for i in range(len(poly.value)): 
-            if (i-1) %3 == 0:
+            if (i+1) %3 == 0:
                 poly.value[i] += float(height) 
     
     return poly 
