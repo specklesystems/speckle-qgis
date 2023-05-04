@@ -69,13 +69,13 @@ def createWindow(msg_old: str, func=None, level: int = 2):
       
             window.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
             if level==0: 
-                  window.setWindowTitle("Info")
+                  window.setWindowTitle("Info (Speckle)")
                   window.setIcon(QMessageBox.Icon.Information)
             if level==1: 
-                  window.setWindowTitle("Warning")
+                  window.setWindowTitle("Warning (Speckle)")
                   window.setIcon(QMessageBox.Icon.Warning)
             elif level==2: 
-                  window.setWindowTitle("Error")
+                  window.setWindowTitle("Error (Speckle)")
                   window.setIcon(QMessageBox.Icon.Critical)
             window.setFixedWidth(200)
 

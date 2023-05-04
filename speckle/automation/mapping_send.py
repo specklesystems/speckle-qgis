@@ -74,9 +74,10 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         self.populateLayersByTransform()
         self.populateSavedTransforms()
 
-    def populateSavedTransforms(self, dataStorage): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
+    def populateSavedTransforms(self, dataStorage = None): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
 
-        self.dataStorage = dataStorage # making sure lists are synced 
+        if dataStorage is not None: 
+            self.dataStorage = dataStorage # making sure lists are synced 
         self.transformationsList.clear()
         vals = self.dataStorage.savedTransforms  
         all_l_names = [l.name() for l in self.dataStorage.all_layers]
@@ -118,17 +119,25 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
 
         if len(self.layerDropdown.currentText())>1 and len(self.transformDropdown.currentText())>1:
             listItem = str(self.layerDropdown.currentText()) + "  ->  " + str(self.transformDropdown.currentText())
+            layer_name = listItem.split("  ->  ")[0]
+            transform_name = listItem.split("  ->  ")[1]
             
             exists = 0
-            for record in self.dataStorage.savedTransforms:
-                if listItem.split("  ->  ")[0] == record.split("  ->  ")[0]: # and listItem.split("  ->  ")[1][:15] in record: 
+            for record in self.dataStorage.savedTransforms: 
+                current_layer_name = record.split("  ->  ")[0]
+                current_transf_name = record.split("  ->  ")[1]
+                if layer_name == current_layer_name: # in layers
                     exists +=1
                     displayUserMsg("Selected layer already has a transformation applied", level=1) 
+                    break
+                if ("elevation" in transform_name.lower() and "mesh" in transform_name.lower() and "texture" not in transform_name.lower()) and transform_name == current_transf_name: # in transforms
+                    exists +=1
+                    displayUserMsg(f"Layer '{current_layer_name}' is already assigned as a 3d elevation", level=1) 
                     break
             if exists == 0:
                 layer = None
                 for l in self.dataStorage.all_layers: 
-                    if listItem.split("  ->  ")[0] == l.name():
+                    if layer_name == l.name():
                         layer = l
                 if layer is not None:
                     if "extrude" in listItem.split("  ->  ")[1].lower():

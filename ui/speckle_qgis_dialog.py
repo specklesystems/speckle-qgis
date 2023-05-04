@@ -212,6 +212,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def showMappingDialog(self):
         # updata DataStorage
+        self.mappingSendDialog.runSetup()
         self.mappingSendDialog.show()
 
     def addLabel(self, plugin): 

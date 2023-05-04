@@ -24,7 +24,7 @@ class DataStorage:
         self.transformsCatalog = ["Extrude polygons by \'height\' attribute (fill NULL values)",
                                   "Extrude polygons by \'height\' attribute (ignore NULL values)",
                                   "Elevation to 3d mesh",
-                                  "Set as a texture for elevation mesh(es) if available"] 
+                                  "Set as a texture for elevation mesh(es) (if sent together)"] 
         self.savedTransforms = []
         all_layers = []
         current_layers = []

@@ -193,11 +193,12 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         reprojectedPt = QgsGeometry.fromPointXY(QgsPointXY())
         try:
             reprojectedPt = rasterOriginPoint
-            if selectedLayer.crs()!= projectCRS: reprojectedPt = transform.transform(project, rasterOriginPoint, selectedLayer.crs(), projectCRS)
-            pt = QgsGeometry.fromPointXY(reprojectedPt)
-            geom = convertToSpeckle(pt, selectedLayer, dataStorage)
-            if (geom != None):
-                b['displayValue'] = [geom]
+            if selectedLayer.crs()!= projectCRS: 
+                reprojectedPt = transform.transform(project, rasterOriginPoint, selectedLayer.crs(), projectCRS)
+            #pt = QgsGeometry.fromPointXY(reprojectedPt)
+            #geom = convertToSpeckle(pt, selectedLayer, dataStorage)
+            #if (geom != None):
+            #    b['displayValue'] = [geom]
         except Exception as error:
             #logToUser("Error converting point geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
             logToUser("Error converting point geometry: " + str(error), level = 2)
@@ -318,19 +319,31 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                                         val_NA = txb_band.GetNoDataValue()
                                         
                                         array_band = txb_band.ReadAsArray()
-                                        val_Average = np.nanmean(array_band)
-                                        fakeArray = np.where( (array_band < const) | (array_band > -1*const) | (array_band == val_NA), val_Average, array_band)
-                                        val_Min = np.nanmin(fakeArray)
-                                        val_Max = np.nanmax(fakeArray)
+                                        val_Min = np.nanmin(array_band)
+                                        val_Max = np.nanmax(array_band)
 
-                                        array_band = np.where( (array_band < const) | (array_band == val_NA), val_Min, array_band)
+                                        # calculate average from NA-free array
+                                        #if val_Min == val_NA or val_Max == val_NA:
+                                        fakeArray = np.where( (array_band < const) | (array_band > -1*const) | (array_band == val_NA), np.nan, array_band)
+                                        #val_Average = np.nanmean(fakeArray)
+                                        #else:
+                                        #    val_Average = np.nanmean(array_band)
+                                        # replace extreme values, NA-values and np.nan with averages
+                                        #array_band = np.where( (array_band < const) | (array_band > -1*const) | (array_band == val_NA) | (np.isnan(array_band)), val_Average, array_band)
                                         
-                                        elevation_arrays.append(array_band)
+                                        elevation_arrays.append(fakeArray)
                                         elevation_mins.append(val_Min)
                                         elevation_maxs.append(val_Max)
                                     
                                     height_array = elevation_arrays[0]
-                            
+                          
+        if dataStorage.savedTransforms is not None:
+            all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
+            all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
+            for item in dataStorage.savedTransforms:
+                layer_name = item.split("  ->  ")[0]
+                transform_name = item.split("  ->  ")[1]
+  
                 # get any transformation for the current layer 
                 if layer_name == selectedLayer.name():
                     print("Apply transform: " + transform_name)
@@ -359,33 +372,14 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 z1 = z2 = z3 = z4 = 0
         
                 #############################################################
-                if terrain_transform is True and height_array is not None:
-                    try: # top vertices
-                        if v>=1 and h>=1: z1 = height_array[v-1][h-1]
-                        else:
-                            z_index = xy_vals_all.index((pt1.x(), pt1.y())) # value error if not found 
-                            if z_index >=0: z1 = z_vals_all[z_index]
-                            else: 1/0
-                    except: 
-                        z1 = height_array[v][h]
-                    try:
-                        if v>=1: z4 = height_array[v-1][h]
-                        else: 1/0
-                    except:
-                        z4 = height_array[v][h]
+                if (terrain_transform is True or texture_transform is True) and height_array is not None:
+                    if texture_transform is True: # texture 
+                        posX, posY = getXYofArrayPoint((rasterResXY[0], rasterResXY[1], originX, originY, rasterDimensions[1], rasterDimensions[0], rasterWkt), v, h, elevationWkt)
+                        index1, index2 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationX, elevationY, elevation_arrays[0].shape[0], elevation_arrays[0].shape[1], elevationWkt), posX, posY )
+                    else: # elevation 
+                        index1 = v
+                        index2 = h
 
-                    try: # bottom vertices
-                        z3 = height_array[v][h] # the only one advancing
-                        if h>=1: z2 = height_array[v][h-1]
-                        else: 1/0
-                    except: 
-                        z2 = height_array[v][h]
-                    z_vals_all.extend([z1, z2, z3, z4])
-                    xy_vals_all.extend([(pt1.x(), pt1.y()), (pt2.x(), pt2.y()), (pt3.x(), pt3.y()), (pt4.x(), pt4.y())])
-                
-                elif texture_transform is True and height_array is not None:
-                    posX, posY = getXYofArrayPoint((rasterResXY[0], rasterResXY[1], originX, originY, rasterDimensions[1], rasterDimensions[0], rasterWkt), v, h, elevationWkt)
-                    index1, index2 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationX, elevationY, elevation_arrays[0].shape[0], elevation_arrays[0].shape[1], elevationWkt), posX, posY )
                     if index1 is None: 
                         count += 4
                         continue # skip the pixel
@@ -395,14 +389,12 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         z_index = xy_vals_all.index((pt1.x(), pt1.y()))
                         if z_index >=0: z1 = z_vals_all[z_index]
                         else: 1/0
-                    except: 
-                        z1 = height_array[index1][index2]
+                    except: z1 = height_array[index1][index2]
                     try:
                         z_index = xy_vals_all.index((pt4.x(), pt4.y()))
                         if z_index >=0: z4 = z_vals_all[z_index]
                         else: 1/0
-                    except:
-                        z4 = height_array[index1][index2]
+                    except: z4 = height_array[index1][index2]
 
                     try: # bottom vertices
                         z3 = height_array[index1][index2] # the only one advancing
@@ -410,12 +402,20 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         z_index = xy_vals_all.index((pt2.x(), pt2.y()))
                         if z_index >=0: z2 = z_vals_all[z_index]
                         else: 1/0
-                    except: 
-                        z2 = height_array[index1][index2]
+                    except: z2 = height_array[index1][index2]
+                    
+                    nan_z = False
+                    for zz in [z1, z2, z3, z4]:
+                        if np.isnan(zz): 
+                            nan_z = True
+                    
+                    if nan_z is True:
+                        count += 4
+                        continue # skip the pixel
                     
                     z_vals_all.extend([z1, z2, z3, z4])
                     xy_vals_all.extend([(pt1.x(), pt1.y()), (pt2.x(), pt2.y()), (pt3.x(), pt3.y()), (pt4.x(), pt4.y())])
-
+                
                 ########################################################
 
                 vertices.extend([pt1.x(), pt1.y(), z1, pt2.x(), pt2.y(), z2, pt3.x(), pt3.y(), z3, pt4.x(), pt4.y(), z4]) ## add 4 points
@@ -516,8 +516,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 count += 4
 
         mesh = constructMeshFromRaster(vertices, faces, colors, dataStorage)
-        if b['displayValue'] is None:
-            b['displayValue'] = []
+        b['displayValue'] = []
         
         if terrain_transform is True and textureLayer is not None: # hide DEM elevation if texture layer will repeat the shape 
             b['displayValue'] = []
