@@ -16,7 +16,7 @@ from speckle.converter.geometry import convertToSpeckle, transform
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from speckle.converter.layers.Layer import RasterLayer
 from speckle.logging import logger
-from speckle.converter.layers.utils import getArrayIndicesFromXY, getVariantFromValue, getXYofArrayPoint, traverseDict, validateAttributeName 
+from speckle.converter.layers.utils import get_raster_stats, getArrayIndicesFromXY, getElevationLayer, getRasterArrays, getVariantFromValue, getXYofArrayPoint, traverseDict, validateAttributeName 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 import numpy as np 
@@ -274,10 +274,16 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         ############################################################# 
         terrain_transform = False
         texture_transform = False
-        elevationLayer = None 
         textureLayer = None
         #height_list = rasterBandVals[0]
-        height_array = None 
+        elevationLayer = getElevationLayer(dataStorage) 
+        elevation_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
+        array_band = elevation_arrays[0]
+        settings_elevation_layer = get_raster_stats(elevationLayer)
+        elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt = settings_elevation_layer
+        height_array = np.where( (array_band < const) | (array_band > -1*const) | (array_band == all_na[0]), np.nan, array_band)
+            
+
         if dataStorage.savedTransforms is not None:
             all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
             all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
@@ -295,47 +301,6 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                             for sending_l in dataStorage.sending_layers:
                                 if sending_l.name() == l.name():
                                     textureLayer = l 
-
-                if "elevation" in transform_name.lower() and "mesh" in transform_name.lower() and "texture" not in transform_name.lower(): 
-                    # find a layer for meshing, if mesh transformation exists 
-                    for l in dataStorage.all_layers: 
-                        if layer_name == l.name():
-                            
-                            # also check if the layer is selected for sending
-                            for sending_l in dataStorage.sending_layers:
-                                if sending_l.name() == l.name():
-                                    elevationLayer = l 
-                                    elevationSource = gdal.Open(l.source(), gdal.GA_ReadOnly)
-
-                                    elevationX, elevationY = (elevationSource.GetGeoTransform()[0], elevationSource.GetGeoTransform()[3])
-                                    elevationResX, elevationResY = (float(elevationSource.GetGeoTransform()[1]), float(elevationSource.GetGeoTransform()[5]))
-                                    elevationWkt = elevationSource.GetProjection() 
-                                    elevationBandCount = elevationLayer.bandCount()
-                                    elevation_arrays = []
-                                    elevation_mins = []
-                                    elevation_maxs = []
-                                    for txb in range(elevationBandCount):
-                                        txb_band = elevationSource.GetRasterBand(txb+1)
-                                        val_NA = txb_band.GetNoDataValue()
-                                        
-                                        array_band = txb_band.ReadAsArray()
-                                        val_Min = np.nanmin(array_band)
-                                        val_Max = np.nanmax(array_band)
-
-                                        # calculate average from NA-free array
-                                        #if val_Min == val_NA or val_Max == val_NA:
-                                        fakeArray = np.where( (array_band < const) | (array_band > -1*const) | (array_band == val_NA), np.nan, array_band)
-                                        #val_Average = np.nanmean(fakeArray)
-                                        #else:
-                                        #    val_Average = np.nanmean(array_band)
-                                        # replace extreme values, NA-values and np.nan with averages
-                                        #array_band = np.where( (array_band < const) | (array_band > -1*const) | (array_band == val_NA) | (np.isnan(array_band)), val_Average, array_band)
-                                        
-                                        elevation_arrays.append(fakeArray)
-                                        elevation_mins.append(val_Min)
-                                        elevation_maxs.append(val_Max)
-                                    
-                                    height_array = elevation_arrays[0]
                           
         if dataStorage.savedTransforms is not None:
             all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
@@ -375,7 +340,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 if (terrain_transform is True or texture_transform is True) and height_array is not None:
                     if texture_transform is True: # texture 
                         posX, posY = getXYofArrayPoint((rasterResXY[0], rasterResXY[1], originX, originY, rasterDimensions[1], rasterDimensions[0], rasterWkt), v, h, elevationWkt)
-                        index1, index2 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationX, elevationY, elevation_arrays[0].shape[0], elevation_arrays[0].shape[1], elevationWkt), posX, posY )
+                        index1, index2 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt), posX, posY )
                     else: # elevation 
                         index1 = v
                         index2 = h

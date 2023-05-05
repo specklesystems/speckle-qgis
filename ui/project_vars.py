@@ -150,7 +150,35 @@ def set_transformations(dataStorage):
     except Exception as e:
         logToUser("Transformations cannot be saved: " + str(e), level = 2)
         return False 
+
+def get_elevationLayer(dataStorage):
+    try: 
+        # get from saved project, set to local vars
+        proj = dataStorage.project
+        record = proj.readEntry("speckle-qgis", "elevationLayer", "")
+        if record[1] and len(record[0])>0: 
+            layerName: List[str] = record[0]
+            for layer in dataStorage.all_layers:
+                if layerName == layer.name():
+                    dataStorage.elevationLayer = layer 
+                    break 
+
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return
     
+def set_elevationLayer(dataStorage):
+    try: 
+        # from widget (3 strings) to local vars AND memory (1 string)
+        proj = dataStorage.project
+        layer = dataStorage.elevationLayer
+        proj.writeEntry("speckle-qgis", "elevationLayer", layer.name())
+        return True
+    
+    except Exception as e:
+        logToUser("Layer cannot be saved as elevation: " + str(e), level = 2)
+        return False 
+
 def setProjectReferenceSystem(plugin: SpeckleQGIS):
     # Create CRS and apply to the project:
     # https://gis.stackexchange.com/questions/379199/having-problem-with-proj-string-for-custom-coordinate-system

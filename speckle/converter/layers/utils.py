@@ -455,7 +455,8 @@ def isAppliedLayerTransformByKeywords(layer, keywordsYes: List[str], keywordsNo:
             #            return l  
     return correctTransform  
 
-def getElevationLayer(dataStorage):                 
+def getElevationLayer(dataStorage):  
+    return dataStorage.elevationLayer                
     
     if dataStorage.savedTransforms is not None:
         all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
@@ -468,6 +469,7 @@ def getElevationLayer(dataStorage):
                 # find a layer for meshing, if mesh transformation exists 
                 for l in dataStorage.all_layers: 
                     if layer_name == l.name():
+                        return l  
                         
                         # also check if the layer is selected for sending
                         for sending_l in dataStorage.sending_layers:
@@ -543,3 +545,4 @@ def moveVerticallySegment(poly, height):
                 poly.value[i] += float(height) 
     
     return poly 
+

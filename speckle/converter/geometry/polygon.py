@@ -8,7 +8,6 @@ from typing import List, Sequence
 
 from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
 from specklepy.objects import Base
-from specklepy.objects.geometry import Point
 
 from speckle.converter.geometry.mesh import meshPartsFromPolygon, constructMesh
 from speckle.converter.geometry.polyline import (
@@ -76,6 +75,8 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
         mesh = constructMesh(vertices, faces, colors)
         if mesh is not None: 
             polygon.displayValue = [ mesh ] 
+            polygon.boundary = None
+            polygon.voids = None 
         else: 
             logToUser("Mesh creation from Polygon failed. Boundaries will be used as displayValue", level = 1, func = inspect.stack()[0][3])
         return polygon 

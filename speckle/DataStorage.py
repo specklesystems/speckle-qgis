@@ -13,6 +13,7 @@ class DataStorage:
     current_layers: Union[List, None] = None 
     sending_layers: None
     all_layers: Union[List, None] = None 
+    elevationLayer: None 
     savedTransforms: Union[List, None] = None
     transformsCatalog: Union[List, None] = None
     plugin_version = "0.0.99"
@@ -21,17 +22,18 @@ class DataStorage:
         print("hello")
         #self.streamsToFollow = []
         #self.streamsToFollow.append(("https://speckle.xyz/streams/17b0b76d13/branches/random_tests", "", "09a0f3e41a"))
-        self.transformsCatalog = ["Set raster elevation as a 3d mesh",
-                                  "Set as a texture for elevation mesh(es) (if sent together)",
+        self.transformsCatalog = ["Convert Raster Elevation to a 3d Mesh",
+                                  "Set Raster as a Texture for Elevation Mesh(es) (if set)",
                                   "Extrude polygons by \'height\' attribute (fill NULL values)",
                                   "Extrude polygons by \'height\' attribute (ignore NULL values)",
-                                  "Extrude polygons by \'height\' attribute (fill NULL values) and project on 3d elevation (if sent together)",
-                                  "Extrude polygons by \'height\' attribute (ignore NULL values) and project on 3d elevation (if sent together)"
+                                  "Extrude polygons by \'height\' attribute (fill NULL values) and project on 3d elevation",
+                                  "Extrude polygons by \'height\' attribute (ignore NULL values) and project on 3d elevation"
                                   ] 
         self.savedTransforms = []
         all_layers = []
         current_layers = []
         self.accounts = [] 
+        self.elevationLayer = None
         #from ui.project_vars import set_transformations
 
 

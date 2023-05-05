@@ -34,6 +34,8 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     addTransform: QtWidgets.QPushButton
     removeTransform: QtWidgets.QPushButton
     transformationsList: QtWidgets.QListWidget
+    
+    elevationLayerDropdown: QtWidgets.QComboBox
 
     dataStorage: Any = None
 
@@ -53,6 +55,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         self.addTransform.clicked.connect(self.onAddTransform)
         self.removeTransform.clicked.connect(self.onRemoveTransform)
         self.transformDropdown.currentIndexChanged.connect(self.populateLayersByTransform)
+        self.dialog_button_box.clicked.connect(self.saveElevationLayer)
 
 
         return
@@ -73,6 +76,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         #self.populateLayers()
         self.populateLayersByTransform()
         self.populateSavedTransforms()
+        self.populateSavedElevationLayer()
 
     def populateSavedTransforms(self, dataStorage = None): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
 
@@ -163,7 +167,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                         logToUser(e, level = 2, func = inspect.stack()[0][3] )
                     
                     set_transformations(self.dataStorage)
-    
+
     def onRemoveTransform(self):
 
         if self.transformationsList.currentItem() is not None:
@@ -252,3 +256,65 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
             logToUser(e, level = 2, func = inspect.stack()[0][3])
             return
 
+
+    def populateSavedElevationLayer(self, dataStorage = None): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
+
+        try:
+            if dataStorage is not None: 
+                self.dataStorage = dataStorage # making sure lists are synced 
+            elevationLayer = self.dataStorage.elevationLayer 
+
+            self.elevationLayerDropdown.clear()
+            root = self.dataStorage.project.layerTreeRoot()
+            self.dataStorage.all_layers = getAllLayers(root)
+
+            self.elevationLayerDropdown.addItem("")  
+
+            setAsindex = 0
+            countRaster = 1
+            for i, layer in enumerate(self.dataStorage.all_layers):
+                if isinstance(layer, QgsRasterLayer):
+                    listItem = layer.name()
+                    self.elevationLayerDropdown.addItem(listItem)  
+                    icon = QgsIconUtils().iconForLayer(layer)
+                    self.elevationLayerDropdown.setItemIcon(countRaster, icon)  
+                    
+                    if elevationLayer is not None: 
+                        if listItem == elevationLayer.name():
+                            setAsindex = countRaster
+                    countRaster += 1
+            self.elevationLayerDropdown.setCurrentIndex(setAsindex) 
+            
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3])
+            return
+    
+    def saveElevationLayer(self):
+        from ui.project_vars import set_elevationLayer
+        root = self.dataStorage.project.layerTreeRoot()
+        layer = None
+
+        layerName = str(self.elevationLayerDropdown.currentText()) 
+        if len(layerName) < 1 or self.dataStorage is None: 
+            pass 
+        else:
+            self.dataStorage.all_layers = getAllLayers(root)
+            all_l_names = [l.name() for l in self.dataStorage.all_layers]
+
+            for l in self.dataStorage.all_layers: 
+                if layerName == l.name():
+                    layer = l
+                    if all_l_names.count(layer.name()) > 1:
+                        displayUserMsg(f"Layer name \'{layer.name()}\' is used for more than 1 layer in the project", level=1) 
+                        layer = None
+                        break 
+            
+            if layer is not None:
+                self.dataStorage.elevationLayer = layer 
+                set_elevationLayer(self.dataStorage)
+            
+        try:
+            metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Add transformation on Send", "Transformation": "Set Layer as Elevation", "connector_version": str(self.dataStorage.plugin_version)})
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3] )
+            

@@ -236,7 +236,7 @@
         <item row="11" column="0">
          <widget class="QLabel" name="surveyPointLabel">
           <property name="text">
-           <string>Lat, Lon (EPSG:4326)</string>
+           <string>Lat, Lon</string>
           </property>
          </widget>
         </item>
