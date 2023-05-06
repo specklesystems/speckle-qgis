@@ -401,18 +401,18 @@ def reprojectPt(x, y, wkt_in, proj_in, wkt_out, proj_out):
 
 def getArrayIndicesFromXY(settings, x, y):
     resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings 
-    index1 = int( (x - minX) / resX )
-    index2 = int( (y - minY) / resY )
+    index2 = int( (x - minX) / resX )
+    index1 = int( (y - minY) / resY )
 
-    if not 0 <= index1 < sizeX: # try deviating +- 1
-        index1 = int( (x - minX) / resX - 1 )
-        if not 0 <= index1 < sizeX: 
-            index1 = int( (x - minX) / resX + 1 )
-    if not 0 <= index2 < sizeY:
-        index2 = int( (y - minY) / resY - 1 )
-        if not 0 <= index2 < sizeY:
-            index2 = int( (y - minY) / resY + 1 )
-    if not 0 <= index1 < sizeX or not  0 <= index2 < sizeY:
+    if not 0 <= index2 < sizeX: # try deviating +- 1
+        index2 = int( (x - minX) / resX - 1 )
+        if not 0 <= index2 < sizeX: 
+            index2 = int( (x - minX) / resX + 1 )
+    if not 0 <= index1 < sizeY:
+        index1 = int( (y - minY) / resY - 1 )
+        if not 0 <= index1 < sizeY:
+            index1 = int( (y - minY) / resY + 1 )
+    if not 0 <= index2 < sizeX or not  0 <= index1 < sizeY:
         return None, None 
     else:
         return index1, index2
@@ -485,7 +485,7 @@ def get_raster_stats(rasterLayer):
         band = file_ds.GetRasterBand(1)
         rasterWkt = file_ds.GetProjection()
         rasterProj = QgsCoordinateReferenceSystem.fromWkt(rasterWkt).toProj().replace(" +type=crs","")
-        sizeX, sizeY = (band.ReadAsArray().shape[0], band.ReadAsArray().shape[1])
+        sizeX, sizeY = (band.ReadAsArray().shape[1], band.ReadAsArray().shape[0])
 
         return xres, yres, originX, originY, sizeX, sizeY, rasterWkt, rasterProj
     except:
