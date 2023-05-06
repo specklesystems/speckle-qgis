@@ -635,7 +635,7 @@ class SpeckleQGIS:
     def run(self):
         """Run method that performs all the real work"""
         from ui.speckle_qgis_dialog import SpeckleQGISDialog
-        from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection, get_transformations
+        from ui.project_vars import get_project_streams, get_survey_point, get_elevationLayer, get_project_layer_selection, get_transformations
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
@@ -664,6 +664,7 @@ class SpeckleQGIS:
             get_project_streams(self)
             get_survey_point(self)
             get_project_layer_selection(self)
+            get_elevationLayer(self.dataStorage)
 
             self.dockwidget.run(self)
 

@@ -163,6 +163,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         box.layout.setContentsMargins(65, 0, 0, 0)
         self.formLayout.insertRow(10,box)
         self.experimental = btn
+        self.experimental.setChecked(True)
 
 
     def runSetup(self, plugin):

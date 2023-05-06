@@ -184,6 +184,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         rasterOriginPoint = QgsPointXY(originX, originY)
         rasterResXY = [float(ds.GetGeoTransform()[1]), float(ds.GetGeoTransform()[5])]
         rasterWkt = ds.GetProjection() 
+        rasterProj = QgsCoordinateReferenceSystem.fromWkt(rasterWkt).toProj().replace(" +type=crs","")
         rasterBandNoDataVal = []
         rasterBandMinVal = []
         rasterBandMaxVal = []
@@ -277,13 +278,18 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         textureLayer = None
         #height_list = rasterBandVals[0]
         elevationLayer = getElevationLayer(dataStorage) 
-        elevation_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
-        array_band = elevation_arrays[0]
-        settings_elevation_layer = get_raster_stats(elevationLayer)
-        elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt = settings_elevation_layer
-        height_array = np.where( (array_band < const) | (array_band > -1*const) | (array_band == all_na[0]), np.nan, array_band)
-            
+        if elevationLayer is not None:
+            elevation_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
+            array_band = elevation_arrays[0]
+            settings_elevation_layer = get_raster_stats(elevationLayer)
+            elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt, elevationProj = settings_elevation_layer
+            height_array = np.where( (array_band < const) | (array_band > -1*const) | (array_band == all_na[0]), np.nan, array_band)
 
+        else:
+            elevation_arrays = all_mins = all_maxs = all_na = None
+            elevationResX = elevationResY = elevationOriginX = elevationOriginY = elevationSizeX = elevationSizeY = elevationWkt = None
+            height_array = None
+        
         if dataStorage.savedTransforms is not None:
             all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
             all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
@@ -339,39 +345,68 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 #############################################################
                 if (terrain_transform is True or texture_transform is True) and height_array is not None:
                     if texture_transform is True: # texture 
-                        posX, posY = getXYofArrayPoint((rasterResXY[0], rasterResXY[1], originX, originY, rasterDimensions[1], rasterDimensions[0], rasterWkt), v, h, elevationWkt)
-                        index1, index2 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt), posX, posY )
+                        posX, posY = getXYofArrayPoint((rasterResXY[0], rasterResXY[1], originX, originY, rasterDimensions[1], rasterDimensions[0], rasterWkt, rasterProj), v, h, elevationWkt, elevationProj)
+                        index1, index2 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt, elevationProj), posX, posY )
+                        index1_0, index2_0 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt, elevationProj), posX-rasterResXY[0], posY-rasterResXY[1] )
                     else: # elevation 
                         index1 = v
+                        index1_0 = v-1
                         index2 = h
+                        index2_0 = h-1
 
-                    if index1 is None: 
+                    if index1 is None or index1_0 is None: 
                         count += 4
                         continue # skip the pixel
                     
                     # resolution might not match! Also pixels might be missing 
-                    try: # top vertices
-                        z_index = xy_vals_all.index((pt1.x(), pt1.y()))
-                        if z_index >=0: z1 = z_vals_all[z_index]
-                        else: 1/0
-                    except: z1 = height_array[index1][index2]
-                    try:
-                        z_index = xy_vals_all.index((pt4.x(), pt4.y()))
-                        if z_index >=0: z4 = z_vals_all[z_index]
-                        else: 1/0
-                    except: z4 = height_array[index1][index2]
 
-                    try: # bottom vertices
-                        z3 = height_array[index1][index2] # the only one advancing
-                        
-                        z_index = xy_vals_all.index((pt2.x(), pt2.y()))
-                        if z_index >=0: z2 = z_vals_all[z_index]
-                        else: 1/0
-                    except: z2 = height_array[index1][index2]
+                    # top vertices ######################################
+                    if index1>0 and index2>0:
+                        z1 = height_array[index1_0][index2_0]
+                    elif index1>0:
+                        z1 = height_array[index1_0][index2]
+                    elif index2>0:
+                        z1 = height_array[index1][index2_0]
+                    else:
+                        z1 = height_array[index1][index2]
+                    #else:
+                    #    try: 
+                    #        z_index = xy_vals_all.index((pt1.x(), pt1.y()))
+                    #        if z_index >=0: z1 = z_vals_all[z_index]
+                    #        else: 1/0
+                    #    except: z1 = height_array[index1][index2]
                     
+                    if index1>0:
+                        z4 = height_array[index1_0][index2]
+                    else:
+                        z4 = height_array[index1][index2]
+                    #else:
+                    #    try:
+                    #        z_index = xy_vals_all.index((pt4.x(), pt4.y()))
+                    #        if z_index >=0: z4 = z_vals_all[z_index]
+                    #        else: 1/0
+                    #    except: z4 = height_array[index1][index2]
+
+                    # bottom vertices ######################################
+
+                    z3 = height_array[index1][index2] # the only one advancing
+
+                    if index2>0:
+                        z2 = height_array[index1][index2_0]
+                    else: 
+                        z2 = height_array[index1][index2]
+                    #else:
+                    #    try: 
+                    #        
+                    #        z_index = xy_vals_all.index((pt2.x(), pt2.y()))
+                    #        if z_index >=0: z2 = z_vals_all[z_index]
+                    #        else: 1/0
+                    #    except: z2 = height_array[index1][index2]
+                    
+                    ##############################################
                     nan_z = False
                     for zz in [z1, z2, z3, z4]:
-                        if np.isnan(zz): 
+                        if np.isnan(zz) or zz is None: 
                             nan_z = True
                     
                     if nan_z is True:

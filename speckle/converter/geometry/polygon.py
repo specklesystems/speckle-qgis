@@ -2,7 +2,7 @@
 
 import inspect
 import random
-from qgis.core import Qgis, QgsGeometry, QgsPolygon, QgsPointXY, QgsPoint, QgsFeature, QgsVectorLayer
+from qgis.core import Qgis, QgsGeometry, QgsPolygon, QgsPointXY, QgsPoint, QgsFeature, QgsVectorLayer, QgsCoordinateReferenceSystem
 
 from typing import List, Sequence
 
@@ -89,16 +89,17 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
     #### check if elevation is applied and layer exists: 
     elevationLayer = getElevationLayer(dataStorage) 
     polygonWkt = dataStorage.project.crs().toWkt() 
+    polygonProj = QgsCoordinateReferenceSystem.fromWkt(polygonWkt).toProj()
     
     translationValue = 0
     if elevationLayer is not None: 
         all_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
         settings_elevation_layer = get_raster_stats(elevationLayer)
-        xres, yres, originX, originY, sizeX, sizeY, rasterWkt = settings_elevation_layer
+        xres, yres, originX, originY, sizeX, sizeY, rasterWkt, rasterProj = settings_elevation_layer
 
         allElevations = []
         for pt in boundaryPts: 
-            posX, posY = reprojectPt(pt.x(), pt.y(), polygonWkt, rasterWkt)
+            posX, posY = reprojectPt(pt.x(), pt.y(), polygonWkt, polygonProj, rasterWkt, rasterProj)
             index1, index2 = getArrayIndicesFromXY( settings_elevation_layer, posX, posY )
 
             if index1 is None:  continue 

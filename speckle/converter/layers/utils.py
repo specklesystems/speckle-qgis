@@ -1,6 +1,6 @@
 import inspect
 from PyQt5.QtCore import QVariant, QDate, QDateTime
-from qgis._core import Qgis, QgsProject, QgsLayerTreeLayer, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, QgsField, QgsFields
+from qgis._core import Qgis, QgsProject, QgsCoordinateReferenceSystem, QgsLayerTreeLayer, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, QgsField, QgsFields
 from speckle.logging import logger
 from speckle.converter.layers import Layer
 from typing import Any, List, Tuple, Union
@@ -382,12 +382,12 @@ def trySaveCRS(crs, streamBranch:str = ""):
         return
 
 
-def reprojectPt(x, y, wkt_in, wkt_out):
+def reprojectPt(x, y, wkt_in, proj_in, wkt_out, proj_out):
     srs_in = osr.SpatialReference()
     srs_in.ImportFromWkt(wkt_in)
     srs_out = osr.SpatialReference()
     srs_out.ImportFromWkt(wkt_out)
-    if wkt_in != wkt_out: 
+    if proj_in != proj_out: 
         point = ogr.Geometry(ogr.wkbPoint)
         point.AddPoint(x, y) 
         point.AssignSpatialReference(srs_in) 
@@ -400,7 +400,7 @@ def reprojectPt(x, y, wkt_in, wkt_out):
     return newX, newY 
 
 def getArrayIndicesFromXY(settings, x, y):
-    resX, resY, minX, minY, sizeX, sizeY, wkt = settings 
+    resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings 
     index1 = int( (x - minX) / resX )
     index2 = int( (y - minY) / resY )
 
@@ -418,11 +418,11 @@ def getArrayIndicesFromXY(settings, x, y):
         return index1, index2
 
 
-def getXYofArrayPoint(settings, indexX, indexY, targetWKT):
-    resX, resY, minX, minY, sizeX, sizeY, wkt = settings
+def getXYofArrayPoint(settings, indexX, indexY, targetWKT, targetPROJ):
+    resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings
     x = minX + resX*indexX
     y = minY + resY*indexY
-    newX, newY = reprojectPt(x, y, wkt, targetWKT)
+    newX, newY = reprojectPt(x, y, wkt, proj, targetWKT, targetPROJ)
     return newX, newY
 
 def isAppliedLayerTransformByKeywords(layer, keywordsYes: List[str], keywordsNo: List[str], dataStorage):
@@ -478,44 +478,52 @@ def getElevationLayer(dataStorage):
     return None 
 
 def get_raster_stats(rasterLayer):
-    file_ds = gdal.Open(rasterLayer.source(), gdal.GA_ReadOnly)
-    xres,yres = (float(file_ds.GetGeoTransform()[1]), float(file_ds.GetGeoTransform()[5]) )
-    originX, originY = (file_ds.GetGeoTransform()[0], file_ds.GetGeoTransform()[3])
-    band = file_ds.GetRasterBand(1)
-    rasterWkt = file_ds.GetProjection()
-    sizeX, sizeY = (band.ReadAsArray().shape[0], band.ReadAsArray().shape[1])
+    try:
+        file_ds = gdal.Open(rasterLayer.source(), gdal.GA_ReadOnly)
+        xres,yres = (float(file_ds.GetGeoTransform()[1]), float(file_ds.GetGeoTransform()[5]) )
+        originX, originY = (file_ds.GetGeoTransform()[0], file_ds.GetGeoTransform()[3])
+        band = file_ds.GetRasterBand(1)
+        rasterWkt = file_ds.GetProjection()
+        rasterProj = QgsCoordinateReferenceSystem.fromWkt(rasterWkt).toProj().replace(" +type=crs","")
+        sizeX, sizeY = (band.ReadAsArray().shape[0], band.ReadAsArray().shape[1])
 
-    return xres, yres, originX, originY, sizeX, sizeY, rasterWkt
+        return xres, yres, originX, originY, sizeX, sizeY, rasterWkt, rasterProj
+    except:
+        return None, None,  None, None, None, None, None, None
+
 
 
 def getRasterArrays(elevationLayer): 
     const = float(-1* math.pow(10,30))
 
-    elevationSource = gdal.Open(elevationLayer.source(), gdal.GA_ReadOnly)
-    settings_elevation_layer = get_raster_stats(elevationLayer)
-    xres, yres, originX, originY, sizeX, sizeY, rasterWkt = settings_elevation_layer
-    
-    all_arrays = []
-    all_mins = []
-    all_maxs = []
-    all_na = []
-
-    for b in range(elevationLayer.bandCount()):
-        band = elevationSource.GetRasterBand(b+1)
-        val_NA = band.GetNoDataValue()
+    try:
+        elevationSource = gdal.Open(elevationLayer.source(), gdal.GA_ReadOnly)
+        settings_elevation_layer = get_raster_stats(elevationLayer)
+        xres, yres, originX, originY, sizeX, sizeY, rasterWkt, rasterProj = settings_elevation_layer
         
-        array_band = band.ReadAsArray()
-        fakeArray = np.where( (array_band < const) | (array_band > -1*const) | (array_band == val_NA) | (np.isinf(array_band) ), np.nan, array_band)
-        
-        val_Min = np.nanmin(fakeArray)
-        val_Max = np.nanmax(fakeArray)
+        all_arrays = []
+        all_mins = []
+        all_maxs = []
+        all_na = []
 
-        all_arrays.append(fakeArray) 
-        all_mins.append(val_Min)
-        all_maxs.append(val_Max)  
-        all_na.append(val_NA)
+        for b in range(elevationLayer.bandCount()):
+            band = elevationSource.GetRasterBand(b+1)
+            val_NA = band.GetNoDataValue()
+            
+            array_band = band.ReadAsArray()
+            fakeArray = np.where( (array_band < const) | (array_band > -1*const) | (array_band == val_NA) | (np.isinf(array_band) ), np.nan, array_band)
+            
+            val_Min = np.nanmin(fakeArray)
+            val_Max = np.nanmax(fakeArray)
 
-    return (all_arrays, all_mins, all_maxs, all_na)
+            all_arrays.append(fakeArray) 
+            all_mins.append(val_Min)
+            all_maxs.append(val_Max)  
+            all_na.append(val_NA)
+
+        return (all_arrays, all_mins, all_maxs, all_na)
+    except: 
+        return (None, None, None, None)
 
 def moveVertically(poly, height):
 
