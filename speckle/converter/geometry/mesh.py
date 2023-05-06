@@ -178,7 +178,7 @@ def constructMesh(vertices, faces, colors, dataStorage = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height = None, projectedZval = 0, dataStorage = None):
+def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height = None, dataStorage = None):
     try:
         faces = []
         faces_cap = []
@@ -267,22 +267,26 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             #maxPoints = 100
             if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
 
-            universal_z_value = polyBorder[0].z
+            universal_z_value = polyBorder[0].z 
             
+            # get points from original geometry #################################
             triangulated_geom, vertices3d = triangulatePolygon(feature_geom)
-
             # get substitute value for missing z-val
             existing_3d_pts = []
             for i, p in enumerate(vertices3d): 
-                if p[2] is not None and str(p[2])!="" and str(p[2]).lower()!="nan":
+                if p[2] is not None and str(p[2])!="" and str(p[2]).lower()!="nan": # only from boundary 
+                    p[2] += universal_z_value 
                     existing_3d_pts.append(p)
                     if len(existing_3d_pts) == 3: break
             pt_list = []
             for i, p in enumerate(triangulated_geom['vertices']): 
                 z_val = vertices3d[i][2]
                 if z_val is None or str(z_val)!="" or str(z_val).lower()!="nan": 
-                #    #z_val = any_existing_z
-                    z_val = projectToPolygon(vertices3d[i], existing_3d_pts)
+                    #    #z_val = any_existing_z
+                    if len(existing_3d_pts)>=3:
+                        z_val = projectToPolygon(vertices3d[i], existing_3d_pts)
+                    else: 
+                        z_val = universal_z_value
                 pt_list.append( [p[0], p[1], z_val ] ) 
 
             triangle_list = [ trg for trg in triangulated_geom['triangles']]
@@ -303,8 +307,8 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                 ran = range(0, total_vertices)
             except Exception as e:
                 logToUser(e, level = 2, func = inspect.stack()[0][3])
-            # a cap
-            ##################################
+            
+            # a cap ##################################
             if height is not None:
                 # change the pt list to height 
                 pt_list = [ [p[0], p[1], universal_z_value + height] for p in triangulated_geom['vertices']]
@@ -340,7 +344,7 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
 
                         break
 
-                for v in voidsAsPts:
+                for v in voidsAsPts: # already at the correct hight (even projected) 
                     v = fix_orientation(v, False, coef) # counter-clockwise
                     for k, pt in enumerate(v):
                         void =[]

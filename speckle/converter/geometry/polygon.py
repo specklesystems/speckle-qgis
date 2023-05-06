@@ -63,7 +63,7 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
                 voids.append(polylineFromVerticesToSpeckle(pts_fixed, True, feature, layer))
                 voidsAsPts.append(pts_fixed) 
 
-            total_vert, vertices_x, faces_x, colors_x = meshPartsFromPolygon(polyBorder, voidsAsPts, existing_vert, feature, geom, layer, None, 0, dataStorage)
+            total_vert, vertices_x, faces_x, colors_x = meshPartsFromPolygon(polyBorder, voidsAsPts, existing_vert, feature, geom, layer, None, dataStorage)
             
             if total_vert is None:
                 return None 
@@ -110,7 +110,7 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
         if len(allElevations) == 0:
             translationValue = None 
         else:
-            if np.isnan(boundaryPts[0].z()) :
+            if np.isnan(boundaryPts[0].z()) : # for flat polygons with z=0
                 translationValue = min(allElevations)
             else:     
                 translationValue = min(allElevations) - boundaryPts[0].z()  
@@ -157,8 +157,6 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
                 # project the pts on the plane
                 point = [pt.x, pt.y, 0]
                 z_val = projectToPolygon( point , plane_pts)
-                if projectZval is not None:
-                    z_val += projectZval
                 pts_fixed.append(Point(units = "m", x = pt.x, y = pt.y, z = z_val))
 
             voids.append(polylineFromVerticesToSpeckle(pts_fixed, True, feature, layer))
@@ -168,7 +166,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         polygon.voids = voids
         polygon.displayValue = []
         
-        total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, geom, layer, height, projectZval, dataStorage)
+        total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, geom, layer, height, dataStorage)
 
         mesh = constructMesh(vertices, faces, colors)
         if mesh is not None: 
