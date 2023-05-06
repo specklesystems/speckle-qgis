@@ -495,14 +495,14 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 count += 4
 
         mesh = constructMeshFromRaster(vertices, faces, colors, dataStorage)
-        b['displayValue'] = []
+        b['displayValue'] = [ mesh ]
         
-        if terrain_transform is True and textureLayer is not None: # hide DEM elevation if texture layer will repeat the shape 
-            b['displayValue'] = []
-        elif terrain_transform is True or texture_transform is True: # don't included start pt for extruded terrain 
-            b['displayValue'] = [ mesh ]
-        else: 
-            b['displayValue'] = [ mesh ]
+        #if terrain_transform is True and textureLayer is not None: # hide DEM elevation if texture layer will repeat the shape 
+        #    b['displayValue'] = []
+        #elif terrain_transform is True or texture_transform is True: # don't included start pt for extruded terrain 
+        #    b['displayValue'] = [ mesh ]
+        #else: 
+        #    b['displayValue'] = [ mesh ]
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

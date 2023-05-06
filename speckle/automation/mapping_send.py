@@ -20,6 +20,7 @@ from specklepy.api.credentials import Account, get_local_accounts #, StreamWrapp
 from specklepy.api.wrapper import StreamWrapper
 from gql import gql
 from specklepy.logging import metrics
+from osgeo import gdal 
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(
@@ -144,20 +145,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                     if layer_name == l.name():
                         layer = l
                 if layer is not None:
-                    if "extrude" in transform_name:
-                        
-                        if not isinstance(layer, QgsVectorLayer):
-                            displayUserMsg("Selected transformation can only be applied to Polygon layers", level=1) 
-                            return
-                        geom_type = getLayerGeomType(layer)
-                        if "polygon" not in geom_type.lower():
-                            displayUserMsg("Selected transformation can only be applied to Polygon layers", level=1) 
-                            return
 
-                    if "elevation" in transform_name and "polygon" not in transform_name:
-                        if not isinstance(layer, QgsRasterLayer):
-                            displayUserMsg("Selected transformation can only be applied to Raster layers", level=1) 
-                            return
                     self.dataStorage.savedTransforms.append(listItem)
                     self.populateSavedTransforms()
                     
@@ -223,6 +211,11 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                         
                 elif "elevation" in transform.lower():
                     if isinstance(layer, QgsRasterLayer):
+                        # avoiding tiling layers 
+                        ds = gdal.Open(layer.source(), gdal.GA_ReadOnly)
+                        if ds is None:
+                            continue
+                    
                         listItem = layer.name()
                 
                 if listItem is not None:
@@ -274,6 +267,11 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
             countRaster = 1
             for i, layer in enumerate(self.dataStorage.all_layers):
                 if isinstance(layer, QgsRasterLayer):
+                    # avoiding tiling layers 
+                    ds = gdal.Open(layer.source(), gdal.GA_ReadOnly)
+                    if ds is None:
+                        continue
+
                     listItem = layer.name()
                     self.elevationLayerDropdown.addItem(listItem)  
                     icon = QgsIconUtils().iconForLayer(layer)
