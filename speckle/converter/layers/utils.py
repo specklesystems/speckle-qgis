@@ -456,7 +456,20 @@ def isAppliedLayerTransformByKeywords(layer, keywordsYes: List[str], keywordsNo:
     return correctTransform  
 
 def getElevationLayer(dataStorage):  
-    return dataStorage.elevationLayer                
+    elevationLayer = dataStorage.elevationLayer    
+    try:
+        # check if layer was not deleted 
+        name = elevationLayer.name()
+        return elevationLayer
+    except: 
+        return None
+
+    #root = dataStorage.project.layerTreeRoot()
+    #dataStorage.all_layers = getAllLayers(root)   
+    #for i, layer in enumerate(dataStorage.all_layers):
+    #    if 
+
+    return elevationLayer 
     
     if dataStorage.savedTransforms is not None:
         all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]

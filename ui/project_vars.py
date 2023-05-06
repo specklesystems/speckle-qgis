@@ -4,7 +4,7 @@
 import inspect
 import time
 from typing import List
-from speckle.converter.layers.utils import trySaveCRS
+from speckle.converter.layers.utils import getElevationLayer, trySaveCRS
 from speckle_qgis import SpeckleQGIS
 
 from specklepy.logging.exceptions import SpeckleException 
@@ -171,7 +171,7 @@ def set_elevationLayer(dataStorage):
     try: 
         # from widget (3 strings) to local vars AND memory (1 string)
         proj = dataStorage.project
-        layer = dataStorage.elevationLayer
+        layer = getElevationLayer(dataStorage)
         proj.writeEntry("speckle-qgis", "elevationLayer", layer.name())
         return True
     

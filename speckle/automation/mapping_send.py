@@ -2,7 +2,7 @@ import inspect
 import os
 from typing import Any, List, Tuple, Union
 from speckle.converter.layers import getAllLayers
-from speckle.converter.layers.utils import getLayerGeomType
+from speckle.converter.layers.utils import getElevationLayer, getLayerGeomType
 from ui.logger import displayUserMsg, logToUser
 import ui.speckle_qgis_dialog
 from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
@@ -262,7 +262,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         try:
             if dataStorage is not None: 
                 self.dataStorage = dataStorage # making sure lists are synced 
-            elevationLayer = self.dataStorage.elevationLayer 
+            elevationLayer = getElevationLayer(self.dataStorage)
 
             self.elevationLayerDropdown.clear()
             root = self.dataStorage.project.layerTreeRoot()
