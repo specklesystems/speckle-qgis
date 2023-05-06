@@ -21,6 +21,7 @@ from specklepy.api.wrapper import StreamWrapper
 from gql import gql
 from specklepy.logging import metrics
 from osgeo import gdal 
+import webbrowser
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(
@@ -29,13 +30,13 @@ FORM_CLASS, _ = uic.loadUiType(
 
 class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
 
-    dialog_button_box: QtWidgets.QDialogButtonBox = None
+    dialog_button_box: QtWidgets.QPushButton = None
+    more_info: QtWidgets.QPushButton = None
     layerDropdown: QtWidgets.QComboBox
     transformDropdown: QtWidgets.QComboBox
     addTransform: QtWidgets.QPushButton
     removeTransform: QtWidgets.QPushButton
     transformationsList: QtWidgets.QListWidget
-    
     elevationLayerDropdown: QtWidgets.QComboBox
 
     dataStorage: Any = None
@@ -47,16 +48,20 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         super(MappingSendDialog,self).__init__(parent,QtCore.Qt.WindowStaysOnTopHint)
         self.setupUi(self)
         self.setMinimumWidth(600)
+        #self.dialog_button_box.setMaximumWidth(30)
+        #self.more_info.setMaximumWidth(30)
         #self.setWindowTitle("Add custom transformations")
 
         self.addTransform.setStyleSheet("QPushButton {color: black; padding:3px;padding-left:5px;border: none; } QPushButton:hover { background-color: lightgrey}")
         self.removeTransform.setStyleSheet("QPushButton {color: black; padding:3px;padding-left:5px;border: none; } QPushButton:hover { background-color: lightgrey}")
         
-        self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(self.onOkClicked)
+        #self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).clicked.connect(self.onOkClicked)
         self.addTransform.clicked.connect(self.onAddTransform)
         self.removeTransform.clicked.connect(self.onRemoveTransform)
         self.transformDropdown.currentIndexChanged.connect(self.populateLayersByTransform)
         self.dialog_button_box.clicked.connect(self.saveElevationLayer)
+        self.dialog_button_box.clicked.connect(self.onOkClicked)
+        self.more_info.clicked.connect(self.onMoreInfo)
 
 
         return
@@ -316,3 +321,6 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3] )
             
+    def onMoreInfo(self):
+        webbrowser.open("https://github.com/specklesystems/speckle-qgis/tree/main/speckle/automation/Automation.md")
+        
