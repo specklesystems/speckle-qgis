@@ -55,6 +55,9 @@ def projectToPolygon(point: List, polygonPts: List):
     pt3 = polygonPts[2]
     plane = createPlane(pt1, pt2, pt3)
     z = project_to_plane_on_z(point, plane)
+
+    if z == -0:
+        z = 0
     return z 
 
 
@@ -88,7 +91,15 @@ def triangulatePolygon(geom):
             dict_shape= {'vertices': vertices, 'segments': segments ,'holes': holes}
         else: 
             dict_shape= {'vertices': vertices, 'segments': segments }
-        t = tr.triangulate(dict_shape, 'p')
+        try:
+            print(type(vertices[0][0]))
+            print(vertices)
+            print(segments)
+            print(holes)
+            t = tr.triangulate(dict_shape, 'p')
+            print(t)
+        except Exception as e:
+            print(e)
         return t, vertices3d 
     
     except Exception as e:

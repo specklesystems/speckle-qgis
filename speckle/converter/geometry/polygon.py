@@ -8,6 +8,7 @@ from typing import List, Sequence
 
 from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
 from specklepy.objects import Base
+from speckle.converter.geometry.GisGeometryClasses import GisPolygonGeometry
 
 from speckle.converter.geometry.mesh import meshPartsFromPolygon, constructMesh
 from speckle.converter.geometry.polyline import (
@@ -31,7 +32,7 @@ from ui.logger import logToUser
 
 def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None):
 
-    polygon = Base(units = "m")
+    polygon = GisPolygonGeometry(units = "m")
     try: 
 
         vertices = []
@@ -78,6 +79,8 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
             polygon.boundary = None
             polygon.voids = None 
         else: 
+            polygon.boundary = boundary
+            polygon.voids = voids 
             logToUser("Mesh creation from Polygon failed. Boundaries will be used as displayValue", level = 1, func = inspect.stack()[0][3])
         return polygon 
     
@@ -132,7 +135,7 @@ def isFlat(ptList):
 
 def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, height = None, projectZval = None, dataStorage = None):
     """Converts a QgsPolygon to Speckle"""
-    polygon = Base(units = "m")
+    polygon = GisPolygonGeometry(units = "m")
     try:
         boundary, voidsNative = getPolyBoundaryVoids(geom, feature, layer)
 
@@ -153,7 +156,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
                             [polyBorder[2].x, polyBorder[2].y, polyBorder[2].z] ]
             for pt in pts:
                 z_val = pt.z
-                print(str(z_val))
+                #print(str(z_val))
                 # project the pts on the plane
                 point = [pt.x, pt.y, 0]
                 z_val = projectToPolygon( point , plane_pts)
@@ -164,8 +167,6 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
 
         polygon.boundary = boundary
         polygon.voids = voids
-        polygon.displayValue = []
-        
         total_vert, vertices, faces, colors = meshPartsFromPolygon(polyBorder, voidsAsPts, 0, feature, geom, layer, height, dataStorage)
 
         mesh = constructMesh(vertices, faces, colors)
@@ -175,6 +176,8 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
             # https://latest.speckle.dev/streams/85bc4f61c6/commits/2a5d23a277
             # https://speckle.community/t/revit-add-new-parameters/5170/2 
         else: 
+            polygon.boundary = boundary
+            polygon.voids = voids
             logToUser("Mesh creation from Polygon failed. Boundaries will be used as displayValue", level = 1, func = inspect.stack()[0][3])
         
         return polygon

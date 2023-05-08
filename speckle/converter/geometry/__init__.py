@@ -1,6 +1,7 @@
 """ This module contains all geometry conversion functionality To and From Speckle."""
 
 from numpy import isin
+from speckle.converter.geometry.GisGeometryClasses import GisLineElement, GisPointElement, GisPolygonElement
 from speckle.logging import logger
 from typing import List, Union
 
@@ -34,22 +35,30 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
             if geomSingleType:
                 result = pointToSpeckle(geom.constGet(), feature, layer, dataStorage)
                 result.units = units
-                return result
+                result = [result]
+                #return result
             else:
                 result = [pointToSpeckle(pt, feature, layer, dataStorage) for pt in geom.parts()]
                 for r in result: r.units = units 
-                return result
+                #return result
+            
+            element = GisPointElement(units = units, geometry = result)
+            return element
         
         elif geomType == QgsWkbTypes.LineGeometry: # 1
             if geomSingleType:
                 result = anyLineToSpeckle(geom, feature, layer, dataStorage)
                 result = addCorrectUnits(result, dataStorage)
-                return result
+                result = [result]
+                #return result
             else: 
                 result = [anyLineToSpeckle(poly, feature, layer, dataStorage) for poly in geom.parts()]
                 for r in result: r = addCorrectUnits(r, dataStorage)
-                if len(result) == 1: result = result[0] 
-                return result
+                #if len(result) == 1: result = result[0] 
+                #return result
+            
+            element = GisLineElement(units = units, geometry = result)
+            return element
 
             if type == QgsWkbTypes.CircularString or type == QgsWkbTypes.CircularStringZ or type == QgsWkbTypes.CircularStringM or type == QgsWkbTypes.CircularStringZM: #Type (not GeometryType)
                 if geomSingleType:
@@ -85,9 +94,13 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
         
         elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_Mesh") and "Speckle_ID" in layer.fields().names():
             result = polygonToSpeckleMesh(geom, feature, layer, dataStorage)
+            if result is None: return 
             result.units = units
-            for v in result['displayValue']: v.units = units
-            return result
+            for v in result.displayValue: 
+                if v is not None: 
+                    v.units = units
+            element = GisPolygonElement(units = units, geometry = result)
+            return element
         elif geomType == QgsWkbTypes.PolygonGeometry: # 2
 
             height = getPolygonFeatureHeight(feature, layer, dataStorage)
@@ -111,11 +124,19 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                             return 
 
                 result = polygonToSpeckle(geom, feature, layer, height, translationZaxis, dataStorage)
+                if result is None: return 
                 result.units = units
-                result.boundary.units = units
-                for v in result.voids: v.units = units
-                for v in result['displayValue']: v.units = units
-                return result
+                if result.boundary is not None:
+                    result.boundary.units = units
+                for v in result.voids: 
+                    if v is not None:
+                        v.units = units
+                for v in result.displayValue: 
+                    if v is not None:
+                        v.units = units
+                
+                element = GisPolygonElement(units = units, geometry = result)
+                return element
             
             else: 
                 result = []
@@ -141,9 +162,15 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                     if r is None: continue 
                     r.units = units 
                     r.boundary.units = units
-                    for v in r.voids: v.units = units 
-                    for v in r['displayValue']: v.units = units
-                return result
+                    for v in r.voids: 
+                        if v is not None:
+                            v.units = units 
+                    for v in r.displayValue: 
+                        if v is not None:
+                            v.units = units
+                
+                element = GisPolygonElement(units = units, geometry = result)
+                return element
         else:
             logToUser("Unsupported or invalid geometry", level = 1, func = inspect.stack()[0][3])
         return None

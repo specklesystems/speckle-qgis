@@ -261,7 +261,6 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                 colors = [col for i in ran] # apply same color for all vertices
                 return total_vertices, vertices, faces, colors
 
-            # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
         else: # if there are voids: face should be clockwise 
             # if its a large polygon with voids to be triangualted, lower the coef even more:
             #maxPoints = 100

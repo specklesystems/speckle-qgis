@@ -24,8 +24,11 @@ import numpy as np
 from ui.logger import logToUser
 
 def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage = None):
-    b = Base(units = dataStorage.currentUnits)
+    #b = Base(units = dataStorage.currentUnits)
+    if dataStorage is None: return 
+    units = dataStorage.currentUnits
     try:
+        geom = None
         #apply transformation if needed
         if sourceCRS != targetCRS:
             xform = QgsCoordinateTransform(sourceCRS, targetCRS, project)
@@ -37,17 +40,18 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         try:
             geom = convertToSpeckle(f, selectedLayer, dataStorage)
             
-            b["geometry"] = [] 
+            #b.geometry = [] 
+            attributes = Base()
             if geom is not None and geom!="None": 
-                if isinstance(geom, List):
-                    for g in geom:
+                if isinstance(geom.geometry, List):
+                    for g in geom.geometry:
                         if g is not None and g!="None": 
-                            b["geometry"].append(g)
+                            pass #b["geometry"].append(g)
                         else:
                             logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
                             print(g)
-                else:
-                    b["geometry"] = [geom]
+                #else:
+                #    b.geometry = [geom]
             else: 
                 logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
                 print(geom)
@@ -55,7 +59,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         except Exception as error:
             logToUser("Error converting geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
 
-        for name in fieldnames:
+        for name in fieldnames: 
             corrected = validateAttributeName(name, fieldnames)
             f_name = f[name]
             if f_name == "NULL" or f_name is None or str(f_name) == "NULL": f_name = None
@@ -65,11 +69,13 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
                     if i==0: x += str(attr)
                     else: x += ", " + str(attr)
                 f_name = x 
-            b[corrected] = f_name
-        return b
+            attributes[corrected] = f_name
+        if geom is not None:
+            geom.attributes = attributes
+        return geom
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return b
+        return geom
           
 def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields, crs, path: str, dataStorage = None):
     print("04_________BIM Feature To Native____________")
