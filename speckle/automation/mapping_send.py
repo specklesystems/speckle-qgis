@@ -167,6 +167,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
 
     def onRemoveTransform(self):
 
+        from ui.project_vars import set_transformations
         if self.transformationsList.currentItem() is not None:
             #if len(self.layerDropdown.currentText())>1 and len(self.transformDropdown.currentText())>1:
             listItem = self.transformationsList.currentItem().text()
@@ -176,6 +177,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                 self.dataStorage.savedTransforms.remove(listItem)
 
             self.populateSavedTransforms()
+            set_transformations(self.dataStorage)
 
     def onOkClicked(self):
         try:
