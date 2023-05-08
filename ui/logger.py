@@ -23,7 +23,7 @@ def logToUser(msg: str, func=None, level: int = 2, plugin = None, url = "", blue
             
             if dockwidget is None: return
 
-            new_msg = splitTextIntoLines(msg, 70)
+            new_msg = splitTextIntoLines(msg)
 
             #if url == "" and blue is False:
             #      new_msg = addLevelSymbol(new_msg, level)
@@ -59,11 +59,12 @@ def createWindow(msg_old: str, func=None, level: int = 2):
             window = QMessageBox()
             msg = ""
             if len(msg_old)>80:
-                  try:
-                        for i, x in enumerate(msg_old):
-                              msg += x
-                              if i!=0 and i%80 == 0: msg += "\n"
-                  except Exception as e: print(e)
+                  msg = splitTextIntoLines(msg_old)
+                  #try:
+                  #      for i, x in enumerate(msg_old):
+                  #            msg += x
+                  #            if i!=0 and i%80 == 0: msg += "\n"
+                  #except Exception as e: print(e)
             else: 
                   msg = msg_old
       

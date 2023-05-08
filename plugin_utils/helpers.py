@@ -19,7 +19,7 @@ def removeSpecialCharacters(text: str) -> str:
     #new_text = text.encode('iso-8859-1', errors='ignore').decode('utf-8')
     return new_text
 
-def splitTextIntoLines(text: str = "", number: int= 40) -> str: 
+def splitTextIntoLines(text: str = "", number: int= 70) -> str: 
     print("__splitTextIntoLines")
     print(text)
     msg = ""

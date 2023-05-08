@@ -130,7 +130,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         if len(self.layerDropdown.currentText())>1 and len(self.transformDropdown.currentText())>1:
             listItem = str(self.layerDropdown.currentText()) + "  ->  " + str(self.transformDropdown.currentText())
             layer_name = listItem.split("  ->  ")[0]
-            transform_name = listItem.split("  ->  ")[1]
+            transform_name = listItem.split("  ->  ")[1].lower()
             
             exists = 0
             for record in self.dataStorage.savedTransforms: 
@@ -150,6 +150,10 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                     if layer_name == l.name():
                         layer = l
                 if layer is not None:
+
+                    if "attribute" in transform_name:
+                        pass
+                        # show the dialog to select a layer attribute 
 
                     self.dataStorage.savedTransforms.append(listItem)
                     self.populateSavedTransforms()

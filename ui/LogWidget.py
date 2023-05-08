@@ -2,7 +2,6 @@
 import threading
 import time
 from typing import Any, List
-from plugin_utils.helpers import splitTextIntoLines
 from qgis.PyQt import QtCore
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, pyqtSignal, QTranslator, QRect, QObject
 from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget, QPushButton

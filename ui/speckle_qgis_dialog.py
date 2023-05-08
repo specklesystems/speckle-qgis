@@ -25,7 +25,6 @@
 import inspect
 import os
 import threading
-from plugin_utils.helpers import splitTextIntoLines
 from speckle.automation.mapping_send import MappingSendDialog
 from speckle.converter.layers import getAllLayers, getLayers
 from speckle.DataStorage import DataStorage
