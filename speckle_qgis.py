@@ -304,9 +304,9 @@ class SpeckleQGIS:
                     print(self.theads_total)
                     print(threading.active_count())
                     print(threading.enumerate())
-                    if threading.active_count() - 2 > self.theads_total:
-                        logToUser("Please wait for other Send/Receive operations to finish", level = 1, plugin=self.dockwidget)
-                        return
+                    #if threading.active_count() - 2 > self.theads_total:
+                    #    logToUser("Please wait for other Send/Receive operations to finish", level = 1, plugin=self.dockwidget)
+                    #    return
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.dataStorage.active_account = client.account
@@ -339,9 +339,9 @@ class SpeckleQGIS:
                 self.onReceive()
             else:
                 try:
-                    if threading.active_count() > self.theads_total:
-                        logToUser("Please wait for other Send/Receive operations to finish", level = 1, plugin=self.dockwidget)
-                        return
+                    #if threading.active_count() > self.theads_total:
+                    #    logToUser("Please wait for other Send/Receive operations to finish", level = 1, plugin=self.dockwidget)
+                    #    return
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.dataStorage.active_account = client.account
