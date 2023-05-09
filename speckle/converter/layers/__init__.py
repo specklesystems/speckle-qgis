@@ -27,7 +27,7 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, trySaveCRS
+from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, trySaveCRS, validateAttributeName
 from speckle.logging import logger
 from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
 
@@ -165,6 +165,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             attributes = Base()
             for field in selectedLayer.fields():
                 fieldnames.append(str(field.name()))
+                corrected = validateAttributeName(str(field.name()), [])
                 attribute_type = field.type()
                 r'''
                 all_types = [
@@ -184,7 +185,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                     if attribute_type == att_type[0]:
                         attribute_type = att_type[1]
                 '''
-                attributes[str(field.name())] = attribute_type
+                attributes[corrected] = attribute_type
 
             # write feature attributes
             for f in selectedLayer.getFeatures():
