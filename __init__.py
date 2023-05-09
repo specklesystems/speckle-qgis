@@ -46,8 +46,8 @@ def classFactory(iface):  # pylint: disable=invalid-name
     iface.pluginToolBar().setVisible(True)
     
     # Ensure dependencies are installed in the machine
-    from speckle.utils import enable_remote_debugging
-    enable_remote_debugging()
+    #from speckle.utils import enable_remote_debugging
+    #enable_remote_debugging()
     setup()
 
     try: 

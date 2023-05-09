@@ -29,7 +29,7 @@ def splitTextIntoLines(text: str = "", number: int= 70) -> str:
                 lines = wrap(text, number)
                 for i, x in enumerate(lines):
                     msg += x
-                    if i!= len(lines): 
+                    if i!= len(lines) - 1: 
                         msg += "\n"
             except Exception as e: print(e)
         else: 

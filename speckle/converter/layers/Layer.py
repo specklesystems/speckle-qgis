@@ -37,6 +37,7 @@ class VectorLayer(Collection, detachable={"elements"}, speckle_type="Objects.GIS
         crs: CRS=None,
         units: str = "m",
         elements: Optional[List[Base]] = None,
+        attributes: Optional[Base] = None,
         layerType: str = "None",
         geomType: str = "None",
         renderer: Optional[Dict[str, Any]] = None,
@@ -48,6 +49,7 @@ class VectorLayer(Collection, detachable={"elements"}, speckle_type="Objects.GIS
         self.units = units
         self.type = layerType
         self.elements = elements or []
+        self.attributes = attributes
         self.geomType = geomType
         self.renderer = renderer or {}
     

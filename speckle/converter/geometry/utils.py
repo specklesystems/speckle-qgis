@@ -10,6 +10,7 @@ from typing import List, Tuple, Union, Dict
 
 #from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
 from ui.logger import logToUser
+#import time
 
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer, QgsFeature,
                        QgsRasterLayer, QgsVectorLayer, QgsPoint )

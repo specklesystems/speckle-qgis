@@ -144,7 +144,7 @@ class LogWidget(QWidget):
         try:
             text = btn.text()
             #if len(text.split("\n"))>2:
-            height = len(text.split("\n"))*20 + 20 
+            height = len(text.split("\n"))*20 + 40 
             btn.setMinimumHeight(height)
             return btn 
         except Exception as e: 

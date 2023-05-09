@@ -384,11 +384,11 @@ def trySaveCRS(crs, streamBranch:str = ""):
         print("___________________________________________")
         print(authid)
         print(wkt)
-        #if authid =='': 
-        crs_id = crs.saveAsUserCrs("SpeckleCRS_" + streamBranch)
-        return crs_id
-        #else:
-        #    return crs.srsid()  
+        if authid =='': 
+            crs_id = crs.saveAsUserCrs("SpeckleCRS_" + streamBranch)
+            return crs_id
+        else:
+            return crs.srsid()  
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return

@@ -161,14 +161,37 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         
         if isinstance(selectedLayer, QgsVectorLayer):
 
-            fieldnames = [str(field.name()) for field in selectedLayer.fields()]
+            fieldnames = [] #[str(field.name()) for field in selectedLayer.fields()]
+            attributes = Base()
+            for field in selectedLayer.fields():
+                fieldnames.append(str(field.name()))
+                attribute_type = field.type()
+                r'''
+                all_types = [
+                    (1, "bool"), 
+                    (2, "int"),
+                    (6, "decimal"),
+                    (8, "map"),
+                    (9, "int_list"),
+                    (10, "string"),
+                    (11, "string_list"),
+                    (12, "binary"),
+                    (14, "date"),
+                    (15, "time"),
+                    (16, "date_time") 
+                ]
+                for att_type in all_types:
+                    if attribute_type == att_type[0]:
+                        attribute_type = att_type[1]
+                '''
+                attributes[str(field.name())] = attribute_type
 
             # write feature attributes
             for f in selectedLayer.getFeatures():
                 b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer, plugin.dataStorage)
                 layerObjs.append(b)
             # Convert layer to speckle
-            layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
+            layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, attributes = attributes, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
             layerBase.type="VectorLayer"
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
