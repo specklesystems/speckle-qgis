@@ -712,6 +712,10 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
             crsRaster = crs
             logToUser(f"Raster layer {layer.name} might have been sent from the older version of plugin. Try sending it again for more accurate results.", level = 1, func = inspect.stack()[0][3])
         
+        srsid = trySaveCRS(crsRaster, streamBranch)
+        crs_new = QgsCoordinateReferenceSystem().fromSrsId(srsid)
+        authid = crs_new.authid()
+
         #CREATE A GROUP "received blabla" with sublayers
         newGroupName = f'{streamBranch}'
         root = project.layerTreeRoot()
@@ -824,10 +828,10 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         # create a spatial reference object
         srs = osr.SpatialReference()
         #  For the Universal Transverse Mercator the SetUTM(Zone, North=1 or South=2)
-        srs.ImportFromWkt(crsRasterWkt)
+        #srs.ImportFromWkt(crsRasterWkt)
         #srs.ImportFromEPSG(epsg) # from https://gis.stackexchange.com/questions/34082/creating-raster-layer-from-numpy-array-using-pyqgis
         #print(srs.ExportToWkt())
-        ds.SetProjection(srs.ExportToWkt())
+        ds.SetProjection(crsRasterWkt)
         # close the rater datasource by setting it equal to None
         ds = None
 
