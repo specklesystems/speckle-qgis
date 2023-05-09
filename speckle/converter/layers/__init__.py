@@ -152,6 +152,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         if crs.isGeographic(): units_layer = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
         layerObjs = []
         # Convert CRS to speckle, use the projectCRS
+        print(projectCRS.toWkt())
         speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units_proj) 
         layerCRS = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units_layer) 
         
@@ -717,7 +718,10 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         #    epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
 
         feat = layer.features[0]
-        bandNames = feat["Band names"]
+        try:
+            bandNames = feat.band_names
+        except: 
+            bandNames = feat["Band names"]
         bandValues = [feat["@(10000)" + name + "_values"] for name in bandNames]
 
         ###########################################################################
@@ -732,20 +736,34 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         #fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
         driver = gdal.GetDriverByName('GTiff')
         # create raster dataset
-        ds = driver.Create(fn, xsize=feat["X pixels"], ysize=feat["Y pixels"], bands=feat["Band count"], eType=gdal.GDT_Float32)
+        try:
+            ds = driver.Create(fn, xsize=feat.x_size, ysize=feat.y_size, bands=feat.band_count, eType=gdal.GDT_Float32)
+        except: 
+            ds = driver.Create(fn, xsize=feat["X pixels"], ysize=feat["Y pixels"], bands=feat["Band count"], eType=gdal.GDT_Float32)
 
         # Write data to raster band
         # No data issue: https://gis.stackexchange.com/questions/389587/qgis-set-raster-no-data-value
-        for i in range(feat["Band count"]):
-
+        
+        try:
+            b_count = int(feat.band_count) # from 2.14
+        except:
+            b_count = feat["Band count"]
+        
+        for i in range(b_count):
             rasterband = np.array(bandValues[i])
-            rasterband = np.reshape(rasterband,(feat["Y pixels"], feat["X pixels"]))
+            try:
+                rasterband = np.reshape(rasterband,(feat.y_size, feat.x_size))
+            except:
+                rasterband = np.reshape(rasterband,(feat["Y pixels"], feat["X pixels"]))
 
             band = ds.GetRasterBand(i+1) # https://pcjericks.github.io/py-gdalogr-cookbook/raster_layers.html
             
             # get noDataVal or use default
             try: 
-                noDataVal = float(feat["NoDataVal"][i]) # if value available
+                try:
+                    noDataVal = float(feat.noDataValue)
+                except:
+                    noDataVal = float(feat["NoDataVal"][i]) # if value available
                 try: band.SetNoDataValue(noDataVal)
                 except: band.SetNoDataValue(float(noDataVal))
             except: pass
@@ -755,18 +773,30 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
         pt = None
         try:
-            pt = QgsPoint(feat["X_min"], feat["Y_min"], 0)
+            try:
+                pt = QgsPoint(feat.x_origin, feat.y_origin, 0)
+            except: 
+                pt = QgsPoint(feat["X_min"], feat["Y_min"], 0)
         except: 
-            if feat["displayValue"] is not None:
-                if isinstance(feat["displayValue"][0], Point): 
-                    pt = pointToNative(feat["displayValue"][0], plugin.dataStorage)
+            try:
+                displayVal = feat.displayValue
+            except:
+                displayVal = feat["displayValue"]
+            if displayVal is not None:
+                if isinstance(displayVal[0], Point): 
+                    pt = pointToNative(displayVal[0], plugin.dataStorage)
+                if isinstance(displayVal[0], Mesh): 
+                    pt = QgsPoint(displayVal[0].vertices[0], displayVal[0].vertices[1])
         if pt is None:
             logToUser("Raster layer doesn't have the origin point", level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
             return 
         
         xform = QgsCoordinateTransform(crs, crsRaster, project)
         pt.transform(xform)
-        ds.SetGeoTransform([pt.x(), feat["X resolution"], 0, pt.y(), 0, feat["Y resolution"]])
+        try:
+            ds.SetGeoTransform([pt.x(), feat.x_resolution, 0, pt.y(), 0, feat.y_resolution])
+        except:
+            ds.SetGeoTransform([pt.x(), feat["X resolution"], 0, pt.y(), 0, feat["Y resolution"]])
         # create a spatial reference object
         srs = osr.SpatialReference()
         #  For the Universal Transverse Mercator the SetUTM(Zone, North=1 or South=2)

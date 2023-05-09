@@ -206,7 +206,10 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
         all_props = []
         for feature in features: 
             #get object properties to add as attributes
-            dynamicProps = feature.get_dynamic_member_names()
+            try:
+                dynamicProps = feature.attributes.get_dynamic_member_names() # for 2.14 onwards
+            except: 
+                dynamicProps = feature.get_dynamic_member_names()
             #attrsToRemove = ['speckleTyp','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'geometry', 'displayMesh', 'displayValue'] 
             for att in ATTRS_REMOVE:
                 try: dynamicProps.remove(att)
@@ -217,8 +220,11 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
             # add field names and variands 
             for name in dynamicProps:
                 #if name not in all_props: all_props.append(name)
+                try:
+                    value = feature.attributes[name]
+                except:
+                    value = feature[name]
 
-                value = feature[name]
                 variant = getVariantFromValue(value)
                 if not variant: variant = None #LongLong #4 
 
@@ -264,7 +270,9 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
                     
                     for i, (k,v) in enumerate(newF.items()):
                         if k not in all_props: all_props.append(k)
-                        if k not in fields.names(): fields.append(QgsField(k, v)) # fields.update({k: v}) #if variant is known
+
+                        if k not in fields.names(): 
+                            fields.append(QgsField(k, v)) # fields.update({k: v}) #if variant is known
                         else: #check if the field was empty previously: 
                             index = fields.indexFromName(k)
                             oldVariant = fields.field(index).type()
@@ -372,11 +380,15 @@ def validateAttributeName(name: str, fieldnames: List[str]) -> str:
 def trySaveCRS(crs, streamBranch:str = ""):
     try:
         authid = crs.authid() 
-        if authid =='': 
-            crs_id = crs.saveAsUserCrs("SpeckleCRS_" + streamBranch)
-            return crs_id
-        else:
-            return crs.srsid()  
+        wkt = crs.toWkt()
+        print("___________________________________________")
+        print(authid)
+        print(wkt)
+        #if authid =='': 
+        crs_id = crs.saveAsUserCrs("SpeckleCRS_" + streamBranch)
+        return crs_id
+        #else:
+        #    return crs.srsid()  
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return

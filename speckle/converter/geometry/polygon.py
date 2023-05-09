@@ -197,13 +197,25 @@ def polygonToNative(poly: Base, dataStorage = None) -> QgsPolygon:
     polygon = QgsPolygon()
     try:
         try: # if it's indeed a polygon with QGIS properties
-            polygon.setExteriorRing(polylineToNative(poly["boundary"], dataStorage ))
-        except: return
+            boundary = poly.boundary
+            polygon.setExteriorRing(polylineToNative(boundary, dataStorage ))
+        except: 
+            try:
+                boundary = poly["boundary"]
+                polygon.setExteriorRing(polylineToNative(boundary, dataStorage ))
+            except: return
         try:
-            for void in poly["voids"]: 
+            voids = poly.voids
+            for void in voids: 
                 #print(polylineToNative(void))
                 polygon.addInteriorRing(polylineToNative(void, dataStorage ))
-        except:pass
+        except:
+            try:
+                voids = poly["voids"]
+                for void in voids: 
+                    #print(polylineToNative(void))
+                    polygon.addInteriorRing(polylineToNative(void, dataStorage ))
+            except: pass
         #print(polygon)
         #print()
 

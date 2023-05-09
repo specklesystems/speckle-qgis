@@ -72,12 +72,13 @@ class GisRasterElement(Base, speckle_type="Objects.GIS.RasterElement", detachabl
         geometry: Optional[List[GisPolygonGeometry]] = None,
         band_count: Optional[int] = None,
         band_names: Optional[List[str]] = None,
-        x_min: Optional[float] = None,
-        y_min: Optional[float] = None,
+        x_origin: Optional[float] = None,
+        y_origin: Optional[float] = None,
         x_size: Optional[int] = None,
         y_size: Optional[int] = None,
         x_resolution: Optional[float] = None,
         y_resolution: Optional[float] = None,
+        noDataValue: Optional[float] = None,
         displayValue: Optional[List[Mesh]] = None, 
         units: Optional[str] = None,
         **kwargs
@@ -87,12 +88,13 @@ class GisRasterElement(Base, speckle_type="Objects.GIS.RasterElement", detachabl
         self.geometry = geometry
         self.band_count = band_count
         self.band_names = band_names
-        self.x_min = x_min
-        self.y_min = y_min
+        self.x_origin = x_origin
+        self.y_origin = y_origin
         self.x_size = x_size
         self.y_size = y_size
         self.x_resolution = x_resolution
         self.y_resolution = y_resolution
+        self.noDataValue = noDataValue
         self.displayValue = displayValue
         self.units = units if units != None else "m"
 

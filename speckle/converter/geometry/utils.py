@@ -68,27 +68,8 @@ def triangulatePolygon(geom):
         holes = []
         vertices, vertices3d, segments, holes = getPolyPtsSegments(geom)
 
-        r'''
-        # add layer with hole points (for debugging) 
-        proj = QgsProject.instance()
-        crs = proj.crs()
-        vl = QgsVectorLayer("PointZ"+ "?crs=" + crs.authid(), "Points", "memory") # do something to distinguish: stream_id_latest_name
-        vl.setCrs(crs)
-        pr = vl.dataProvider()
-        vl.startEditing()
-        fets = []
-        for pt in holes:
-            feat = QgsFeature()
-            feat.setGeometry(QgsPoint(pt[0], pt[1], 0))
-            fets.append(feat)
-        pr.addFeatures(fets)
-        vl.updateExtents()
-        vl.commitChanges()
-        proj.addMapLayer(vl, True)
-        '''
-
         if len(holes)>0: 
-            dict_shape= {'vertices': vertices, 'segments': segments ,'holes': holes}
+            dict_shape= {'vertices': vertices, 'segments': segments, 'holes': holes}
         else: 
             dict_shape= {'vertices': vertices, 'segments': segments }
         try:
@@ -97,6 +78,7 @@ def triangulatePolygon(geom):
             print(segments)
             print(holes)
             t = tr.triangulate(dict_shape, 'p')
+            #t = {'vertices': vertices, 'triangles': [[0,1,2]]}
             print(t)
         except Exception as e:
             print(e)

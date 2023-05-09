@@ -13,6 +13,7 @@ from typing import Dict, Any
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
+from speckle.converter.geometry.GisGeometryClasses import GisRasterElement
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from speckle.converter.layers.Layer import RasterLayer
 from speckle.logging import logger
@@ -176,7 +177,9 @@ def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, 
 
 def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordinateReferenceSystem, project: QgsProject, dataStorage = None) -> Base:
     
-    b = Base(units = dataStorage.currentUnits)
+    if dataStorage is None: return
+
+    b = GisRasterElement(units = dataStorage.currentUnits)
     try:
         rasterBandCount = selectedLayer.bandCount()
         rasterBandNames = []
@@ -260,15 +263,15 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             rasterBandMaxVal.append(valMax)
             b["@(10000)" + selectedLayer.bandName(index+1) + "_values"] = bandValsFlat #[0:int(max_values/rasterBandCount)]
 
-        b["X resolution"] = rasterResXY[0]
-        b["Y resolution"] = rasterResXY[1]
-        b["X pixels"] = rasterDimensions[0]
-        b["Y pixels"] = rasterDimensions[1]
-        b["X_min"] = reprojectedPt.x()
-        b["Y_min"] = reprojectedPt.y() 
-        b["Band count"] = rasterBandCount
-        b["Band names"] = rasterBandNames
-        b["NoDataVal"] = rasterBandNoDataVal
+        b.x_resolution = rasterResXY[0]
+        b.y_resolution = rasterResXY[1]
+        b.x_size = rasterDimensions[0]
+        b.y_size = rasterDimensions[1]
+        b.x_origin = reprojectedPt.x()
+        b.y_origin = reprojectedPt.y() 
+        b.band_count = rasterBandCount
+        b.band_names = rasterBandNames
+        b.noDataValue = rasterBandNoDataVal
         # creating a mesh
         vertices = []
         faces = []
@@ -501,7 +504,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 count += 4
 
         mesh = constructMeshFromRaster(vertices, faces, colors, dataStorage)
-        b['displayValue'] = [ mesh ]
+        b.displayValue = [ mesh ]
         
         #if terrain_transform is True and textureLayer is not None: # hide DEM elevation if texture layer will repeat the shape 
         #    b['displayValue'] = []
@@ -519,8 +522,11 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 def featureToNative(feature: Base, fields: QgsFields, dataStorage = None):
     feat = QgsFeature()
     try:
-        try: speckle_geom = feature["geometry"] # for created in QGIS / ArcGIS Layer type
-        except:  speckle_geom = feature # for created in other software
+        try: 
+            speckle_geom = feature.geometry # for QGIS / ArcGIS Layer type from 2.14
+        except:
+            try: speckle_geom = feature["geometry"] # for QGIS / ArcGIS Layer type before 2.14
+            except:  speckle_geom = feature # for created in other software
 
         if not isinstance(speckle_geom, list):
             qgsGeom = geometry.convertToNative(speckle_geom, dataStorage)
@@ -540,18 +546,22 @@ def featureToNative(feature: Base, fields: QgsFields, dataStorage = None):
             variant = field.type()
             #if name == "id": feat[name] = str(feature["applicationId"])
 
-            try: value = feature[name]
+            try: 
+                value = feature.attributes[name] # fro 2.14 onwards 
             except: 
-                if name == "Speckle_ID": 
-                    try: 
-                        value = str(feature["Speckle_ID"]) # if GIS already generated this field
-                    except:
-                        try: value = str(feature["speckle_id"]) 
-                        except: value = str(feature["id"])
-                else: 
-                    value = None 
-                    #logger.logToUser(f"Field {name} not found", Qgis.Warning)
-                    #return None
+                try: 
+                    value = feature[name]
+                except: 
+                    if name == "Speckle_ID": 
+                        try: 
+                            value = str(feature["Speckle_ID"]) # if GIS already generated this field
+                        except:
+                            try: value = str(feature["speckle_id"]) 
+                            except: value = str(feature["id"])
+                    else: 
+                        value = None 
+                        #logger.logToUser(f"Field {name} not found", Qgis.Warning)
+                        #return None
             
             if variant == QVariant.String: value = str(value) 
             
