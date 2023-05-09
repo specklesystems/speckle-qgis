@@ -185,15 +185,15 @@ def setProjectReferenceSystem(plugin: SpeckleQGIS):
     # https://proj.org/usage/projections.html
     try: 
         newCrsString = "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0=" + str(plugin.lon) + " lat_0=" + str(plugin.lat) + " +x_0=0 +y_0=0 +k_0=1"
-        newCrs = QgsCoordinateReferenceSystem().fromProj(newCrsString)#fromWkt(newProjWkt)
+        newCrs = QgsCoordinateReferenceSystem.fromProj(newCrsString)#fromWkt(newProjWkt)
         validate = QgsCoordinateReferenceSystem().createFromProj(newCrsString)
 
         wkt = newCrs.toWkt()
-        newCRSfromWkt = QgsCoordinateReferenceSystem().fromWkt(wkt)
+        newCRSfromWkt = QgsCoordinateReferenceSystem.fromWkt(wkt)
 
         if validate: 
             srsid = trySaveCRS(newCRSfromWkt, "latlon_"+str(plugin.lat)+"_"+str(plugin.lon))
-            crs = QgsCoordinateReferenceSystem().fromSrsId(srsid)
+            crs = QgsCoordinateReferenceSystem.fromSrsId(srsid)
             plugin.qgis_project.setCrs(crs) 
             
             #listCrs = QgsCoordinateReferenceSystem().validSrsIds()

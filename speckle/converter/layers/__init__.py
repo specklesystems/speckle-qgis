@@ -225,10 +225,28 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
         if layer.type is None:
             # Handle this case
             return
-        elif layer.type.endswith("VectorLayer"):
-            return vectorLayerToNative(layer, streamBranch, plugin)
+        
+        vl = None 
+        if plugin.dataStorage.all_layers is not None: 
+            if len(plugin.dataStorage.all_layers) == 0:
+                vl = QgsVectorLayer("Point?crs=EPSG:4326", "deleteLayer", "memory") # do something to distinguish: stream_id_latest_name
+                crs = QgsCoordinateReferenceSystem(4326)
+                vl.setCrs(crs)
+                project.addMapLayer(vl, True)
+
+
+        if layer.type.endswith("VectorLayer"):
+            layer =  vectorLayerToNative(layer, streamBranch, plugin)
+            try: project.removeMapLayer(vl)
+            except: pass
+            return layer
+        
         elif layer.type.endswith("RasterLayer"):
-            return rasterLayerToNative(layer, streamBranch, plugin)
+            layer =  rasterLayerToNative(layer, streamBranch, plugin)
+            try: project.removeMapLayer(vl)
+            except: pass
+            return layer
+        
         return None
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
@@ -614,7 +632,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
         srsid = trySaveCRS(crs, streamBranch)
-        crs_new = QgsCoordinateReferenceSystem().fromSrsId(srsid)
+        crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
         authid = crs_new.authid()
 
         #CREATE A GROUP "received blabla" with sublayers
@@ -713,7 +731,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
             logToUser(f"Raster layer {layer.name} might have been sent from the older version of plugin. Try sending it again for more accurate results.", level = 1, func = inspect.stack()[0][3])
         
         srsid = trySaveCRS(crsRaster, streamBranch)
-        crs_new = QgsCoordinateReferenceSystem().fromSrsId(srsid)
+        crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
         authid = crs_new.authid()
 
         #CREATE A GROUP "received blabla" with sublayers
