@@ -307,9 +307,9 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         return  
 
 
-def addBimMainThread(self, geomType, layerName, streamBranch, newFields, geomList):
-        
-        project: QgsProject = self.dataStorage.project
+def addBimMainThread(plugin, geomType, layerName, streamBranch, newFields, geomList):
+    try: 
+        project: QgsProject = plugin.dataStorage.project
 
         
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
@@ -319,9 +319,9 @@ def addBimMainThread(self, geomType, layerName, streamBranch, newFields, geomLis
         ###########################################
         dummy = None 
         root = project.layerTreeRoot()
-        self.dataStorage.all_layers = getAllLayers(root)
-        if self.dataStorage.all_layers is not None: 
-            if len(self.dataStorage.all_layers) == 0:
+        plugin.dataStorage.all_layers = getAllLayers(root)
+        if plugin.dataStorage.all_layers is not None: 
+            if len(plugin.dataStorage.all_layers) == 0:
                 dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
                 crs = QgsCoordinateReferenceSystem(4326)
                 dummy.setCrs(crs)
@@ -330,9 +330,9 @@ def addBimMainThread(self, geomType, layerName, streamBranch, newFields, geomLis
 
         
         crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-        self.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
-        if self.dataStorage.currentUnits is None or self.dataStorage.currentUnits == 'degrees': 
-            self.dataStorage.currentUnits = 'm'
+        plugin.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
+        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
+            plugin.dataStorage.currentUnits = 'm'
 
         if crs.isGeographic is True: 
             logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
@@ -441,6 +441,9 @@ def addBimMainThread(self, geomType, layerName, streamBranch, newFields, geomLis
         try: project.removeMapLayer(dummy)
         except: pass
         
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        
 
 def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str, plugin) -> List[QgsVectorLayer or None]:
     print("02_________ CAD vector layer to native_____")
@@ -506,16 +509,16 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
     
-def addCadMainThread(self, geomType, newName, streamBranch, newFields, geomList ):
-        
-        project: QgsProject = self.dataStorage.project
+def addCadMainThread(plugin, geomType, newName, streamBranch, newFields, geomList ):
+    try:
+        project: QgsProject = plugin.dataStorage.project
 
         ###########################################
         dummy = None 
         root = project.layerTreeRoot()
-        self.dataStorage.all_layers = getAllLayers(root)
-        if self.dataStorage.all_layers is not None: 
-            if len(self.dataStorage.all_layers) == 0:
+        plugin.dataStorage.all_layers = getAllLayers(root)
+        if plugin.dataStorage.all_layers is not None: 
+            if len(plugin.dataStorage.all_layers) == 0:
                 dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
                 crs = QgsCoordinateReferenceSystem(4326)
                 dummy.setCrs(crs)
@@ -523,9 +526,9 @@ def addCadMainThread(self, geomType, newName, streamBranch, newFields, geomList 
         #################################################
 
         crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-        self.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
-        if self.dataStorage.currentUnits is None or self.dataStorage.currentUnits == 'degrees': 
-            self.dataStorage.currentUnits = 'm'
+        plugin.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
+        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
+            plugin.dataStorage.currentUnits = 'm'
         #authid = trySaveCRS(crs, streamBranch)
 
         if crs.isGeographic is True: 
@@ -546,7 +549,7 @@ def addCadMainThread(self, geomType, newName, streamBranch, newFields, geomList 
         fetIds = []
         fetColors = []
         for f in geomList[:]: 
-            new_feat = cadFeatureToNative(f, newFields, self.dataStorage)
+            new_feat = cadFeatureToNative(f, newFields, plugin.dataStorage)
             # update attrs for the next feature (if more fields were added from previous feature)
 
             print("________cad feature to add") 
@@ -615,6 +618,10 @@ def addCadMainThread(self, geomType, newName, streamBranch, newFields, geomList 
 
         try: project.removeMapLayer(dummy)
         except: pass
+        
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+          
 
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
     try:
@@ -647,16 +654,16 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
     
-def addVectorMainThread(self, geomType, newName, streamBranch, wkt, layer, newFields, fets):
-
-        project: QgsProject = self.dataStorage.project
+def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, newFields, fets):
+    try:
+        project: QgsProject = plugin.dataStorage.project
 
         ###########################################
         dummy = None 
         root = project.layerTreeRoot()
-        self.dataStorage.all_layers = getAllLayers(root)
-        if self.dataStorage.all_layers is not None: 
-            if len(self.dataStorage.all_layers) == 0:
+        plugin.dataStorage.all_layers = getAllLayers(root)
+        if plugin.dataStorage.all_layers is not None: 
+            if len(plugin.dataStorage.all_layers) == 0:
                 dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
                 crs = QgsCoordinateReferenceSystem(4326)
                 dummy.setCrs(crs)
@@ -715,6 +722,9 @@ def addVectorMainThread(self, geomType, newName, streamBranch, wkt, layer, newFi
         try: project.removeMapLayer(dummy)
         except: pass
 
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+          
     
 def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
     try:
@@ -730,16 +740,16 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
-def addRasterMainThread(self, layerName, newName, streamBranch, layer):
-    
-        project: QgsProject = self.dataStorage.project
+def addRasterMainThread(plugin, layerName, newName, streamBranch, layer):
+    try: 
+        project: QgsProject = plugin.dataStorage.project
 
         ###########################################
         dummy = None 
         root = project.layerTreeRoot()
-        self.dataStorage.all_layers = getAllLayers(root)
-        if self.dataStorage.all_layers is not None: 
-            if len(self.dataStorage.all_layers) == 0:
+        plugin.dataStorage.all_layers = getAllLayers(root)
+        if plugin.dataStorage.all_layers is not None: 
+            if len(plugin.dataStorage.all_layers) == 0:
                 dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
                 crs = QgsCoordinateReferenceSystem(4326)
                 dummy.setCrs(crs)
@@ -778,7 +788,7 @@ def addRasterMainThread(self, layerName, newName, streamBranch, layer):
             p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
             findOrCreatePath(p)
             source_folder = p
-            logToUser(f"Project directory not found. Raster layers will be saved to \"{p}\".", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
+            logToUser(f"Project directory not found. Raster layers will be saved to \"{p}\".", level = 1, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
 
         path_fn = source_folder + "/Layers_Speckle/raster_layers/" + streamBranch+ "/" 
         if not os.path.exists(path_fn): os.makedirs(path_fn)
@@ -836,7 +846,7 @@ def addRasterMainThread(self, layerName, newName, streamBranch, layer):
                 displayVal = feat["displayValue"]
             if displayVal is not None:
                 if isinstance(displayVal[0], Point): 
-                    pt = pointToNative(displayVal[0], self.dataStorage)
+                    pt = pointToNative(displayVal[0], plugin.dataStorage)
                 if isinstance(displayVal[0], Mesh): 
                     pt = QgsPoint(displayVal[0].vertices[0], displayVal[0].vertices[1])
         if pt is None:
@@ -870,3 +880,7 @@ def addRasterMainThread(self, layerName, newName, streamBranch, layer):
 
         try: project.removeMapLayer(dummy)
         except: pass
+
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+          
