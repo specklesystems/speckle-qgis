@@ -417,23 +417,39 @@ def reprojectPt(x, y, wkt_in, proj_in, wkt_out, proj_out):
         newY = y
     return newX, newY 
 
+def getClosestIndex(x):
+    if x<0:
+        val = math.ceil(x)
+        return val
+    else:
+        val = math.floor(x)
+        return val
+    
 def getArrayIndicesFromXY(settings, x, y):
     resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings 
-    index2 = int( (x - minX) / resX )
-    index1 = int( (y - minY) / resY )
+    index2 = ( (x - minX) / resX )
+    index1 = ( (y - minY) / resY )
+    if index2 == -0.0: index2 = 0
+    if index1 == -0.0: index1 = 0
 
-    if not 0 <= index2 < sizeX: # try deviating +- 1
-        index2 = int( (x - minX) / resX - 1 )
-        if not 0 <= index2 < sizeX: 
-            index2 = int( (x - minX) / resX + 1 )
-    if not 0 <= index1 < sizeY:
-        index1 = int( (y - minY) / resY - 1 )
-        if not 0 <= index1 < sizeY:
-            index1 = int( (y - minY) / resY + 1 )
-    if not 0 <= index2 < sizeX or not  0 <= index1 < sizeY:
-        return None, None 
+    if not 0 <= getClosestIndex(index2) < sizeX: # try deviating +- 1
+        index2 = ( (x - minX) / resX - 1 )
+        if not 0 <= getClosestIndex(index2) < sizeX: 
+            index2 = ( (x - minX) / resX + 1 )
+    if not 0 <= getClosestIndex(index1) < sizeY:
+        index1 = ( (y - minY) / resY - 1 )
+        if not 0 <= getClosestIndex(index1) < sizeY:
+            index1 = ( (y - minY) / resY + 1 )
+    
+    ind1 = getClosestIndex(index1)
+    ind2 = getClosestIndex(index2)
+
+    if not 0 <= ind2 < sizeX or not  0 <= ind1 < sizeY:
+        return None, None, None, None  
     else:
-        return index1, index2
+        remainder1 = index1 - ind1
+        remainder2 = index2 - ind2
+        return ind1, ind2, remainder1, remainder2
 
 
 def getXYofArrayPoint(settings, indexX, indexY, targetWKT, targetPROJ):
