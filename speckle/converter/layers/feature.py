@@ -17,7 +17,7 @@ from speckle.converter.geometry.GisGeometryClasses import GisRasterElement
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from speckle.converter.layers.Layer import RasterLayer
 from speckle.logging import logger
-from speckle.converter.layers.utils import get_raster_stats, getArrayIndicesFromXY, getElevationLayer, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
+from speckle.converter.layers.utils import get_raster_stats, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 import numpy as np 
@@ -336,27 +336,28 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     # resolution might not match! Also pixels might be missing 
                     # top vertices ######################################
                     if index1>0 and index2>0:
-                        z1 = height_array[index1_0][index2_0]
+                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2_0)
                     elif index1>0:
-                        z1 = height_array[index1_0][index2]
+                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
                     elif index2>0:
-                        z1 = height_array[index1][index2_0]
+                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
                     else:
-                        z1 = height_array[index1][index2]
-                    
+                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                    #################### z4 
                     if index1>0:
-                        z4 = height_array[index1_0][index2]
+                        z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
                     else:
-                        z4 = height_array[index1][index2]
-
+                        z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                    
                     # bottom vertices ######################################
-                    z3 = height_array[index1][index2] # the only one advancing
+                    z3 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
 
                     if index2>0:
-                        z2 = height_array[index1][index2_0]
+                        z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
                     else: 
-                        z2 = height_array[index1][index2]
+                        z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
                     ##############################################
+
                     nan_z = False
                     for zz in [z1, z2, z3, z4]:
                         if np.isnan(zz) or zz is None: 
