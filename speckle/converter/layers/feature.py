@@ -17,7 +17,7 @@ from speckle.converter.geometry.GisGeometryClasses import GisRasterElement
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from speckle.converter.layers.Layer import RasterLayer
 from speckle.logging import logger
-from speckle.converter.layers.utils import get_raster_stats, getArrayIndicesFromXY, getElevationLayer, getRasterArrays, getVariantFromValue, getXYofArrayPoint, traverseDict, validateAttributeName 
+from speckle.converter.layers.utils import get_raster_stats, getArrayIndicesFromXY, getElevationLayer, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 import numpy as np 
@@ -45,14 +45,13 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
             attributes = Base()
             if geom is not None and geom!="None": 
                 if isinstance(geom.geometry, List):
+
                     for g in geom.geometry:
                         if g is not None and g!="None": 
-                            pass #b["geometry"].append(g)
+                            pass
                         else:
                             logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
                             print(g)
-                #else:
-                #    b.geometry = [geom]
             else: 
                 logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
                 print(geom)

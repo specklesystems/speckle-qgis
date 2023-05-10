@@ -23,11 +23,12 @@ from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint,
                        QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
                        QgsRendererCategory,
                        QgsSymbol, QgsUnitTypes)
+from speckle.converter.geometry.GisGeometryClasses import GisPolygonElement
 from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, tryCreateGroup, trySaveCRS, validateAttributeName
+from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, trySaveCRS, validateAttributeName
 from speckle.logging import logger
 from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
 
@@ -166,6 +167,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         #units = "m"
         units_proj = plugin.dataStorage.currentUnits
         units_layer = QgsUnitTypes.encodeUnit(crs.mapUnits())
+        print(units_layer)
         #plugin.dataStorage.currentUnits = units_proj 
 
         if crs.isGeographic(): units_layer = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
@@ -206,10 +208,25 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 '''
                 attributes[corrected] = attribute_type
 
-            # write feature attributes
-            for f in selectedLayer.getFeatures():
+            extrusionApplied = isAppliedLayerTransformByKeywords(selectedLayer, ["extrude", "polygon"], [], plugin.dataStorage)
+            
+            if extrusionApplied is True:
+                if not layerName.endswith("_Mesh"): layerName += "_Mesh" 
+                attributes["Speckle_ID"] = 10 
+
+            # write features 
+            for i, f in enumerate(selectedLayer.getFeatures()):
                 b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer, plugin.dataStorage)
+
+                if extrusionApplied is True and isinstance(b, GisPolygonElement):
+                    b.attributes["Speckle_ID"] = str(i+1)
+                    for g in b.geometry:
+                        if g is not None and g!="None": 
+                            # remove native polygon props, if extruded:
+                                g.boundary = None
+                                g.voids = None
                 layerObjs.append(b)
+
             # Convert layer to speckle
             layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, attributes = attributes, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
             layerBase.type="VectorLayer"
