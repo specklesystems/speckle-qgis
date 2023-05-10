@@ -361,17 +361,17 @@ class SpeckleQGIS:
 
             # Ensure the stream actually exists
             try:
-                stream = validateStream(streamWrapper)
+                stream = validateStream(streamWrapper, self.dockwidget)
                 if stream == None: 
                     return
                 
                 branchName = str(self.dockwidget.streamBranchDropdown.currentText())
-                branch = validateBranch(stream, branchName, True)
+                branch = validateBranch(stream, branchName, True, self.dockwidget)
                 if branch == None: 
                     return
 
                 commitId = str(self.dockwidget.commitDropdown.currentText())
-                commit = validateCommit(branch, commitId)
+                commit = validateCommit(branch, commitId, self.dockwidget)
                 if commit == None: 
                     return
 
@@ -450,12 +450,12 @@ class SpeckleQGIS:
             streamId = streamWrapper.stream_id
             client = streamWrapper.get_client()
 
-            stream = validateStream(streamWrapper)
+            stream = validateStream(streamWrapper, self.dockwidget)
             if stream == None: 
                 return
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
-            branch = validateBranch(stream, branchName, False)
+            branch = validateBranch(stream, branchName, False, self.dockwidget)
             if branch == None: 
                 return
 
@@ -546,17 +546,17 @@ class SpeckleQGIS:
 
         # Ensure the stream actually exists
         try:
-            stream = validateStream(streamWrapper)
+            stream = validateStream(streamWrapper, self.dockwidget)
             if stream == None: 
                 return
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
-            branch = validateBranch(stream, branchName, True)
+            branch = validateBranch(stream, branchName, True, self.dockwidget)
             if branch == None: 
                 return
 
             commitId = str(self.dockwidget.commitDropdown.currentText())
-            commit = validateCommit(branch, commitId)
+            commit = validateCommit(branch, commitId, self.dockwidget)
             if commit == None: 
                 return
 

@@ -137,15 +137,15 @@ def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], s
                     # check all the conditions for transform 
                     if isinstance(layer, QgsVectorLayer) and layer.name() == layer_name and "extrude" in transform_name and "polygon" in transform_name:
                         if plugin.dataStorage.project.crs().isGeographic():
-                            logToUser("Extrusion cannot be applied when the project CRS is set to Geographic type", level = 1, plugin = plugin.dockwidget)
-
+                            logToUser("Extrusion cannot be applied when the project CRS is set to Geographic type", level = 2, plugin = plugin.dockwidget)
+                            return None
+                        
                         attribute = None
                         if " (\'" in item:
                             attribute = item.split(" (\'")[1].split("\') ")[0]
                         if (attribute is None or str(attribute) not in layer.fields().names()) and "ignore" in transform_name:
-                            logToUser("Attribute for extrusion not found, extrusion will not be applied", level = 1, plugin = plugin.dockwidget)
+                            logToUser("Attribute for extrusion not found", level = 2, plugin = plugin.dockwidget)
                             return None
-                        
             
             result.append(layerToSpeckle(layer, projectCRS, plugin))
         
@@ -160,18 +160,16 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
     try:
         project: QgsProject = plugin.qgis_project
         layerName = selectedLayer.name()
-        #except: layerName = layer.sourceName()
-        #try: selectedLayer = selectedLayer.layer()
-        #except: pass 
+
         crs = selectedLayer.crs()
-        #units = "m"
+
         units_proj = plugin.dataStorage.currentUnits
         units_layer = QgsUnitTypes.encodeUnit(crs.mapUnits())
         print(units_layer)
-        #plugin.dataStorage.currentUnits = units_proj 
 
         if crs.isGeographic(): units_layer = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
         layerObjs = []
+        
         # Convert CRS to speckle, use the projectCRS
         print(projectCRS.toWkt())
         speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units_proj) 
