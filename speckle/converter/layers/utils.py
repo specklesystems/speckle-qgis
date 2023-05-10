@@ -21,7 +21,7 @@ from ui.logger import logToUser
 
 ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
 
-def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = ""):
+def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = "", commit_id: str = ""):
     try:
         root = project_gis.layerTreeRoot()
         
@@ -29,11 +29,14 @@ def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = ""):
             layerGroup = root.findGroup(newGroupName)
             for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
                 if isinstance(child, QgsLayerTreeLayer): 
+
                     if isinstance(child.layer(), QgsVectorLayer): 
-                        if "Speckle_ID" in child.layer().fields().names(): project_gis.removeMapLayer(child.layerId())
+                        if "Speckle_ID" in child.layer().fields().names() and child.layer().name().startswith(commit_id): 
+                            project_gis.removeMapLayer(child.layerId())
                     
                     elif isinstance(child.layer(), QgsRasterLayer): 
-                        if "_Speckle" in child.layer().name(): project_gis.removeMapLayer(child.layerId())
+                        if "_Speckle" in child.layer().name(): 
+                            project_gis.removeMapLayer(child.layerId())
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
