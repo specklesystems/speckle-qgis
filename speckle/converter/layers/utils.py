@@ -459,12 +459,14 @@ def isAppliedLayerTransformByKeywords(layer, keywordsYes: List[str], keywordsNo:
                     correctTransform = True 
                 for word in keywordsYes:
                     if word in transform_name_recorded.lower(): pass 
-                    else: correctTransform = False
-                    break 
+                    else: 
+                        correctTransform = False
+                        break 
                 for word in keywordsNo:
                     if word not in transform_name_recorded.lower(): pass 
-                    else: correctTransform = False
-                    break 
+                    else: 
+                        correctTransform = False
+                        break 
 
             #if correctTransform is True and layer_name_recorded == layer.name(): 
             #    # find a layer for meshing, if mesh transformation exists 
