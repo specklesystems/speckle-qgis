@@ -99,6 +99,9 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
             for v in result.displayValue: 
                 if v is not None: 
                     v.units = units
+            
+            if not isinstance(result, List):
+                result = [result]
             element = GisPolygonElement(units = units, geometry = result)
             return element
         elif geomType == QgsWkbTypes.PolygonGeometry: # 2
@@ -135,6 +138,8 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                     if v is not None:
                         v.units = units
                 
+                if not isinstance(result, List):
+                    result = [result]
                 element = GisPolygonElement(units = units, geometry = result)
                 return element
             
