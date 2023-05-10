@@ -2,7 +2,6 @@
 import threading
 import time
 from typing import Any, List
-from plugin_utils.helpers import splitTextIntoLines
 from qgis.PyQt import QtCore
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, pyqtSignal, QTranslator, QRect, QObject
 from qgis.PyQt.QtWidgets import QAction, QDockWidget, QVBoxLayout, QWidget, QPushButton
@@ -32,6 +31,7 @@ class LogWidget(QWidget):
 
     active_account: Account
     speckle_version: str
+    dockwidget: Any
     
     # constructor
     def __init__(self, parent=None):
@@ -119,7 +119,7 @@ class LogWidget(QWidget):
             webbrowser.open(url, new=0, autoraise=True)
             
             try:
-                metrics.track("Connector Action", self.active_account, {"name": "Open In Web", "connector_version": str(self.speckle_version)})
+                metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Open In Web", "connector_version": str(self.speckle_version)})
             except:
                 pass   
                
@@ -143,9 +143,9 @@ class LogWidget(QWidget):
     def resizeToText(self, btn):
         try:
             text = btn.text()
-            if len(text.split("\n"))>2:
-                height = len(text.split("\n"))*30
-                btn.setMinimumHeight(height)
+            #if len(text.split("\n"))>2:
+            height = len(text.split("\n"))*20 + 40 
+            btn.setMinimumHeight(height)
             return btn 
         except Exception as e: 
             print(e)

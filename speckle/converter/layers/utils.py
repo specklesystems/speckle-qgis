@@ -1,11 +1,21 @@
 import inspect
 from PyQt5.QtCore import QVariant, QDate, QDateTime
-from qgis._core import Qgis, QgsProject, QgsLayerTreeLayer, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, QgsField, QgsFields
+from qgis._core import ( Qgis, QgsProject, 
+                        QgsCoordinateReferenceSystem, QgsLayerTreeLayer, 
+                        QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, 
+                        QgsField, QgsFields, QgsLayerTreeGroup )
 from speckle.logging import logger
 from speckle.converter.layers import Layer
 from typing import Any, List, Tuple, Union
 from specklepy.objects import Base
+from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
+
 from PyQt5.QtGui import QColor
+
+from osgeo import gdal, ogr, osr 
+import math
+import numpy as np 
+
 
 from ui.logger import logToUser
 
@@ -199,7 +209,10 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
         all_props = []
         for feature in features: 
             #get object properties to add as attributes
-            dynamicProps = feature.get_dynamic_member_names()
+            try:
+                dynamicProps = feature.attributes.get_dynamic_member_names() # for 2.14 onwards
+            except: 
+                dynamicProps = feature.get_dynamic_member_names()
             #attrsToRemove = ['speckleTyp','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'geometry', 'displayMesh', 'displayValue'] 
             for att in ATTRS_REMOVE:
                 try: dynamicProps.remove(att)
@@ -210,8 +223,11 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
             # add field names and variands 
             for name in dynamicProps:
                 #if name not in all_props: all_props.append(name)
+                try:
+                    value = feature.attributes[name]
+                except:
+                    value = feature[name]
 
-                value = feature[name]
                 variant = getVariantFromValue(value)
                 if not variant: variant = None #LongLong #4 
 
@@ -257,7 +273,9 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
                     
                     for i, (k,v) in enumerate(newF.items()):
                         if k not in all_props: all_props.append(k)
-                        if k not in fields.names(): fields.append(QgsField(k, v)) # fields.update({k: v}) #if variant is known
+
+                        if k not in fields.names(): 
+                            fields.append(QgsField(k, v)) # fields.update({k: v}) #if variant is known
                         else: #check if the field was empty previously: 
                             index = fields.indexFromName(k)
                             oldVariant = fields.field(index).type()
@@ -310,7 +328,15 @@ def traverseDict(newF: dict[Any, Any], newVals: dict[Any, Any], nam: str, val: A
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
 
-def get_scale_factor(units: str) -> float:
+def get_scale_factor(units: str, dataStorage ) -> float:
+    scale_to_meter = get_scale_factor_to_meter(units)
+    if dataStorage is not None:
+        scale_back = scale_to_meter / get_scale_factor_to_meter(dataStorage.currentUnits)
+        return scale_back
+    else:
+        return scale_to_meter
+
+def get_scale_factor_to_meter(units: str ) -> float:
     try:
         unit_scale = {
         "meters": 1.0,
@@ -328,7 +354,7 @@ def get_scale_factor(units: str) -> float:
         "yd": 0.9144,
         "mi": 1609.340,
         }
-        if units is not None and units.lower() in unit_scale.keys():
+        if units is not None and isinstance(units, str) and units.lower() in unit_scale.keys():
             return unit_scale[units]
         logToUser(f"Units {units} are not supported. Meters will be applied by default.", level = 1, func = inspect.stack()[0][3])
         return 1.0
@@ -354,10 +380,220 @@ def validateAttributeName(name: str, fieldnames: List[str]) -> str:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
 
-def saveCRS(crs, streamBranch:str = ""):
+def trySaveCRS(crs, streamBranch:str = ""):
     try:
-        crs_id = crs.saveAsUserCrs("SpeckleCRS_" + streamBranch)
-        return "USER:" + str(crs_id)
+        authid = crs.authid() 
+        wkt = crs.toWkt()
+        print("___________________________________________")
+        print(authid)
+        print(wkt)
+        if authid =='': 
+            crs_id = crs.saveAsUserCrs("SpeckleCRS_" + streamBranch)
+            return crs_id
+        else:
+            return crs.srsid()  
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
+
+
+def reprojectPt(x, y, wkt_in, proj_in, wkt_out, proj_out):
+    srs_in = osr.SpatialReference()
+    srs_in.ImportFromWkt(wkt_in)
+    srs_out = osr.SpatialReference()
+    srs_out.ImportFromWkt(wkt_out)
+    if proj_in != proj_out: 
+        point = ogr.Geometry(ogr.wkbPoint)
+        point.AddPoint(x, y) 
+        point.AssignSpatialReference(srs_in) 
+        point.TransformTo(srs_out) 
+        newX = point.GetX()
+        newY = point.GetY()
+    else:
+        newX = x
+        newY = y
+    return newX, newY 
+
+def getArrayIndicesFromXY(settings, x, y):
+    resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings 
+    index2 = int( (x - minX) / resX )
+    index1 = int( (y - minY) / resY )
+
+    if not 0 <= index2 < sizeX: # try deviating +- 1
+        index2 = int( (x - minX) / resX - 1 )
+        if not 0 <= index2 < sizeX: 
+            index2 = int( (x - minX) / resX + 1 )
+    if not 0 <= index1 < sizeY:
+        index1 = int( (y - minY) / resY - 1 )
+        if not 0 <= index1 < sizeY:
+            index1 = int( (y - minY) / resY + 1 )
+    if not 0 <= index2 < sizeX or not  0 <= index1 < sizeY:
+        return None, None 
+    else:
+        return index1, index2
+
+
+def getXYofArrayPoint(settings, indexX, indexY, targetWKT, targetPROJ):
+    resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings
+    x = minX + resX*indexX
+    y = minY + resY*indexY
+    newX, newY = reprojectPt(x, y, wkt, proj, targetWKT, targetPROJ)
+    return newX, newY
+
+def isAppliedLayerTransformByKeywords(layer, keywordsYes: List[str], keywordsNo: List[str], dataStorage):
+    
+    correctTransform = False  
+    if dataStorage.savedTransforms is not None:
+        all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
+        all_saved_transform_layers = [item.split("  ->  ")[0].split(" (\'")[0] for item in dataStorage.savedTransforms]
+
+        for item in dataStorage.savedTransforms:
+            layer_name_recorded = item.split("  ->  ")[0].split(" (\'")[0]
+            transform_name_recorded = item.split("  ->  ")[1]
+
+            if layer_name_recorded == layer.name():
+                if len(keywordsYes) > 0 or len(keywordsNo) > 0:
+                    correctTransform = True 
+                for word in keywordsYes:
+                    if word in transform_name_recorded.lower(): pass 
+                    else: correctTransform = False
+                    break 
+                for word in keywordsNo:
+                    if word not in transform_name_recorded.lower(): pass 
+                    else: correctTransform = False
+                    break 
+
+            #if correctTransform is True and layer_name_recorded == layer.name(): 
+            #    # find a layer for meshing, if mesh transformation exists 
+            #    for l in dataStorage.all_layers: 
+            #        if layer_name_recorded == l.name():
+            #            return l  
+    return correctTransform  
+
+def getElevationLayer(dataStorage):  
+    elevationLayer = dataStorage.elevationLayer    
+    try:
+        # check if layer was not deleted 
+        name = elevationLayer.name()
+        return elevationLayer
+    except: 
+        return None
+
+    #root = dataStorage.project.layerTreeRoot()
+    #dataStorage.all_layers = getAllLayers(root)   
+    #for i, layer in enumerate(dataStorage.all_layers):
+    #    if 
+
+    return elevationLayer 
+    
+    if dataStorage.savedTransforms is not None:
+        all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
+        all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
+        for item in dataStorage.savedTransforms:
+            layer_name = item.split("  ->  ")[0]
+            transform_name = item.split("  ->  ")[1]
+
+            if "elevation" in transform_name.lower() and "mesh" in transform_name.lower() and "texture" not in transform_name.lower(): 
+                # find a layer for meshing, if mesh transformation exists 
+                for l in dataStorage.all_layers: 
+                    if layer_name == l.name():
+                        return l  
+                        
+                        # also check if the layer is selected for sending
+                        for sending_l in dataStorage.sending_layers:
+                            if sending_l.name() == l.name():
+                                return sending_l 
+    return None 
+
+def get_raster_stats(rasterLayer):
+    try:
+        file_ds = gdal.Open(rasterLayer.source(), gdal.GA_ReadOnly)
+        xres,yres = (float(file_ds.GetGeoTransform()[1]), float(file_ds.GetGeoTransform()[5]) )
+        originX, originY = (file_ds.GetGeoTransform()[0], file_ds.GetGeoTransform()[3])
+        band = file_ds.GetRasterBand(1)
+        rasterWkt = file_ds.GetProjection()
+        rasterProj = QgsCoordinateReferenceSystem.fromWkt(rasterWkt).toProj().replace(" +type=crs","")
+        sizeX, sizeY = (band.ReadAsArray().shape[1], band.ReadAsArray().shape[0])
+
+        return xres, yres, originX, originY, sizeX, sizeY, rasterWkt, rasterProj
+    except:
+        return None, None,  None, None, None, None, None, None
+
+
+
+def getRasterArrays(elevationLayer): 
+    const = float(-1* math.pow(10,30))
+
+    try:
+        elevationSource = gdal.Open(elevationLayer.source(), gdal.GA_ReadOnly)
+        settings_elevation_layer = get_raster_stats(elevationLayer)
+        xres, yres, originX, originY, sizeX, sizeY, rasterWkt, rasterProj = settings_elevation_layer
+        
+        all_arrays = []
+        all_mins = []
+        all_maxs = []
+        all_na = []
+
+        for b in range(elevationLayer.bandCount()):
+            band = elevationSource.GetRasterBand(b+1)
+            val_NA = band.GetNoDataValue()
+            
+            array_band = band.ReadAsArray()
+            fakeArray = np.where( (array_band < const) | (array_band > -1*const) | (array_band == val_NA) | (np.isinf(array_band) ), np.nan, array_band)
+            
+            val_Min = np.nanmin(fakeArray)
+            val_Max = np.nanmax(fakeArray)
+
+            all_arrays.append(fakeArray) 
+            all_mins.append(val_Min)
+            all_maxs.append(val_Max)  
+            all_na.append(val_NA)
+
+        return (all_arrays, all_mins, all_maxs, all_na)
+    except: 
+        return (None, None, None, None)
+
+def moveVertically(poly, height):
+
+    if isinstance(poly, Polycurve):
+        for segm in poly.segments:
+            segm = moveVerticallySegment(segm, height)
+    else:
+        poly = moveVerticallySegment(poly, height)
+
+    return poly
+
+def moveVerticallySegment(poly, height):
+    if isinstance(poly, Arc) or isinstance(poly, Circle): # or isinstance(segm, Curve):
+        if poly.plane is not None:
+            poly.plane.normal.z += height
+            poly.plane.origin.z += height
+        poly.startPoint.z += height
+        try: 
+            poly.endPoint.z += height
+        except: pass 
+    elif isinstance(poly, Line): 
+        poly.start.z += height
+        poly.end.z += height
+    elif isinstance(poly, Polyline): 
+        for i in range(len(poly.value)): 
+            if (i+1) %3 == 0:
+                poly.value[i] += float(height) 
+    
+    return poly 
+
+
+def tryCreateGroup(project, streamBranch):
+    #CREATE A GROUP "received blabla" with sublayers
+    newGroupName = f'{streamBranch}'
+    root = project.layerTreeRoot()
+    layerGroup = QgsLayerTreeGroup(newGroupName)
+
+    if root.findGroup(newGroupName) is not None:
+        layerGroup = root.findGroup(newGroupName) # -> QgsLayerTreeNode
+    else:
+        layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
+    layerGroup.setExpanded(True)
+    layerGroup.setItemVisibilityChecked(True)
+    return layerGroup
+

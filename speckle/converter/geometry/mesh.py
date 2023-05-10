@@ -8,17 +8,18 @@ from specklepy.objects.other import RenderMaterial
 import shapefile
 from shapefile import TRIANGLE_STRIP, TRIANGLE_FAN, OUTER_RING
 from speckle.converter.geometry.point import pointToNative
+from speckle.converter.geometry.utils import fix_orientation, projectToPolygon, triangulatePolygon
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
-from speckle.converter.layers.utils import get_scale_factor
+from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
 from speckle.logging import logger
 from ui.logger import logToUser
 
 from qgis.core import (
     Qgis, QgsPoint, QgsPointXY, QgsMultiPolygon, QgsPolygon, QgsLineString, QgsFeature, QgsVectorLayer
     )
-from panda3d.core import Triangulator
+#from panda3d.core import Triangulator
 
-def meshToNative(meshes: List[Mesh]) -> QgsMultiPolygon:
+def meshToNative(meshes: List[Mesh], dataStorage = None) -> QgsMultiPolygon:
     try:
         multiPolygon = QgsMultiPolygon()
         for mesh in meshes:
@@ -27,7 +28,7 @@ def meshToNative(meshes: List[Mesh]) -> QgsMultiPolygon:
                 polygon = QgsPolygon()
                 pts = [Point(x=pt[0], y=pt[1], z=pt[2], units="m") for pt in part]
                 pts.append(pts[0])
-                boundary = QgsLineString([pointToNative(pt) for pt in pts])
+                boundary = QgsLineString([pointToNative(pt, dataStorage) for pt in pts])
                 polygon.setExteriorRing(boundary)
 
                 if polygon is not None:
@@ -37,7 +38,7 @@ def meshToNative(meshes: List[Mesh]) -> QgsMultiPolygon:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
     
-def writeMeshToShp(meshes: List[Mesh], path: str):
+def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage = None):
     """Converts a Speckle Mesh to QgsGeometry"""
     try:
         print("06___________________Mesh to Native")
@@ -86,7 +87,7 @@ def writeMeshToShp(meshes: List[Mesh], path: str):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str):
+def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str, dataStorage = None):
     
     print("07___________________fill_multi_mesh_parts")
     try:
@@ -109,7 +110,7 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str)
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
+def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage = None):
     
     try:
         #if len(mesh.faces) % 4 == 0 and (mesh.faces[0] == 0 or mesh.faces[0] == 3):
@@ -124,11 +125,11 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str):
 
     return w
 
-def deconstructSpeckleMesh(mesh: Mesh):
+def deconstructSpeckleMesh(mesh: Mesh, dataStorage = None):
     
     #print("deconstructSpeckleMesh")
     try:
-        scale = get_scale_factor(mesh.units)
+        scale = get_scale_factor(mesh.units, dataStorage)
         parts_list = []
         types_list = []
 
@@ -156,7 +157,7 @@ def deconstructSpeckleMesh(mesh: Mesh):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return [],[]
 
-def constructMeshFromRaster(vertices, faces, colors):
+def constructMeshFromRaster(vertices, faces, colors, dataStorage = None):
     try:
         mesh = Mesh.create(vertices, faces, colors)
         mesh.units = "m"
@@ -165,7 +166,7 @@ def constructMeshFromRaster(vertices, faces, colors):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def constructMesh(vertices, faces, colors):
+def constructMesh(vertices, faces, colors, dataStorage = None):
     try:
         mesh = Mesh.create(vertices, faces, colors)
         mesh.units = "m"
@@ -177,86 +178,206 @@ def constructMesh(vertices, faces, colors):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, layer: QgsVectorLayer):
+def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height = None, dataStorage = None):
     try:
+        faces = []
+        faces_cap = []
+        faces_side = []
+
         vertices = []
+        vertices_cap = []
+        vertices_side = []
+
         total_vertices = 0
 
         coef = 1
         maxPoints = 5000
         if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
+
+        col = featureColorfromNativeRenderer(feature, layer)
             
         if len(voidsAsPts) == 0: # only if there is a mesh with no voids and large amount of points
+            # floor: need positive - clockwise (looking down); cap need negative (counter-clockwise)
+            polyBorder = fix_orientation(polyBorder, True, coef) # clockwise
+
+            if height is None: polyBorder.reverse() # when no extrusions: face up, counter-clockwise
+
             for k, ptt in enumerate(polyBorder): #pointList:
                 pt = polyBorder[k*coef]
                 if k < maxPoints:
-                    if isinstance(pt, QgsPointXY):
-                        pt = QgsPoint(pt)
-                    if isinstance(pt,Point):
-                        pt = pointToNative(pt)
-                    x = pt.x()
-                    y = pt.y()
-                    z = 0 if math.isnan(pt.z()) else pt.z()
-                    vertices.extend([x, y, z])
+                    vertices.extend([pt.x, pt.y, pt.z])
                     total_vertices += 1
                 else: break
 
             ran = range(0, total_vertices)
             faces = [total_vertices]
             faces.extend([i + existing_vert for i in ran])
-            # else: https://docs.panda3d.org/1.10/python/reference/panda3d.core.Triangulator
-        else: # if there are voids 
+
+            # a cap
+            ##################################
+            if height is not None:
+                ran = range(total_vertices, 2*total_vertices)
+                faces.append(total_vertices) 
+                faces2 = [i + existing_vert for i in ran]
+                faces2.reverse()
+                faces.extend(faces2) 
+
+                vertices_copy = vertices.copy()
+                count = 0
+                for item in vertices_copy:
+                    try: 
+                        vertices.extend([vertices_copy[count], vertices_copy[count+1], vertices_copy[count+2] + height])
+                        count += 3 
+                    except: break 
+                total_vertices *= 2
+                
+                ###################################### add extrusions
+                universal_z_value = polyBorder[0].z
+                for k, pt in enumerate(polyBorder):
+                    polyBorder2 = []
+                    try:
+                        vertices_side.extend([polyBorder[k].x, polyBorder[k].y, universal_z_value,
+                                         polyBorder[k].x, polyBorder[k].y, height + universal_z_value,
+                                         polyBorder[k+1].x, polyBorder[k+1].y, height + universal_z_value,
+                                         polyBorder[k+1].x, polyBorder[k+1].y, universal_z_value])
+                        faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                        total_vertices +=4
+
+                    except: 
+                        vertices_side.extend([polyBorder[k].x, polyBorder[k].y, universal_z_value,
+                                         polyBorder[k].x, polyBorder[k].y, height + universal_z_value,
+                                         polyBorder[0].x, polyBorder[0].y, height + universal_z_value,
+                                         polyBorder[0].x, polyBorder[0].y, universal_z_value])
+                        faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                        total_vertices +=4
+
+                        break
+                
+                ran = range(0, total_vertices)
+                colors = [col for i in ran] # apply same color for all vertices
+                return total_vertices, vertices + vertices_side, faces + faces_side, colors
+                ######################################
+            else:
+                colors = [col for i in ran] # apply same color for all vertices
+                return total_vertices, vertices, faces, colors
+
+        else: # if there are voids: face should be clockwise 
             # if its a large polygon with voids to be triangualted, lower the coef even more:
-            maxPoints = 100
+            #maxPoints = 100
             if len(polyBorder) >= maxPoints: coef = int(len(polyBorder)/maxPoints)
 
-            trianglator = Triangulator()
-            faces = []
-
-            pt_count = 0
-            # add extra middle point for border
-            for k, ptt in enumerate(polyBorder): #pointList:
-                pt = polyBorder[k*coef]
-                if k < maxPoints:
-                    if pt_count < len(polyBorder)-1 and k < (maxPoints-1): 
-                        pt2 = polyBorder[(k+1)*coef]
-                    else: pt2 = polyBorder[0]
-                            
-                    trianglator.addPolygonVertex(trianglator.addVertex(pt.x, pt.y))
-                    vertices.extend([pt.x, pt.y, pt.z])
-                    trianglator.addPolygonVertex(trianglator.addVertex((pt.x+pt2.x)/2, (pt.y+pt2.y)/2))
-                    vertices.extend([(pt.x+pt2.x)/2, (pt.y+pt2.y)/2, (pt.z+pt2.z)/2])
-                    total_vertices += 2
-                    pt_count += 1
-                else: break
-
-            #add void points
-            for pts in voidsAsPts:
-                trianglator.beginHole()
-
-                coefVoid = 1
-                if len(pts) >= maxPoints: coefVoid = int(len(pts)/maxPoints)
-                for k, ptt in enumerate(pts):
-                    pt = pts[k*coefVoid]
-                    if k < maxPoints:
-                        trianglator.addHoleVertex(trianglator.addVertex(pt.x, pt.y))
-                        vertices.extend([pt.x, pt.y, pt.z])
-                        total_vertices += 1
-                    else: break
+            universal_z_value = polyBorder[0].z 
             
-            trianglator.triangulate()
-            i = 0
-            #print(trianglator.getNumTriangles())
-            while i < trianglator.getNumTriangles():
-                tr = [trianglator.getTriangleV0(i),trianglator.getTriangleV1(i),trianglator.getTriangleV2(i)]
-                faces.extend([3, tr[0] + existing_vert, tr[1] + existing_vert, tr[2] + existing_vert])
-                i+=1
-            ran = range(0, total_vertices)
+            # get points from original geometry #################################
+            triangulated_geom, vertices3d = triangulatePolygon(feature_geom)
+            # get substitute value for missing z-val
+            existing_3d_pts = []
+            for i, p in enumerate(vertices3d): 
+                if p[2] is not None and str(p[2])!="" and str(p[2]).lower()!="nan": # only from boundary 
+                    p[2] += universal_z_value 
+                    existing_3d_pts.append(p)
+                    if len(existing_3d_pts) == 3: break
+            pt_list = []
+            for i, p in enumerate(triangulated_geom['vertices']): 
+                z_val = vertices3d[i][2]
+                if z_val is None or str(z_val)!="" or str(z_val).lower()!="nan": 
+                    #    #z_val = any_existing_z
+                    if len(existing_3d_pts)>=3:
+                        z_val = projectToPolygon(vertices3d[i], existing_3d_pts)
+                    else: 
+                        z_val = universal_z_value
+                pt_list.append( [p[0], p[1], z_val ] ) 
 
-        col = featureColorfromNativeRenderer(feature, layer)
-        colors = [col for i in ran] # apply same color for all vertices
+            triangle_list = [ trg for trg in triangulated_geom['triangles']]
+            
+            try:
+                for trg in triangle_list:
+                    a = trg[0]
+                    b = trg[1]
+                    c = trg[2]
+                    vertices.extend(pt_list[a] + pt_list[b] + pt_list[c])
+                    total_vertices += 3
+                    # all faces are counter-clockwise now
+                    if height is None:
+                        faces.extend([3, total_vertices-3, total_vertices-2, total_vertices-1])
+                    else: # if extruding
+                        faces.extend([3, total_vertices-1, total_vertices-2, total_vertices-3]) # reverse to clock-wise (facing down)
+                    
+                ran = range(0, total_vertices)
+            except Exception as e:
+                logToUser(e, level = 2, func = inspect.stack()[0][3])
+            
+            # a cap ##################################
+            if height is not None:
+                # change the pt list to height 
+                pt_list = [ [p[0], p[1], universal_z_value + height] for p in triangulated_geom['vertices']]
+                
+                for trg in triangle_list: 
+                    a = trg[0]
+                    b = trg[1]
+                    c = trg[2]
+                    # all faces are counter-clockwise now
+                    vertices.extend(pt_list[a] + pt_list[b] + pt_list[c])
+                    total_vertices += 3
+                    faces_cap.extend([3, total_vertices-3, total_vertices-2, total_vertices-1]) 
 
-        return total_vertices, vertices, faces, colors
+                ###################################### add extrusions
+                polyBorder = fix_orientation(polyBorder, True, coef) # clockwise
+                universal_z_value = polyBorder[0].z
+                for k, pt in enumerate(polyBorder):
+                    try:
+                        vertices_side.extend([polyBorder[k].x, polyBorder[k].y, universal_z_value,
+                                         polyBorder[k].x, polyBorder[k].y, height + universal_z_value,
+                                         polyBorder[k+1].x, polyBorder[k+1].y, height + universal_z_value,
+                                         polyBorder[k+1].x, polyBorder[k+1].y, universal_z_value])
+                        faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                        total_vertices +=4
+
+                    except: 
+                        vertices_side.extend([polyBorder[k].x, polyBorder[k].y, universal_z_value,
+                                         polyBorder[k].x, polyBorder[k].y, height + universal_z_value,
+                                         polyBorder[0].x, polyBorder[0].y, height + universal_z_value,
+                                         polyBorder[0].x, polyBorder[0].y, universal_z_value])
+                        faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                        total_vertices +=4
+
+                        break
+
+                for v in voidsAsPts: # already at the correct hight (even projected) 
+                    v = fix_orientation(v, False, coef) # counter-clockwise
+                    for k, pt in enumerate(v):
+                        void =[]
+                        try:
+                            vertices_side.extend([v[k].x, v[k].y, universal_z_value,
+                                            v[k].x, v[k].y, height + universal_z_value,
+                                            v[k+1].x, v[k+1].y, height + universal_z_value,
+                                            v[k+1].x, v[k+1].y, universal_z_value])
+                            faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                            total_vertices +=4
+ 
+                        except:
+                            vertices_side.extend([v[k].x, v[k].y, universal_z_value,
+                                            v[k].x, v[k].y, height + universal_z_value,
+                                            v[0].x, v[0].y, height + universal_z_value,
+                                            v[0].x, v[0].y, universal_z_value])
+                            faces_side.extend([4, total_vertices, total_vertices+1,total_vertices+2,total_vertices+3])
+                            total_vertices +=4
+
+                            break
+                            
+                ############################################
+
+                ran = range(0, total_vertices)
+                colors = [col for i in ran] # apply same color for all vertices
+                return total_vertices, vertices + vertices_cap + vertices_side, faces + faces_cap + faces_side, colors
+                
+            else: 
+                ran = range(0, total_vertices)
+                colors = [col for i in ran] # apply same color for all vertices
+                
+                return total_vertices, vertices, faces, colors
+
+            
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

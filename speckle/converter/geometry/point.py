@@ -3,16 +3,16 @@ import math
 
 from qgis.core import (
     QgsPoint,
-    QgsPointXY, QgsFeature, QgsVectorLayer
+    QgsPointXY, QgsFeature, QgsVectorLayer, QgsUnitTypes
 )
 
 from specklepy.objects.geometry import Point
-from speckle.converter.layers.utils import get_scale_factor
+from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from ui.logger import logToUser
 #from PyQt5.QtGui import QColor
 
-def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVectorLayer):
+def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None):
     """Converts a QgsPoint to Speckle"""
     try: 
         if isinstance(pt, QgsPointXY):
@@ -36,19 +36,19 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVe
         return None
 
 
-def pointToNative(pt: Point) -> QgsPoint:
+def pointToNative(pt: Point, dataStorage = None) -> QgsPoint:
     """Converts a Speckle Point to QgsPoint"""
     try:
-        pt = scalePointToNative(pt, pt.units)
+        pt = scalePointToNative(pt, pt.units, dataStorage)
         return QgsPoint(pt.x, pt.y, pt.z)
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def scalePointToNative(point: Point, units: str) -> Point:
+def scalePointToNative(point: Point, units: str, dataStorage = None) -> Point:
     """Scale point coordinates to meters"""
     try:
-        scaleFactor = get_scale_factor(units)
+        scaleFactor = get_scale_factor(units, dataStorage) # to meters
         pt = Point(units = "m")
         pt.x = point.x * scaleFactor
         pt.y = point.y * scaleFactor

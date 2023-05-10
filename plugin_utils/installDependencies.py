@@ -32,17 +32,18 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
         # just in case the included version is old
         subprocess_call([pythonExec, "-m", "pip", "install", "--upgrade", "pip"])
 
-    pkgVersion = "2.9.0" 
+    pkgVersion = "2.14.0" 
     pkgName = "specklepy"
     try:
         import specklepy
     except Exception as e:
         logger.log("Specklepy not installed")
         subprocess_call(
-            [pythonExec, "-m", "pip", "install", f"{pkgName}=={pkgVersion}"]
+            [pythonExec, "-m", "pip", "install", "--upgrade", f"{pkgName}=={pkgVersion}"]
         )
 
     # Check if specklpy needs updating
+    r''' 
     try:
         logger.log(f"Attempting to update specklepy to {pkgVersion}")
         subprocess_call(
@@ -57,34 +58,7 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
         )
     except Exception as e:
         logger.log(e.with_traceback)
-
-    #################################################
-    pkgVersion = "1.10.11"  # "2.5.3"
-    pkgName = "panda3d"
-    try:
-        import panda3d
-    except Exception as e:
-        logger.log("panda3d not installed")
-        subprocess_call(
-            [pythonExec, "-m", "pip", "install", f"{pkgName}=={pkgVersion}"]
-        )
-
-    # Check if panda3d needs updating
-    try:
-        logger.log(f"Attempting to update panda3d to {pkgVersion}")
-        subprocess_call(
-            [
-                pythonExec,
-                "-m",
-                "pip",
-                "install",
-                "--upgrade",
-                f"{pkgName}=={pkgVersion}",
-            ]
-        )
-    except Exception as e:
-        logger.log(e.with_traceback)
-
+    '''
     ################################################# 
     pkgVersion = "2.3.1"
     pkgName = "pyshp"
@@ -111,3 +85,14 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
         )
     except Exception as e:
         logger.log(e.with_traceback)
+
+    ################################################# 
+    #pkgVersion = "2.3.1"
+    pkgName = "triangle"
+    try:
+        import triangle
+    except Exception as e:
+        logger.log("triangle not installed")
+        subprocess_call(
+            [pythonExec, "-m", "pip", "install", f"{pkgName}"]
+        )

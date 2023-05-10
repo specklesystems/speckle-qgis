@@ -20,15 +20,27 @@ import sys
 import time 
 from typing import Any, Callable, List, Optional, Tuple, Union
 
+from datetime import datetime
+
 import threading
-from plugin_utils.helpers import getAppName, removeSpecialCharacters
+from plugin_utils.helpers import findFeatColors, findOrCreatePath, getAppName, removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
-                       QgsRasterLayer, QgsVectorLayer)
+                       QgsLayerTreeGroup, QgsCoordinateReferenceSystem,
+                       QgsRasterLayer, QgsVectorLayer,
+                       QgsUnitTypes, QgsWkbTypes,
+                       QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsLayerTreeLayer,
+                       QgsFields, 
+                       QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
+                       QgsRendererCategory,
+                       QgsSymbol)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QApplication, QAction, QDockWidget, QVBoxLayout, QWidget
 from qgis.PyQt import QtWidgets
 from qgis import PyQt
+
+from PyQt5.QtGui import QColor
+
 import sip
 
 from specklepy.api import operations
@@ -37,6 +49,7 @@ from specklepy.logging.exceptions import SpeckleException, GraphQLException
 from specklepy.api.models import Stream
 from specklepy.api.wrapper import StreamWrapper
 from specklepy.objects import Base
+from specklepy.objects.other import Collection
 from specklepy.transports.server import ServerTransport
 from specklepy.api.credentials import Account, get_local_accounts #, StreamWrapper
 from specklepy.api.client import SpeckleClient
@@ -46,9 +59,14 @@ import webbrowser
 # Initialize Qt resources from file resources.py
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
+from speckle.converter.geometry.mesh import writeMeshToShp
+from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.Layer import Layer, VectorLayer, RasterLayer
-from speckle.converter.layers import convertSelectedLayers, getLayers
-from speckle.converter.layers.utils import findAndClearLayerGroup
+from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getLayers
+from speckle.converter.layers.feature import bimFeatureToNative, cadFeatureToNative
+from speckle.converter.layers.symbology import rasterRendererToNative, vectorRendererToNative
+from speckle.converter.layers.utils import colorFromSpeckle, findAndClearLayerGroup, tryCreateGroup, trySaveCRS
+from speckle.DataStorage import DataStorage
 
 from speckle.logging import logger
 from ui.add_stream_modal import AddStreamModalDialog
@@ -83,11 +101,13 @@ class SpeckleQGIS:
     lat: float
     lon: float
 
-    default_account: Account
+    #default_account: Account
     accounts: List[Account]
-    active_account: Account
+    #active_account: Account
 
     theads_total: int
+
+    dataStorage: DataStorage
 
     def __init__(self, iface):
         """Constructor.
@@ -107,9 +127,9 @@ class SpeckleQGIS:
         self.qgis_project = QgsProject.instance()
         self.current_streams = []
         self.active_stream = None
-        self.default_account = None 
-        self.accounts = [] 
-        self.active_account = None 
+        #self.default_account = None 
+        #self.accounts = [] 
+        #self.active_account = None 
 
         self.theads_total = 0
 
@@ -273,6 +293,7 @@ class SpeckleQGIS:
 
         # set the project instance 
         self.qgis_project = QgsProject.instance()
+        self.dataStorage.project = self.qgis_project
         self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
 
         # https://www.opengis.ch/2016/09/07/using-threads-in-qgis-python-plugins/
@@ -288,21 +309,25 @@ class SpeckleQGIS:
             if not self.dockwidget.experimental.isChecked(): 
                 
                 try:
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": False, "connector_version": str(self.version)})
+                    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Send", "is": False, "connector_version": str(self.version)})
                 except Exception as e:
                     logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                 
                 self.onSend(message)
             else:
                 try:
-                    if threading.active_count() > self.theads_total:
-                        logToUser("Please wait for other Send/Receive operations to finish", level = 1, plugin=self.dockwidget)
-                        return
+                    print(self.theads_total)
+                    print(threading.active_count())
+                    print(threading.enumerate())
+                    #if threading.active_count() - 2 > self.theads_total:
+                    #    logToUser("Please wait for other Send/Receive operations to finish", level = 1, plugin=self.dockwidget)
+                    #    return
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
-                    self.active_account = client.account
+                    self.dataStorage.active_account = client.account
+                    
                     try:
-                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
+                        metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
                     except Exception as e:
                         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                     
@@ -322,21 +347,21 @@ class SpeckleQGIS:
             if not self.dockwidget.experimental.isChecked(): 
                 
                 try:
-                    metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": False, "connector_version": str(self.version)})
+                    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": False, "connector_version": str(self.version)})
                 except Exception as e:
                     logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                 
                 self.onReceive()
             else:
                 try:
-                    if threading.active_count() > self.theads_total:
-                        logToUser("Please wait for other Send/Receive operations to finish", level = 1, plugin=self.dockwidget)
-                        return
+                    #if threading.active_count() > self.theads_total:
+                    #    logToUser("Please wait for other Send/Receive operations to finish", level = 1, plugin=self.dockwidget)
+                    #    return
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
-                    self.active_account = client.account
+                    self.dataStorage.active_account = client.account
                     try:
-                        metrics.track("Connector Action", self.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
+                        metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
                     except Exception as e:
                         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                     #with ThreadPoolExecutor(max_workers=1) as executor:
@@ -383,10 +408,19 @@ class SpeckleQGIS:
             if len(layers) == 0: #len(selectedLayerNames) == 0:
                 logToUser("No layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
+            self.dataStorage.sending_layers = layers
 
-            base_obj = Base(units = "m")
-            base_obj.layers = convertSelectedLayers(layers, [],[], projectCRS, self)
-            if base_obj.layers is None:
+            root = self.dataStorage.project.layerTreeRoot()
+            self.dataStorage.all_layers = getAllLayers(root)
+            self.dockwidget.mappingSendDialog.populateSavedTransforms(self.dataStorage)
+            
+            units = QgsUnitTypes.encodeUnit(projectCRS.mapUnits())
+            if units is None or units == 'degrees': units = 'm'
+            self.dataStorage.currentUnits = units 
+
+            base_obj = Collection(units = units)
+            base_obj.elements = convertSelectedLayers(layers, [],[], projectCRS, self)
+            if base_obj.elements is None:
                 return 
 
             # Get the stream wrapper
@@ -444,9 +478,9 @@ class SpeckleQGIS:
                 except:
                     metr_crs = False
 
-                metrics.track(metrics.SEND, self.active_account, {"hostAppFullVersion":self.gis_version, "branches":metr_branches, "collaborators":metr_collab,"connector_version": str(self.version), "filter": metr_filter, "isMain": metr_main, "savedStreams": metr_saved_streams, "projectedCRS": metr_projected, "customCRS": metr_crs})
+                metrics.track(metrics.SEND, self.dataStorage.active_account, {"hostAppFullVersion":self.gis_version, "branches":metr_branches, "collaborators":metr_collab,"connector_version": str(self.version), "filter": metr_filter, "isMain": metr_main, "savedStreams": metr_saved_streams, "projectedCRS": metr_projected, "customCRS": metr_crs})
             except:
-                metrics.track(metrics.SEND, self.active_account)
+                metrics.track(metrics.SEND, self.dataStorage.active_account)
             '''
             
             if isinstance(commit_id, SpeckleException):
@@ -457,7 +491,12 @@ class SpeckleQGIS:
             #self.dockwidget.hideWait()
             #self.dockwidget.showLink(url, streamName)
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
+
+            if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
+                    logToUser("Data has been sent in the units 'degrees'. It is advisable to set the project CRS to Projected type (e.g. EPSG:32631) to be able to receive geometry correctly in CAD/BIM software. You can also create a custom CRS by setting geographic coordinates and using 'Set as a project center' function.", level = 1, plugin = self.dockwidget)
+            
             logToUser(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
+            self.dataStorage.sending_layers = None
 
             return url
 
@@ -528,9 +567,9 @@ class SpeckleQGIS:
             metr_projected = True if not projectCRS.isGeographic() else False
             if self.qgis_project.crs().isValid() is False: metr_projected = None
             try:
-                metrics.track(metrics.RECEIVE, self.active_account, {"hostAppFullVersion":self.gis_version, "sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
+                metrics.track(metrics.RECEIVE, self.dataStorage.active_account, {"hostAppFullVersion":self.gis_version, "sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
             except:
-                metrics.track(metrics.RECEIVE, self.active_account)
+                metrics.track(metrics.RECEIVE, self.dataStorage.active_account)
             
             client.commit.received(
             streamId,
@@ -555,7 +594,7 @@ class SpeckleQGIS:
             
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
             logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
-            return 
+            #return 
             
         except Exception as e:
             #if self.dockwidget.experimental.isChecked(): time.sleep(1)
@@ -565,7 +604,17 @@ class SpeckleQGIS:
     def reloadUI(self):
         print("___RELOAD UI")
         try:
-            from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection
+            from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection, get_transformations 
+
+            self.qgis_project = QgsProject.instance()
+            
+            self.dataStorage = DataStorage()
+            self.dataStorage.plugin_version = self.version
+            self.dataStorage.project = self.qgis_project
+        
+            get_transformations(self.dataStorage)
+            
+            self.dockwidget.addDataStorage(self)
 
             self.is_setup = self.check_for_accounts()
             if self.dockwidget is not None:
@@ -584,14 +633,14 @@ class SpeckleQGIS:
             def go_to_manager():
                 webbrowser.open("https://speckle-releases.netlify.app/")
             accounts = get_local_accounts()
-            self.accounts = accounts
+            self.dataStorage.accounts = accounts
             if len(accounts) == 0:
                 logToUser("No accounts were found. Please remember to install the Speckle Manager and setup at least one account", level = 1, url="https://speckle-releases.netlify.app/", func = inspect.stack()[0][3], plugin = self.dockwidget) #, action_text="Download Manager", callback=go_to_manager)
                 return False
             for acc in accounts:
                 if acc.isDefault: 
-                    self.default_account = acc 
-                    self.active_account = acc 
+                    self.dataStorage.default_account = acc 
+                    self.dataStorage.active_account = acc 
                     break 
             return True
         except Exception as e:
@@ -601,10 +650,17 @@ class SpeckleQGIS:
     def run(self):
         """Run method that performs all the real work"""
         from ui.speckle_qgis_dialog import SpeckleQGISDialog
-        from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection
+        from ui.project_vars import get_project_streams, get_survey_point, get_elevationLayer, get_project_layer_selection, get_transformations
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+        self.qgis_project = QgsProject.instance()
+        self.dataStorage = DataStorage()
+        self.dataStorage.plugin_version = self.version
+        self.dataStorage.project = self.qgis_project
+    
+        get_transformations(self.dataStorage)
+
         self.is_setup = self.check_for_accounts()
             
         if self.pluginIsActive:
@@ -613,14 +669,23 @@ class SpeckleQGIS:
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
-                self.dockwidget.addLabel(self)
-                self.dockwidget.addProps(self)
+                self.dockwidget.runSetup(self)
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
+                
+                self.dockwidget.addLayerToGroup.connect(self.addLayerToGroup)
+                self.dockwidget.addBimLayerToGroup.connect(self.addBimLayerToGroup)
+                self.dockwidget.addCadLayerToGroup.connect(self.addCadLayerToGroup)
+                self.dockwidget.addRasterLayerToGroup.connect(self.addRasterLayerToGroup)
+                
+
+            else: 
+                self.dockwidget.addDataStorage(self)
 
             get_project_streams(self)
             get_survey_point(self)
             get_project_layer_selection(self)
+            get_elevationLayer(self.dataStorage)
 
             self.dockwidget.run(self)
 
@@ -748,3 +813,16 @@ class SpeckleQGIS:
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
+     
+    def addLayerToGroup(self, geomType, newName, streamBranch, wkt, layer, newFields, fets):
+        addVectorMainThread(self, geomType, newName, streamBranch, wkt, layer, newFields, fets)
+    
+    def addBimLayerToGroup(self, geomType, layerName, streamBranch, newFields, geomList):
+        addBimMainThread(self, geomType, layerName, streamBranch, newFields, geomList)
+
+    def addCadLayerToGroup(self, geomType, newName, streamBranch, newFields, geomList ):
+        addCadMainThread(self, geomType, newName, streamBranch, newFields, geomList )
+
+    def addRasterLayerToGroup(self, layerName, newName, streamBranch, layer):
+        addRasterMainThread(self, layerName, newName, streamBranch, layer)
+        

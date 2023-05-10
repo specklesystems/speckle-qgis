@@ -25,13 +25,15 @@
 import inspect
 import os
 import threading
-from plugin_utils.helpers import splitTextIntoLines
-from speckle.converter.layers import getLayers
+from speckle.automation.mapping_send import MappingSendDialog
+from speckle.converter.layers import getAllLayers, getLayers
+from speckle.DataStorage import DataStorage
+from speckle.converter.layers.Layer import RasterLayer, VectorLayer
 from ui.LogWidget import LogWidget
 from ui.logger import logToUser
 #from speckle_qgis import SpeckleQGIS
 import ui.speckle_qgis_dialog
-from qgis.core import Qgis, QgsProject,QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
+from qgis.core import Qgis, QgsProject, QgsFields, QgsSingleSymbolRenderer, QgsLayerTreeGroup, QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
 from specklepy.logging.exceptions import (SpeckleException, GraphQLException)
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt import QtGui
@@ -89,9 +91,17 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     layersWidget: QtWidgets.QListWidget
     saveLayerSelection: QtWidgets.QPushButton
     runButton: QtWidgets.QPushButton
+    setMapping: QtWidgets.QPushButton
     experimental: QCheckBox
     msgLog: LogWidget = None
-    
+    dataStorage: DataStorage = None
+    mappingSendDialog = None 
+
+    addLayerToGroup = pyqtSignal(str, str, str, str, VectorLayer, QgsFields, list)
+    addBimLayerToGroup = pyqtSignal(str, str, str, QgsFields, list)
+    addCadLayerToGroup = pyqtSignal(str, str, str, QgsFields, list)
+    addRasterLayerToGroup = pyqtSignal(str, str, str, RasterLayer)
+
     def __init__(self, parent=None):
         """Constructor."""
         super(SpeckleQGISDialog, self).__init__(parent)
@@ -158,15 +168,58 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
         box.layout.setContentsMargins(65, 0, 0, 0)
         self.formLayout.insertRow(10,box)
         self.experimental = btn
+        self.experimental.setChecked(True)
 
+
+    def runSetup(self, plugin):
+        
+        self.addDataStorage(plugin)
+        self.addLabel(plugin)
+        self.addProps(plugin)
+        self.createMappingDialog()
+
+    def addProps(self, plugin):
+        
         # add widgets that will only show on event trigger 
         logWidget = LogWidget(parent=self)
         self.layout().addWidget(logWidget)
         self.msgLog = logWidget 
-    
-    def addProps(self, plugin):
-        self.msgLog.active_account = plugin.active_account
+        self.msgLog.dockwidget = self 
+        
+        self.msgLog.active_account = plugin.dataStorage.active_account
         self.msgLog.speckle_version = plugin.version
+
+        # add row with "experimental" checkbox 
+        box = QWidget()
+        box.layout = QHBoxLayout(box)
+        btn = QtWidgets.QPushButton("Apply transformations on Send")
+        btn.setFlat(True)
+        btn.setStyleSheet("QPushButton {text-align: right;} QPushButton:hover { " + f"{COLOR}" + " }")
+        box.layout.addWidget(btn)
+        box.layout.setContentsMargins(65, 0, 0, 0)
+        self.formLayout.insertRow(9,box)
+        self.setMapping = btn
+    
+    def addDataStorage(self, plugin):
+        self.dataStorage = plugin.dataStorage
+        self.dataStorage.project = plugin.qgis_project
+        root = self.dataStorage.project.layerTreeRoot()
+        self.dataStorage.all_layers = getAllLayers(root)
+    
+    def createMappingDialog(self):
+        root = self.dataStorage.project.layerTreeRoot()
+        self.dataStorage.all_layers = getAllLayers(root)
+
+        if self.mappingSendDialog is None:
+            self.mappingSendDialog = MappingSendDialog(None)
+            self.mappingSendDialog.dataStorage = self.dataStorage
+
+        self.mappingSendDialog.runSetup()
+
+    def showMappingDialog(self):
+        # updata DataStorage
+        self.mappingSendDialog.runSetup()
+        self.mappingSendDialog.show()
 
     def addLabel(self, plugin): 
         try:
@@ -282,6 +335,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             self.runButton.clicked.connect(plugin.onRunButtonClicked)
 
             self.msgLog.sendMessage.connect(self.addMsg)
+            self.setMapping.clicked.connect(self.showMappingDialog)
 
             self.streams_add_button.clicked.connect( plugin.onStreamAddButtonClicked )
             self.reloadButton.clicked.connect(lambda: self.refreshClicked(plugin))
@@ -304,7 +358,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def refreshClicked(self, plugin):
         try:
             try:
-                metrics.track("Connector Action", plugin.active_account, {"name": "Refresh", "connector_version": str(plugin.version)})
+                metrics.track("Connector Action", plugin.dataStorage.active_account, {"name": "Refresh", "connector_version": str(plugin.version)})
             except Exception as e:
                 logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
             
@@ -316,7 +370,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def closeClicked(self, plugin):
         try:
             try:
-                metrics.track("Connector Action", plugin.active_account, {"name": "Close", "connector_version": str(plugin.version)})
+                metrics.track("Connector Action", plugin.dataStorage.active_account, {"name": "Close", "connector_version": str(plugin.version)})
             except Exception as e:
                 logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
             
@@ -343,10 +397,12 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
             # enable sections only if in "saved streams" mode 
             if self.layerSendModeDropdown.currentIndex() == 1: self.layersWidget.setEnabled(True)
-            if self.layerSendModeDropdown.currentIndex() == 1: self.saveLayerSelection.setEnabled(True)
+            #if self.layerSendModeDropdown.currentIndex() == 1: 
+            self.saveLayerSelection.setEnabled(True)
             self.commitDropdown.setEnabled(False)
             self.messageInput.setEnabled(True)
             self.layerSendModeDropdown.setEnabled(True)
+            self.setMapping.setEnabled(True)
 
             self.runBtnStatusChanged(plugin)
             return
@@ -375,6 +431,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             self.messageInput.setEnabled(False)
             self.saveLayerSelection.setEnabled(False)
             self.layerSendModeDropdown.setEnabled(False)
+            self.setMapping.setEnabled(False)
 
             self.runBtnStatusChanged(plugin)
             return
@@ -394,6 +451,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def populateUI(self, plugin):
         try:
+
             self.populateLayerSendModeDropdown()
             self.populateLayerDropdown(plugin, False)
             #items = [self.layersWidget.item(x).text() for x in range(self.layersWidget.count())]
@@ -402,6 +460,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
             self.runBtnStatusChanged(plugin)
             self.runButton.setEnabled(False) 
+            
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
             return
@@ -420,7 +479,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             if plugin.btnAction == 0: # on send 
                 if branchStr == "": 
                     self.runButton.setEnabled(False) 
-                elif branchStr != "" and self.layerSendModeDropdown.currentIndex() == 1 and len(plugin.current_layers) == 0: # saved layers; but the list is empty 
+                elif self.layerSendModeDropdown.currentIndex() == 1 and len(plugin.dataStorage.current_layers) == 0: # saved layers; but the list is empty 
                     self.runButton.setEnabled(False)
                 else:
                     self.runButton.setEnabled(True)
@@ -432,13 +491,14 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     def layerSendModeChange(self, plugin, runMode = None):
         try:
             if self.layerSendModeDropdown.currentIndex() == 0 or runMode == 1: # by manual selection OR receive mode
-                self.current_layers = []
+                #self.current_layers = []
+                #self.dataStorage.current_layers = []
                 self.layersWidget.setEnabled(False)
-                self.saveLayerSelection.setEnabled(False)
+                #self.saveLayerSelection.setEnabled(False)
                 
             elif self.layerSendModeDropdown.currentIndex() == 1 and (runMode == 0 or runMode is None): # by saved AND when Send mode
                 self.layersWidget.setEnabled(True)
-                self.saveLayerSelection.setEnabled(True)
+                #self.saveLayerSelection.setEnabled(True)
             
             branchStr = str(self.streamBranchDropdown.currentText())
             if self.layerSendModeDropdown.currentIndex() == 0:
@@ -463,7 +523,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             if bySelection is False: # read from project data 
 
                 all_layers_ids = [l.id() for l in project.mapLayers().values()]
-                for layer_tuple in plugin.current_layers:
+                for layer_tuple in plugin.dataStorage.current_layers:
                     if layer_tuple[1].id() in all_layers_ids: 
                         listItem = self.fillLayerList(layer_tuple[1]) 
                         self.layersWidget.addItem(listItem)
@@ -471,10 +531,12 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             else: # read selected layers 
                 # Fetch selected layers
 
-                plugin.current_layers = []
+                #plugin.current_layers = []
+                self.dataStorage.current_layers.clear() 
                 layers = getLayers(plugin, bySelection) # List[QgsLayerTreeNode]
                 for i, layer in enumerate(layers):
-                    plugin.current_layers.append((layer.name(), layer)) 
+                    #plugin.current_layers.append((layer.name(), layer)) 
+                    self.dataStorage.current_layers.append((layer.name(), layer)) 
                     listItem = self.fillLayerList(layer)
                     self.layersWidget.addItem(listItem)
 
@@ -626,6 +688,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
                         branch = b
                         break
             print(branch)
+            if len(branch.commits.items)>0:
+                self.commitDropdown.addItem("Latest commit from this branch")
             self.commitDropdown.addItems(
                 [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]
             )
