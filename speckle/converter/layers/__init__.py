@@ -27,7 +27,7 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, trySaveCRS, validateAttributeName
+from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, tryCreateGroup, trySaveCRS, validateAttributeName
 from speckle.logging import logger
 from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
 
@@ -226,26 +226,13 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
             # Handle this case
             return
         
-        vl = None 
-        if plugin.dataStorage.all_layers is not None: 
-            if len(plugin.dataStorage.all_layers) == 0:
-                vl = QgsVectorLayer("Point?crs=EPSG:4326", "deleteLayer", "memory") # do something to distinguish: stream_id_latest_name
-                crs = QgsCoordinateReferenceSystem(4326)
-                vl.setCrs(crs)
-                project.addMapLayer(vl, True)
-
-
         if layer.type.endswith("VectorLayer"):
-            layer =  vectorLayerToNative(layer, streamBranch, plugin)
-            try: project.removeMapLayer(vl)
-            except: pass
-            return layer
+            vectorLayerToNative(layer, streamBranch, plugin)
+            return 
         
         elif layer.type.endswith("RasterLayer"):
-            layer =  rasterLayerToNative(layer, streamBranch, plugin)
-            try: project.removeMapLayer(vl)
-            except: pass
-            return layer
+            rasterLayerToNative(layer, streamBranch, plugin)
+            return 
         
         return None
     except Exception as e:
@@ -304,9 +291,52 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         layerName = layerName + "_" + geomType
         print(layerName)
 
+        #find ID of the layer with a matching name in the "latest" group 
+        #newName = f'{streamBranch}_{layerName}'
         
-        #path = project.absolutePath()
-        #if(path == ""):
+        if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
+        
+        newFields = getLayerAttributes(geomList)
+        print("___________Layer fields_____________")
+        print(newFields.toList())
+                
+        plugin.dockwidget.addBimLayerToGroup.emit(geomType, layerName, streamBranch, newFields, geomList)
+        return 
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        return  
+
+
+def addBimMainThread(self, geomType, layerName, streamBranch, newFields, geomList):
+        
+        project: QgsProject = self.dataStorage.project
+
+        
+        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
+        newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
+
+
+        ###########################################
+        dummy = None 
+        root = project.layerTreeRoot()
+        self.dataStorage.all_layers = getAllLayers(root)
+        if self.dataStorage.all_layers is not None: 
+            if len(self.dataStorage.all_layers) == 0:
+                dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
+                crs = QgsCoordinateReferenceSystem(4326)
+                dummy.setCrs(crs)
+                project.addMapLayer(dummy, True)
+        #################################################
+
+        
+        crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+        self.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
+        if self.dataStorage.currentUnits is None or self.dataStorage.currentUnits == 'degrees': 
+            self.dataStorage.currentUnits = 'm'
+
+        if crs.isGeographic is True: 
+            logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
+
         p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
         findOrCreatePath(p)
         path = p
@@ -317,63 +347,18 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         findOrCreatePath(path_bim)
         print(path_bim)
 
-
-        crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-        plugin.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
-        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
-            plugin.dataStorage.currentUnits = 'm'
-
-        #authid = trySaveCRS(crs, streamBranch)
-
-        if crs.isGeographic is True: 
-            logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
-
-        #CREATE A GROUP "received blabla" with sublayers
-        newGroupName = f'{streamBranch}'
-        root = project.layerTreeRoot()
-        layerGroup = QgsLayerTreeGroup(newGroupName)
-
-        if root.findGroup(newGroupName) is not None:
-            layerGroup = root.findGroup(newGroupName) # -> QgsLayerTreeNode
-        else:
-            layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
-        layerGroup.setExpanded(True)
-        layerGroup.setItemVisibilityChecked(True)
-
-        #find ID of the layer with a matching name in the "latest" group 
-        #newName = f'{streamBranch}_{layerName}'
-        
-        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
-        newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
-
-        if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
-
-        #crsid = crs.authid()
-        
         shp = writeMeshToShp(geomList, path_bim + newName_shp)
         if shp is None: return 
         print("____ meshes saved___")
         print(shp)
 
-        
-        print(geomType)
         vl_shp = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
         vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid(), newName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
-        #try: 
-        #    vl_shp.deleteAttributes(vl.fields()) #if DisplayMesh exists 
-        #    vl_shp.commitChanges()
-        #except: pass 
-        #print(vl_shp.fields().names())
 
         pr = vl.dataProvider()
         vl.startEditing()
-        #print(vl.crs())
-
-        newFields = getLayerAttributes(geomList)
-        print("___________Layer fields_____________")
-        print(newFields.toList())
 
         # add Layer attribute fields
         pr.addAttributes(newFields)
@@ -409,6 +394,8 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         
         vl.updateExtents()
         vl.commitChanges()
+        
+        layerGroup = tryCreateGroup(project, streamBranch)
         layerGroup.addLayer(vl)
         print(vl)
 
@@ -450,10 +437,10 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         try: vl.setRenderer(rendererNew)
         except: pass
 
-        return vl
-    except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
+        
+        try: project.removeMapLayer(dummy)
+        except: pass
+        
 
 def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str, plugin) -> List[QgsVectorLayer or None]:
     print("02_________ CAD vector layer to native_____")
@@ -502,47 +489,56 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
         layerName = layerName + "_" + geomType
         print(layerName)
+
+        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
+
+        if geomType == "Points": geomType = "PointZ"
+        elif geomType == "Polylines": geomType = "LineStringZ"
+
+        
+        newFields = getLayerAttributes(geomList)
+        print(newFields.toList())
+        print(geomList)
+        
+        plugin.dockwidget.addCadLayerToGroup.emit(geomType, newName, streamBranch, newFields, geomList)
+        return 
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        return  
+    
+def addCadMainThread(self, geomType, newName, streamBranch, newFields, geomList ):
+        
+        project: QgsProject = self.dataStorage.project
+
+        ###########################################
+        dummy = None 
+        root = project.layerTreeRoot()
+        self.dataStorage.all_layers = getAllLayers(root)
+        if self.dataStorage.all_layers is not None: 
+            if len(self.dataStorage.all_layers) == 0:
+                dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
+                crs = QgsCoordinateReferenceSystem(4326)
+                dummy.setCrs(crs)
+                project.addMapLayer(dummy, True)
+        #################################################
+
         crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-        plugin.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
-        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
-            plugin.dataStorage.currentUnits = 'm'
+        self.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
+        if self.dataStorage.currentUnits is None or self.dataStorage.currentUnits == 'degrees': 
+            self.dataStorage.currentUnits = 'm'
         #authid = trySaveCRS(crs, streamBranch)
 
         if crs.isGeographic is True: 
             logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
 
-        #CREATE A GROUP "received blabla" with sublayers
-        newGroupName = f'{streamBranch}'
-        root = project.layerTreeRoot()
-        layerGroup = QgsLayerTreeGroup(newGroupName)
-
-        if root.findGroup(newGroupName) is not None:
-            layerGroup = root.findGroup(newGroupName) # -> QgsLayerTreeNode
-        else:
-            layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
-        layerGroup.setExpanded(True)
-        layerGroup.setItemVisibilityChecked(True)
-
-        #find ID of the layer with a matching name in the "latest" group 
-        #newName = f'{streamBranch}_{layerName}'
-        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
-
-
-        #or create one from scratch
-        #crsid = crs.authid()
-        if geomType == "Points": geomType = "PointZ"
-        elif geomType == "Polylines": geomType = "LineStringZ"
+        
         vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid() , newName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
 
         pr = vl.dataProvider()
         vl.startEditing()
-        #print(vl.crs())
-
-        newFields = getLayerAttributes(geomList)
-        print(newFields.toList())
-        print(geomList)
+        
         
         # create list of Features (fets) and list of Layer fields (fields)
         attrs = QgsFields()
@@ -550,15 +546,13 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         fetIds = []
         fetColors = []
         for f in geomList[:]: 
-            new_feat = cadFeatureToNative(f, newFields, plugin.dataStorage)
+            new_feat = cadFeatureToNative(f, newFields, self.dataStorage)
             # update attrs for the next feature (if more fields were added from previous feature)
 
-            print("________cad feature to add")
-            #print(new_feat)
+            print("________cad feature to add") 
             if new_feat is not None and new_feat != "": 
                 fets.append(new_feat)
                 for a in newFields.toList(): 
-                    #if a not in attrs.toList(): 
                     attrs.append(a) 
                 
                 pr.addAttributes(newFields) # add new attributes from the current object
@@ -566,7 +560,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
                 fetColors = findFeatColors(fetColors, f)
             else:
                 logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-            #else: geomList.remove(f)
+
         
         # add Layer attribute fields
         pr.addAttributes(newFields)
@@ -576,8 +570,8 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
+        layerGroup = tryCreateGroup(project, streamBranch)
         layerGroup.addLayer(vl)
-        print(vl)
 
         ################################### RENDERER ###########################################
         # only set up renderer if the layer is just created
@@ -618,35 +612,14 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
             vl.loadNamedStyle(renderer3d)
             vl.triggerRepaint()
         except: pass 
-        
-        return vl
-    except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
+
+        try: project.removeMapLayer(dummy)
+        except: pass
 
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
     try:
         project: QgsProject = plugin.qgis_project
         layerName = removeSpecialCharacters(layer.name) 
-
-        vl = None
-        crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
-        srsid = trySaveCRS(crs, streamBranch)
-        crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
-        authid = crs_new.authid()
-
-        #CREATE A GROUP "received blabla" with sublayers
-        newGroupName = f'{streamBranch}'
-        root = project.layerTreeRoot()
-        layerGroup = QgsLayerTreeGroup(newGroupName)
-
-        if root.findGroup(newGroupName) is not None:
-            layerGroup = root.findGroup(newGroupName)
-        else:
-            layerGroup = root.insertGroup(0,newGroupName)
-            #root.addChildNode(layerGroup)
-        layerGroup.setExpanded(True)
-        layerGroup.setItemVisibilityChecked(True)
 
         #find ID of the layer with a matching name in the "latest" group 
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
@@ -659,8 +632,44 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         elif geomType =="Multipoint": geomType = "Point"
         elif geomType == 'MultiPatch': geomType = "Polygon"
         
-        #crsid = crs.authid()
-        vl = QgsVectorLayer(geomType+ "?crs=" + authid, newName, "memory") # do something to distinguish: stream_id_latest_name
+        fets = []
+        newFields = getLayerAttributes(layer.features)
+        for f in layer.features: 
+            new_feat = featureToNative(f, newFields, plugin.dataStorage)
+            if new_feat is not None and new_feat != "": fets.append(new_feat)
+            else:
+                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
+        
+        plugin.dockwidget.addLayerToGroup.emit(geomType, newName, streamBranch, layer.crs.wkt, layer, newFields, fets)
+        return 
+    
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        return  
+    
+def addVectorMainThread(self, geomType, newName, streamBranch, wkt, layer, newFields, fets):
+
+        project: QgsProject = self.dataStorage.project
+
+        ###########################################
+        dummy = None 
+        root = project.layerTreeRoot()
+        self.dataStorage.all_layers = getAllLayers(root)
+        if self.dataStorage.all_layers is not None: 
+            if len(self.dataStorage.all_layers) == 0:
+                dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
+                crs = QgsCoordinateReferenceSystem(4326)
+                dummy.setCrs(crs)
+                project.addMapLayer(dummy, True)
+        #################################################
+
+        crs = QgsCoordinateReferenceSystem.fromWkt(wkt) #moved up, because CRS of existing layer needs to be rewritten
+        srsid = trySaveCRS(crs, streamBranch)
+        crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
+        authid = crs_new.authid()
+        
+        vl = None
+        vl = QgsVectorLayer(geomType + "?crs=" + authid, newName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
 
@@ -669,14 +678,6 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         vl.startEditing()
         #print(vl.crs())
 
-        fets = []
-        newFields = getLayerAttributes(layer.features)
-        for f in layer.features: 
-            new_feat = featureToNative(f, newFields, plugin.dataStorage)
-            if new_feat is not None and new_feat != "": fets.append(new_feat)
-            else:
-                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-
         # add Layer attribute fields
         pr.addAttributes(newFields.toList())
         vl.updateFields()
@@ -684,14 +685,18 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
+        
+        layerGroup = tryCreateGroup(project, streamBranch)
+
         layerGroup.addLayer(vl)
-        #print(vl.sourceCrs().toWkt())
 
         rendererNew = vectorRendererToNative(layer, newFields)
         if rendererNew is None:
             symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
             rendererNew = QgsSingleSymbolRenderer(symbol)
-
+        
+        
+        #time.sleep(3)
         try: vl.setRenderer(rendererNew)
         except: pass
 
@@ -706,12 +711,11 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
             vl.loadNamedStyle(renderer3d)
             vl.triggerRepaint()
         except: pass 
-        
-        return vl
-    except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
 
+        try: project.removeMapLayer(dummy)
+        except: pass
+
+    
 def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
     try:
         project = plugin.qgis_project
@@ -719,6 +723,34 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
 
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
+        plugin.dockwidget.addRasterLayerToGroup.emit(layerName, newName, streamBranch, layer)
+        
+        return 
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        return  
+
+def addRasterMainThread(self, layerName, newName, streamBranch, layer):
+    
+        project: QgsProject = self.dataStorage.project
+
+        ###########################################
+        dummy = None 
+        root = project.layerTreeRoot()
+        self.dataStorage.all_layers = getAllLayers(root)
+        if self.dataStorage.all_layers is not None: 
+            if len(self.dataStorage.all_layers) == 0:
+                dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
+                crs = QgsCoordinateReferenceSystem(4326)
+                dummy.setCrs(crs)
+                project.addMapLayer(dummy, True)
+        #################################################
+
+        ######################## testing, only for receiving layers #################
+        source_folder = project.absolutePath()
+
+        feat = layer.features[0]
+        
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
         # try, in case of older version "rasterCrs" will not exist 
@@ -734,50 +766,24 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
         authid = crs_new.authid()
 
-        #CREATE A GROUP "received blabla" with sublayers
-        newGroupName = f'{streamBranch}'
-        root = project.layerTreeRoot()
-        layerGroup = QgsLayerTreeGroup(newGroupName)
-
-        if root.findGroup(newGroupName) is not None:
-            layerGroup = root.findGroup(newGroupName)
-        else:
-            layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
-        layerGroup.setExpanded(True)
-        layerGroup.setItemVisibilityChecked(True)
-
-        #find ID of the layer with a matching name in the "latest" group 
-
-        ######################## testing, only for receiving layers #################
-        source_folder = project.absolutePath()
-
-        if(source_folder == ""):
-            p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
-            findOrCreatePath(p)
-            source_folder = p
-            logToUser(f"Project directory not found. Raster layers saved to \"{p}\".", level = 1, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-
-        projectCRS = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-        #crsid = crsRaster.authid()
-        #try: epsg = int(crsid.split(":")[1]) 
-        #except: 
-        #    epsg = int(str(projectCRS).split(":")[len(str(projectCRS).split(":"))-1].split(">")[0])
-
-        feat = layer.features[0]
         try:
             bandNames = feat.band_names
         except: 
             bandNames = feat["Band names"]
         bandValues = [feat["@(10000)" + name + "_values"] for name in bandNames]
 
-        ###########################################################################
-
-        ## https://opensourceoptions.com/blog/pyqgis-create-raster/
-        # creating file in temporary folder: https://stackoverflow.com/questions/56038742/creating-in-memory-qgsrasterlayer-from-the-rasterization-of-a-qgsvectorlayer-wit
         
+
+        if(source_folder == ""):
+            p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
+            findOrCreatePath(p)
+            source_folder = p
+            logToUser(f"Project directory not found. Raster layers will be saved to \"{p}\".", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
+
         path_fn = source_folder + "/Layers_Speckle/raster_layers/" + streamBranch+ "/" 
         if not os.path.exists(path_fn): os.makedirs(path_fn)
 
+        
         fn = path_fn + layerName + ".tif" #arcpy.env.workspace + "\\" #
         #fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
         driver = gdal.GetDriverByName('GTiff')
@@ -830,7 +836,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
                 displayVal = feat["displayValue"]
             if displayVal is not None:
                 if isinstance(displayVal[0], Point): 
-                    pt = pointToNative(displayVal[0], plugin.dataStorage)
+                    pt = pointToNative(displayVal[0], self.dataStorage)
                 if isinstance(displayVal[0], Mesh): 
                     pt = QgsPoint(displayVal[0].vertices[0], displayVal[0].vertices[1])
         if pt is None:
@@ -843,18 +849,16 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
             ds.SetGeoTransform([pt.x(), feat.x_resolution, 0, pt.y(), 0, feat.y_resolution])
         except:
             ds.SetGeoTransform([pt.x(), feat["X resolution"], 0, pt.y(), 0, feat["Y resolution"]])
+        
         # create a spatial reference object
-        srs = osr.SpatialReference()
-        #  For the Universal Transverse Mercator the SetUTM(Zone, North=1 or South=2)
-        #srs.ImportFromWkt(crsRasterWkt)
-        #srs.ImportFromEPSG(epsg) # from https://gis.stackexchange.com/questions/34082/creating-raster-layer-from-numpy-array-using-pyqgis
-        #print(srs.ExportToWkt())
         ds.SetProjection(crsRasterWkt)
         # close the rater datasource by setting it equal to None
         ds = None
 
         raster_layer = QgsRasterLayer(fn, newName, 'gdal')
         project.addMapLayer(raster_layer, False)
+        
+        layerGroup = tryCreateGroup(project, streamBranch)
         layerGroup.addLayer(raster_layer)
 
         dataProvider = raster_layer.dataProvider()
@@ -863,7 +867,6 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
         try: raster_layer.setRenderer(rendererNew)
         except: pass
 
-        return raster_layer
-    except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
+
+        try: project.removeMapLayer(dummy)
+        except: pass

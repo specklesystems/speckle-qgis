@@ -60,7 +60,7 @@ def callback(base: Base, streamBranch: str, plugin) -> bool:
             #if isinstance(base, Layer):
             #    logger.log(f"Class \"Layer\" will be deprecated in future updates in favour of \"VectorLayer\" or \"RasterLayer\"", Qgis.Warning) 
             layerToNative(base, streamBranch, plugin)
-            time.sleep(0.3)
+            #time.sleep(0.3)
             #if layer is not None:
             #    .logToUser("Layer created: " + layer.name(), Qgis.Info)
         else:

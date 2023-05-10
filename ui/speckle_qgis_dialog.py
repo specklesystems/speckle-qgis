@@ -28,11 +28,12 @@ import threading
 from speckle.automation.mapping_send import MappingSendDialog
 from speckle.converter.layers import getAllLayers, getLayers
 from speckle.DataStorage import DataStorage
+from speckle.converter.layers.Layer import RasterLayer, VectorLayer
 from ui.LogWidget import LogWidget
 from ui.logger import logToUser
 #from speckle_qgis import SpeckleQGIS
 import ui.speckle_qgis_dialog
-from qgis.core import Qgis, QgsProject,QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
+from qgis.core import Qgis, QgsProject, QgsFields, QgsSingleSymbolRenderer, QgsLayerTreeGroup, QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
 from specklepy.logging.exceptions import (SpeckleException, GraphQLException)
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt import QtGui
@@ -95,7 +96,12 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
     msgLog: LogWidget = None
     dataStorage: DataStorage = None
     mappingSendDialog = None 
-    
+
+    addLayerToGroup = pyqtSignal(str, str, str, str, VectorLayer, QgsFields, list)
+    addBimLayerToGroup = pyqtSignal(str, str, str, QgsFields, list)
+    addCadLayerToGroup = pyqtSignal(str, str, str, QgsFields, list)
+    addRasterLayerToGroup = pyqtSignal(str, str, str, RasterLayer)
+
     def __init__(self, parent=None):
         """Constructor."""
         super(SpeckleQGISDialog, self).__init__(parent)

@@ -205,10 +205,6 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             reprojectedPt = rasterOriginPoint
             if selectedLayer.crs()!= projectCRS: 
                 reprojectedPt = transform.transform(project, rasterOriginPoint, selectedLayer.crs(), projectCRS)
-            #pt = QgsGeometry.fromPointXY(reprojectedPt)
-            #geom = convertToSpeckle(pt, selectedLayer, dataStorage)
-            #if (geom != None):
-            #    b['displayValue'] = [geom]
         except Exception as error:
             #logToUser("Error converting point geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
             logToUser("Error converting point geometry: " + str(error), level = 2)
@@ -505,13 +501,6 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 
         mesh = constructMeshFromRaster(vertices, faces, colors, dataStorage)
         b.displayValue = [ mesh ]
-        
-        #if terrain_transform is True and textureLayer is not None: # hide DEM elevation if texture layer will repeat the shape 
-        #    b['displayValue'] = []
-        #elif terrain_transform is True or texture_transform is True: # don't included start pt for extruded terrain 
-        #    b['displayValue'] = [ mesh ]
-        #else: 
-        #    b['displayValue'] = [ mesh ]
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

@@ -20,16 +20,27 @@ import sys
 import time 
 from typing import Any, Callable, List, Optional, Tuple, Union
 
+from datetime import datetime
+
 import threading
-from plugin_utils.helpers import getAppName, removeSpecialCharacters
+from plugin_utils.helpers import findFeatColors, findOrCreatePath, getAppName, removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
+                       QgsLayerTreeGroup, QgsCoordinateReferenceSystem,
                        QgsRasterLayer, QgsVectorLayer,
-                       QgsUnitTypes)
+                       QgsUnitTypes, QgsWkbTypes,
+                       QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsLayerTreeLayer,
+                       QgsFields, 
+                       QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
+                       QgsRendererCategory,
+                       QgsSymbol)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QApplication, QAction, QDockWidget, QVBoxLayout, QWidget
 from qgis.PyQt import QtWidgets
 from qgis import PyQt
+
+from PyQt5.QtGui import QColor
+
 import sip
 
 from specklepy.api import operations
@@ -48,9 +59,13 @@ import webbrowser
 # Initialize Qt resources from file resources.py
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
+from speckle.converter.geometry.mesh import writeMeshToShp
+from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.Layer import Layer, VectorLayer, RasterLayer
-from speckle.converter.layers import convertSelectedLayers, getAllLayers, getLayers
-from speckle.converter.layers.utils import findAndClearLayerGroup
+from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getLayers
+from speckle.converter.layers.feature import bimFeatureToNative, cadFeatureToNative
+from speckle.converter.layers.symbology import rasterRendererToNative, vectorRendererToNative
+from speckle.converter.layers.utils import colorFromSpeckle, findAndClearLayerGroup, tryCreateGroup, trySaveCRS
 from speckle.DataStorage import DataStorage
 
 from speckle.logging import logger
@@ -579,7 +594,7 @@ class SpeckleQGIS:
             
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
             logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
-            return 
+            #return 
             
         except Exception as e:
             #if self.dockwidget.experimental.isChecked(): time.sleep(1)
@@ -657,7 +672,13 @@ class SpeckleQGIS:
                 self.dockwidget.runSetup(self)
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
-            
+                
+                self.dockwidget.addLayerToGroup.connect(self.addLayerToGroup)
+                self.dockwidget.addBimLayerToGroup.connect(self.addBimLayerToGroup)
+                self.dockwidget.addCadLayerToGroup.connect(self.addCadLayerToGroup)
+                self.dockwidget.addRasterLayerToGroup.connect(self.addRasterLayerToGroup)
+                
+
             else: 
                 self.dockwidget.addDataStorage(self)
 
@@ -792,3 +813,16 @@ class SpeckleQGIS:
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
+     
+    def addLayerToGroup(self, geomType, newName, streamBranch, wkt, layer, newFields, fets):
+        addVectorMainThread(self, geomType, newName, streamBranch, wkt, layer, newFields, fets)
+    
+    def addBimLayerToGroup(self, geomType, layerName, streamBranch, newFields, geomList):
+        addBimMainThread(self, geomType, layerName, streamBranch, newFields, geomList)
+
+    def addCadLayerToGroup(self, geomType, newName, streamBranch, newFields, geomList ):
+        addCadMainThread(self, geomType, newName, streamBranch, newFields, geomList )
+
+    def addRasterLayerToGroup(self, layerName, newName, streamBranch, layer):
+        addRasterMainThread(self, layerName, newName, streamBranch, layer)
+        

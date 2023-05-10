@@ -1,6 +1,9 @@
 import inspect
 from PyQt5.QtCore import QVariant, QDate, QDateTime
-from qgis._core import Qgis, QgsProject, QgsCoordinateReferenceSystem, QgsLayerTreeLayer, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, QgsField, QgsFields
+from qgis._core import ( Qgis, QgsProject, 
+                        QgsCoordinateReferenceSystem, QgsLayerTreeLayer, 
+                        QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, 
+                        QgsField, QgsFields, QgsLayerTreeGroup )
 from speckle.logging import logger
 from speckle.converter.layers import Layer
 from typing import Any, List, Tuple, Union
@@ -578,4 +581,19 @@ def moveVerticallySegment(poly, height):
                 poly.value[i] += float(height) 
     
     return poly 
+
+
+def tryCreateGroup(project, streamBranch):
+    #CREATE A GROUP "received blabla" with sublayers
+    newGroupName = f'{streamBranch}'
+    root = project.layerTreeRoot()
+    layerGroup = QgsLayerTreeGroup(newGroupName)
+
+    if root.findGroup(newGroupName) is not None:
+        layerGroup = root.findGroup(newGroupName) # -> QgsLayerTreeNode
+    else:
+        layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
+    layerGroup.setExpanded(True)
+    layerGroup.setItemVisibilityChecked(True)
+    return layerGroup
 
