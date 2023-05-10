@@ -343,20 +343,57 @@ class SpeckleQGIS:
                 except: self.onSend(message)
         # receive 
         elif self.btnAction == 1: 
-            
+            ################### repeated 
+            try:
+                if not self.dockwidget: return
+                # Check if stream id/url is empty
+                if self.active_stream is None:
+                    logToUser("Please select a stream from the list", level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                    return
+                
+                # Get the stream wrapper
+                streamWrapper = self.active_stream[0]
+                streamId = streamWrapper.stream_id
+                client = streamWrapper.get_client()
+            except Exception as e:
+                logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                return
+
+            # Ensure the stream actually exists
+            try:
+                stream = validateStream(streamWrapper)
+                if stream == None: 
+                    return
+                
+                branchName = str(self.dockwidget.streamBranchDropdown.currentText())
+                branch = validateBranch(stream, branchName, True)
+                if branch == None: 
+                    return
+
+                commitId = str(self.dockwidget.commitDropdown.currentText())
+                commit = validateCommit(branch, commitId)
+                if commit == None: 
+                    return
+
+                # If group exists, remove layers inside  
+                newGroupName = streamId + "_" + branch.name + "_" + commit.id
+                newGroupName = removeSpecialCharacters(newGroupName)
+                findAndClearLayerGroup(self.qgis_project, newGroupName, commit.id)
+
+            except Exception as e:
+                logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
+                return
+            ########################################### end of repeated 
+
             if not self.dockwidget.experimental.isChecked(): 
                 
                 try:
                     metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": False, "connector_version": str(self.version)})
                 except Exception as e:
                     logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
-                
                 self.onReceive()
             else:
                 try:
-                    #if threading.active_count() > self.theads_total:
-                    #    logToUser("Please wait for other Send/Receive operations to finish", level = 1, plugin=self.dockwidget)
-                    #    return
                     streamWrapper = self.active_stream[0]
                     client = streamWrapper.get_client()
                     self.dataStorage.active_account = client.account
@@ -364,25 +401,9 @@ class SpeckleQGIS:
                         metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
                     except Exception as e:
                         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
-                    #with ThreadPoolExecutor(max_workers=1) as executor:
-                    #    future = executor.submit(self.onReceive)
-                    #    print("RESULT")
-                    #    print(future.result())
-                    #    print("FINISHED")
+
                     t = threading.Thread(target=self.onReceive, args=())
                     t.start()
-                    r'''
-                    def _targetReceive():
-                        try:
-                            t.result = self.onReceive()
-                        except Exception as e:
-                            print(e)
-                            t.failure = e
-
-                    t = threading.Thread(target=_targetReceive, args=())
-                    #t.daemon = True
-                    t.start()
-                    '''
                 except: self.onReceive()
 
     def onSend(self, message: str):
@@ -507,6 +528,7 @@ class SpeckleQGIS:
     def onReceive(self):
         """Handles action when the Receive button is pressed"""
         print("Receive")
+
         try:
             if not self.dockwidget: return
             # Check if stream id/url is empty
@@ -541,21 +563,18 @@ class SpeckleQGIS:
         except Exception as e:
             logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
             return
-
         try:
-            transport = validateTransport(client, streamId)
-            if transport == None: 
-                return 
-            
             objId = commit.referencedObject
             if branch.name is None or commit.id is None or objId is None: 
                 return 
 
-            #commitDetailed = client.commit.get(streamId, commit.id)
             app_full = commit.sourceApplication
             app = getAppName(commit.sourceApplication)
             client_id = client.account.userInfo.id
 
+            transport = validateTransport(client, streamId)
+            if transport == None: 
+                return 
             commitObj = operations._untracked_receive(objId, transport, None)
             
             projectCRS = self.qgis_project.crs()
@@ -583,11 +602,11 @@ class SpeckleQGIS:
                     logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD/BIM geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
             #logger.log(f"Succesfully received {objId}")
 
-            # If group exists, remove layers inside  
-            newGroupName = streamId + "_" + branch.name + "_" + commit.id
-            newGroupName = removeSpecialCharacters(newGroupName)
-            findAndClearLayerGroup(self.qgis_project, newGroupName)
-
+        except Exception as e:
+            logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
+            return 
+        
+        try:
             if app.lower() == "qgis" or app.lower() == "arcgis": check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
             else: check: Callable[[Base], bool] = lambda base: (base.speckle_type) # and base.speckle_type.endswith("Base") )
             traverseObject(self, commitObj, callback, check, str(newGroupName))

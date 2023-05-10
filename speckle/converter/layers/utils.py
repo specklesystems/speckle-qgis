@@ -31,7 +31,7 @@ def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = "", comm
                 if isinstance(child, QgsLayerTreeLayer): 
 
                     if isinstance(child.layer(), QgsVectorLayer): 
-                        if "Speckle_ID" in child.layer().fields().names() and child.layer().name().startswith(commit_id): 
+                        if "Speckle_ID" in child.layer().fields().names() and child.layer().name().startswith(commit_id + "_"): 
                             project_gis.removeMapLayer(child.layerId())
                     
                     elif isinstance(child.layer(), QgsRasterLayer): 
