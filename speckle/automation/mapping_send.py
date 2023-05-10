@@ -355,8 +355,13 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
             for l in self.dataStorage.all_layers: 
                 if layerName == l.name():
                     layer = l
-                    if all_l_names.count(layer.name()) > 1:
-                        displayUserMsg(f"Layer name \'{layer.name()}\' is used for more than 1 layer in the project", level=1) 
+                    try:
+                        if all_l_names.count(layer.name()) > 1:
+                            displayUserMsg(f"Layer name \'{layer.name()}\' is used for more than 1 layer in the project", level=1) 
+                            layer = None
+                            break 
+                    except: 
+                        displayUserMsg(f"Layer \'{layer.name()}\' is not found in the project", level=1) 
                         layer = None
                         break 
             
