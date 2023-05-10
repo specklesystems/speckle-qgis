@@ -399,6 +399,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             if self.layerSendModeDropdown.currentIndex() == 1: self.layersWidget.setEnabled(True)
             #if self.layerSendModeDropdown.currentIndex() == 1: 
             self.saveLayerSelection.setEnabled(True)
+            self.commitLabel.setEnabled(False)
             self.commitDropdown.setEnabled(False)
             self.messageInput.setEnabled(True)
             self.layerSendModeDropdown.setEnabled(True)
@@ -426,6 +427,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             self.runButton.setProperty("text", " RECEIVE")
             self.runButton.setIcon(QIcon(ICON_RECEIVE))
             #self.layerSendModeChange(plugin, 1)
+            self.commitLabel.setEnabled(True)
             self.commitDropdown.setEnabled(True)
             self.layersWidget.setEnabled(False)
             self.messageInput.setEnabled(False)
@@ -591,6 +593,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             if plugin.is_setup is False: self.streams_remove_button.setEnabled(plugin.is_setup) 
             self.streamBranchDropdown.setEnabled(plugin.is_setup)
             self.layerSendModeDropdown.setEnabled(plugin.is_setup)
+            self.commitLabel.setEnabled(False)
             self.commitDropdown.setEnabled(False)
             self.show()
         except Exception as e:
