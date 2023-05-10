@@ -66,17 +66,20 @@ def validateCommit(branch: Branch, commitId: str) -> Union[Commit, None]:
         try: commitId = commitId.split(" | ")[0]
         except: logToUser("Commit ID is not valid", level = 2, func = inspect.stack()[0][3])
 
-        for i in branch.commits.items:
-            if i.id == commitId:
-                commit = i
-                break
-        if commit is None:
-            try: 
-                commit = branch.commits.items[0]
-                logToUser("Failed to find a commit. Receiving Latest", level = 1, func = inspect.stack()[0][3])
-            except: 
-                logToUser("Failed to find a commit", level = 2, func = inspect.stack()[0][3])
-                return None
+        if commitId.startswith("Latest") and len(branch.commits.items)>0:
+            commit = branch.commits.items[0]
+        else:
+            for i in branch.commits.items:
+                if i.id == commitId:
+                    commit = i
+                    break
+            if commit is None:
+                try: 
+                    commit = branch.commits.items[0]
+                    logToUser("Failed to find a commit. Receiving Latest", level = 1, func = inspect.stack()[0][3])
+                except: 
+                    logToUser("Failed to find a commit", level = 2, func = inspect.stack()[0][3])
+                    return None
         return commit
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

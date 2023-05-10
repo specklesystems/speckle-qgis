@@ -688,6 +688,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
                         branch = b
                         break
             print(branch)
+            if len(branch.commits.items)>0:
+                self.commitDropdown.addItem("Latest commit from this branch")
             self.commitDropdown.addItems(
                 [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]
             )

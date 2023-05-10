@@ -24,9 +24,9 @@ class DataStorage:
         #self.streamsToFollow.append(("https://speckle.xyz/streams/17b0b76d13/branches/random_tests", "", "09a0f3e41a"))
         self.transformsCatalog = ["Convert Raster Elevation to a 3d Mesh",
                                   "Set Raster as a Texture for the Elevation Layer",
-                                  "Extrude polygons by selected attribute (fill NULL values)",
+                                  "Extrude polygons by selected attribute (randomly populate NULL values)",
                                   "Extrude polygons by selected attribute (ignore NULL values)",
-                                  "Extrude polygons by selected attribute (fill NULL values) and project on 3d elevation",
+                                  "Extrude polygons by selected attribute (randomly populate  NULL values) and project on 3d elevation",
                                   "Extrude polygons by selected attribute (ignore NULL values) and project on 3d elevation"
                                   ] 
         self.savedTransforms = []
