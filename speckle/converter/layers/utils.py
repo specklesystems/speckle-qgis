@@ -445,10 +445,10 @@ def isAppliedLayerTransformByKeywords(layer, keywordsYes: List[str], keywordsNo:
     correctTransform = False  
     if dataStorage.savedTransforms is not None:
         all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
-        all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
+        all_saved_transform_layers = [item.split("  ->  ")[0].split(" (\'")[0] for item in dataStorage.savedTransforms]
 
         for item in dataStorage.savedTransforms:
-            layer_name_recorded = item.split("  ->  ")[0]
+            layer_name_recorded = item.split("  ->  ")[0].split(" (\'")[0]
             transform_name_recorded = item.split("  ->  ")[1]
 
             if layer_name_recorded == layer.name():

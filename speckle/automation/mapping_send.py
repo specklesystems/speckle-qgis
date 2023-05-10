@@ -38,6 +38,8 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     removeTransform: QtWidgets.QPushButton
     transformationsList: QtWidgets.QListWidget
     elevationLayerDropdown: QtWidgets.QComboBox
+    
+    attrDropdown: QtWidgets.QComboBox
 
     dataStorage: Any = None
 
@@ -59,6 +61,8 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         self.addTransform.clicked.connect(self.onAddTransform)
         self.removeTransform.clicked.connect(self.onRemoveTransform)
         self.transformDropdown.currentIndexChanged.connect(self.populateLayersByTransform)
+        self.transformDropdown.currentIndexChanged.connect(self.populateAttributesByLayer)
+        self.layerDropdown.currentIndexChanged.connect(self.populateAttributesByLayer)
         self.dialog_button_box.clicked.connect(self.saveElevationLayer)
         self.dialog_button_box.clicked.connect(self.onOkClicked)
         self.more_info.clicked.connect(self.onMoreInfo)
@@ -77,6 +81,8 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
     def runSetup(self):
         
         #get_transformations(self.dataStorage)
+        self.attr_label.setEnabled(False)
+        self.attrDropdown.setEnabled(False)
 
         self.populateTransforms()
         #self.populateLayers()
@@ -93,7 +99,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         all_l_names = [l.name() for l in self.dataStorage.all_layers]
 
         for item in vals:
-            layer_name = item.split("  ->  ")[0]
+            layer_name = item.split("  ->  ")[0].split(" (\'")[0]
             transform_name = item.split("  ->  ")[1]
 
             layer = None
@@ -129,12 +135,12 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
 
         if len(self.layerDropdown.currentText())>1 and len(self.transformDropdown.currentText())>1:
             listItem = str(self.layerDropdown.currentText()) + "  ->  " + str(self.transformDropdown.currentText())
-            layer_name = listItem.split("  ->  ")[0]
+            layer_name = listItem.split("  ->  ")[0].split(" (\'")[0]
             transform_name = listItem.split("  ->  ")[1].lower()
             
             exists = 0
             for record in self.dataStorage.savedTransforms: 
-                current_layer_name = record.split("  ->  ")[0].lower()
+                current_layer_name = record.split("  ->  ")[0].split(" (\'")[0]
                 current_transf_name = record.split("  ->  ")[1].lower()
                 if layer_name == current_layer_name: # in layers
                     exists +=1
@@ -151,10 +157,9 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                         layer = l
                 if layer is not None:
 
-                    if "attribute" in transform_name:
-                        pass
-                        # show the dialog to select a layer attribute 
-
+                    if "attribute" in transform_name and self.attrDropdown.currentText() != '':
+                        listItem = str(self.layerDropdown.currentText()) + " (\'" +  str(self.attrDropdown.currentText()) + "\')  ->  " + str(self.transformDropdown.currentText())
+            
                     self.dataStorage.savedTransforms.append(listItem)
                     self.populateSavedTransforms()
                     
@@ -239,6 +244,43 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
             logToUser(e, level = 2, func = inspect.stack()[0][3])
             return
     
+    def populateAttributesByLayer(self):
+        try:
+            self.attrDropdown.clear()
+            root = self.dataStorage.project.layerTreeRoot()
+            self.dataStorage.all_layers = getAllLayers(root)
+
+            layer_name = str(self.layerDropdown.currentText())
+            transform_name = self.transformDropdown.currentText()
+            layerForAttributes = None 
+            for i, layer in enumerate(self.dataStorage.all_layers):
+
+                if layer_name == layer.name():
+                    if isinstance(layer, QgsVectorLayer):
+                        geom_type = getLayerGeomType(layer)
+                        if "polygon" in geom_type.lower():
+                            layerForAttributes = layer
+                            break 
+                
+            if layerForAttributes is not None and 'attribute' in transform_name:
+                self.attr_label.setEnabled(True)
+                self.attrDropdown.setEnabled(True)
+
+                if 'ignore' not in transform_name:
+                    self.attrDropdown.addItem('Random height')  
+
+                for field in layerForAttributes.fields():
+                    field_type = field.type()
+                    if field_type in [2,6,10]:
+                        self.attrDropdown.addItem(str(field.name()))  
+            else: 
+                self.attr_label.setEnabled(False)
+                self.attrDropdown.setEnabled(False)
+
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3])
+            return
+
     def populateTransforms(self):
         try:
             self.transformDropdown.clear()

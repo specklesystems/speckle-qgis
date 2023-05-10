@@ -92,7 +92,7 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
     #### check if elevation is applied and layer exists: 
     elevationLayer = getElevationLayer(dataStorage) 
     polygonWkt = dataStorage.project.crs().toWkt() 
-    polygonProj = QgsCoordinateReferenceSystem.fromWkt(polygonWkt).toProj()
+    polygonProj = QgsCoordinateReferenceSystem.fromWkt(polygonWkt).toProj().replace(" +type=crs","")
     
     translationValue = 0
     if elevationLayer is not None: 

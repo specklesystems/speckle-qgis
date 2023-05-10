@@ -197,28 +197,37 @@ def getPolygonFeatureHeight(feature, layer, dataStorage):
     ignore = False
     if dataStorage.savedTransforms is not None:
         for item in dataStorage.savedTransforms:
-            layer_name = item.split("  ->  ")[0]
+            layer_name = item.split("  ->  ")[0].split(" (\'")[0]
             transform_name = item.split("  ->  ")[1].lower()
+            if "ignore" in transform_name: ignore = True
+
             if layer_name == layer.name():
-                if "ignore" in transform_name: ignore = True
                 
+                attribute = None
+                if " (\'" in item:
+                    attribute = item.split(" (\'")[1].split("\') ")[0]
+
+                if attribute is None and ignore is False:
+                    logToUser("Attribute for extrusion not selected", level = 1, func = inspect.stack()[0][3])
+                    return None
+            
                 print("Apply transform: " + transform_name)
-                if "extrude" in transform_name and "polygons" in transform_name:
+                if "extrude" in transform_name and "polygon" in transform_name:
 
                     # additional check: 
                     try:
                         if dataStorage.project.crs().isGeographic():
-                            logToUser("Extrusion can only be applied when project CRS is using metric units", level = 1, func = inspect.stack()[0][3])
+                            #logToUser("Extrusion can only be applied when project CRS is using metric units", level = 1, func = inspect.stack()[0][3])
                             return None
                     except: return None
                     
                     try:
-                        existing_height = feature["height"]
-                        if existing_height is None or str(existing_height) == "NULL": # if attribute value invalid
+                        existing_height = float(feature[attribute])
+                        if existing_height is None or str(feature[attribute]) == "NULL": # if attribute value invalid
                             if ignore is True:
                                 return None
                             else: # find approximate value
-                                all_existing_vals = [f["height"] for f in layer.getFeatures() if (f["height"] is not None and (isinstance(f["height"], float) or isinstance(f["height"], int) ) ) ]
+                                all_existing_vals = [f[attribute] for f in layer.getFeatures() if (f[attribute] is not None and (isinstance(f[attribute], float) or isinstance(f[attribute], int) ) ) ]
                                 try: 
                                     if len(all_existing_vals) > 5:
                                         height_average = all_existing_vals[int(len(all_existing_vals)/2)]

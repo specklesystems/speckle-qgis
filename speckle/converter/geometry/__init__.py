@@ -120,7 +120,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                     else:
                         translationZaxis = getZaxisTranslation(layer, boundaryPts, dataStorage)
                         if translationZaxis is None: 
-                            logToUser("Some buildings are outside the elevation layer extent", level = 1, func = inspect.stack()[0][3])
+                            logToUser("Some polygons are outside the elevation layer extent or extrusion value is Null", level = 1, func = inspect.stack()[0][3])
                             return 
 
                 result = polygonToSpeckle(geom, feature, layer, height, translationZaxis, dataStorage)
@@ -154,7 +154,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                         else:
                             translationZaxis = getZaxisTranslation(layer, boundaryPts, dataStorage)
                             if translationZaxis is None: 
-                                logToUser("Some buildings are outside the elevation layer extent", level = 1, func = inspect.stack()[0][3])
+                                logToUser("Some polygons are outside the elevation layer extent or extrusion value is Null", level = 1, func = inspect.stack()[0][3])
                                 continue 
                             
                     result.append(polygonToSpeckle(poly, feature, layer, height, translationZaxis, dataStorage) )

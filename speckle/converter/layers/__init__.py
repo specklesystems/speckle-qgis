@@ -127,6 +127,25 @@ def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], s
         project: QgsProject = plugin.qgis_project
 
         for i, layer in enumerate(layers):
+
+            if plugin.dataStorage.savedTransforms is not None:
+                for item in plugin.dataStorage.savedTransforms:
+                    layer_name = item.split("  ->  ")[0].split(" (\'")[0]
+                    transform_name = item.split("  ->  ")[1].lower()
+
+                    # check all the conditions for transform 
+                    if isinstance(layer, QgsVectorLayer) and layer.name() == layer_name and "extrude" in transform_name and "polygon" in transform_name:
+                        if plugin.dataStorage.project.crs().isGeographic():
+                            logToUser("Extrusion cannot be applied when the project CRS is set to Geographic type", level = 1, plugin = plugin.dockwidget)
+
+                        attribute = None
+                        if " (\'" in item:
+                            attribute = item.split(" (\'")[1].split("\') ")[0]
+                        if (attribute is None or str(attribute) not in layer.fields().names()) and "ignore" in transform_name:
+                            logToUser("Attribute for extrusion not found, extrusion will not be applied", level = 1, plugin = plugin.dockwidget)
+                            return None
+                        
+            
             result.append(layerToSpeckle(layer, projectCRS, plugin))
         
         return result

@@ -297,9 +297,9 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         
         if dataStorage.savedTransforms is not None:
             all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
-            all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
+            all_saved_transform_layers = [item.split("  ->  ")[0].split(" (\'")[0] for item in dataStorage.savedTransforms]
             for item in dataStorage.savedTransforms:
-                layer_name = item.split("  ->  ")[0]
+                layer_name = item.split("  ->  ")[0].split(" (\'")[0]
                 transform_name = item.split("  ->  ")[1]
 
                 # identify existing elevation and texture layers 
@@ -315,9 +315,9 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                           
         if dataStorage.savedTransforms is not None:
             all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
-            all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
+            all_saved_transform_layers = [item.split("  ->  ")[0].split(" (\'")[0] for item in dataStorage.savedTransforms]
             for item in dataStorage.savedTransforms:
-                layer_name = item.split("  ->  ")[0]
+                layer_name = item.split("  ->  ")[0].split(" (\'")[0]
                 transform_name = item.split("  ->  ")[1]
   
                 # get any transformation for the current layer 
