@@ -169,7 +169,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
 
         if crs.isGeographic(): units_layer = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
         layerObjs = []
-        
+
         # Convert CRS to speckle, use the projectCRS
         print(projectCRS.toWkt())
         speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units_proj) 
@@ -212,8 +212,11 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 if not layerName.endswith("_Mesh"): layerName += "_Mesh" 
                 attributes["Speckle_ID"] = 10 
 
+            geomType = getLayerGeomType(selectedLayer)
+            features = selectedLayer.getFeatures()
+            
             # write features 
-            for i, f in enumerate(selectedLayer.getFeatures()):
+            for i, f in enumerate(features):
                 b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer, plugin.dataStorage)
 
                 if extrusionApplied is True and isinstance(b, GisPolygonElement):
@@ -226,7 +229,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 layerObjs.append(b)
 
             # Convert layer to speckle
-            layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, attributes = attributes, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
+            layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, attributes = attributes, type="VectorLayer", geomType=geomType)
             layerBase.type="VectorLayer"
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
@@ -680,6 +683,9 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
             if new_feat is not None and new_feat != "": fets.append(new_feat)
             else:
                 logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
+        
+        if newFields is None: 
+            newFields = QgsFields()
         
         plugin.dockwidget.addLayerToGroup.emit(geomType, newName, streamBranch, layer.crs.wkt, layer, newFields, fets)
         return 

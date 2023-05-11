@@ -289,7 +289,7 @@ class SpeckleQGIS:
         print("onRUN")
         # set QGIS threads number only the first time: 
         if self.theads_total==0: self.theads_total = threading.active_count()
-        print(threading.active_count())
+        #print(threading.active_count())
 
         # set the project instance 
         self.qgis_project = QgsProject.instance()
@@ -305,7 +305,7 @@ class SpeckleQGIS:
             # Get and clear message
             message = str(self.dockwidget.messageInput.text())
             self.dockwidget.messageInput.setText("")
-            
+
             if not self.dockwidget.experimental.isChecked(): 
                 
                 try:

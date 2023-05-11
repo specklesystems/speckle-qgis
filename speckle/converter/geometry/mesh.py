@@ -113,12 +113,9 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
 def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage = None):
     
     try:
-        #if len(mesh.faces) % 4 == 0 and (mesh.faces[0] == 0 or mesh.faces[0] == 3):
         parts_list, types_list = deconstructSpeckleMesh(mesh) 
         w.multipatch(parts_list, partTypes=types_list ) # one type for each part
         w.record(geom_id)
-        #else: 
-        #    #print("not triangulated mesh")
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
