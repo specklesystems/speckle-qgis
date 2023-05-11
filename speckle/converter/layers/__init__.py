@@ -22,7 +22,7 @@ from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint,
                        QgsFields, 
                        QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
                        QgsRendererCategory,
-                       QgsSymbol, QgsUnitTypes)
+                       QgsSymbol, QgsUnitTypes, QgsVectorFileWriter)
 from speckle.converter.geometry.GisGeometryClasses import GisPolygonElement
 from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
@@ -374,7 +374,7 @@ def addBimMainThread(plugin, geomType, layerName, streamBranch, newFields, geomL
         if crs.isGeographic is True: 
             logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
 
-        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
+        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M")
         findOrCreatePath(p)
         path = p
         #logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", level = 1, func = inspect.stack()[0][3])
@@ -432,9 +432,19 @@ def addBimMainThread(plugin, geomType, layerName, streamBranch, newFields, geomL
         vl.updateExtents()
         vl.commitChanges()
         
+        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        findOrCreatePath(p)
+        file_name = os.path.join(p, newName )
+        print(file_name)
+        QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", crs, "GeoJSON", overrideGeometryType = True, includeZ = True)
+        
         layerGroup = tryCreateGroup(project, streamBranch)
+        vl = None 
+        vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
+        vl.setCrs(crs)
+        project.addMapLayer(vl, False)
+
         layerGroup.addLayer(vl)
-        print(vl)
 
         
         try: 
@@ -610,7 +620,20 @@ def addCadMainThread(plugin, geomType, newName, streamBranch, newFields, geomLis
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
+
+        
+        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        findOrCreatePath(p)
+        file_name = os.path.join(p, newName )
+        print(file_name)
+        QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", crs, "GeoJSON", overrideGeometryType = True, includeZ = True)
+        
         layerGroup = tryCreateGroup(project, streamBranch)
+        vl = None 
+        vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
+        vl.setCrs(crs)
+        project.addMapLayer(vl, False)
+        
         layerGroup.addLayer(vl)
 
         ################################### RENDERER ###########################################
@@ -711,13 +734,21 @@ def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, new
         #################################################
 
         crs = QgsCoordinateReferenceSystem.fromWkt(wkt) #moved up, because CRS of existing layer needs to be rewritten
-        srsid = trySaveCRS(crs, streamBranch)
-        crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
-        authid = crs_new.authid()
+        #srsid = trySaveCRS(crs, streamBranch)
+        #crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
+        #print(srsid)
+        #authid = crs_new.authid()
         
+        for i, f in enumerate(fets):
+            #reproject
+            xform = QgsCoordinateTransform(crs, QgsCoordinateReferenceSystem(4326), project)
+            geometry = fets[i].geometry()
+            geometry.transform(xform)
+            fets[i].setGeometry(geometry)
+
         vl = None
-        vl = QgsVectorLayer(geomType + "?crs=" + authid, newName, "memory") # do something to distinguish: stream_id_latest_name
-        vl.setCrs(crs)
+        vl = QgsVectorLayer(geomType + "?crs=" + "EPSG:4326", newName, "memory") # do something to distinguish: stream_id_latest_name
+        #vl.setCrs(QgsCoordinateReferenceSystem(4326))
         project.addMapLayer(vl, False)
 
         pr = vl.dataProvider()
@@ -732,9 +763,19 @@ def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, new
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
+
+        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        findOrCreatePath(p)
+        file_name = os.path.join(p, newName )
+        print(file_name)
+        QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", QgsCoordinateReferenceSystem(4326), "GeoJSON", overrideGeometryType = True, includeZ = True)
+        #time.sleep(2)
         
         layerGroup = tryCreateGroup(project, streamBranch)
-
+        vl = None 
+        vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
+        #vl.setCrs(QgsCoordinateReferenceSystem(4326))
+        project.addMapLayer(vl, False)
         layerGroup.addLayer(vl)
 
         rendererNew = vectorRendererToNative(layer, newFields)
@@ -825,7 +866,7 @@ def addRasterMainThread(plugin, layerName, newName, streamBranch, layer):
         
 
         if(source_folder == ""):
-            p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
+            p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             findOrCreatePath(p)
             source_folder = p
             logToUser(f"Project directory not found. Raster layers will be saved to \"{p}\".", level = 1, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
