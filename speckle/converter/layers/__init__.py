@@ -742,23 +742,27 @@ def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, new
         #################################################
 
         crs = QgsCoordinateReferenceSystem.fromWkt(wkt) #moved up, because CRS of existing layer needs to be rewritten
-        #srsid = trySaveCRS(crs, streamBranch)
-        #crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
-        #print(srsid)
-        #authid = crs_new.authid()
+        srsid = trySaveCRS(crs, streamBranch)
+        crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
+        print(srsid)
+        authid = crs_new.authid()
         
-        
-        # reproject all QGIS geometry to EPSG 4326 until the CRS issue if found 
-        for i, f in enumerate(fets):
-            #reproject
-            xform = QgsCoordinateTransform(crs, QgsCoordinateReferenceSystem(4326), project)
-            geometry = fets[i].geometry()
-            geometry.transform(xform)
-            fets[i].setGeometry(geometry)
+        #################################################
+        if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
+            # reproject all QGIS geometry to EPSG 4326 until the CRS issue if found 
+            for i, f in enumerate(fets):
+                #reproject
+                xform = QgsCoordinateTransform(crs, QgsCoordinateReferenceSystem(4326), project)
+                geometry = fets[i].geometry()
+                geometry.transform(xform)
+                fets[i].setGeometry(geometry)
+            crs = QgsCoordinateReferenceSystem(4326)
+            authid = "EPSG:4326"
+        #################################################
 
         vl = None
-        vl = QgsVectorLayer(geomType + "?crs=" + "EPSG:4326", newName, "memory") # do something to distinguish: stream_id_latest_name
-        vl.setCrs(QgsCoordinateReferenceSystem(4326))
+        vl = QgsVectorLayer(geomType + "?crs=" + authid, newName, "memory") # do something to distinguish: stream_id_latest_name
+        vl.setCrs(crs)
         project.addMapLayer(vl, False)
 
         pr = vl.dataProvider()
@@ -776,6 +780,7 @@ def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, new
 
         layerGroup = tryCreateGroup(project, streamBranch)
 
+        #################################################
         if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
 
             p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -819,6 +824,8 @@ def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, new
             #vl.setCrs(QgsCoordinateReferenceSystem(4326))
             project.addMapLayer(vl, False)
         
+        #################################################
+
         layerGroup.addLayer(vl)
 
         rendererNew = vectorRendererToNative(layer, newFields)
