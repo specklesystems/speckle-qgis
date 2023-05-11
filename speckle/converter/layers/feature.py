@@ -298,8 +298,6 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         texture_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["texture"], [], dataStorage)
 
         ############################################################
-        z_vals_all = []
-        xy_vals_all = []
 
         for v in range(rasterDimensions[1] ): #each row, Y
             for h in range(rasterDimensions[0] ): #item in a row, X
@@ -366,10 +364,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     if nan_z is True:
                         count += 4
                         continue # skip the pixel
-                    
-                    z_vals_all.extend([z1, z2, z3, z4])
-                    xy_vals_all.extend([(pt1.x(), pt1.y()), (pt2.x(), pt2.y()), (pt3.x(), pt3.y()), (pt4.x(), pt4.y())])
-                
+                                    
                 ########################################################
 
                 vertices.extend([pt1.x(), pt1.y(), z1, pt2.x(), pt2.y(), z2, pt3.x(), pt3.y(), z3, pt4.x(), pt4.y(), z4]) ## add 4 points
