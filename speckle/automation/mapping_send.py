@@ -345,9 +345,11 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
         root = self.dataStorage.project.layerTreeRoot()
         layer = None
 
+        if self.dataStorage is None: return 
+
         layerName = str(self.elevationLayerDropdown.currentText()) 
-        if len(layerName) < 1 or self.dataStorage is None: 
-            pass 
+        if len(layerName) < 1: 
+            layer = None 
         else:
             self.dataStorage.all_layers = getAllLayers(root)
             all_l_names = [l.name() for l in self.dataStorage.all_layers]
@@ -365,9 +367,8 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
                         layer = None
                         break 
             
-            if layer is not None:
-                self.dataStorage.elevationLayer = layer 
-                set_elevationLayer(self.dataStorage)
+        self.dataStorage.elevationLayer = layer 
+        set_elevationLayer(self.dataStorage)
             
         try:
             metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Add transformation on Send", "Transformation": "Set Layer as Elevation", "connector_version": str(self.dataStorage.plugin_version)})

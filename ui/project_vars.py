@@ -162,6 +162,8 @@ def get_elevationLayer(dataStorage):
                 if layerName == layer.name():
                     dataStorage.elevationLayer = layer 
                     break 
+        else: 
+            dataStorage.elevationLayer = None 
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
@@ -172,7 +174,10 @@ def set_elevationLayer(dataStorage):
         # from widget (3 strings) to local vars AND memory (1 string)
         proj = dataStorage.project
         layer = getElevationLayer(dataStorage)
-        proj.writeEntry("speckle-qgis", "elevationLayer", layer.name())
+        name = layer.name()
+        if layer is None:
+            name = ""
+        proj.writeEntry("speckle-qgis", "elevationLayer", name)
         return True
     
     except Exception as e:
