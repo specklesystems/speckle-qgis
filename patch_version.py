@@ -15,11 +15,13 @@ def patch_installer(tag):
     try:
         with open(iss_file, "r") as file:
             lines = file.readlines()
+            new_lines = []
             for i, line in enumerate(lines):
                 if "#define AppVersion " in line: 
-                    lines[i] = f'#define AppVersion "{tag.split("-")[0]}"\n'
+                    line = f'#define AppVersion "{tag.split("-")[0]}"\n'
                 if "#define AppInfoVersion " in line: 
-                    lines[i] = f'#define AppInfoVersion "{tag}"\n'
+                    line = f'#define AppInfoVersion "{tag}"\n'
+                new_lines.append(line)
             with open(iss_file, "w") as file:
                 file.writelines(lines)
                 print(f"Patched installer with connector v{tag} ")
