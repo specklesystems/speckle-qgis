@@ -427,22 +427,27 @@ def addBimMainThread(plugin, geomType, layerName, streamBranch, newFields, geomL
                     fetIds.append(f.id)
                 else:
                     logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-            except Exception as e: print(e)
+            except Exception as e: 
+                logToUser(e, level = 2, func = inspect.stack()[0][3])
         
         vl.updateExtents()
         vl.commitChanges()
+        layerGroup = tryCreateGroup(project, streamBranch)
+
+        r'''
         
         p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         findOrCreatePath(p)
         file_name = os.path.join(p, newName )
         print(file_name)
-        QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", crs, "GeoJSON", overrideGeometryType = True, includeZ = True)
-        
-        layerGroup = tryCreateGroup(project, streamBranch)
+        writer =QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", crs, "GeoJSON", overrideGeometryType = True, forceMulti = True, includeZ = True)
+        del writer
+
         vl = None 
         vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
+        '''
 
         layerGroup.addLayer(vl)
 
@@ -621,18 +626,21 @@ def addCadMainThread(plugin, geomType, newName, streamBranch, newFields, geomLis
         vl.updateExtents()
         vl.commitChanges()
 
-        
+        layerGroup = tryCreateGroup(project, streamBranch)
+
+        r'''
         p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         findOrCreatePath(p)
         file_name = os.path.join(p, newName )
         print(file_name)
-        QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", crs, "GeoJSON", overrideGeometryType = True, includeZ = True)
-        
-        layerGroup = tryCreateGroup(project, streamBranch)
+        writer = QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", crs, "GeoJSON", overrideGeometryType = True, forceMulti = True, includeZ = True)
+        del writer 
+
         vl = None 
         vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
+        '''
         
         layerGroup.addLayer(vl)
 
@@ -694,7 +702,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         # particularly if the layer comes from ArcGIS
         geomType = layer.geomType # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
         if geomType =="Point": geomType = "Point"
-        elif geomType =="Polygon": geomType = "Multipolygon"
+        elif geomType =="Polygon": geomType = "MultiPolygon"
         elif geomType =="Polyline": geomType = "MultiLineString"
         elif geomType =="Multipoint": geomType = "Point"
         elif geomType == 'MultiPatch': geomType = "Polygon"
@@ -739,6 +747,8 @@ def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, new
         #print(srsid)
         #authid = crs_new.authid()
         
+        
+        # reproject all QGIS geometry to EPSG 4326 until the CRS issue if found 
         for i, f in enumerate(fets):
             #reproject
             xform = QgsCoordinateTransform(crs, QgsCoordinateReferenceSystem(4326), project)
@@ -748,7 +758,7 @@ def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, new
 
         vl = None
         vl = QgsVectorLayer(geomType + "?crs=" + "EPSG:4326", newName, "memory") # do something to distinguish: stream_id_latest_name
-        #vl.setCrs(QgsCoordinateReferenceSystem(4326))
+        vl.setCrs(QgsCoordinateReferenceSystem(4326))
         project.addMapLayer(vl, False)
 
         pr = vl.dataProvider()
@@ -764,18 +774,51 @@ def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, new
         vl.updateExtents()
         vl.commitChanges()
 
-        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        findOrCreatePath(p)
-        file_name = os.path.join(p, newName )
-        print(file_name)
-        QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", QgsCoordinateReferenceSystem(4326), "GeoJSON", overrideGeometryType = True, includeZ = True)
-        #time.sleep(2)
-        
         layerGroup = tryCreateGroup(project, streamBranch)
-        vl = None 
-        vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
-        #vl.setCrs(QgsCoordinateReferenceSystem(4326))
-        project.addMapLayer(vl, False)
+
+        if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
+
+            p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            findOrCreatePath(p)
+            file_name = os.path.join(p, newName )
+            print(file_name)
+            writer = QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", QgsCoordinateReferenceSystem(4326), "GeoJSON", overrideGeometryType = True, forceMulti = True, includeZ = True)
+            del writer 
+
+            # geojson writer fix 
+            if "polygon" in geomType.lower():
+                try:
+                    with open(file_name + ".geojson", "r") as file:
+                        lines = file.readlines()
+                        polygonType = False
+                        for i, line in enumerate(lines):
+                            if '"type": "Polygon"' in line: 
+                                polygonType = True
+                                break
+
+                        if polygonType is True:
+                            new_lines = []
+                            for i, line in enumerate(lines):
+                                print(line)
+                                if '"type": "Polygon"' in line:
+                                    line = line.replace('"type": "Polygon"','"type": "MultiPolygon"')
+                                if " ] ] ] " in line and '"coordinates": [ [ [ [ ' not in line: 
+                                    line = line.replace(" ] ] ] ", " ] ] ] ] ")
+                                if '"coordinates": [ [ [ ' in line and '"coordinates": [ [ [ [ ' not in line: 
+                                    line = line.replace('"coordinates": [ [ [ ', '"coordinates": [ [ [ [ ')
+                                new_lines.append(line)
+                            with open(file_name + ".geojson", "w") as file:
+                                file.writelines(new_lines)
+                    file.close()
+                except Exception as e: 
+                    logToUser(e, level = 2, func = inspect.stack()[0][3])
+                    return 
+
+            vl = None 
+            vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
+            #vl.setCrs(QgsCoordinateReferenceSystem(4326))
+            project.addMapLayer(vl, False)
+        
         layerGroup.addLayer(vl)
 
         rendererNew = vectorRendererToNative(layer, newFields)
