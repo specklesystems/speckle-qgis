@@ -270,7 +270,7 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             # get substitute value for missing z-val
             existing_3d_pts = []
             for i, p in enumerate(vertices3d): 
-                if p[2] is not None and str(p[2])!="" and str(p[2]).lower()!="nan": # only from boundary 
+                if p[2] is not None and str(p[2])!="" and str(p[2]).lower()!="nan" and p[2] != universal_z_value: # only from boundary 
                     p[2] += universal_z_value 
                     existing_3d_pts.append(p)
                     if len(existing_3d_pts) == 3: break
