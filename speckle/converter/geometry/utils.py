@@ -57,7 +57,7 @@ def projectToPolygon(point: List, polygonPts: List):
     plane = createPlane(pt1, pt2, pt3)
     z = project_to_plane_on_z(point, plane)
 
-    if z == -0:
+    if z == -0.0:
         z = 0
     return z 
 
@@ -82,7 +82,8 @@ def triangulatePolygon(geom):
             #t = {'vertices': vertices, 'triangles': [[0,1,2]]}
             print(t)
         except Exception as e:
-            print(e)
+            logToUser(e, level = 2, func = inspect.stack()[0][3])
+            return None, None
         return t, vertices3d 
     
     except Exception as e:
@@ -325,6 +326,9 @@ def speckleBoundaryToSpecklePts(boundary: Union[None, Polyline, Arc, Line, Polyc
         else: 
             try: polyBorder = boundary.as_points()
             except: pass # if Line or None
+        for i, p in enumerate(polyBorder):
+            if polyBorder[i].z == -0.0:
+                polyBorder[i].z = 0
         return polyBorder
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

@@ -22,12 +22,13 @@ from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint,
                        QgsFields, 
                        QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
                        QgsRendererCategory,
-                       QgsSymbol, QgsUnitTypes)
+                       QgsSymbol, QgsUnitTypes, QgsVectorFileWriter)
+from speckle.converter.geometry.GisGeometryClasses import GisPolygonElement
 from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, tryCreateGroup, trySaveCRS, validateAttributeName
+from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, trySaveCRS, validateAttributeName
 from speckle.logging import logger
 from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
 
@@ -136,15 +137,15 @@ def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], s
                     # check all the conditions for transform 
                     if isinstance(layer, QgsVectorLayer) and layer.name() == layer_name and "extrude" in transform_name and "polygon" in transform_name:
                         if plugin.dataStorage.project.crs().isGeographic():
-                            logToUser("Extrusion cannot be applied when the project CRS is set to Geographic type", level = 1, plugin = plugin.dockwidget)
-
+                            logToUser("Extrusion cannot be applied when the project CRS is set to Geographic type", level = 2, plugin = plugin.dockwidget)
+                            return None
+                        
                         attribute = None
                         if " (\'" in item:
                             attribute = item.split(" (\'")[1].split("\') ")[0]
                         if (attribute is None or str(attribute) not in layer.fields().names()) and "ignore" in transform_name:
-                            logToUser("Attribute for extrusion not found, extrusion will not be applied", level = 1, plugin = plugin.dockwidget)
+                            logToUser("Attribute for extrusion not found", level = 2, plugin = plugin.dockwidget)
                             return None
-                        
             
             result.append(layerToSpeckle(layer, projectCRS, plugin))
         
@@ -159,17 +160,16 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
     try:
         project: QgsProject = plugin.qgis_project
         layerName = selectedLayer.name()
-        #except: layerName = layer.sourceName()
-        #try: selectedLayer = selectedLayer.layer()
-        #except: pass 
+
         crs = selectedLayer.crs()
-        #units = "m"
+
         units_proj = plugin.dataStorage.currentUnits
         units_layer = QgsUnitTypes.encodeUnit(crs.mapUnits())
-        #plugin.dataStorage.currentUnits = units_proj 
+        print(units_layer)
 
         if crs.isGeographic(): units_layer = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
         layerObjs = []
+
         # Convert CRS to speckle, use the projectCRS
         print(projectCRS.toWkt())
         speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units_proj) 
@@ -206,12 +206,30 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 '''
                 attributes[corrected] = attribute_type
 
-            # write feature attributes
-            for f in selectedLayer.getFeatures():
+            extrusionApplied = isAppliedLayerTransformByKeywords(selectedLayer, ["extrude", "polygon"], [], plugin.dataStorage)
+            
+            if extrusionApplied is True:
+                if not layerName.endswith("_Mesh"): layerName += "_Mesh" 
+                attributes["Speckle_ID"] = 10 
+
+            geomType = getLayerGeomType(selectedLayer)
+            features = selectedLayer.getFeatures()
+            
+            # write features 
+            for i, f in enumerate(features):
                 b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer, plugin.dataStorage)
+
+                if extrusionApplied is True and isinstance(b, GisPolygonElement):
+                    b.attributes["Speckle_ID"] = str(i+1)
+                    for g in b.geometry:
+                        if g is not None and g!="None": 
+                            # remove native polygon props, if extruded:
+                                g.boundary = None
+                                g.voids = None
                 layerObjs.append(b)
+
             # Convert layer to speckle
-            layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, attributes = attributes, type="VectorLayer", geomType=getLayerGeomType(selectedLayer))
+            layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, attributes = attributes, type="VectorLayer", geomType=geomType)
             layerBase.type="VectorLayer"
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
@@ -356,7 +374,7 @@ def addBimMainThread(plugin, geomType, layerName, streamBranch, newFields, geomL
         if crs.isGeographic is True: 
             logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
 
-        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
+        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M")
         findOrCreatePath(p)
         path = p
         #logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", level = 1, func = inspect.stack()[0][3])
@@ -409,14 +427,29 @@ def addBimMainThread(plugin, geomType, layerName, streamBranch, newFields, geomL
                     fetIds.append(f.id)
                 else:
                     logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-            except Exception as e: print(e)
+            except Exception as e: 
+                logToUser(e, level = 2, func = inspect.stack()[0][3])
         
         vl.updateExtents()
         vl.commitChanges()
-        
         layerGroup = tryCreateGroup(project, streamBranch)
+
+        r'''
+        
+        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        findOrCreatePath(p)
+        file_name = os.path.join(p, newName )
+        print(file_name)
+        writer =QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", crs, "GeoJSON", overrideGeometryType = True, forceMulti = True, includeZ = True)
+        del writer
+
+        vl = None 
+        vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
+        vl.setCrs(crs)
+        project.addMapLayer(vl, False)
+        '''
+
         layerGroup.addLayer(vl)
-        print(vl)
 
         
         try: 
@@ -592,7 +625,23 @@ def addCadMainThread(plugin, geomType, newName, streamBranch, newFields, geomLis
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
+
         layerGroup = tryCreateGroup(project, streamBranch)
+
+        r'''
+        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        findOrCreatePath(p)
+        file_name = os.path.join(p, newName )
+        print(file_name)
+        writer = QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", crs, "GeoJSON", overrideGeometryType = True, forceMulti = True, includeZ = True)
+        del writer 
+
+        vl = None 
+        vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
+        vl.setCrs(crs)
+        project.addMapLayer(vl, False)
+        '''
+        
         layerGroup.addLayer(vl)
 
         ################################### RENDERER ###########################################
@@ -653,7 +702,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         # particularly if the layer comes from ArcGIS
         geomType = layer.geomType # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
         if geomType =="Point": geomType = "Point"
-        elif geomType =="Polygon": geomType = "Multipolygon"
+        elif geomType =="Polygon": geomType = "MultiPolygon"
         elif geomType =="Polyline": geomType = "MultiLineString"
         elif geomType =="Multipoint": geomType = "Point"
         elif geomType == 'MultiPatch': geomType = "Polygon"
@@ -665,6 +714,9 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
             if new_feat is not None and new_feat != "": fets.append(new_feat)
             else:
                 logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
+        
+        if newFields is None: 
+            newFields = QgsFields()
         
         plugin.dockwidget.addLayerToGroup.emit(geomType, newName, streamBranch, layer.crs.wkt, layer, newFields, fets)
         return 
@@ -692,8 +744,22 @@ def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, new
         crs = QgsCoordinateReferenceSystem.fromWkt(wkt) #moved up, because CRS of existing layer needs to be rewritten
         srsid = trySaveCRS(crs, streamBranch)
         crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
+        print(srsid)
         authid = crs_new.authid()
         
+        #################################################
+        if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
+            # reproject all QGIS geometry to EPSG 4326 until the CRS issue if found 
+            for i, f in enumerate(fets):
+                #reproject
+                xform = QgsCoordinateTransform(crs, QgsCoordinateReferenceSystem(4326), project)
+                geometry = fets[i].geometry()
+                geometry.transform(xform)
+                fets[i].setGeometry(geometry)
+            crs = QgsCoordinateReferenceSystem(4326)
+            authid = "EPSG:4326"
+        #################################################
+
         vl = None
         vl = QgsVectorLayer(geomType + "?crs=" + authid, newName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
@@ -711,8 +777,54 @@ def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, new
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
-        
+
         layerGroup = tryCreateGroup(project, streamBranch)
+
+        #################################################
+        if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
+
+            p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            findOrCreatePath(p)
+            file_name = os.path.join(p, newName )
+            print(file_name)
+            writer = QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", QgsCoordinateReferenceSystem(4326), "GeoJSON", overrideGeometryType = True, forceMulti = True, includeZ = True)
+            del writer 
+
+            # geojson writer fix 
+            if "polygon" in geomType.lower():
+                try:
+                    with open(file_name + ".geojson", "r") as file:
+                        lines = file.readlines()
+                        polygonType = False
+                        for i, line in enumerate(lines):
+                            if '"type": "Polygon"' in line: 
+                                polygonType = True
+                                break
+
+                        if polygonType is True:
+                            new_lines = []
+                            for i, line in enumerate(lines):
+                                print(line)
+                                if '"type": "Polygon"' in line:
+                                    line = line.replace('"type": "Polygon"','"type": "MultiPolygon"')
+                                if " ] ] ] " in line and '"coordinates": [ [ [ [ ' not in line: 
+                                    line = line.replace(" ] ] ] ", " ] ] ] ] ")
+                                if '"coordinates": [ [ [ ' in line and '"coordinates": [ [ [ [ ' not in line: 
+                                    line = line.replace('"coordinates": [ [ [ ', '"coordinates": [ [ [ [ ')
+                                new_lines.append(line)
+                            with open(file_name + ".geojson", "w") as file:
+                                file.writelines(new_lines)
+                    file.close()
+                except Exception as e: 
+                    logToUser(e, level = 2, func = inspect.stack()[0][3])
+                    return 
+
+            vl = None 
+            vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
+            #vl.setCrs(QgsCoordinateReferenceSystem(4326))
+            project.addMapLayer(vl, False)
+        
+        #################################################
 
         layerGroup.addLayer(vl)
 
@@ -804,7 +916,7 @@ def addRasterMainThread(plugin, layerName, newName, streamBranch, layer):
         
 
         if(source_folder == ""):
-            p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d %H-%M")
+            p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             findOrCreatePath(p)
             source_folder = p
             logToUser(f"Project directory not found. Raster layers will be saved to \"{p}\".", level = 1, func = inspect.stack()[0][3], plugin = plugin.dockwidget)

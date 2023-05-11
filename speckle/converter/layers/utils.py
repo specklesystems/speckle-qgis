@@ -21,7 +21,7 @@ from ui.logger import logToUser
 
 ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
 
-def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = ""):
+def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = "", commit_id: str = ""):
     try:
         root = project_gis.layerTreeRoot()
         
@@ -29,11 +29,14 @@ def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = ""):
             layerGroup = root.findGroup(newGroupName)
             for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
                 if isinstance(child, QgsLayerTreeLayer): 
+
                     if isinstance(child.layer(), QgsVectorLayer): 
-                        if "Speckle_ID" in child.layer().fields().names(): project_gis.removeMapLayer(child.layerId())
+                        if "Speckle_ID" in child.layer().fields().names() and child.layer().name().startswith(commit_id + "_"): 
+                            project_gis.removeMapLayer(child.layerId())
                     
                     elif isinstance(child.layer(), QgsRasterLayer): 
-                        if "_Speckle" in child.layer().name(): project_gis.removeMapLayer(child.layerId())
+                        if "_Speckle" in child.layer().name(): 
+                            project_gis.removeMapLayer(child.layerId())
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
@@ -414,25 +417,60 @@ def reprojectPt(x, y, wkt_in, proj_in, wkt_out, proj_out):
         newY = y
     return newX, newY 
 
+def getClosestIndex(x):
+    if x<0:
+        val = math.ceil(x)
+        return val
+    else:
+        val = int(x)
+        return val
+    
 def getArrayIndicesFromXY(settings, x, y):
     resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings 
-    index2 = int( (x - minX) / resX )
-    index1 = int( (y - minY) / resY )
+    index2 = ( (x - minX) / resX )
+    index1 = ( (y - minY) / resY )
+    if index2 == -0.0: index2 = 0
+    if index1 == -0.0: index1 = 0
 
-    if not 0 <= index2 < sizeX: # try deviating +- 1
-        index2 = int( (x - minX) / resX - 1 )
-        if not 0 <= index2 < sizeX: 
-            index2 = int( (x - minX) / resX + 1 )
-    if not 0 <= index1 < sizeY:
-        index1 = int( (y - minY) / resY - 1 )
-        if not 0 <= index1 < sizeY:
-            index1 = int( (y - minY) / resY + 1 )
-    if not 0 <= index2 < sizeX or not  0 <= index1 < sizeY:
-        return None, None 
+    if not 0 <= getClosestIndex(index2) < sizeX: # try deviating +- 1
+        index2 = ( (x - minX) / resX - 1 )
+        if not 0 <= getClosestIndex(index2) < sizeX: 
+            index2 = ( (x - minX) / resX + 1 )
+    if not 0 <= getClosestIndex(index1) < sizeY:
+        index1 = ( (y - minY) / resY - 1 )
+        if not 0 <= getClosestIndex(index1) < sizeY:
+            index1 = ( (y - minY) / resY + 1 )
+    
+    ind1 = getClosestIndex(index1)
+    ind2 = getClosestIndex(index2)
+
+    if not 0 <= ind2 < sizeX or not  0 <= ind1 < sizeY:
+        return None, None, None, None  
     else:
-        return index1, index2
+        remainder1 = index1 - ind1
+        remainder2 = index2 - ind2
+        return ind1, ind2, remainder1, remainder2
 
+def getHeightWithRemainderFromArray(height_array, texture_transform, ind1, ind2):
 
+    if texture_transform is True:
+        z = height_array[ind1][ind2]
+        r'''
+        # TODO 
+        indexFloor1 = index1_0 if ind1>0 else ind1
+        indexFloor2 = index2_0 if ind2>0 else ind2
+
+        rem1 = remainder1 if ind1>0 else remainder1_0
+        rem2 = remainder2 if ind2>0 else remainder2_0
+
+        rem1_share = rem1/ (rem1 + rem2)
+        rem2_share = rem2/ (rem1 + rem2)
+        z = height_array[indexFloor1][indexFloor2] +  (height_array[ind1][ind2] - height_array[indexFloor1][ind2])*rem1*rem1_share + (height_array[ind1][ind2] - height_array[ind1][indexFloor2])*rem2*rem2_share 
+        '''
+    else: 
+        z = height_array[ind1][ind2]
+    return z 
+                    
 def getXYofArrayPoint(settings, indexX, indexY, targetWKT, targetPROJ):
     resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings
     x = minX + resX*indexX
@@ -456,12 +494,14 @@ def isAppliedLayerTransformByKeywords(layer, keywordsYes: List[str], keywordsNo:
                     correctTransform = True 
                 for word in keywordsYes:
                     if word in transform_name_recorded.lower(): pass 
-                    else: correctTransform = False
-                    break 
+                    else: 
+                        correctTransform = False
+                        break 
                 for word in keywordsNo:
                     if word not in transform_name_recorded.lower(): pass 
-                    else: correctTransform = False
-                    break 
+                    else: 
+                        correctTransform = False
+                        break 
 
             #if correctTransform is True and layer_name_recorded == layer.name(): 
             #    # find a layer for meshing, if mesh transformation exists 

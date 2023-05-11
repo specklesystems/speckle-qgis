@@ -17,7 +17,7 @@ from speckle.converter.geometry.GisGeometryClasses import GisRasterElement
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from speckle.converter.layers.Layer import RasterLayer
 from speckle.logging import logger
-from speckle.converter.layers.utils import get_raster_stats, getArrayIndicesFromXY, getElevationLayer, getRasterArrays, getVariantFromValue, getXYofArrayPoint, traverseDict, validateAttributeName 
+from speckle.converter.layers.utils import get_raster_stats, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 import numpy as np 
@@ -45,14 +45,13 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
             attributes = Base()
             if geom is not None and geom!="None": 
                 if isinstance(geom.geometry, List):
+
                     for g in geom.geometry:
                         if g is not None and g!="None": 
-                            pass #b["geometry"].append(g)
+                            pass
                         else:
                             logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
                             print(g)
-                #else:
-                #    b.geometry = [geom]
             else: 
                 logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
                 print(geom)
@@ -294,40 +293,10 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             elevation_arrays = all_mins = all_maxs = all_na = None
             elevationResX = elevationResY = elevationOriginX = elevationOriginY = elevationSizeX = elevationSizeY = elevationWkt = None
             height_array = None
-        
-        if dataStorage.savedTransforms is not None:
-            all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
-            all_saved_transform_layers = [item.split("  ->  ")[0].split(" (\'")[0] for item in dataStorage.savedTransforms]
-            for item in dataStorage.savedTransforms:
-                layer_name = item.split("  ->  ")[0].split(" (\'")[0]
-                transform_name = item.split("  ->  ")[1]
-
-                # identify existing elevation and texture layers 
-                if "texture" in transform_name.lower():
-                    # find a layer for texturing, if texture transformation exists 
-                    for l in dataStorage.all_layers: 
-                        if layer_name == l.name():
-
-                            # also check if the layer is selected for sending
-                            for sending_l in dataStorage.sending_layers:
-                                if sending_l.name() == l.name():
-                                    textureLayer = l 
                           
-        if dataStorage.savedTransforms is not None:
-            all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
-            all_saved_transform_layers = [item.split("  ->  ")[0].split(" (\'")[0] for item in dataStorage.savedTransforms]
-            for item in dataStorage.savedTransforms:
-                layer_name = item.split("  ->  ")[0].split(" (\'")[0]
-                transform_name = item.split("  ->  ")[1]
-  
-                # get any transformation for the current layer 
-                if layer_name == selectedLayer.name():
-                    print("Apply transform: " + transform_name)
-                    if "elevation" in transform_name.lower() and "mesh" in transform_name.lower() and "texture" not in transform_name.lower():
-                        terrain_transform = True 
-                    elif "texture" in transform_name.lower() and elevationLayer is not None:
-                        texture_transform = True 
-                
+        terrain_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["elevation", "mesh"], ["texture"], dataStorage)
+        texture_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["texture"], [], dataStorage)
+
         ############################################################
         z_vals_all = []
         xy_vals_all = []
@@ -352,8 +321,8 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     if texture_transform is True: # texture 
                         # index1: index on y-scale 
                         posX, posY = getXYofArrayPoint((rasterResXY[0], rasterResXY[1], originX, originY, rasterDimensions[1], rasterDimensions[0], rasterWkt, rasterProj), h, v, elevationWkt, elevationProj)
-                        index1, index2 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt, elevationProj), posX, posY )
-                        index1_0, index2_0 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt, elevationProj), posX-rasterResXY[0], posY-rasterResXY[1] )
+                        index1, index2, remainder1, remainder2 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt, elevationProj), posX, posY )
+                        index1_0, index2_0, remainder1_0, remainder2_0 = getArrayIndicesFromXY((elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt, elevationProj), posX-rasterResXY[0], posY-rasterResXY[1] )
                     else: # elevation 
                         index1 = v
                         index1_0 = v-1
@@ -367,27 +336,28 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     # resolution might not match! Also pixels might be missing 
                     # top vertices ######################################
                     if index1>0 and index2>0:
-                        z1 = height_array[index1_0][index2_0]
+                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2_0)
                     elif index1>0:
-                        z1 = height_array[index1_0][index2]
+                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
                     elif index2>0:
-                        z1 = height_array[index1][index2_0]
+                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
                     else:
-                        z1 = height_array[index1][index2]
-                    
+                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                    #################### z4 
                     if index1>0:
-                        z4 = height_array[index1_0][index2]
+                        z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
                     else:
-                        z4 = height_array[index1][index2]
-
+                        z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                    
                     # bottom vertices ######################################
-                    z3 = height_array[index1][index2] # the only one advancing
+                    z3 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
 
                     if index2>0:
-                        z2 = height_array[index1][index2_0]
+                        z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
                     else: 
-                        z2 = height_array[index1][index2]
+                        z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
                     ##############################################
+
                     nan_z = False
                     for zz in [z1, z2, z3, z4]:
                         if np.isnan(zz) or zz is None: 

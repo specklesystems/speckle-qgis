@@ -399,7 +399,9 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             if self.layerSendModeDropdown.currentIndex() == 1: self.layersWidget.setEnabled(True)
             #if self.layerSendModeDropdown.currentIndex() == 1: 
             self.saveLayerSelection.setEnabled(True)
+            self.commitLabel.setEnabled(False)
             self.commitDropdown.setEnabled(False)
+            self.messageLabel.setEnabled(True)
             self.messageInput.setEnabled(True)
             self.layerSendModeDropdown.setEnabled(True)
             self.setMapping.setEnabled(True)
@@ -426,8 +428,10 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             self.runButton.setProperty("text", " RECEIVE")
             self.runButton.setIcon(QIcon(ICON_RECEIVE))
             #self.layerSendModeChange(plugin, 1)
+            self.commitLabel.setEnabled(True)
             self.commitDropdown.setEnabled(True)
             self.layersWidget.setEnabled(False)
+            self.messageLabel.setEnabled(False)
             self.messageInput.setEnabled(False)
             self.saveLayerSelection.setEnabled(False)
             self.layerSendModeDropdown.setEnabled(False)
@@ -591,6 +595,7 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
             if plugin.is_setup is False: self.streams_remove_button.setEnabled(plugin.is_setup) 
             self.streamBranchDropdown.setEnabled(plugin.is_setup)
             self.layerSendModeDropdown.setEnabled(plugin.is_setup)
+            self.commitLabel.setEnabled(False)
             self.commitDropdown.setEnabled(False)
             self.show()
         except Exception as e:
@@ -688,8 +693,8 @@ class SpeckleQGISDialog(QtWidgets.QDockWidget, FORM_CLASS):
                         branch = b
                         break
             print(branch)
-            if len(branch.commits.items)>0:
-                self.commitDropdown.addItem("Latest commit from this branch")
+            #if len(branch.commits.items)>0:
+            self.commitDropdown.addItem("Latest commit from this branch")
             self.commitDropdown.addItems(
                 [f"{commit.id}"+ " | " + f"{commit.message}" for commit in branch.commits.items]
             )
