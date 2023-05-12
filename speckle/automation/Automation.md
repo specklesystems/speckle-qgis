@@ -31,13 +31,16 @@ Add "Log Messages Panel" to your QGIS interface to see more info and warnings ab
 ![2 14-changelog-01-elevation](https://github.com/specklesystems/speckle-qgis/assets/89912278/3aba9b66-d8b5-4d13-8070-74714b2a04a5)
 
 **Texture for 3d mesh**
+![2 14-changelog-02-texture](https://github.com/specklesystems/speckle-qgis/blob/main/speckle/automation/img/2.14-changelog-02-texture_over_elevation.gif)
 
 **Polygon extrusions**
 ![2 14-changelog-03-extrusion](https://github.com/specklesystems/speckle-qgis/assets/89912278/65c50302-0a98-4f32-9f84-37da5108a258)
 
 **Extrusing and projecting on a terrain**
+![2 14-changelog-04-projecting](https://github.com/specklesystems/speckle-qgis/blob/main/speckle/automation/img/2.14-changelog-04-extrude_and_project_smaller_smaller.gif)
 
 **Combination of the transformations**
+![2 14-changelog-05-all-transforms](https://github.com/specklesystems/speckle-qgis/blob/main/speckle/automation/img/2.14-changelog-05-altogether_smaller.gif)
 
 
 If you have questions, you can always find us at our [Community forum](https://speckle.community)! 
