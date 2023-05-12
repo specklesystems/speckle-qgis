@@ -174,9 +174,9 @@ def set_elevationLayer(dataStorage):
         # from widget (3 strings) to local vars AND memory (1 string)
         proj = dataStorage.project
         layer = getElevationLayer(dataStorage)
-        name = layer.name()
-        if layer is None:
-            name = ""
+        name = "" 
+        try: name = layer.name()
+        except: pass
         proj.writeEntry("speckle-qgis", "elevationLayer", name)
         return True
     

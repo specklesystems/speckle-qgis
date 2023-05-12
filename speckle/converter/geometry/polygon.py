@@ -94,7 +94,7 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
     polygonWkt = dataStorage.project.crs().toWkt() 
     polygonProj = QgsCoordinateReferenceSystem.fromWkt(polygonWkt).toProj().replace(" +type=crs","")
     
-    translationValue = 0
+    translationValue = None 
     if elevationLayer is not None: 
         all_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
         settings_elevation_layer = get_raster_stats(elevationLayer)

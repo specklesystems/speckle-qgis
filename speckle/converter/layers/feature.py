@@ -174,8 +174,9 @@ def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, 
     return feat 
 
 
-def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordinateReferenceSystem, project: QgsProject, dataStorage = None) -> Base:
+def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordinateReferenceSystem, project: QgsProject, plugin ) -> Base:
     
+    dataStorage = plugin.dataStorage
     if dataStorage is None: return
 
     b = GisRasterElement(units = dataStorage.currentUnits)
@@ -296,6 +297,8 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                           
         terrain_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["elevation", "mesh"], ["texture"], dataStorage)
         texture_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["texture"], [], dataStorage)
+        if texture_transform is True and elevationLayer is None:
+            logToUser(f"Elevation layer is not found. Texture transformation for layer '{selectedLayer.name()}' will not be applied", level = 1, plugin = plugin.dockwidget)
 
         ############################################################
 
@@ -464,7 +467,11 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 colors.extend([color,color,color,color])
                 count += 4
 
-        mesh = constructMeshFromRaster(vertices, faces, colors, dataStorage)
+        if len(colors)/4*5 == len(faces) and len(colors)*3 == len(vertices):
+            mesh = constructMeshFromRaster(vertices, faces, colors, dataStorage)
+        else:
+            mesh = None 
+            logToUser("Something went wrong. Mesh cannot be created, only raster data will be sent. ", level = 2, plugin = plugin.dockwidget)
         b.displayValue = [ mesh ]
 
     except Exception as e:

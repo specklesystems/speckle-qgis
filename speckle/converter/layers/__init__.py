@@ -28,7 +28,7 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.layers.CRS import CRS
 from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, trySaveCRS, validateAttributeName
+from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, trySaveCRS, validateAttributeName
 from speckle.logging import logger
 from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
 
@@ -214,6 +214,11 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
 
             geomType = getLayerGeomType(selectedLayer)
             features = selectedLayer.getFeatures()
+
+            elevationLayer = getElevationLayer(plugin.dataStorage) 
+            projectingApplied = isAppliedLayerTransformByKeywords(selectedLayer, ["extrude", "polygon", "project", "elevation"], [], plugin.dataStorage)
+            if projectingApplied is True and elevationLayer is None:
+                logToUser(f"Elevation layer is not found. Layer '{selectedLayer.name()}' will not be projected on a 3d elevation.", level = 1, plugin = plugin.dockwidget)
             
             # write features 
             for i, f in enumerate(features):
@@ -238,7 +243,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
 
         if isinstance(selectedLayer, QgsRasterLayer):
             # write feature attributes
-            b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin.dataStorage)
+            b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
             layerObjs.append(b)
             # Convert layer to speckle
             layerBase = RasterLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, elements=layerObjs, type="RasterLayer")

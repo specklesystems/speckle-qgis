@@ -223,7 +223,7 @@ def getPolygonFeatureHeight(feature, layer, dataStorage):
                     except: return None
                     
                     try:
-                        existing_height = feature[attribute]
+                        existing_height = float(feature[attribute])
                         if existing_height is None or str(feature[attribute]) == "NULL": # if attribute value invalid
                             if ignore is True:
                                 return None
@@ -237,7 +237,7 @@ def getPolygonFeatureHeight(feature, layer, dataStorage):
                                         height = random.randint(10, 20)
                                 except: 
                                     height = random.randint(10, 20)
-                        else: # reading from existing attribute 
+                        else: # if acceptable value: reading from existing attribute 
                             height = existing_height
 
                     except: # if no Height attribute
