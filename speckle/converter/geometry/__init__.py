@@ -107,6 +107,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
         elif geomType == QgsWkbTypes.PolygonGeometry: # 2
 
             height = getPolygonFeatureHeight(feature, layer, dataStorage)
+            elevationLayer = getElevationLayer(dataStorage) 
             translationZaxis = None 
 
             if geomSingleType:
@@ -117,7 +118,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                     if isFlat(boundaryPts) is False:
                         logToUser("Extrusion can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
                         height = None 
-                if isAppliedLayerTransformByKeywords(layer, ["extrude", "polygon", "project", "elevation"], [], dataStorage) is True:
+                if elevationLayer is not None and isAppliedLayerTransformByKeywords(layer, ["extrude", "polygon", "project", "elevation"], [], dataStorage) is True:
                     if isFlat(boundaryPts) is False:
                         logToUser("Geometry projections can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
                     else:
@@ -153,7 +154,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                         if isFlat(boundaryPts) is False:
                             logToUser("Extrusion can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
                             height = None 
-                    if isAppliedLayerTransformByKeywords(layer, ["extrude", "polygon", "project", "elevation"], [], dataStorage) is True: 
+                    if elevationLayer is not None and isAppliedLayerTransformByKeywords(layer, ["extrude", "polygon", "project", "elevation"], [], dataStorage) is True: 
                         if isFlat(boundaryPts) is False:
                             logToUser("Geometry projections can only be applied to flat polygons", level = 1, func = inspect.stack()[0][3])
                         else:
