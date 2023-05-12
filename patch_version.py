@@ -23,7 +23,7 @@ def patch_installer(tag):
                     line = f'#define AppInfoVersion "{tag}"\n'
                 new_lines.append(line)
             with open(iss_file, "w") as file:
-                file.writelines(lines)
+                file.writelines(new_lines)
                 print(f"Patched installer with connector v{tag} ")
         file.close()
     except: pass
