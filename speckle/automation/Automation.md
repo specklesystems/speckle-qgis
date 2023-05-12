@@ -1,6 +1,6 @@
 ## Features
 
-### Resources
+### Transformations
 From 2.14 version onwards there is a new functionality helping to send a full 3d context maps for the further use in CAD, BIM or any 3D software. This can be applied by clicking "Apply transformations on Send" before sending the data. 
 ![transforms_intro](https://github.com/specklesystems/speckle-qgis/assets/89912278/450b4c21-bb6e-4526-8d7b-2e8d3a96eb92)
 
