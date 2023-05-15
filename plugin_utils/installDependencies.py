@@ -49,23 +49,6 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
             [pythonExec, "-m", "pip", "install", "--upgrade", f"{pkgName}=={pkgVersion}"]
         )
 
-    # Check if specklpy needs updating
-    r''' 
-    try:
-        logger.log(f"Attempting to update specklepy to {pkgVersion}")
-        subprocess_call(
-            [
-                pythonExec,
-                "-m",
-                "pip",
-                "install",
-                "--upgrade",
-                f"{pkgName}=={pkgVersion}",
-            ]
-        )
-    except Exception as e:
-        logger.log(e.with_traceback)
-    '''
     ################################################# 
     pkgVersion = "2.3.1"
     pkgName = "pyshp"

@@ -469,6 +469,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 
         if len(colors)/4*5 == len(faces) and len(colors)*3 == len(vertices):
             mesh = constructMeshFromRaster(vertices, faces, colors, dataStorage)
+            mesh.units = dataStorage.currentUnits
         else:
             mesh = None 
             logToUser("Something went wrong. Mesh cannot be created, only raster data will be sent. ", level = 2, plugin = plugin.dockwidget)
