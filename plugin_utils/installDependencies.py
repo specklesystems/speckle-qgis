@@ -36,6 +36,13 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
     pkgName = "specklepy"
     try:
         import specklepy
+        from importlib.metadata import version
+        if version('specklepy') == pkgVersion: pass
+        else: 
+            logger.log("Upgrading specklepy")
+            subprocess_call(
+                [pythonExec, "-m", "pip", "install", "--upgrade", f"{pkgName}=={pkgVersion}"]
+            )
     except Exception as e:
         logger.log("Specklepy not installed")
         subprocess_call(
