@@ -71,31 +71,28 @@ This repo contains the QGIS plugin for Speckle 2.0. It is written in `python` an
 
 You can find Speckle QGIS in the QGIS `Plugins -> Manage and install plugins` menu item.
 
-The plugin is currently published as experimental, so make sure you go to `Settings` and activate the `Show also experimental plugins` checkbox.
+The plugin is currently published as experimental, so make sure you go to `Settings` and activate the `Show also experimental plugins` checkbox. 
+  
+![Experimental](https://github.com/specklesystems/speckle-qgis/assets/89912278/46d638dd-5800-4946-b788-8e0c54ca4c43)
 
-Then go to the `All` tab and search for `Speckle`. You should see the plugin appear in the list:
 
-![alt](https://link)
+Then go to the `All` tab and search for `Speckle`. You should see the plugin appear in the list. You might need to restart QGIS. 
 
-## Manual install
+![image](https://user-images.githubusercontent.com/7717434/129228049-266a1e86-9b1b-48f4-b421-5e1757dd89ad.png)
 
-You'll need to place the `speckle_qgis` folder into your plugins folder. To find this folder, go to the "Settings" menu and select "User Profiles" > "Open Active Profile Folder".
 
-![active project folder](https://user-images.githubusercontent.com/7717434/129204454-11685461-cfe2-483a-8f91-77b5e8e8107b.png)
+## Speckle Desktop Manager install
 
-Inside this folder, navigate into the `python` folder then the `plugins` folder. Once inside the `plugins` folder, drop your `speckle_qgis` folder into it.
+Install Speckle Desktop Manager from [here](https://speckle.systems/download/). Click on QGIS plugin to install it: 
+  
+![from_manager1](https://github.com/specklesystems/speckle-qgis/assets/89912278/783da098-2754-4b9d-ad0e-0bd2abe14f06)
 
-![plugins folder](https://user-images.githubusercontent.com/7717434/129224685-896b6102-746c-4c86-84eb-55226161f9ac.png)
-
-### Speckle Dependencies
-
-> You no longer need to take care of installing the dependencies! This will be done automatically if the package is not found.
 
 ### Launching the Plugin
 
-You should now launch QGIS and you should see SpeckleQGIS in your installed plugins. Click the blue brick in the toolbar to open the plugin.
-
-![image](https://user-images.githubusercontent.com/7717434/129228049-266a1e86-9b1b-48f4-b421-5e1757dd89ad.png)
+SpeckleQGIS will appear in the Plugins Toolbar. Click the blue brick in the toolbar to open the plugin.
+  
+![plugins_toolbar](https://github.com/specklesystems/speckle-qgis/assets/89912278/6ee68709-0666-4a98-96d8-b7195f431334)
 
 ## Developing
 

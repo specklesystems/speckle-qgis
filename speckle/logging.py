@@ -29,7 +29,7 @@ class Logging:
             except: pass
 
 
-    def logToUserWithAction(self, message: str, action_text:str, url: str = "", level: Qgis.MessageLevel = Qgis.Info, duration:int =20):
+    def logToUserWithAction(self, message: str, action_text:str, url: str = "", level: Qgis.MessageLevel = Qgis.Info, duration:int =120):
         
         self.log(message, level)
 
