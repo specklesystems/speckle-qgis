@@ -29,7 +29,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 if(path not in sys.path):
     sys.path.insert(0, path)
 
-from plugin_utils.installDependencies import setup
+from plugin_utils.installer import ensure_dependencies
 from speckle.logging import logger
 
 from qgis.core import Qgis
@@ -48,7 +48,7 @@ def classFactory(iface):  # pylint: disable=invalid-name
     # Ensure dependencies are installed in the machine
     #from speckle.utils import enable_remote_debugging
     #enable_remote_debugging()
-    setup()
+    ensure_dependencies("QGIS")
 
     try: 
         import specklepy
