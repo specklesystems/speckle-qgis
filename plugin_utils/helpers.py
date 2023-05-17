@@ -69,7 +69,18 @@ def findFeatColors(fetColors: List, f):
                 try:
                     fetColors.append(f.displayStyle.color) 
                     colorFound += 1
-                except: pass
+                except: 
+                    try: # if all vertices colors are the same, apply it 
+                        sameColors = True
+                        color1 = f.colors[0]
+                        for c in f.colors:
+                            if c != color1: 
+                                sameColors = False
+                                break 
+                        if sameColors is True: 
+                            fetColors.append(f.colors[0]) 
+                            colorFound += 1
+                    except: pass
     if colorFound == 0: 
         fetColors.append(None)
     return fetColors 
