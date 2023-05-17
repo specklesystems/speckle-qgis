@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 from importlib import import_module, invalidate_caches
+import pkg_resources
 
 from speckle.utils import get_qgis_python_path
 
@@ -145,13 +146,28 @@ def get_requirements_path() -> Path:
     return path
 
 
+def _dependencies_installed(requirements: str, path: str) -> bool:
+
+    for d in pkg_resources.find_distributions(path):
+        entry = f"{d.key}=={d.version}"
+        if entry in requirements: 
+            requirements = requirements.replace(entry, "")
+    
+    if len(requirements) > 0: 
+        return False
+    print("Dependencies already installed")
+    return True 
+
 def install_requirements(host_application: str) -> None:
     # set up addons/modules under the user
     # script path. Here we'll install the
     # dependencies
+    requirements = get_requirements_path().read_text().replace("\n","")
     path = connector_installation_path(host_application)
-    print(f"Installing Speckle dependencies to {path}")
+    if _dependencies_installed(requirements, path): 
+        return
 
+    print(f"Installing Speckle dependencies to {path}")
     from subprocess import run
 
     completed_process = run(
@@ -204,9 +220,12 @@ def ensure_dependencies(host_application: str) -> None:
     try:
         install_dependencies(host_application)
         invalidate_caches()
-        _import_dependencies()
+        #_import_dependencies()
         print("Successfully found dependencies")
     except ImportError:
         raise Exception(f"Cannot automatically ensure Speckle dependencies. Please try restarting the host application {host_application}!")
 
 
+requirements = get_requirements_path().read_text()
+print(requirements)
+print(type(requirements))
