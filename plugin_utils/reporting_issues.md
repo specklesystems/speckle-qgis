@@ -9,7 +9,7 @@ If restarting QGIS didn't resolve the problem, follow these steps to report the 
 ```sh
 
 if sys.platform == "win32": pythonExec = os.path.dirname(sys.executable) + "\\python3"
-elif sys.platform.startswith("linux"): pythonExec = os.path.dirname(sys.executable)
+elif sys.platform.startswith("linux"): pythonExec = sys.executable
 else: pythonExec = os.path.dirname(sys.executable) + "/bin/python3"
 
 import os; import sys; import subprocess; result = subprocess.run([pythonExec, "-m", "pip", "install", "specklepy==2.14.0"], capture_output=True, text=True, shell=True, timeout=1000); print(result) 

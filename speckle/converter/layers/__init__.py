@@ -223,6 +223,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             # write features 
             for i, f in enumerate(features):
                 b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer, plugin.dataStorage)
+                #if b is None: continue 
 
                 if extrusionApplied is True and isinstance(b, GisPolygonElement):
                     b.attributes["Speckle_ID"] = str(i+1)
@@ -234,8 +235,8 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 layerObjs.append(b)
 
             # Convert layer to speckle
-            layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, attributes = attributes, type="VectorLayer", geomType=geomType)
-            layerBase.type="VectorLayer"
+            layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, attributes = attributes, geomType=geomType)
+            #layerBase.type="VectorLayer"
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
             #print(layerBase.features)
@@ -246,8 +247,8 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
             layerObjs.append(b)
             # Convert layer to speckle
-            layerBase = RasterLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, elements=layerObjs, type="RasterLayer")
-            layerBase.type="RasterLayer"
+            layerBase = RasterLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, elements=layerObjs)
+            #layerBase.type="RasterLayer"
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
             return layerBase
@@ -264,15 +265,21 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
         if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
             plugin.dataStorage.currentUnits = 'm'
 
-        if layer.type is None:
-            # Handle this case
-            return
+        #if layer.collectionType is None:
+        #    # Handle this case
+        #    return
         
-        if layer.type.endswith("VectorLayer"):
+        if isinstance(layer.collectionType, str) and layer.collectionType.endswith("VectorLayer"):
             vectorLayerToNative(layer, streamBranch, plugin)
             return 
+        elif isinstance(layer.collectionType, str) and layer.collectionType.endswith("RasterLayer"):
+            rasterLayerToNative(layer, streamBranch, plugin)
+            return 
         
-        elif layer.type.endswith("RasterLayer"):
+        elif isinstance(layer.type, str) and layer.type.endswith("VectorLayer"): # older commits
+            vectorLayerToNative(layer, streamBranch, plugin)
+            return 
+        elif isinstance(layer.type, str) and layer.type.endswith("RasterLayer"): # older commits
             rasterLayerToNative(layer, streamBranch, plugin)
             return 
         

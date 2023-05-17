@@ -211,6 +211,7 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
         fields = QgsFields()
         all_props = []
         for feature in features: 
+            if feature is None: continue 
             #get object properties to add as attributes
             try:
                 dynamicProps = feature.attributes.get_dynamic_member_names() # for 2.14 onwards
