@@ -67,7 +67,11 @@ def classFactory(iface):  # pylint: disable=invalid-name
     return SpeckleQGIS(iface)
 
 class EmptyClass:
+    # https://docs.qgis.org/3.28/en/docs/pyqgis_developer_cookbook/plugins/plugins.html#mainplugin-py
     def __init__(self, iface):
         pass
     def initGui(self):
         pass
+    def unload(self):
+        pass
+    
