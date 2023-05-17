@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Optional
 from importlib import import_module, invalidate_caches
 
+from speckle.utils import get_qgis_python_path
+
 _user_data_env_var = "SPECKLE_USERDATA_PATH"
 
 
@@ -97,7 +99,7 @@ def user_speckle_connector_installation_path(host_application: str) -> Path:
 print("Starting module dependency installation")
 print(sys.executable)
 
-PYTHON_PATH = sys.executable
+PYTHON_PATH = get_qgis_python_path()
 
 
 
