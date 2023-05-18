@@ -163,7 +163,7 @@ def install_requirements(host_application: str) -> None:
     # script path. Here we'll install the
     # dependencies
     requirements = get_requirements_path().read_text().replace("\n","")
-    path = connector_installation_path(host_application)
+    path = str(connector_installation_path(host_application)) 
     if _dependencies_installed(requirements, path): 
         return
 
