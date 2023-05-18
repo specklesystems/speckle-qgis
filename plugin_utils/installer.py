@@ -172,9 +172,7 @@ def install_requirements(host_application: str) -> None:
         shutil.rmtree(path)
     except PermissionError as e:
         from speckle.logging import logger
-        logger.logToUserPanel("Restart QGIS for changes to take effect", level = 2) 
         raise Exception("Restart QGIS for changes to take effect")
-        return 
 
     print(f"Installing Speckle dependencies to {path}")
     from subprocess import run
