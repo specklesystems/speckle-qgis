@@ -167,6 +167,15 @@ def install_requirements(host_application: str) -> None:
     if _dependencies_installed(requirements, path): 
         return
 
+    try:
+        import shutil
+        shutil.rmtree(path)
+    except PermissionError as e:
+        from speckle.logging import logger
+        logger.logToUserPanel("Restart QGIS for changes to take effect", level = 2) 
+        raise Exception("Restart QGIS for changes to take effect")
+        return 
+
     print(f"Installing Speckle dependencies to {path}")
     from subprocess import run
 
@@ -225,7 +234,5 @@ def ensure_dependencies(host_application: str) -> None:
     except ImportError:
         raise Exception(f"Cannot automatically ensure Speckle dependencies. Please try restarting the host application {host_application}!")
 
-
-requirements = get_requirements_path().read_text()
-print(requirements)
-print(type(requirements))
+#path = str(connector_installation_path("QGIS")) 
+#print(path)
