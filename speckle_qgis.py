@@ -439,7 +439,7 @@ class SpeckleQGIS:
             if units is None or units == 'degrees': units = 'm'
             self.dataStorage.currentUnits = units 
 
-            base_obj = Collection(units = units)
+            base_obj = Collection(units = units, collectionType = "QGIS commit", name = "QGIS commit")
             base_obj.elements = convertSelectedLayers(layers, [],[], projectCRS, self)
             if base_obj.elements is None:
                 return 

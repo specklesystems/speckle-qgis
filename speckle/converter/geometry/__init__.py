@@ -135,9 +135,11 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 for v in result.voids: 
                     if v is not None:
                         v.units = units
-                for v in result.displayValue: 
-                    if v is not None:
-                        v.units = units
+                try: # if mesh creation failed, displayValue stays None
+                    for v in result.displayValue: 
+                        if v is not None:
+                            v.units = units
+                except: pass 
                 
                 if not isinstance(result, List):
                     result = [result]

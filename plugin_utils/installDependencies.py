@@ -26,7 +26,7 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
         import pip
     except:
         logger.log("Pip not installed, setting up now")
-        getPipFilePath = os.path.join(plugin_dir, "plugin_utils/get_pip.py")
+        getPipFilePath = os.path.join(plugin_dir, "get_pip.py")
         exec(open(getPipFilePath).read())
 
         # just in case the included version is old
@@ -62,7 +62,7 @@ import specklepy; import os; print(os.path.abspath(specklepy.__file__))
 
     # Check if pyshp needs updating
     try:
-        logger.log(f"Attempting to update pyshp to {pkgVersion}")
+        #logger.log(f"Attempting to update pyshp to {pkgVersion}")
         subprocess_call(
             [
                 pythonExec,

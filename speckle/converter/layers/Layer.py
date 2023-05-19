@@ -33,25 +33,27 @@ class VectorLayer(Collection, detachable={"elements"}, speckle_type="Objects.GIS
 
     def __init__(
         self,
-        name: str=None,
+        #name: str=None,
         crs: CRS=None,
         units: Optional[str] = None,
         elements: Optional[List[Base]] = None,
         attributes: Optional[Base] = None,
-        layerType: str = "None",
+        #layerType: str = "None",
         geomType: str = "None",
         renderer: Optional[Dict[str, Any]] = None,
         **kwargs
     ) -> None:
         super().__init__(**kwargs)
-        self.name = name
+        #self.name = name
         self.crs = crs
         self.units = units
-        self.type = layerType
+        #self.type = layerType
         self.elements = elements or []
         self.attributes = attributes
         self.geomType = geomType
         self.renderer = renderer or {}
+        self.collectionType = "VectorLayer"
+        self.name = "VectorLayer"
     
     @property
     @deprecated(version="2.14", reason="Use elements")
@@ -67,25 +69,27 @@ class RasterLayer(Collection, detachable={"elements"}, speckle_type="Objects.GIS
 
     def __init__(
         self,
-        name: str=None,
+        #name: str=None,
         crs: CRS=None,
         units: Optional[str] = None,
         rasterCrs: CRS=None,
         elements: Optional[List[Base]] = None,
-        layerType: str = "None",
+        #layerType: str = "None",
         geomType: str = "None",
         renderer: Optional[Dict[str, Any]] = None,
         **kwargs
     ) -> None:
         super().__init__(**kwargs)
-        self.name = name
+        #self.name = name
         self.crs = crs
         self.units = units
         self.rasterCrs = rasterCrs
-        self.type = layerType
+        #self.type = layerType
         self.elements = elements or []
         self.geomType = geomType
         self.renderer = renderer or {}
+        self.collectionType = "RasterLayer"
+        self.name = "RasterLayer"
     
     @property
     @deprecated(version="2.14", reason="Use elements")

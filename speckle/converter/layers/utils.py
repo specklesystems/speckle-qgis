@@ -211,6 +211,7 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
         fields = QgsFields()
         all_props = []
         for feature in features: 
+            if feature is None: continue 
             #get object properties to add as attributes
             try:
                 dynamicProps = feature.attributes.get_dynamic_member_names() # for 2.14 onwards
@@ -469,7 +470,7 @@ def getHeightWithRemainderFromArray(height_array, texture_transform, ind1, ind2)
         '''
     else: 
         z = height_array[ind1][ind2]
-    return z 
+    return float(z) 
                     
 def getXYofArrayPoint(settings, indexX, indexY, targetWKT, targetPROJ):
     resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings

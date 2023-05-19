@@ -70,7 +70,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
                     else: x += ", " + str(attr)
                 f_name = x 
             attributes[corrected] = f_name
-        if geom is not None:
+        if geom is not None and geom!="None":
             geom.attributes = attributes
         return geom
     except Exception as e:
@@ -274,6 +274,9 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         colors = []
         count = 0
         rendererType = selectedLayer.renderer().type()
+
+        xy_list = []
+        z_list = []
         #print(rendererType)
         # identify symbology type and if Multiband, which band is which color
 
@@ -336,27 +339,52 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     
                     # resolution might not match! Also pixels might be missing 
                     # top vertices ######################################
-                    if index1>0 and index2>0:
-                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2_0)
-                    elif index1>0:
-                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
-                    elif index2>0:
-                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
-                    else:
-                        z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                    try:
+                        z1 = z_list[ xy_list.index((pt1.x(), pt1.y())) ]
+                    except:
+                        if index1>0 and index2>0:
+                            z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2_0)
+                        elif index1>0:
+                            z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
+                        elif index2>0:
+                            z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
+                        else:
+                            z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                        
+                        if z1 is not None: 
+                            z_list.append(z1)
+                            xy_list.append((pt1.x(), pt1.y()))
+                        
                     #################### z4 
-                    if index1>0:
-                        z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
-                    else:
-                        z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                    try:
+                        z4 = z_list[ xy_list.index((pt4.x(), pt4.y())) ]
+                    except:
+                        if index1>0:
+                            z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
+                        else:
+                            z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
                     
+                        if z4 is not None: 
+                            z_list.append(z4)
+                            xy_list.append((pt4.x(), pt4.y()))
+
                     # bottom vertices ######################################
                     z3 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                    if z3 is not None: 
+                        z_list.append(z3)
+                        xy_list.append((pt3.x(), pt3.y()))
 
-                    if index2>0:
-                        z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
-                    else: 
-                        z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                    try:
+                        z2 = z_list[ xy_list.index((pt2.x(), pt2.y())) ]
+                    except:
+                        if index2>0:
+                            z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
+                        else: 
+                            z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                        if z2 is not None: 
+                            z_list.append(z2)
+                            xy_list.append((pt2.x(), pt2.y()))
+                    
                     ##############################################
 
                     nan_z = False
@@ -367,7 +395,12 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     if nan_z is True:
                         count += 4
                         continue # skip the pixel
-                                    
+                    
+                    max_len = rasterDimensions[0]*4 + 4
+                    if len(z_list) > max_len:
+                        z_list = z_list[len(z_list)-max_len:]
+                        xy_list = xy_list[len(xy_list)-max_len:]
+                    
                 ########################################################
 
                 vertices.extend([pt1.x(), pt1.y(), z1, pt2.x(), pt2.y(), z2, pt3.x(), pt3.y(), z3, pt4.x(), pt4.y(), z4]) ## add 4 points
