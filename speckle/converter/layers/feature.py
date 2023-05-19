@@ -70,7 +70,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
                     else: x += ", " + str(attr)
                 f_name = x 
             attributes[corrected] = f_name
-        if geom is not None:
+        if geom is not None and geom!="None":
             geom.attributes = attributes
         return geom
     except Exception as e:
