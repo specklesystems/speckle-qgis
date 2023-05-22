@@ -39,7 +39,7 @@ def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer) -
                     renderer.categories() 
                 except: 
                     logToUser(f"Attribute '{category}' used for the layer '{layer.name()}' symbology is not found", level = 2, func = inspect.stack()[0][3])
-                    return (245<<16) + (245<<8) + 245
+                    return (255<<24) + (245<<16) + (245<<8) + 245
                 
                 for obj in renderer.categories():
                     try: 
@@ -63,12 +63,12 @@ def featureColorfromNativeRenderer(feature: QgsFeature, layer: QgsVectorLayer) -
             # construct RGB color
             try: r, g, b = color.getRgb()[:3]
             except: r, g, b = [int(i) for i in color.replace(" ","").split(",")[:3] ]
-            col = (r<<16) + (g<<8) + b
+            col = (255<<24) + (r<<16) + (g<<8) + b
             return col
-        else: return (245<<16) + (245<<8) + 245
+        else: return (255<<24) + (245<<16) + (245<<8) + 245
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return (245<<16) + (245<<8) + 245
+        return (255<<24) + (245<<16) + (245<<8) + 245
 
 def gradientColorRampToSpeckle(rRamp: QgsGradientColorRamp) -> dict[str, Any]: 
     sourceRamp = None
@@ -79,7 +79,7 @@ def gradientColorRampToSpeckle(rRamp: QgsGradientColorRamp) -> dict[str, Any]:
         for s in stops:
             try: r, g, b = s.color.getRgb()[:3]
             except: r, g, b = [int(i) for i in s.color.replace(" ","").split(',')[:3] ]
-            sColor = (r<<16) + (g<<8) + b
+            sColor = (255<<24) + (r<<16) + (g<<8) + b
             stopsStr.append({'color':sColor, 'offset':s.offset})
         rampType = rRamp.type() #'gradient'
         sourceRamp = props
@@ -249,7 +249,7 @@ def makeDefaultRenderer(renderer: dict[str, Any], layer: Union[Layer, VectorLaye
     try:
         geomType = layer.geomType
         try: rgb = renderer['properties']['sourceSymbColor']
-        except: rgb = (0<<16) + (0<<8) + 0
+        except: rgb = (255<<24) + (0<<16) + (0<<8) + 0
         r = (rgb & 0xFF0000) >> 16
         g = (rgb & 0xFF00) >> 8
         b = rgb & 0xFF 
@@ -340,7 +340,7 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
             symbType = symbol.symbolTypeToString(symbol.type()) #Line
             try: rgb = symbol.color().getRgb()
             except: [int(i) for i in symbol().color().replace(" ","").split(',')[:3] ]
-            symbolColor = (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
+            symbolColor = (255<<24) + (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
             layerRenderer['properties'].update({'symbol':{'symbColor': symbolColor}, 'symbType':symbType})
 
         elif rType == 'categorizedSymbol': 
@@ -348,12 +348,12 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
             attribute = renderer.classAttribute() # 'id'
             layerRenderer['properties']['attribute'] = attribute
             symbol = renderer.sourceSymbol()
-            sourceSymbColor = (0<<16) + (0<<8) + 0
+            sourceSymbColor = (255<<24) + (0<<16) + (0<<8) + 0
             try:
                 symbType = symbol.symbolTypeToString(symbol.type()) #Line
                 try: r, g, b = symbol.color().getRgb()[:3]
                 except: r,g,b = [int(i) for i in symbol.color().replace(" ","").split(',')[:3] ]
-                sourceSymbColor = (r<<16) + (g<<8) + b
+                sourceSymbColor = (255<<24) + (r<<16) + (g<<8) + b
 
                 layerRenderer['properties'].update( {'symbType': symbType, 'sourceSymbColor': sourceSymbColor} )
             except: pass
@@ -364,7 +364,7 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
                 value = i.value()
                 try: r, g, b = i.symbol().color().getRgb()[:3]
                 except: r,g,b = [int(i) for i in i.symbol().color().replace(" ","").split(',')[:3] ]
-                symbColor = (r<<16) + (g<<8) + b
+                symbColor = (255<<24) + (r<<16) + (g<<8) + b
                 symbOpacity = i.symbol().opacity() # QgsSymbol.color()
                 label = i.label() 
                 layerRenderer['properties']['categories'].append({'value':value,'symbColor':symbColor,'symbOpacity':symbOpacity, 'sourceSymbColor': sourceSymbColor,'label':label})
@@ -377,7 +377,7 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
             symbType = symbol.symbolTypeToString(symbol.type()) #Line
             try: r, g, b = symbol.color().getRgb()[:3]
             except: r, g, b = [int(i) for i in symbol.color().replace(" ","").split(',')[:3] ]
-            sourceSymbColor = (r<<16) + (g<<8) + b
+            sourceSymbColor = (255<<24) + (r<<16) + (g<<8) + b
             gradMethod = renderer.graduatedMethod() # 0
             layerRenderer['properties'].update( {'attribute': attribute, 'symbType': symbType, 'gradMethod': gradMethod, 'sourceSymbColor': sourceSymbColor} )
 
@@ -392,7 +392,7 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
                     lower = i.lowerValue()
                     upper = i.upperValue()
                     rgb = i.symbol().color().getRgb() # QgsSymbol.color() -> QColor
-                    symbColor = (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
+                    symbColor = (255<<24) + (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
                     symbOpacity = i.symbol().opacity() # QgsSymbol.color()
                     label = i.label() 
                     width = 0.26
@@ -444,7 +444,7 @@ def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict
             for i in rendererClasses:
                 value = i.value 
                 rgb = i.color.getRgb()
-                color =  (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
+                color =  (255<<24) + (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
                 classes.append({'color':color,'value':value,'label':i.label})
             layerRenderer.update({'properties': {'classes':classes,'ramp':sourceRamp,'band':band}})
             

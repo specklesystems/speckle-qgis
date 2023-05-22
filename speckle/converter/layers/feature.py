@@ -306,6 +306,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         ############################################################
 
         for v in range(rasterDimensions[1] ): #each row, Y
+            row_z = []
             for h in range(rasterDimensions[0] ): #item in a row, X
                 pt1 = QgsPointXY(rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1])
                 pt2 = QgsPointXY(rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1])
@@ -408,7 +409,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 faces.extend([4, current_vertices, current_vertices + 1, current_vertices + 2, current_vertices + 3])
 
                 # color vertices according to QGIS renderer
-                color = (0<<16) + (0<<8) + 0
+                color = (255<<24) + (0<<16) + (0<<8) + 0
                 noValColor = selectedLayer.renderer().nodataColor().getRgb() 
 
                 #if textureLayer is not None:
@@ -426,6 +427,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     bandGreen = int(colorLayer.renderer().greenBand())
                     bandBlue = int(colorLayer.renderer().blueBand())
 
+                    alpha = 255
                     for k in range(currentRasterBandCount): 
                         #if textureLayer is not None:
                         #    valRange = texture_maxs[k] - texture_mins[k] 
@@ -434,13 +436,16 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         #else: 
                         valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
                         if valRange == 0: colorVal = 0
+                        elif valRange == rasterBandNoDataVal[k]: 
+                            colorVal = 0
+                            alpha = 0
                         else: colorVal = int( (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / valRange * 255 )
                             
                         if k+1 == bandRed: valR = colorVal
                         if k+1 == bandGreen: valG = colorVal
                         if k+1 == bandBlue: valB = colorVal
 
-                    color =  (valR<<16) + (valG<<8) + valB 
+                    color =  (alpha<<24) + (valR<<16) + (valG<<8) + valB 
 
                 elif rendererType == "paletted":
                     bandIndex = colorLayer.renderer().band()-1 #int
@@ -453,7 +458,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     for c in range(len(rendererClasses)-1):
                         if value >= rendererClasses[c].value and value <= rendererClasses[c+1].value :
                             rgb = rendererClasses[c].color.getRgb()
-                            color =  (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
+                            color =  (255<<24) + (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
                             break
 
                 elif rendererType == "singlebandpseudocolor":
@@ -467,7 +472,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     for c in range(len(rendererClasses)-1):
                         if value >= float(rendererClasses[c][0]) and value <= float(rendererClasses[c+1][0]) :
                             rgb = rendererClasses[c][1].getRgb()
-                            color =  (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
+                            color =  (255<<24) + (rgb[0]<<16) + (rgb[1]<<8) + rgb[2]
                             break
 
                 else:
@@ -488,14 +493,14 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     #    valRange = texture_maxs[bandIndex] - texture_mins[bandIndex] 
                     #    if valRange == 0: colorVal = 0
                     #    else: colorVal = int( (texture_arrays[bandIndex][index1][index2] - texture_mins[bandIndex] ) / valRange * 255 )
-                    #    color =  (colorVal<<16) + (colorVal<<8) + colorVal
+                    #    color =  (255<<24) + (colorVal<<16) + (colorVal<<8) + colorVal
                     #else: 
                     if rasterBandVals[bandIndex][int(count/4)] >= rasterBandMinVal[bandIndex]: 
                         # REMAP band values to (0,255) range
                         valRange = (rasterBandMaxVal[bandIndex] - rasterBandMinVal[bandIndex])
                         if valRange == 0: colorVal = 0
                         else: colorVal = int( (rasterBandVals[bandIndex][int(count/4)] - rasterBandMinVal[bandIndex]) / valRange * 255 )
-                        color =  (colorVal<<16) + (colorVal<<8) + colorVal
+                        color =  (255<<24) + (colorVal<<16) + (colorVal<<8) + colorVal
 
                 colors.extend([color,color,color,color])
                 count += 4
