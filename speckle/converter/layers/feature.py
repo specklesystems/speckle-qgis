@@ -17,7 +17,7 @@ from speckle.converter.geometry.GisGeometryClasses import GisRasterElement
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from speckle.converter.layers.Layer import RasterLayer
 from speckle.logging import logger
-from speckle.converter.layers.utils import get_raster_stats, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
+from speckle.converter.layers.utils import get_raster_stats, get_scale_factor_to_meter, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 import numpy as np 
@@ -282,9 +282,16 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         ############################################################# 
         terrain_transform = False
         texture_transform = False
-        textureLayer = None
-        #height_list = rasterBandVals[0]
-        elevationLayer = getElevationLayer(dataStorage) 
+        #height_list = rasterBandVals[0]          
+        terrain_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["elevation", "mesh"], ["texture"], dataStorage)
+        texture_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["texture"], [], dataStorage)
+
+        elevationLayer = None 
+        elevationProj = None 
+        if texture_transform is True:
+            elevationLayer = getElevationLayer(dataStorage) 
+        elif terrain_transform is True:
+            elevationLayer = selectedLayer
         if elevationLayer is not None:
             elevation_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
             array_band = elevation_arrays[0]
@@ -312,12 +319,15 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             elevation_arrays = all_mins = all_maxs = all_na = None
             elevationResX = elevationResY = elevationOriginX = elevationOriginY = elevationSizeX = elevationSizeY = elevationWkt = None
             height_array = None
-                          
-        terrain_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["elevation", "mesh"], ["texture"], dataStorage)
-        texture_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["texture"], [], dataStorage)
+            
         if texture_transform is True and elevationLayer is None:
             logToUser(f"Elevation layer is not found. Texture transformation for layer '{selectedLayer.name()}' will not be applied", level = 1, plugin = plugin.dockwidget)
-
+        elif texture_transform is True and rasterDimensions[1]*rasterDimensions[0]>=10000 and elevationProj is not None and rasterProj is not None and elevationProj != rasterProj:
+            # warning if >= 100x100 raster is being projected to an elevation with different CRS 
+            logToUser(f"Texture transformation for the layer '{selectedLayer.name()}' might take a while 🕒", level = 0, plugin = plugin.dockwidget)
+        elif texture_transform is True and rasterDimensions[1]*rasterDimensions[0]>=250000:
+            # warning if >= 500x500 raster is being projected to any elevation 
+            logToUser(f"Texture transformation for the layer '{selectedLayer.name()}' might take a while 🕒", level = 0, plugin = plugin.dockwidget)
         ############################################################
         faces_array = []
         colors_array = []
@@ -344,7 +354,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 z1 = z2 = z3 = z4 = 0
                 index1 = index1_0 = None
         
-                #############################################################
+                ############################################################# 
                 if (terrain_transform is True or texture_transform is True) and height_array is not None:
                     if texture_transform is True: # texture 
                         # index1: index on y-scale 
@@ -433,10 +443,6 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 color = (255<<24) + (0<<16) + (0<<8) + 0
                 noValColor = selectedLayer.renderer().nodataColor().getRgb() 
 
-                #if textureLayer is not None:
-                #    colorLayer = textureLayer
-                #    currentRasterBandCount = textureBandCount
-                #else: 
                 colorLayer = selectedLayer
                 currentRasterBandCount = rasterBandCount
 
@@ -452,11 +458,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 
                     alpha = 255
                     for k in range(currentRasterBandCount): 
-                        #if textureLayer is not None:
-                        #    valRange = texture_maxs[k] - texture_mins[k] 
-                        #    if valRange == 0: colorVal = 0
-                        #    else: colorVal = int( (texture_arrays[k][index1][index2] - texture_mins[k] ) / valRange * 255 )
-                        #else: 
+
                         valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
                         if valRange == 0: colorVal = 0
                         elif rasterBandVals[k][int(count/4)] == rasterBandNoDataVal[k]: 
@@ -536,7 +538,9 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         vertices_filtered = []
 
         ## end of the the table
-        smooth = True
+        smooth = False
+        if terrain_transform is True or texture_transform is True:
+            smooth = True
         if smooth is True and len(row_z)>2 and len(array_z)>2:
             array_z_nans = np.array(array_z)
 
@@ -544,7 +548,25 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             mask = np.isnan(array_z_filled)
             array_z_filled[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), array_z_filled[~mask])
 
-            sigma = 1.0
+            sigma = 0.8 # for elevation
+            if texture_transform is True:
+                sigma = 1 # for texture
+
+                # increase sigma if needed
+                try:
+                    unitsRaster = QgsUnitTypes.encodeUnit(selectedLayer.crs().mapUnits())
+                    unitsElevation = QgsUnitTypes.encodeUnit(elevationLayer.crs().mapUnits())
+                    print(unitsRaster)
+                    print(unitsElevation)
+                    resRasterX = get_scale_factor_to_meter(unitsRaster) * rasterResXY[0] 
+                    resElevX = get_scale_factor_to_meter(unitsElevation) * elevationResX 
+                    print(resRasterX)
+                    print(resElevX)
+                    if resRasterX/resElevX >=2 or resElevX/resRasterX >=2:
+                        sigma = math.sqrt(max(resRasterX/resElevX, resElevX/resRasterX))
+                        print(sigma)
+                except: pass 
+
             gaussian_array = sp.ndimage.filters.gaussian_filter(array_z_filled, sigma, mode='nearest')
 
             for v in range(rasterDimensions[1] ): #each row, Y
