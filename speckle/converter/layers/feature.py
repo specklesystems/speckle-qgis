@@ -342,6 +342,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     pt4 = transform.transform(project, src = pt4, crsSrc = selectedLayer.crs(), crsDest = projectCRS)
                 
                 z1 = z2 = z3 = z4 = 0
+                index1 = index1_0 = None
         
                 #############################################################
                 if (terrain_transform is True or texture_transform is True) and height_array is not None:
@@ -409,16 +410,6 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                                 xy_list.append((pt2.x(), pt2.y()))
                         
                         ##############################################
-                        r'''
-                        nan_z = False
-                        for zz in [z1, z2, z3, z4]:
-                            if np.isnan(zz) or zz is None: 
-                                nan_z = True
-                        
-                        if nan_z is True:
-                            count += 4
-                            continue # skip the pixel
-                        '''
                     
                     max_len = rasterDimensions[0]*4 + 4
                     if len(z_list) > max_len:
@@ -435,7 +426,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 ########################################################
 
                 vertices.append([pt1.x(), pt1.y(), z1, pt2.x(), pt2.y(), z2, pt3.x(), pt3.y(), z3, pt4.x(), pt4.y(), z4]) ## add 4 points
-                current_vertices = v*(h+1)*4 + h*4 #len(np.array(faces_array).flatten()) * 4 / 5
+                current_vertices = v*rasterDimensions[0]*4 + h*4 #len(np.array(faces_array).flatten()) * 4 / 5
                 faces.append([4, current_vertices, current_vertices + 1, current_vertices + 2, current_vertices + 3])
 
                 # color vertices according to QGIS renderer
@@ -449,7 +440,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 colorLayer = selectedLayer
                 currentRasterBandCount = rasterBandCount
 
-                if index1 is None or index1_0 is None: # transparent color
+                if (terrain_transform is True or texture_transform is True) and height_array is not None and (index1 is None or index1_0 is None): # transparent color
                     color = (0<<24) + (0<<16) + (0<<8) + 0
                 elif rendererType == "multibandcolor": 
                     valR = 0
@@ -469,9 +460,9 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
                         if valRange == 0: colorVal = 0
                         elif rasterBandVals[k][int(count/4)] == rasterBandNoDataVal[k]: 
-                            valR = valG = valB = 0
-                            alpha = 0
-                            break
+                            colorVal = 0
+                        #    alpha = 0
+                        #   break
                         else: colorVal = int( (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / valRange * 255 )
                             
                         if k+1 == bandRed: valR = colorVal
@@ -574,10 +565,10 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         colors_filtered.extend(colors_array[v][h])
                         #print(colors_array[v][h])
         else:
-            faces_filtered = np.array(faces_array).flatten()
-            colors_filtered = np.array(colors_array).flatten()
-            vertices_filtered = np.array(vertices_array).flatten()
-
+            faces_filtered = np.array(faces_array).flatten().tolist()
+            colors_filtered = np.array(colors_array).flatten().tolist()
+            vertices_filtered = np.array(vertices_array).flatten().tolist()
+        
         #if len(colors)/4*5 == len(faces) and len(colors)*3 == len(vertices):
         mesh = constructMeshFromRaster(vertices_filtered, faces_filtered, colors_filtered, dataStorage)
         if mesh is not None: 
@@ -585,11 +576,6 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             b.displayValue = [ mesh ]
         else: 
             logToUser("Something went wrong. Mesh cannot be created, only raster data will be sent. ", level = 2, plugin = plugin.dockwidget)
-            #b.displayValue = [] 
-        #else:
-        #    mesh = None 
-        #    logToUser("Something went wrong. Mesh cannot be created, only raster data will be sent. ", level = 2, plugin = plugin.dockwidget)
-        
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
