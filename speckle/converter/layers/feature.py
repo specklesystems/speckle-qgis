@@ -569,7 +569,8 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             mesh.units = dataStorage.currentUnits
             b.displayValue = [ mesh ]
         else: 
-            b.displayValue = [] 
+            logToUser("Something went wrong. Mesh cannot be created, only raster data will be sent. ", level = 2, plugin = plugin.dockwidget)
+            #b.displayValue = [] 
         #else:
         #    mesh = None 
         #    logToUser("Something went wrong. Mesh cannot be created, only raster data will be sent. ", level = 2, plugin = plugin.dockwidget)

@@ -53,7 +53,7 @@ def classFactory(iface):  # pylint: disable=invalid-name
     try: 
         import specklepy
         import shapefile
-        import triangle
+        #import triangle
 
     except Exception as e: 
         logger.logToUserWithAction("Speckle dependencies were not installed.", action_text = "More info", url = "https://github.com/specklesystems/speckle-qgis/blob/main/plugin_utils/reporting_issues.md", level = 2) 

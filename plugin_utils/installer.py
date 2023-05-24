@@ -199,12 +199,38 @@ def install_requirements(host_application: str) -> None:
         print(completed_process.stderr)
         raise Exception(m)
 
+def install_optional_requirements(host_application: str) -> None:
+    # set up addons/modules under the user
+    # script path. Here we'll install the
+    # dependencies
+    requirements = "triangle==20220202"
+    path = str(connector_installation_path(host_application)) 
+    if _dependencies_installed(requirements, path): 
+        return
+
+    print(f"Installing Triangle dependency to {path}")
+    from subprocess import run
+    
+    completed_process = run(
+        [
+            PYTHON_PATH,
+            "-m",
+            "pip",
+            "install",
+            "-t",
+            str(path),
+            requirements,
+        ],
+        capture_output=True,
+        text=True,
+    )
 
 def install_dependencies(host_application: str) -> None:
     if not is_pip_available():
         ensure_pip()
 
     install_requirements(host_application)
+    install_optional_requirements(host_application)
 
 
 def _import_dependencies() -> None:
