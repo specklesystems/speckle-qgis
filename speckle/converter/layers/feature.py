@@ -291,7 +291,22 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             settings_elevation_layer = get_raster_stats(elevationLayer)
             elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt, elevationProj = settings_elevation_layer
             height_array = np.where( (array_band < const) | (array_band > -1*const) | (array_band == all_na[0]), np.nan, array_band)
-            height_array = height_array.astype(float)
+            try:
+                height_array = height_array.astype(float)
+            except:
+                try: 
+                    arr = []
+                    for row in height_array:
+                        new_row = []
+                        for item in row:
+                            try: 
+                                new_row.append(float(item))
+                            except:
+                                new_row.append(np.nan)
+                        arr.append(new_row)
+                    height_array = np.array(arr).astype(float)
+                except:
+                    height_array = height_array[[isinstance(i, float) for i in height_array]]
         
         else:
             elevation_arrays = all_mins = all_maxs = all_na = None
@@ -453,7 +468,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         #else: 
                         valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
                         if valRange == 0: colorVal = 0
-                        elif float(rasterBandVals[k][int(count/4)]) == float(rasterBandNoDataVal[k]): 
+                        elif rasterBandVals[k][int(count/4)] == rasterBandNoDataVal[k]: 
                             valR = valG = valB = 0
                             alpha = 0
                             break

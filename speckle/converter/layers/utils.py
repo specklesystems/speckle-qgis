@@ -470,7 +470,11 @@ def getHeightWithRemainderFromArray(height_array, texture_transform, ind1, ind2)
         '''
     else: 
         z = height_array[ind1][ind2]
-    return float(z) 
+    try:
+        val = float(z) 
+    except: 
+        val = None
+    return val
                     
 def getXYofArrayPoint(settings, indexX, indexY, targetWKT, targetPROJ):
     resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings
