@@ -1,3 +1,6 @@
 specklepy==2.14.0
 pyshp==2.3.1
 scipy==1.10.1
+requests==2.31.0
+requests-toolbelt==0.10.1
+urllib3==1.26.16
