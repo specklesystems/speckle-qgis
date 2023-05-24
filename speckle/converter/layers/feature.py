@@ -21,6 +21,8 @@ from speckle.converter.layers.utils import get_raster_stats, getArrayIndicesFrom
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 import numpy as np 
+import scipy as sp
+import scipy.ndimage
 
 from ui.logger import logToUser
 
@@ -269,9 +271,6 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         b.band_names = rasterBandNames
         b.noDataValue = rasterBandNoDataVal
         # creating a mesh
-        vertices = []
-        faces = []
-        colors = []
         count = 0
         rendererType = selectedLayer.renderer().type()
 
@@ -292,7 +291,8 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             settings_elevation_layer = get_raster_stats(elevationLayer)
             elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt, elevationProj = settings_elevation_layer
             height_array = np.where( (array_band < const) | (array_band > -1*const) | (array_band == all_na[0]), np.nan, array_band)
-
+            height_array = height_array.astype(float)
+        
         else:
             elevation_arrays = all_mins = all_maxs = all_na = None
             elevationResX = elevationResY = elevationOriginX = elevationOriginY = elevationSizeX = elevationSizeY = elevationWkt = None
@@ -304,9 +304,16 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             logToUser(f"Elevation layer is not found. Texture transformation for layer '{selectedLayer.name()}' will not be applied", level = 1, plugin = plugin.dockwidget)
 
         ############################################################
-
+        faces_array = []
+        colors_array = []
+        vertices_array = []
+        array_z = [] # size is large by 1 than the raster size, in both dimensions 
         for v in range(rasterDimensions[1] ): #each row, Y
+            vertices = []
+            faces = []
+            colors = []
             row_z = []
+            row_z_bottom = []
             for h in range(rasterDimensions[0] ): #item in a row, X
                 pt1 = QgsPointXY(rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+v*rasterResXY[1])
                 pt2 = QgsPointXY(rasterOriginPoint.x()+h*rasterResXY[0], rasterOriginPoint.y()+(v+1)*rasterResXY[1])
@@ -335,78 +342,86 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         index2_0 = h-1
 
                     if index1 is None or index1_0 is None: 
-                        count += 4
-                        continue # skip the pixel
-                    
-                    # resolution might not match! Also pixels might be missing 
-                    # top vertices ######################################
-                    try:
-                        z1 = z_list[ xy_list.index((pt1.x(), pt1.y())) ]
-                    except:
-                        if index1>0 and index2>0:
-                            z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2_0)
-                        elif index1>0:
-                            z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
-                        elif index2>0:
-                            z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
-                        else:
-                            z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                        #count += 4
+                        #continue # skip the pixel
+                        z1 = z2 = z3 = z4 = np.nan 
+                    else: 
+                        # top vertices ######################################
+                        try:
+                            z1 = z_list[ xy_list.index((pt1.x(), pt1.y())) ]
+                        except:
+                            if index1>0 and index2>0:
+                                z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2_0)
+                            elif index1>0:
+                                z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
+                            elif index2>0:
+                                z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
+                            else:
+                                z1 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                            
+                            if z1 is not None: 
+                                z_list.append(z1)
+                                xy_list.append((pt1.x(), pt1.y()))
+                            
+                        #################### z4 
+                        try:
+                            z4 = z_list[ xy_list.index((pt4.x(), pt4.y())) ]
+                        except:
+                            if index1>0:
+                                z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
+                            else:
+                                z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
                         
-                        if z1 is not None: 
-                            z_list.append(z1)
-                            xy_list.append((pt1.x(), pt1.y()))
+                            if z4 is not None: 
+                                z_list.append(z4)
+                                xy_list.append((pt4.x(), pt4.y()))
+
+                        # bottom vertices ######################################
+                        z3 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                        if z3 is not None: 
+                            z_list.append(z3)
+                            xy_list.append((pt3.x(), pt3.y()))
+
+                        try:
+                            z2 = z_list[ xy_list.index((pt2.x(), pt2.y())) ]
+                        except:
+                            if index2>0:
+                                z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
+                            else: 
+                                z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
+                            if z2 is not None: 
+                                z_list.append(z2)
+                                xy_list.append((pt2.x(), pt2.y()))
                         
-                    #################### z4 
-                    try:
-                        z4 = z_list[ xy_list.index((pt4.x(), pt4.y())) ]
-                    except:
-                        if index1>0:
-                            z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1_0, index2)
-                        else:
-                            z4 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
-                    
-                        if z4 is not None: 
-                            z_list.append(z4)
-                            xy_list.append((pt4.x(), pt4.y()))
-
-                    # bottom vertices ######################################
-                    z3 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
-                    if z3 is not None: 
-                        z_list.append(z3)
-                        xy_list.append((pt3.x(), pt3.y()))
-
-                    try:
-                        z2 = z_list[ xy_list.index((pt2.x(), pt2.y())) ]
-                    except:
-                        if index2>0:
-                            z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2_0)
-                        else: 
-                            z2 = getHeightWithRemainderFromArray(height_array, texture_transform, index1, index2)
-                        if z2 is not None: 
-                            z_list.append(z2)
-                            xy_list.append((pt2.x(), pt2.y()))
-                    
-                    ##############################################
-
-                    nan_z = False
-                    for zz in [z1, z2, z3, z4]:
-                        if np.isnan(zz) or zz is None: 
-                            nan_z = True
-                    
-                    if nan_z is True:
-                        count += 4
-                        continue # skip the pixel
+                        ##############################################
+                        r'''
+                        nan_z = False
+                        for zz in [z1, z2, z3, z4]:
+                            if np.isnan(zz) or zz is None: 
+                                nan_z = True
+                        
+                        if nan_z is True:
+                            count += 4
+                            continue # skip the pixel
+                        '''
                     
                     max_len = rasterDimensions[0]*4 + 4
                     if len(z_list) > max_len:
                         z_list = z_list[len(z_list)-max_len:]
                         xy_list = xy_list[len(xy_list)-max_len:]
                     
+                    ### list to smoothen later: 
+                    if h==0: 
+                        row_z.append(z1)
+                        row_z_bottom.append(z2)
+                    row_z.append(z4)
+                    row_z_bottom.append(z3)
+
                 ########################################################
 
-                vertices.extend([pt1.x(), pt1.y(), z1, pt2.x(), pt2.y(), z2, pt3.x(), pt3.y(), z3, pt4.x(), pt4.y(), z4]) ## add 4 points
-                current_vertices = len(faces) * 4 / 5
-                faces.extend([4, current_vertices, current_vertices + 1, current_vertices + 2, current_vertices + 3])
+                vertices.append([pt1.x(), pt1.y(), z1, pt2.x(), pt2.y(), z2, pt3.x(), pt3.y(), z3, pt4.x(), pt4.y(), z4]) ## add 4 points
+                current_vertices = v*(h+1)*4 + h*4 #len(np.array(faces_array).flatten()) * 4 / 5
+                faces.append([4, current_vertices, current_vertices + 1, current_vertices + 2, current_vertices + 3])
 
                 # color vertices according to QGIS renderer
                 color = (255<<24) + (0<<16) + (0<<8) + 0
@@ -419,7 +434,9 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 colorLayer = selectedLayer
                 currentRasterBandCount = rasterBandCount
 
-                if rendererType == "multibandcolor": 
+                if index1 is None or index1_0 is None: # transparent color
+                    color = (0<<24) + (0<<16) + (0<<8) + 0
+                elif rendererType == "multibandcolor": 
                     valR = 0
                     valG = 0
                     valB = 0
@@ -436,9 +453,10 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         #else: 
                         valRange = (rasterBandMaxVal[k] - rasterBandMinVal[k])
                         if valRange == 0: colorVal = 0
-                        elif valRange == rasterBandNoDataVal[k]: 
-                            colorVal = 0
+                        elif float(rasterBandVals[k][int(count/4)]) == float(rasterBandNoDataVal[k]): 
+                            valR = valG = valB = 0
                             alpha = 0
+                            break
                         else: colorVal = int( (rasterBandVals[k][int(count/4)] - rasterBandMinVal[k]) / valRange * 255 )
                             
                         if k+1 == bandRed: valR = colorVal
@@ -488,13 +506,6 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                     else: # e.g. single band data
                         bandIndex = 0
                     
-                    #if textureLayer is not None:
-                    #    value = texture_arrays[bandIndex][index1][index2] 
-                    #    valRange = texture_maxs[bandIndex] - texture_mins[bandIndex] 
-                    #    if valRange == 0: colorVal = 0
-                    #    else: colorVal = int( (texture_arrays[bandIndex][index1][index2] - texture_mins[bandIndex] ) / valRange * 255 )
-                    #    color =  (255<<24) + (colorVal<<16) + (colorVal<<8) + colorVal
-                    #else: 
                     if rasterBandVals[bandIndex][int(count/4)] >= rasterBandMinVal[bandIndex]: 
                         # REMAP band values to (0,255) range
                         valRange = (rasterBandMaxVal[bandIndex] - rasterBandMinVal[bandIndex])
@@ -502,16 +513,67 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         else: colorVal = int( (rasterBandVals[bandIndex][int(count/4)] - rasterBandMinVal[bandIndex]) / valRange * 255 )
                         color =  (255<<24) + (colorVal<<16) + (colorVal<<8) + colorVal
 
-                colors.extend([color,color,color,color])
+                colors.append([color,color,color,color])
                 count += 4
 
-        if len(colors)/4*5 == len(faces) and len(colors)*3 == len(vertices):
-            mesh = constructMeshFromRaster(vertices, faces, colors, dataStorage)
-            mesh.units = dataStorage.currentUnits
+            # after each row
+            vertices_array.append(vertices)
+            faces_array.append(faces)
+            colors_array.append(colors)
+
+            if v == 0: array_z.append(row_z)
+            array_z.append(row_z_bottom)
+        
+        # after the entire loop
+        faces_filtered = []
+        colors_filtered = []
+        vertices_filtered = []
+
+        ## end of the the table
+        smooth = True
+        if smooth is True and len(row_z)>2 and len(array_z)>2:
+            array_z_nans = np.array(array_z)
+
+            array_z_filled = np.array(array_z)
+            mask = np.isnan(array_z_filled)
+            array_z_filled[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), array_z_filled[~mask])
+
+            sigma = 1.0
+            gaussian_array = sp.ndimage.filters.gaussian_filter(array_z_filled, sigma, mode='nearest')
+
+            for v in range(rasterDimensions[1] ): #each row, Y
+                for h in range(rasterDimensions[0] ): #item in a row, X
+                    if not np.isnan(array_z_nans[v][h]):
+
+                        vertices_item = vertices_array[v][h]
+                        #print(vertices_item)
+                        vertices_item[2] = gaussian_array[v][h]
+                        vertices_item[5] = gaussian_array[v+1][h]
+                        vertices_item[8] = gaussian_array[v+1][h+1]
+                        vertices_item[11] = gaussian_array[v][h+1]
+                        vertices_filtered.extend(vertices_item) 
+                        
+                        currentFaces = len(faces_filtered)/5 *4
+                        faces_filtered.extend([4, currentFaces,currentFaces+1,currentFaces+2,currentFaces+3])
+                        #print(faces_filtered)
+                        colors_filtered.extend(colors_array[v][h])
+                        #print(colors_array[v][h])
         else:
-            mesh = None 
-            logToUser("Something went wrong. Mesh cannot be created, only raster data will be sent. ", level = 2, plugin = plugin.dockwidget)
-        b.displayValue = [ mesh ]
+            faces_filtered = np.array(faces_array).flatten()
+            colors_filtered = np.array(colors_array).flatten()
+            vertices_filtered = np.array(vertices_array).flatten()
+
+        #if len(colors)/4*5 == len(faces) and len(colors)*3 == len(vertices):
+        mesh = constructMeshFromRaster(vertices_filtered, faces_filtered, colors_filtered, dataStorage)
+        if mesh is not None: 
+            mesh.units = dataStorage.currentUnits
+            b.displayValue = [ mesh ]
+        else: 
+            b.displayValue = [] 
+        #else:
+        #    mesh = None 
+        #    logToUser("Something went wrong. Mesh cannot be created, only raster data will be sent. ", level = 2, plugin = plugin.dockwidget)
+        
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
