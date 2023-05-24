@@ -40,7 +40,7 @@ def addLevelSymbol(msg: str, level: int):
       return msg 
 
 def writeToLog(msg: str = "", level: int = 2):
-      print("write log")
+      #print(msg)
       from speckle.logging import logger
       logger.log(msg, level)
        

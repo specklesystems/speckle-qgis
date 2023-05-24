@@ -15,8 +15,6 @@ from ui.logger import logToUser
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer, QgsFeature,
                        QgsRasterLayer, QgsVectorLayer, QgsPoint )
 
-import triangle as tr
-
 
 def cross_product(pt1, pt2):
     return [ (pt1[1] * pt2[2]) - (pt1[2] * pt2[1]),
@@ -64,6 +62,7 @@ def projectToPolygon(point: List, polygonPts: List):
 
 def triangulatePolygon(geom): 
     try:
+        import triangle as tr
         vertices = []
         segments = []
         holes = []
@@ -80,7 +79,7 @@ def triangulatePolygon(geom):
             print(holes)
             t = tr.triangulate(dict_shape, 'p')
             #t = {'vertices': vertices, 'triangles': [[0,1,2]]}
-            print(t)
+            #print(t)
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3])
             return None, None
@@ -88,7 +87,7 @@ def triangulatePolygon(geom):
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
-
+        return None, None
 
 def getPolyPtsSegments(geom):
     vertices = []
