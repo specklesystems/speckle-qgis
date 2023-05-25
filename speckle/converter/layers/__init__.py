@@ -146,6 +146,11 @@ def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], s
                         if (attribute is None or str(attribute) not in layer.fields().names()) and "ignore" in transform_name:
                             logToUser("Attribute for extrusion not found", level = 2, plugin = plugin.dockwidget)
                             return None
+                        
+                    elif isinstance(layer, QgsRasterLayer) and layer.name() == layer_name and "elevation" in transform_name:
+                        if plugin.dataStorage.project.crs().isGeographic():
+                            logToUser("Raster layer transformation cannot be applied when the project CRS is set to Geographic type", level = 2, plugin = plugin.dockwidget)
+                            return None
             
             result.append(layerToSpeckle(layer, projectCRS, plugin))
         
