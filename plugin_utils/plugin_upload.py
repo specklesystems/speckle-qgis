@@ -49,10 +49,12 @@ def main(parameters, arguments):
         print("HTTP/HTTPS headers: %s" % err.headers)
         print("Error code: %d" % err.errcode)
         print("Error message: %s" % err.errmsg)
+        sys.exit(1)
     except xmlrpc.client.Fault as err:
         print("A fault occurred")
         print("Fault code: %d" % err.faultCode)
         print("Fault string: %s" % err.faultString)
+        sys.exit(1)
 
 
 def hide_password(url, start=6):
