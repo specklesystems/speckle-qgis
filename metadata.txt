@@ -25,6 +25,8 @@ about=
     
     If you're having issues with this plugin, you can always reach us at https://speckle.community
 
+    Plugin is using the external libraries such as pyshp, scipy, triangle and specklepy, which will be installed automatically to a custom folder, not affecting the user's Python setup.
+
 
 
 tracker=http://github.com/specklesystems/speckle-qgis/issues
