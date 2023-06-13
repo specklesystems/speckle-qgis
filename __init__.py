@@ -30,7 +30,7 @@ if(path not in sys.path):
     sys.path.insert(0, path)
 
 from plugin_utils.installer import ensure_dependencies
-from speckle.logging import logger
+from speckle.utils.panel_logging import logger
 
 from qgis.core import Qgis
 # noinspection PyPep8Naming

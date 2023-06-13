@@ -11,7 +11,7 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.geometry.utils import fix_orientation, projectToPolygon, triangulatePolygon
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
-from speckle.logging import logger
+from speckle.utils.panel_logging import logger
 from pyqt_ui.logger import logToUser
 
 from qgis.core import (

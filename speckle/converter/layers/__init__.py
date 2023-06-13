@@ -29,7 +29,7 @@ from specklepy.objects.GIS.CRS import CRS
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
 from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, trySaveCRS, validateAttributeName
-from speckle.logging import logger
+from speckle.utils.panel_logging import logger
 from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
 
 from speckle.converter.layers.symbology import vectorRendererToNative, rasterRendererToNative, rendererToSpeckle

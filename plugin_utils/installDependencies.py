@@ -3,8 +3,8 @@ import os.path
 import subprocess
 
 from plugin_utils.subprocess_call import subprocess_call
-from speckle.logging import logger
-from speckle.utils import get_qgis_python_path
+from speckle.utils.panel_logging import logger
+from speckle.utils.utils import get_qgis_python_path
 
 
 def setup():

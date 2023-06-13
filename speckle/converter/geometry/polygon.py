@@ -19,7 +19,7 @@ from speckle.converter.geometry.polyline import (
 from speckle.converter.geometry.utils import *
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_raster_stats, getArrayIndicesFromXY, getElevationLayer, getRasterArrays, isAppliedLayerTransformByKeywords, moveVertically, reprojectPt
-from speckle.logging import logger
+from speckle.utils.panel_logging import logger
 import math
 from osgeo import gdal 
 import numpy as np 

@@ -16,7 +16,7 @@ from qgis.core import (
 from qgis._core import Qgis
 from speckle.converter.geometry.utils import addCorrectUnits, getArcNormal, getArcRadianAngle, speckleArcCircleToPoints
 
-from speckle.logging import logger
+from speckle.utils.panel_logging import logger
 from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
 from typing import List, Tuple, Union
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer

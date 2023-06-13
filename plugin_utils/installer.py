@@ -8,7 +8,7 @@ from typing import Optional
 from importlib import import_module, invalidate_caches
 import pkg_resources
 
-from speckle.utils import get_qgis_python_path
+from speckle.utils.utils import get_qgis_python_path
 
 _user_data_env_var = "SPECKLE_USERDATA_PATH"
 
@@ -171,7 +171,7 @@ def install_requirements(host_application: str) -> None:
         import shutil
         shutil.rmtree(path)
     except PermissionError as e:
-        from speckle.logging import logger
+        from speckle.utils.panel_logging import logger
         raise Exception("Restart QGIS for changes to take effect")
 
     print(f"Installing Speckle dependencies to {path}")
