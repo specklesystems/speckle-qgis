@@ -27,7 +27,7 @@ import scipy.ndimage
 from pyqt_ui.logger import logToUser
 
 def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage = None):
-    #b = Base(units = dataStorage.currentUnits)
+
     if dataStorage is None: return 
     units = dataStorage.currentUnits
     try:

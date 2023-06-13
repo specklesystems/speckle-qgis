@@ -169,16 +169,16 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         crs = selectedLayer.crs()
 
         units_proj = plugin.dataStorage.currentUnits
-        units_layer = QgsUnitTypes.encodeUnit(crs.mapUnits())
-        print(units_layer)
+        units_layer_native = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
 
+        units_layer = units_layer_native
         if crs.isGeographic(): units_layer = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
         layerObjs = []
 
         # Convert CRS to speckle, use the projectCRS
         print(projectCRS.toWkt())
         speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units_proj) 
-        layerCRS = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units_layer) 
+        layerCRS = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units_layer, units_native = units_layer_native) 
         
         renderer = selectedLayer.renderer()
         layerRenderer = rendererToSpeckle(renderer) 
@@ -384,7 +384,7 @@ def addBimMainThread(plugin, geomType, layerName, streamBranch, newFields, geomL
 
         
         crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-        plugin.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
+        plugin.dataStorage.currentUnits = str(QgsUnitTypes.encodeUnit(crs.mapUnits())) 
         if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
             plugin.dataStorage.currentUnits = 'm'
 
@@ -595,7 +595,7 @@ def addCadMainThread(plugin, geomType, newName, streamBranch, newFields, geomLis
         #################################################
 
         crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-        plugin.dataStorage.currentUnits = QgsUnitTypes.encodeUnit(crs.mapUnits())
+        plugin.dataStorage.currentUnits = str(QgsUnitTypes.encodeUnit(crs.mapUnits())) 
         if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
             plugin.dataStorage.currentUnits = 'm'
         #authid = trySaveCRS(crs, streamBranch)

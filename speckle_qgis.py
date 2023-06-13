@@ -27,19 +27,12 @@ from plugin_utils.helpers import findFeatColors, findOrCreatePath, getAppName, r
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsLayerTreeGroup, QgsCoordinateReferenceSystem,
                        QgsRasterLayer, QgsVectorLayer,
-                       QgsUnitTypes, QgsWkbTypes,
-                       QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsLayerTreeLayer,
-                       QgsFields, 
-                       QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
-                       QgsRendererCategory,
-                       QgsSymbol)
+                       QgsUnitTypes)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QApplication, QAction, QDockWidget, QVBoxLayout, QWidget
 from qgis.PyQt import QtWidgets
 from qgis import PyQt
-
-from PyQt5.QtGui import QColor
 
 import sip
 
@@ -76,9 +69,6 @@ from pyqt_ui.logger import logToUser
 # Import the code for the dialog
 from speckle.utils.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
 
-#import concurrent.futures
-#from concurrent.futures import ThreadPoolExecutor
-
 SPECKLE_COLOR = (59,130,246)
 SPECKLE_COLOR_LIGHT = (69,140,255)
 
@@ -100,12 +90,9 @@ class SpeckleQGIS:
     lat: float
     lon: float
 
-    #default_account: Account
     accounts: List[Account]
-    #active_account: Account
 
     theads_total: int
-
     dataStorage: DataStorage
 
     def __init__(self, iface):
@@ -434,7 +421,7 @@ class SpeckleQGIS:
             self.dataStorage.all_layers = getAllLayers(root)
             self.dockwidget.mappingSendDialog.populateSavedTransforms(self.dataStorage)
             
-            units = QgsUnitTypes.encodeUnit(projectCRS.mapUnits())
+            units = str(QgsUnitTypes.encodeUnit(projectCRS.mapUnits())) 
             if units is None or units == 'degrees': units = 'm'
             self.dataStorage.currentUnits = units 
 
