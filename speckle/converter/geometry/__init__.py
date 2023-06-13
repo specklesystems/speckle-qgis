@@ -1,7 +1,7 @@
 """ This module contains all geometry conversion functionality To and From Speckle."""
 
 from numpy import isin
-from speckle.converter.geometry.GisGeometryClasses import GisLineElement, GisPointElement, GisPolygonElement
+from specklepy.objects.GIS.geometry import GisLineElement, GisPointElement, GisPolygonElement
 from speckle.logging import logger
 from typing import List, Union
 

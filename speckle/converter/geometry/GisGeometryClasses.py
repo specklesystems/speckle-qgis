@@ -2,7 +2,7 @@
 from typing import Optional, Union, List 
 from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
 from specklepy.objects import Base
-
+r'''
 class GisPolygonGeometry(Base, speckle_type="Objects.GIS.PolygonGeometry", detachable={"displayValue"}):
     """GIS Polygon Geometry"""
     def __init__(
@@ -97,4 +97,4 @@ class GisRasterElement(Base, speckle_type="Objects.GIS.RasterElement", detachabl
         self.noDataValue = noDataValue
         self.displayValue = displayValue
         self.units = units if units != None else "m"
-
+'''

@@ -28,7 +28,7 @@ import threading
 from speckle.automation.mapping_send import MappingSendDialog
 from speckle.converter.layers import getAllLayers, getLayers
 from speckle.DataStorage import DataStorage
-from speckle.converter.layers.Layer import RasterLayer, VectorLayer
+from specklepy.objects.GIS.layers import RasterLayer, VectorLayer
 from ui.LogWidget import LogWidget
 from ui.logger import logToUser
 #from speckle_qgis import SpeckleQGIS

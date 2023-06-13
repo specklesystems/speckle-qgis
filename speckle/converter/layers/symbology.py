@@ -14,7 +14,7 @@ from qgis.core import (
     QgsGraduatedSymbolRenderer, QgsRasterDataProvider
 
 )
-from speckle.converter.layers.Layer import Layer, RasterLayer, VectorLayer
+from specklepy.objects.GIS.layers import Layer, RasterLayer, VectorLayer
 from PyQt5.QtGui import QColor
 
 from ui.logger import logToUser

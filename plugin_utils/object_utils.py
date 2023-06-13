@@ -5,7 +5,7 @@ from plugin_utils.helpers import removeSpecialCharacters
 
 from speckle.logging import logger
 from qgis.core import Qgis, QgsProject
-from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
+from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers import bimLayerToNative, cadLayerToNative, layerToNative
 
 import threading

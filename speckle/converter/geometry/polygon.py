@@ -8,7 +8,7 @@ from typing import List, Sequence
 
 from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
 from specklepy.objects import Base
-from speckle.converter.geometry.GisGeometryClasses import GisPolygonGeometry
+from specklepy.objects.GIS.geometry import GisPolygonGeometry
 
 from speckle.converter.geometry.mesh import meshPartsFromPolygon, constructMesh
 from speckle.converter.geometry.polyline import (

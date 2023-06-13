@@ -23,10 +23,10 @@ from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint,
                        QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
                        QgsRendererCategory,
                        QgsSymbol, QgsUnitTypes, QgsVectorFileWriter)
-from speckle.converter.geometry.GisGeometryClasses import GisPolygonElement
+from specklepy.objects.GIS.geometry import GisPolygonElement
 from speckle.converter.geometry.point import pointToNative
-from speckle.converter.layers.CRS import CRS
-from speckle.converter.layers.Layer import VectorLayer, RasterLayer, Layer
+from specklepy.objects.GIS.CRS import CRS
+from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
 from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, trySaveCRS, validateAttributeName
 from speckle.logging import logger

@@ -2,9 +2,11 @@ from typing import Any, Dict, List, Optional
 from specklepy.objects.base import Base
 from specklepy.objects.other import Collection
 
-from speckle.converter.layers.CRS import CRS
+from specklepy.objects.GIS.CRS import CRS
 from deprecated import deprecated
+from specklepy.objects.GIS.layers import RasterLayer, VectorLayer
 
+r'''
 class Layer(Base, detachable={"features"}):
     """A GIS Layer"""
 
@@ -107,3 +109,4 @@ class oldRasterLayer(RasterLayer, speckle_type = "RasterLayer"):
 @deprecated(version="2.14")
 class oldVectorLayer(VectorLayer, speckle_type = "VectorLayer"): 
     pass
+'''

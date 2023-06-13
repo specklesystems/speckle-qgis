@@ -43,15 +43,14 @@ from PyQt5.QtGui import QColor
 
 import sip
 
-from specklepy.api import operations
+from specklepy.core.api import operations
 from specklepy.logging.exceptions import SpeckleException, GraphQLException
-#from specklepy.api.credentials import StreamWrapper
 from specklepy.api.models import Stream
 from specklepy.api.wrapper import StreamWrapper
 from specklepy.objects import Base
 from specklepy.objects.other import Collection
 from specklepy.transports.server import ServerTransport
-from specklepy.api.credentials import Account, get_local_accounts #, StreamWrapper
+from specklepy.core.api.credentials import Account, get_local_accounts #, StreamWrapper
 from specklepy.api.client import SpeckleClient
 from specklepy.logging import metrics
 import webbrowser
@@ -61,7 +60,7 @@ from resources import *
 from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.geometry.mesh import writeMeshToShp
 from speckle.converter.geometry.point import pointToNative
-from speckle.converter.layers.Layer import Layer, VectorLayer, RasterLayer
+from specklepy.objects.GIS.layers import Layer, VectorLayer, RasterLayer
 from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getLayers
 from speckle.converter.layers.feature import bimFeatureToNative, cadFeatureToNative
 from speckle.converter.layers.symbology import rasterRendererToNative, vectorRendererToNative
@@ -484,7 +483,7 @@ class SpeckleQGIS:
                 message="Sent objects from QGIS" if len(message) == 0 else message,
                 source_application="QGIS " + self.gis_version.split(".")[0],
             )
-            r'''
+            
             try:
                 metr_filter = "Selected" if bySelection is True else "Saved"
                 metr_main = True if branchName=="main" else False
@@ -502,7 +501,7 @@ class SpeckleQGIS:
                 metrics.track(metrics.SEND, self.dataStorage.active_account, {"hostAppFullVersion":self.gis_version, "branches":metr_branches, "collaborators":metr_collab,"connector_version": str(self.version), "filter": metr_filter, "isMain": metr_main, "savedStreams": metr_saved_streams, "projectedCRS": metr_projected, "customCRS": metr_crs})
             except:
                 metrics.track(metrics.SEND, self.dataStorage.active_account)
-            '''
+            
             
             if isinstance(commit_id, SpeckleException):
                 logToUser("Error creating commit: "+str(commit_id.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
@@ -575,7 +574,7 @@ class SpeckleQGIS:
             transport = validateTransport(client, streamId)
             if transport == None: 
                 return 
-            commitObj = operations._untracked_receive(objId, transport, None)
+            commitObj = operations.receive(objId, transport, None)
             
             projectCRS = self.qgis_project.crs()
             try:
