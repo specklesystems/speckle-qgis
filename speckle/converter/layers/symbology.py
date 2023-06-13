@@ -17,7 +17,7 @@ from qgis.core import (
 from specklepy.objects.GIS.layers import Layer, RasterLayer, VectorLayer
 from PyQt5.QtGui import QColor
 
-from ui.logger import logToUser
+from pyqt_ui.logger import logToUser
 
 # TODO QML format: https://gis.stackexchange.com/questions/202230/loading-style-qml-file-to-layer-via-pyqgis 
 

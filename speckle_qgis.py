@@ -68,13 +68,13 @@ from speckle.converter.layers.utils import colorFromSpeckle, findAndClearLayerGr
 from speckle.DataStorage import DataStorage
 
 from speckle.logging import logger
-from ui.add_stream_modal import AddStreamModalDialog
-from ui.create_stream import CreateStreamModalDialog
-from ui.create_branch import CreateBranchModalDialog
-from ui.logger import logToUser
+from pyqt_ui.add_stream_modal import AddStreamModalDialog
+from pyqt_ui.create_stream import CreateStreamModalDialog
+from pyqt_ui.create_branch import CreateBranchModalDialog
+from pyqt_ui.logger import logToUser
 
 # Import the code for the dialog
-from ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
+from pyqt_ui.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
 
 #import concurrent.futures
 #from concurrent.futures import ThreadPoolExecutor
@@ -624,7 +624,7 @@ class SpeckleQGIS:
     def reloadUI(self):
         print("___RELOAD UI")
         try:
-            from ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection, get_transformations 
+            from pyqt_ui.project_vars import get_project_streams, get_survey_point, get_project_layer_selection, get_transformations 
 
             self.qgis_project = QgsProject.instance()
             
@@ -669,8 +669,8 @@ class SpeckleQGIS:
 
     def run(self):
         """Run method that performs all the real work"""
-        from ui.speckle_qgis_dialog import SpeckleQGISDialog
-        from ui.project_vars import get_project_streams, get_survey_point, get_elevationLayer, get_project_layer_selection, get_transformations
+        from pyqt_ui.speckle_qgis_dialog import SpeckleQGISDialog
+        from pyqt_ui.project_vars import get_project_streams, get_survey_point, get_elevationLayer, get_project_layer_selection, get_transformations
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
@@ -729,7 +729,7 @@ class SpeckleQGIS:
 
     def set_survey_point(self): 
         try:
-            from ui.project_vars import set_survey_point
+            from pyqt_ui.project_vars import set_survey_point
             set_survey_point(self)
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
@@ -803,7 +803,7 @@ class SpeckleQGIS:
 
     def handleStreamAdd(self, sw: StreamWrapper):
         try: 
-            from ui.project_vars import set_project_streams
+            from pyqt_ui.project_vars import set_project_streams
             
             streamExists = 0
             index = 0

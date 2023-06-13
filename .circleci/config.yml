@@ -106,6 +106,26 @@ jobs:
           root: ./
           paths:
             - speckle-sharp-ci-tools
+  get-ui: # Clones our ci tools and persists them to the workspace
+    docker:
+      - image: cimg/base:2021.01
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "d1:d5:96:4d:ed:58:6e:7f:58:cc:21:5f:94:20:76:49"
+      - run:
+          name: I know Github as a host
+          command: |
+            mkdir ~/.ssh
+            touch ~/.ssh/known_hosts
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
+          name: Clone
+          command: git clone git@github.com:specklesystems/pyqt_ui.git pyqt_ui
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - pyqt_ui
   deploy-manager2:
     docker:
       - image: mcr.microsoft.com/dotnet/sdk:6.0
@@ -132,6 +152,13 @@ jobs:
 workflows: #happens with every PR to main
   build: # build the installers, but don't persist to workspace for deployment
     jobs:
+      - get-ui:
+          context: github-dev-bot
+          filters:
+            branches:
+              only:
+                - main
+                - /ci\/.*/
       - get-ci-tools:
           context: github-dev-bot
           filters:
@@ -141,6 +168,7 @@ workflows: #happens with every PR to main
                 - /ci\/.*/
       - package:
           requires:
+            - get-ui
             - get-ci-tools 
           filters:
             branches:
@@ -159,6 +187,13 @@ workflows: #happens with every PR to main
 
   deploy: # build installers and deploy
     jobs:
+      - get-ui:
+          context: github-dev-bot
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
       - get-ci-tools:
           context: github-dev-bot
           filters:
@@ -173,6 +208,7 @@ workflows: #happens with every PR to main
             branches:
               ignore: /.*/
           requires:
+            - get-ui
             - get-ci-tools 
       - build-connector-win:
           slug: qgis

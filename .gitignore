@@ -123,3 +123,4 @@ zip-build*
 *.csv
 *.json 
 */PyQt-UI*
+pyqt_ui*

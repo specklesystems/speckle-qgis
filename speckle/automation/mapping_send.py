@@ -3,8 +3,8 @@ import os
 from typing import Any, List, Tuple, Union
 from speckle.converter.layers import getAllLayers
 from speckle.converter.layers.utils import getElevationLayer, getLayerGeomType
-from ui.logger import displayUserMsg, logToUser
-import ui.speckle_qgis_dialog
+from pyqt_ui.logger import displayUserMsg, logToUser
+import pyqt_ui.speckle_qgis_dialog
 from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsRasterLayer, QgsIconUtils 
 
 from speckle.logging import logger
@@ -129,7 +129,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
 
     def onAddTransform(self):
         
-        from ui.project_vars import set_transformations
+        from pyqt_ui.project_vars import set_transformations
         root = self.dataStorage.project.layerTreeRoot()
         self.dataStorage.all_layers = getAllLayers(root)
 
@@ -172,7 +172,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
 
     def onRemoveTransform(self):
 
-        from ui.project_vars import set_transformations
+        from pyqt_ui.project_vars import set_transformations
         if self.transformationsList.currentItem() is not None:
             #if len(self.layerDropdown.currentText())>1 and len(self.transformDropdown.currentText())>1:
             listItem = self.transformationsList.currentItem().text()
@@ -341,7 +341,7 @@ class MappingSendDialog(QtWidgets.QWidget, FORM_CLASS):
             return
     
     def saveElevationLayer(self):
-        from ui.project_vars import set_elevationLayer
+        from pyqt_ui.project_vars import set_elevationLayer
         root = self.dataStorage.project.layerTreeRoot()
         layer = None
 

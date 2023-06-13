@@ -16,7 +16,7 @@ import unittest
 
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QDialog
 
-from ui.speckle_qgis_dialog import SpeckleQGISDialog
+from pyqt_ui.speckle_qgis_dialog import SpeckleQGISDialog
 
 from utilities import get_qgis_app
 

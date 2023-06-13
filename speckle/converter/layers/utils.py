@@ -17,7 +17,7 @@ import math
 import numpy as np 
 
 
-from ui.logger import logToUser
+from pyqt_ui.logger import logToUser
 
 ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
 
