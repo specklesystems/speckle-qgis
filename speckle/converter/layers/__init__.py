@@ -29,8 +29,7 @@ from specklepy.objects.GIS.CRS import CRS
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
 from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, trySaveCRS, validateAttributeName
-from speckle.utils.panel_logging import logger
-from speckle.converter.geometry.mesh import constructMesh, writeMeshToShp
+from speckle.converter.geometry.mesh import writeMeshToShp
 
 from speckle.converter.layers.symbology import vectorRendererToNative, rasterRendererToNative, rendererToSpeckle
 
@@ -177,8 +176,8 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
 
         # Convert CRS to speckle, use the projectCRS
         print(projectCRS.toWkt())
-        speckleReprojectedCrs = CRS(name=projectCRS.authid(), wkt=projectCRS.toWkt(), units=units_proj) 
-        layerCRS = CRS(name=crs.authid(), wkt=crs.toWkt(), units=units_layer, units_native = units_layer_native) 
+        speckleReprojectedCrs = CRS(authority_id=projectCRS.authid(), name=str(projectCRS.description()), wkt=projectCRS.toWkt(), units=units_proj) 
+        layerCRS = CRS(authority_id=crs.authid(), name=str(crs.description()), wkt=crs.toWkt(), units=units_layer, units_native = units_layer_native) 
         
         renderer = selectedLayer.renderer()
         layerRenderer = rendererToSpeckle(renderer) 
