@@ -52,25 +52,27 @@ def set_project_streams(plugin: SpeckleQGIS):
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget)
         return
   
-def get_project_layer_selection(plugin: SpeckleQGIS):
+def get_project_saved_layers(plugin: SpeckleQGIS):
     try:
         proj = plugin.qgis_project
         saved_layers = proj.readEntry("speckle-qgis", "project_layer_selection", "")
         temp = []
-        ######### need to check whether saved streams are available (account reachable)
+        print(saved_layers)
         if saved_layers[1] and len(saved_layers[0]) != 0:
             
             for id in saved_layers[0].split(","):
                 found = 0
                 for layer in proj.mapLayers().values():
                     if layer.id() == id:
-                        temp.append((layer.name(), layer))
+                        temp.append((layer, layer.name(), ""))
                         found += 1
                         break
                 if found == 0: 
                     logToUser(f'Saved layer not found: "{id}"', level = 1, func = inspect.stack()[0][3])
-        #plugin.current_layers = temp
-        plugin.dataStorage.current_layers = temp
+        plugin.dataStorage.current_layers = temp.copy()
+        plugin.dataStorage.saved_layers = temp.copy()
+        print(temp)
+    
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget)
         return
@@ -79,7 +81,9 @@ def set_project_layer_selection(plugin: SpeckleQGIS):
     try:
         proj = plugin.qgis_project
         #value = ",".join([x.id() for x in self.iface.layerTreeView().selectedLayers()]) #'points_qgis2_b22ed3d0_0ff9_40d2_97f2_bd17a350d698' <qgis._core.QgsVectorDataProvider object at 0x000002627D9D4790>
-        value = ",".join([x[1].id() for x in plugin.dataStorage.current_layers]) 
+        value = ",".join([x[0].id() for x in plugin.dataStorage.current_layers]) 
+        
+        print(value)
         proj.writeEntry("speckle-qgis", "project_layer_selection", value)
         try:
             metrics.track("Connector Action", plugin.dataStorage.active_account, {"name": "Save Layer Selection", "connector_version": str(plugin.version)})

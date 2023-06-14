@@ -68,53 +68,46 @@ def getAllLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return [parent] 
 
-def getLayers(plugin, bySelection = False ) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+def getSavedLayers(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
     
     layers = []
     try:
-        #print("___ get layers list ___")
-        self = plugin.dockwidget
-        if bySelection is True: # by selection 
-            selected_layers = plugin.iface.layerTreeView().selectedNodes()
-            layers = []
-            
-            for item in selected_layers:
-                root = self.dataStorage.project.layerTreeRoot()
-                layers.extend(getAllLayers(root, item))
-
-        else: # from project data 
-            project = plugin.qgis_project
-            #all_layers_ids = [l.id() for l in project.mapLayers().values()]
-            for item in plugin.dataStorage.current_layers:
-                try: 
-                    id = item[1].id()
-                except:
-                    logToUser(f'Saved layer not found: "{item[0]}"', level = 1, func = inspect.stack()[0][3])
-                    continue
-                found = 0
-                for l in project.mapLayers().values():
-                    if id == l.id():
-                        layers.append(l)
-                        found += 1
-                        break 
-                if found == 0: 
-                    logToUser(f'Saved layer not found: "{item[0]}"', level = 1, func = inspect.stack()[0][3])
-        
-        r'''
-        children = parent.children()
-        for node in children:
-            #print(node)
-            if tree.isLayer(node):
-                #print(node)
-                if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): layers.append(node)
+        project = plugin.qgis_project
+        for item in plugin.dataStorage.current_layers:
+            try: 
+                id = item[0].id()
+            except:
+                logToUser(f'Saved layer not found: "{item[1]}"', level = 1, func = inspect.stack()[0][3])
                 continue
-            if tree.isGroup(node):
-                for lyr in getLayers(tree, node):
-                    if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer): layers.append(lyr) 
-                #layers.extend( [ lyr for lyr in getLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
-        '''
+            found = 0
+            for l in project.mapLayers().values():
+                if id == l.id():
+                    layers.append(l)
+                    found += 1
+                    break 
+            if found == 0: 
+                logToUser(f'Saved layer not found: "{item[1]}"', level = 1, func = inspect.stack()[0][3])
+        
         return layers
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        return layers 
+
+def getSelectedLayers(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+    """Gets a list of all layers in the given QgsLayerTree"""
+
+    layers = []
+    try:
+        self = plugin.dockwidget
+        selected_layers = plugin.iface.layerTreeView().selectedNodes()
+        layers = []
+        
+        for item in selected_layers:
+            root = self.dataStorage.project.layerTreeRoot()
+            layers.extend(getAllLayers(root, item))
+        return layers
+    
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return layers 

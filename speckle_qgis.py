@@ -40,11 +40,11 @@ from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.geometry.mesh import writeMeshToShp
 from speckle.converter.geometry.point import pointToNative
 from specklepy.objects.GIS.layers import Layer, VectorLayer, RasterLayer
-from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getLayers
+from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getSavedLayers, getSelectedLayers
 from speckle.converter.layers.feature import bimFeatureToNative, cadFeatureToNative
 from speckle.converter.layers.symbology import rasterRendererToNative, vectorRendererToNative
 from speckle.converter.layers.utils import colorFromSpeckle, findAndClearLayerGroup, tryCreateGroup, trySaveCRS
-from speckle.DataStorage import DataStorage
+from specklepy_qt_ui.DataStorage import DataStorage
 
 from speckle.utils.panel_logging import logger
 from specklepy_qt_ui.widget_add_stream import AddStreamModalDialog
@@ -67,7 +67,7 @@ class SpeckleQGIS:
     add_stream_modal: AddStreamModalDialog
     create_stream_modal: CreateStreamModalDialog
     current_streams: List[Tuple[StreamWrapper, Stream]]  #{id:(sw,st),id2:()}
-    current_layers: List[Tuple[str, Union[QgsVectorLayer, QgsRasterLayer]]] = []
+    current_layers: List[Tuple[Union[QgsVectorLayer, QgsRasterLayer], str, str]] = []
 
     active_stream: Optional[Tuple[StreamWrapper, Stream]] 
 
@@ -390,7 +390,9 @@ class SpeckleQGIS:
             bySelection = True
             if self.dockwidget.layerSendModeDropdown.currentIndex() == 1: 
                 bySelection = False 
-            layers = getLayers(self, bySelection) # List[QgsLayerTreeNode]
+                layers = getSavedLayers(self)
+            else: 
+                layers = getSelectedLayers(self) # List[QgsLayerTreeNode]
 
             # Check if stream id/url is empty
             if self.active_stream is None:
@@ -597,7 +599,7 @@ class SpeckleQGIS:
     def reloadUI(self):
         print("___RELOAD UI")
         try:
-            from speckle.utils.project_vars import get_project_streams, get_survey_point, get_project_layer_selection, get_transformations 
+            from speckle.utils.project_vars import get_project_streams, get_survey_point, get_project_saved_layers, get_transformations 
 
             self.qgis_project = QgsProject.instance()
             
@@ -607,16 +609,22 @@ class SpeckleQGIS:
         
             get_transformations(self.dataStorage)
             
+            
+            root = self.dataStorage.project.layerTreeRoot()
+            self.dataStorage.all_layers = getAllLayers(root)
             self.dockwidget.addDataStorage(self)
 
             self.is_setup = self.check_for_accounts()
+
             if self.dockwidget is not None:
                 self.active_stream = None
                 get_project_streams(self)
                 get_survey_point(self)
-                get_project_layer_selection(self)
+                get_project_saved_layers(self)
+                self.dockwidget.populateSavedLayerDropdown(self)
 
                 self.dockwidget.reloadDialogUI(self)
+
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
@@ -643,7 +651,7 @@ class SpeckleQGIS:
     def run(self):
         """Run method that performs all the real work"""
         from specklepy_qt_ui.dockwidget_main import SpeckleQGISDialog
-        from speckle.utils.project_vars import get_project_streams, get_survey_point, get_elevationLayer, get_project_layer_selection, get_transformations
+        from speckle.utils.project_vars import get_project_streams, get_survey_point, get_elevationLayer, get_project_saved_layers, get_transformations
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
@@ -662,7 +670,13 @@ class SpeckleQGIS:
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
+
+                root = self.dataStorage.project.layerTreeRoot()
+                self.dataStorage.all_layers = getAllLayers(root)
+                self.dockwidget.addDataStorage(self)
                 self.dockwidget.runSetup(self)
+                self.dockwidget.createMappingDialog()
+
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
                 
@@ -671,25 +685,33 @@ class SpeckleQGIS:
                 self.dockwidget.addCadLayerToGroup.connect(self.addCadLayerToGroup)
                 self.dockwidget.addRasterLayerToGroup.connect(self.addRasterLayerToGroup)
                 
-
             else: 
+                root = self.dataStorage.project.layerTreeRoot()
+                self.dataStorage.all_layers = getAllLayers(root)
                 self.dockwidget.addDataStorage(self)
 
             get_project_streams(self)
             get_survey_point(self)
-            get_project_layer_selection(self)
+            get_project_saved_layers(self)
+            self.dockwidget.populateSavedLayerDropdown(self)
             get_elevationLayer(self.dataStorage)
 
             self.dockwidget.run(self)
-
-            # Setup reload of UI dropdowns when layers change.
-            #layerRoot = QgsProject.instance()
-            #layerRoot.layersAdded.connect(self.reloadUI)
-            #layerRoot.layersRemoved.connect(self.reloadUI)
+            self.dockwidget.saveLayerSelection.clicked.connect(lambda: self.populateSelectedLayerDropdown())
 
             # show the dockwidget
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
             self.dockwidget.enableElements(self)
+    
+    def populateSelectedLayerDropdown(self):
+        from speckle.utils.project_vars import set_project_layer_selection
+        layers = getSelectedLayers(self)
+        current_layers = []
+        for layer in layers:
+            current_layers.append((layer, layer.name(), ""))
+        self.dataStorage.current_layers = current_layers
+        self.dockwidget.populateSelectedLayerDropdown(self)
+        set_project_layer_selection(self)
 
     def onStreamAddButtonClicked(self):
         try:
