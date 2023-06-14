@@ -9,7 +9,7 @@ from specklepy.objects import Base
 from typing import List, Tuple, Union, Dict 
 
 #from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
-from pyqt_ui.logger import logToUser
+from specklepy_qt_ui.logger import logToUser
 #import time
 
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer, QgsFeature,

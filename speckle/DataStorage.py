@@ -34,7 +34,7 @@ class DataStorage:
         current_layers = []
         self.accounts = [] 
         self.elevationLayer = None
-        #from pyqt_ui.project_vars import set_transformations
+        #from specklepy_qt_ui.project_vars import set_transformations
 
 
         

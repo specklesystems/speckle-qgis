@@ -13,7 +13,7 @@ from specklepy.logging import metrics
 
 from speckle.utils.panel_logging import logger
 from qgis.core import (Qgis, QgsProject, QgsCoordinateReferenceSystem)
-from pyqt_ui.logger import displayUserMsg, logToUser
+from specklepy_qt_ui.logger import displayUserMsg, logToUser
 from speckle.utils.validation import tryGetStream
 
 def get_project_streams(plugin: SpeckleQGIS):

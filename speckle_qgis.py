@@ -47,10 +47,10 @@ from speckle.converter.layers.utils import colorFromSpeckle, findAndClearLayerGr
 from speckle.DataStorage import DataStorage
 
 from speckle.utils.panel_logging import logger
-from pyqt_ui.widget_add_stream import AddStreamModalDialog
-from pyqt_ui.widget_create_stream import CreateStreamModalDialog
-from pyqt_ui.widget_create_branch import CreateBranchModalDialog
-from pyqt_ui.logger import logToUser
+from specklepy_qt_ui.widget_add_stream import AddStreamModalDialog
+from specklepy_qt_ui.widget_create_stream import CreateStreamModalDialog
+from specklepy_qt_ui.widget_create_branch import CreateBranchModalDialog
+from specklepy_qt_ui.logger import logToUser
 
 # Import the code for the dialog
 from speckle.utils.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
@@ -642,7 +642,7 @@ class SpeckleQGIS:
 
     def run(self):
         """Run method that performs all the real work"""
-        from pyqt_ui.dockwidget_main import SpeckleQGISDialog
+        from specklepy_qt_ui.dockwidget_main import SpeckleQGISDialog
         from speckle.utils.project_vars import get_project_streams, get_survey_point, get_elevationLayer, get_project_layer_selection, get_transformations
 
         # Create the dialog with elements (after translation) and keep reference

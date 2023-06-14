@@ -11,7 +11,7 @@ from speckle.converter.layers import bimLayerToNative, cadLayerToNative, layerTo
 import threading
 from specklepy.objects import Base
 
-from pyqt_ui.logger import logToUser
+from specklepy_qt_ui.logger import logToUser
 
 SPECKLE_TYPES_TO_READ = ["Objects.Geometry.", "Objects.BuiltElements.", "IFC"] # will properly traverse and check for displayValue
 

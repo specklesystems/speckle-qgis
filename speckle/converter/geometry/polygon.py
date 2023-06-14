@@ -28,7 +28,7 @@ import numpy as np
 
 from PyQt5.QtGui import QColor
 
-from pyqt_ui.logger import logToUser
+from specklepy_qt_ui.logger import logToUser
 
 def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None):
 

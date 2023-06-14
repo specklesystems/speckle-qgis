@@ -2,7 +2,7 @@
 import inspect
 from qgis.core import Qgis, QgsMessageLog
 from qgis.PyQt.QtWidgets import QPushButton
-from pyqt_ui.logger import logToUser
+from specklepy_qt_ui.logger import logToUser
 import webbrowser
 
 

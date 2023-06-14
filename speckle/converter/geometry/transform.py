@@ -11,7 +11,7 @@ from qgis.core import (
 
 from PyQt5.QtGui import QColor
 
-from pyqt_ui.logger import logToUser
+from specklepy_qt_ui.logger import logToUser
 
 
 def transform(

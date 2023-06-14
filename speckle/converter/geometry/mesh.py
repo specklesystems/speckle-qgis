@@ -12,7 +12,7 @@ from speckle.converter.geometry.utils import fix_orientation, projectToPolygon, 
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
 from speckle.utils.panel_logging import logger
-from pyqt_ui.logger import logToUser
+from specklepy_qt_ui.logger import logToUser
 
 from qgis.core import (
     Qgis, QgsPoint, QgsPointXY, QgsMultiPolygon, QgsPolygon, QgsLineString, QgsFeature, QgsVectorLayer
