@@ -6,7 +6,7 @@ import inspect
 import math
 from typing import List, Tuple, Union
 from specklepy.objects import Base
-from specklepy.objects.geometry import Mesh, Point
+from specklepy.objects.geometry import Mesh, Point, Line, Curve, Circle, Ellipse, Polycurve, Arc, Polyline 
 import os
 import time
 from datetime import datetime
@@ -286,16 +286,39 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
         return  
 
 
-def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str, plugin):
+def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str, plugin):
     print("01______BIM layer to native")
     try:
         print(layerName)
         geom_meshes = []
+        
+        geom_points = []
+        geom_polylines = []
+        
+        layer_points = None
+        layer_polylines = None
+        #geom_meshes = []
         val = None 
         
         #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
         for geom in layerContentList:
-            # get list of display values
+
+            if isinstance(geom, Point): 
+                geom_points.append(geom)
+                continue
+            elif isinstance(geom, Line) or isinstance(geom, Polyline) or isinstance(geom, Curve) or isinstance(geom, Arc) or isinstance(geom, Circle) or isinstance(geom, Ellipse) or isinstance(geom, Polycurve):
+                geom_polylines.append(geom)
+                continue
+            try:
+                if geom.speckle_type.endswith(".ModelCurve") and geom["baseCurve"].speckle_type in GEOM_LINE_TYPES:
+                    geom_polylines.append(geom["baseCurve"])
+                    continue
+                elif geom["baseLine"].speckle_type in GEOM_LINE_TYPES:
+                    geom_polylines.append(geom["baseLine"])
+                    continue
+            except: pass # check for the Meshes
+
+            # get list of display values for Meshes
             if isinstance(geom, Mesh) or isinstance(geom, List): val = geom
             else:
                 try: val = geom.displayValue
@@ -309,8 +332,13 @@ def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch:
             elif isinstance(val, List): 
                 if isinstance(val[0], Mesh) : 
                     geom_meshes.extend(val)
+        
         if len(geom_meshes)>0: 
-            bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch, plugin)
+            bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch, plugin) 
+        if len(geom_points)>0: 
+            cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch, plugin)
+        if len(geom_polylines)>0: 
+            cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch, plugin)
 
         return True
     
@@ -486,40 +514,7 @@ def addBimMainThread(obj: Tuple):
         
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        
 
-def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str, plugin) -> List[QgsVectorLayer or None]:
-    print("02_________ CAD vector layer to native_____")
-    try:
-        project: QgsProject = plugin.qgis_project
-
-        geom_points = []
-        geom_polylines = []
-        geom_meshes = []
-
-        layer_points = None
-        layer_polylines = None
-        #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
-        for geom in layerContentList:
-            #print(geom)
-            if geom.speckle_type == "Objects.Geometry.Point": 
-                geom_points.append(geom)
-            if geom.speckle_type == "Objects.Geometry.Line" or geom.speckle_type == "Objects.Geometry.Polyline" or geom.speckle_type == "Objects.Geometry.Curve" or geom.speckle_type == "Objects.Geometry.Arc" or geom.speckle_type == "Objects.Geometry.Circle" or geom.speckle_type == "Objects.Geometry.Ellipse" or geom.speckle_type == "Objects.Geometry.Polycurve":
-                geom_polylines.append(geom)
-            try:
-                if geom.speckle_type.endswith(".ModelCurve") and geom["baseCurve"].speckle_type in GEOM_LINE_TYPES:
-                    geom_polylines.append(geom["baseCurve"])
-                if geom["baseLine"].speckle_type in GEOM_LINE_TYPES:
-                    geom_polylines.append(geom["baseLine"])
-            except: pass
-        
-        if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch, plugin)
-        if len(geom_polylines)>0: layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch, plugin)
-
-        return [layer_points, layer_polylines]
-    except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return []
 
 def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str, plugin) -> QgsVectorLayer: 
     print("___________cadVectorLayerToNative")

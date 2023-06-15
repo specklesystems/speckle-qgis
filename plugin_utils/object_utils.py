@@ -6,7 +6,7 @@ from plugin_utils.helpers import removeSpecialCharacters
 from speckle.utils.panel_logging import logger
 from qgis.core import Qgis, QgsProject
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
-from speckle.converter.layers import bimLayerToNative, cadLayerToNative, layerToNative
+from speckle.converter.layers import geometryLayerToNative, layerToNative
 
 import threading
 from specklepy.objects import Base
@@ -105,39 +105,33 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids): # "name
                     # keep traversing infinitely, just don't run repeated conversion for the same list of objects
                     try: 
                         if item["displayValue"] is not None and objectListConverted == 0: 
-                            cadLayerToNative(value, name, streamBranch, plugin)
-                            bimLayerToNative(value, name, streamBranch, plugin)
+                            geometryLayerToNative(value, name, streamBranch, plugin)
                             time.sleep(0.3)
                             objectListConverted += 1
                     except: 
                         try: 
                             if item["@displayValue"] is not None and objectListConverted == 0: 
-                                cadLayerToNative(value, name, streamBranch, plugin)
-                                bimLayerToNative(value, name, streamBranch, plugin)
+                                geometryLayerToNative(value, name, streamBranch, plugin)
                                 time.sleep(0.3)
                                 objectListConverted += 1
                         except: pass 
                 elif item.speckle_type and item.speckle_type.endswith(".ModelCurve"): 
                     if item["baseCurve"] is not None: 
-                        cadLayerToNative(value, name, streamBranch, plugin)
-                        bimLayerToNative(value, name, streamBranch, plugin)
+                        geometryLayerToNative(value, name, streamBranch, plugin)
                         time.sleep(0.3)
                         break
                 elif item.speckle_type and (item.speckle_type == "Objects.Geometry.Mesh" or item.speckle_type == "Objects.Geometry.Brep" or item.speckle_type.startswith("Objects.BuiltElements.")):
-                    cadLayerToNative(value, name, streamBranch, plugin)
-                    bimLayerToNative(value, name, streamBranch, plugin)
+                    geometryLayerToNative(value, name, streamBranch, plugin)
                     time.sleep(0.3)
                     break
                 elif item.speckle_type and item.speckle_type != "Objects.Geometry.Mesh" and item.speckle_type != "Objects.Geometry.Brep" and item.speckle_type.startswith("Objects.Geometry."): # or item.speckle_type == 'Objects.BuiltElements.Alignment'): 
-                    cadLayerToNative(value, name, streamBranch, plugin)
-                    bimLayerToNative(value, name, streamBranch, plugin)
+                    geometryLayerToNative(value, name, streamBranch, plugin)
                     time.sleep(0.3)
                     break
                 elif item.speckle_type:
                     try:
                         if item["baseLine"] is not None:
-                            cadLayerToNative(value, name, streamBranch, plugin)
-                            bimLayerToNative(value, name, streamBranch, plugin)
+                            geometryLayerToNative(value, name, streamBranch, plugin)
                             time.sleep(0.3)
                             break
                     except: pass 
