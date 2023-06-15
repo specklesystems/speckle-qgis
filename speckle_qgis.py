@@ -680,10 +680,10 @@ class SpeckleQGIS:
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
                 
-                self.dockwidget.addLayerToGroup.connect(self.addLayerToGroup)
-                self.dockwidget.addBimLayerToGroup.connect(self.addBimLayerToGroup)
-                self.dockwidget.addCadLayerToGroup.connect(self.addCadLayerToGroup)
-                self.dockwidget.addRasterLayerToGroup.connect(self.addRasterLayerToGroup)
+                self.dockwidget.signal_1.connect(addVectorMainThread)
+                self.dockwidget.signal_2.connect(addBimMainThread)
+                self.dockwidget.signal_3.connect(addCadMainThread)
+                self.dockwidget.signal_4.connect(addRasterMainThread)
                 
             else: 
                 root = self.dataStorage.project.layerTreeRoot()
@@ -828,16 +828,3 @@ class SpeckleQGIS:
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
-     
-    def addLayerToGroup(self, geomType, newName, streamBranch, wkt, layer, newFields, fets):
-        addVectorMainThread(self, geomType, newName, streamBranch, wkt, layer, newFields, fets)
-    
-    def addBimLayerToGroup(self, geomType, layerName, streamBranch, newFields, geomList):
-        addBimMainThread(self, geomType, layerName, streamBranch, newFields, geomList)
-
-    def addCadLayerToGroup(self, geomType, newName, streamBranch, newFields, geomList ):
-        addCadMainThread(self, geomType, newName, streamBranch, newFields, geomList )
-
-    def addRasterLayerToGroup(self, layerName, newName, streamBranch, layer):
-        addRasterMainThread(self, layerName, newName, streamBranch, layer)
-        

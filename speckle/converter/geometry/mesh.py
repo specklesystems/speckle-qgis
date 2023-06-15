@@ -42,8 +42,7 @@ def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage = None):
     """Converts a Speckle Mesh to QgsGeometry"""
     try:
         print("06___________________Mesh to Native")
-        #print(meshes)
-        #print(mesh.units)
+
         try:
             w = shapefile.Writer(path) 
         except Exception as e: 
@@ -96,7 +95,7 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
         for mesh in meshes:
             if not isinstance(mesh, Mesh): continue
             try:
-                print(f"Fill multi-mesh parts # {geom_id}")
+                #print(f"Fill multi-mesh parts # {geom_id}")
                 parts_list_x, types_list_x = deconstructSpeckleMesh(mesh) 
                 parts_list.extend(parts_list_x)
                 types_list.extend(types_list_x)

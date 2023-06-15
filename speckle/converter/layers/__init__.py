@@ -4,7 +4,7 @@ Contains all Layer related classes and methods.
 import enum
 import inspect
 import math
-from typing import List, Union
+from typing import List, Tuple, Union
 from specklepy.objects import Base
 from specklepy.objects.geometry import Mesh, Point
 import os
@@ -289,31 +289,28 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
 def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str, plugin):
     print("01______BIM layer to native")
     try:
-        project: QgsProject = plugin.qgis_project
         print(layerName)
-
         geom_meshes = []
-        layer_meshes = None
-
+        val = None 
+        
         #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
         for geom in layerContentList:
-            if geom.speckle_type =='Objects.Geometry.Mesh':
-                geom_meshes.append(geom)
+            # get list of display values
+            if isinstance(geom, Mesh) or isinstance(geom, List): val = geom
             else:
-                try: 
-                    if geom.displayValue: geom_meshes.append(geom)
+                try: val = geom.displayValue
                 except:
-                    try: 
-                        if geom["@displayValue"]: geom_meshes.append(geom)
+                    try: val = geom["@displayValue"]
                     except:
-                        try: 
-                            if geom.displayMesh: geom_meshes.append(geom)
+                        try: val = geom.displayMesh
                         except: pass
-            
-            #if geom.speckle_type == 'Objects.BuiltElements.Alignment':
-
-        
-        if len(geom_meshes)>0: layer_meshes = bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch, plugin)
+            if val and isinstance(val, Mesh):
+                geom_meshes.append(val)
+            elif isinstance(val, List): 
+                if isinstance(val[0], Mesh) : 
+                    geom_meshes.extend(val)
+        if len(geom_meshes)>0: 
+            bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch, plugin)
 
         return True
     
@@ -324,12 +321,11 @@ def bimLayerToNative(layerContentList: List[Base], layerName: str, streamBranch:
 def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: str, streamBranch: str, plugin): 
     print("02_________BIM vector layer to native_____")
     try: 
-        project: QgsProject = plugin.qgis_project
+        #project: QgsProject = plugin.qgis_project
         print(layerName_old)
 
         layerName = layerName_old[:50]
         layerName = removeSpecialCharacters(layerName) 
-        #layerName = removeSpecialCharacters(layerName_old)[:30]
         print(layerName)
 
         #get Project CRS, use it by default for the new received layer
@@ -337,27 +333,30 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         layerName = layerName + "_" + geomType
         print(layerName)
 
-        #find ID of the layer with a matching name in the "latest" group 
-        #newName = f'{streamBranch}_{layerName}'
-        
         if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
         
         newFields = getLayerAttributes(geomList)
         print("___________Layer fields_____________")
         print(newFields.toList())
                 
-        plugin.dockwidget.addBimLayerToGroup.emit(geomType, layerName, streamBranch, newFields, geomList)
+        plugin.dockwidget.signal_2.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
         return 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
 
-def addBimMainThread(plugin, geomType, layerName, streamBranch, newFields, geomList):
+def addBimMainThread(obj: Tuple):
     try: 
+        plugin = obj['plugin'] 
+        geomType = obj['geomType'] 
+        layerName = obj['layerName'] 
+        streamBranch = obj['streamBranch'] 
+        newFields = obj['newFields'] 
+        geomList = obj['geomList']
+
         project: QgsProject = plugin.dataStorage.project
 
-        
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
         newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
 
@@ -420,7 +419,6 @@ def addBimMainThread(plugin, geomType, layerName, streamBranch, newFields, geomL
             try:
                 exist_feat: None = None
                 for n, shape in enumerate(vl_shp.getFeatures()):
-                    #print(shape["speckle_id"])
                     if shape["speckle_id"] == f.id:
                         exist_feat = vl_shp.getFeature(n)
                         break
@@ -443,24 +441,8 @@ def addBimMainThread(plugin, geomType, layerName, streamBranch, newFields, geomL
         vl.commitChanges()
         layerGroup = tryCreateGroup(project, streamBranch)
 
-        r'''
-        
-        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        findOrCreatePath(p)
-        file_name = os.path.join(p, newName )
-        print(file_name)
-        writer =QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", crs, "GeoJSON", overrideGeometryType = True, forceMulti = True, includeZ = True)
-        del writer
-
-        vl = None 
-        vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
-        vl.setCrs(crs)
-        project.addMapLayer(vl, False)
-        '''
-
         layerGroup.addLayer(vl)
 
-        
         try: 
             ################################### RENDERER 3D ###########################################
             #rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
@@ -533,9 +515,7 @@ def cadLayerToNative(layerContentList:Base, layerName: str, streamBranch: str, p
         
         if len(geom_points)>0: layer_points = cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch, plugin)
         if len(geom_polylines)>0: layer_polylines = cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch, plugin)
-        #print(layerName)
-        #print(layer_points)
-        #print(layer_polylines)
+
         return [layer_points, layer_polylines]
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
@@ -564,14 +544,21 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         print(newFields.toList())
         print(geomList)
         
-        plugin.dockwidget.addCadLayerToGroup.emit(geomType, newName, streamBranch, newFields, geomList)
+        plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'newName': newName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
         return 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
     
-def addCadMainThread(plugin, geomType, newName, streamBranch, newFields, geomList ):
+def addCadMainThread(obj: Tuple):
     try:
+        plugin = obj['plugin'] 
+        geomType = obj['geomType'] 
+        newName = obj['newName'] 
+        streamBranch = obj['streamBranch'] 
+        newFields = obj['newFields'] 
+        geomList = obj['geomList']
+
         project: QgsProject = plugin.dataStorage.project
 
         ###########################################
@@ -637,20 +624,6 @@ def addCadMainThread(plugin, geomType, newName, streamBranch, newFields, geomLis
 
         layerGroup = tryCreateGroup(project, streamBranch)
 
-        r'''
-        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        findOrCreatePath(p)
-        file_name = os.path.join(p, newName )
-        print(file_name)
-        writer = QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", crs, "GeoJSON", overrideGeometryType = True, forceMulti = True, includeZ = True)
-        del writer 
-
-        vl = None 
-        vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
-        vl.setCrs(crs)
-        project.addMapLayer(vl, False)
-        '''
-        
         layerGroup.addLayer(vl)
 
         ################################### RENDERER ###########################################
@@ -727,15 +700,24 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         if newFields is None: 
             newFields = QgsFields()
         
-        plugin.dockwidget.addLayerToGroup.emit(geomType, newName, streamBranch, layer.crs.wkt, layer, newFields, fets)
+        plugin.dockwidget.signal_1.emit({'plugin': plugin, 'geomType': geomType, 'newName': newName, 'streamBranch': streamBranch, 'wkt': layer.crs.wkt, 'layer': layer, 'newFields': newFields, 'fets': fets})
         return 
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
     
-def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, newFields, fets):
+def addVectorMainThread(obj: Tuple):
     try:
+        plugin = obj['plugin'] 
+        geomType = obj['geomType'] 
+        newName = obj['newName'] 
+        streamBranch = obj['streamBranch'] 
+        wkt = obj['wkt']
+        layer = obj['layer'] 
+        newFields = obj['newFields'] 
+        fets = obj['fets']
+
         project: QgsProject = plugin.dataStorage.project
 
         ###########################################
@@ -868,20 +850,26 @@ def addVectorMainThread(plugin, geomType, newName, streamBranch, wkt, layer, new
     
 def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
     try:
-        project = plugin.qgis_project
+        #project = plugin.qgis_project
         layerName = removeSpecialCharacters(layer.name) + "_Speckle"
 
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
-        plugin.dockwidget.addRasterLayerToGroup.emit(layerName, newName, streamBranch, layer)
+        plugin.dockwidget.signal_4.emit({'plugin': plugin, 'layerName': layerName, 'newName': newName, 'streamBranch': streamBranch, 'layer': layer})
         
         return 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
-def addRasterMainThread(plugin, layerName, newName, streamBranch, layer):
+def addRasterMainThread(obj: Tuple):
     try: 
+        plugin = obj['plugin'] 
+        layerName = obj['layerName'] 
+        newName = obj['newName'] 
+        streamBranch = obj['streamBranch'] 
+        layer = obj['layer'] 
+        
         project: QgsProject = plugin.dataStorage.project
 
         ###########################################
