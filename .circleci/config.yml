@@ -49,6 +49,55 @@ jobs:
                 root: ./
                 paths:
                   - speckle-sharp-ci-tools/Installers
+  
+  build-installer-mac:
+    macos:
+      xcode: 12.5.1
+    parameters:
+      runtime:
+        type: string
+      slug:
+        type: string
+      installer_path:
+        type: string
+        default: speckle-sharp-ci-tools/Mac/SpeckleQGISInstall
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Install mono
+          command: |
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install mono
+      # Compress build files
+      - run:
+          name: Install dotnet
+          command: curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin
+      - run: &restore_semver
+          name: Restore Semver
+          command: SEMVER=$(cat ./SEMVER) && echo $SEMVER
+      - run:
+          name: Copy connector files to installer
+          command: |
+            mkdir -p <<parameters.installer_path >>/.installationFiles/
+            cp zip_build/speckle-qgis.zip << parameters.installer_path >>/.installationFiles
+      - run:
+          name: Build Mac installer
+          command: ~/.dotnet/dotnet publish << parameters.installer_path >>/SpeckleQGISInstall.sln -r << parameters.runtime >> -c Release
+      - run:
+          name: Zip installer
+          command: |
+            SEMVER=$(cat ./SEMVER)
+            echo $SEMVER
+            mkdir -p speckle-sharp-ci-tools/Installers/QGIS
+            (cd <<parameters.installer_path>>/bin/Release/net6.0/<< parameters.runtime >>/publish/ && zip -r - ./) > << parameters.slug >>-${SEMVER}.zip
+            cp << parameters.slug >>-${SEMVER}.zip speckle-sharp-ci-tools/Installers/QGIS/
+
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - speckle-sharp-ci-tools/Installers/QGIS/<< parameters.slug >>*.zip
+
   package:
     executor: python/default
     steps:
@@ -215,16 +264,15 @@ workflows: #happens with every PR to main
           installer: true
           requires:
             - package
-          filters:
+          filters: &build_filters
             tags:
               only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
             branches:
               ignore: /.*/
           context: innosetup
       - deploy-marketplace:
-          filters:
-            tags:
-              only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
+          filters: 
+              only: /([0-9]+)\.([0-9]+)\.([0-9]+)$/
             branches:
               ignore: /.*/
           requires:
@@ -235,9 +283,52 @@ workflows: #happens with every PR to main
           extension: exe
           requires:
             - build-connector-win
-          filters:
-            tags:
-              only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
-            branches:
-              ignore: /.*/ # For testing only! /ci\/.*/
+          filters: *build_filters
           context: do-spaces-speckle-releases
+      
+      
+      - build-installer-mac:
+          name: Mac ARM Build
+          slug: qgis-mac-arm
+          runtime: osx-arm64
+          requires:
+            - package
+            - build-connector-win
+          filters: *build_filters
+
+      - build-installer-mac:
+          name: Mac Intel Build
+          slug: qgis-mac-intel
+          runtime: osx-x64
+          requires:
+            - package
+            - build-connector-win
+          filters: *build_filters
+
+      - deploy-connector:
+          context: do-spaces-speckle-releases
+          name: deploy-mac-arm
+          file_slug: qgis-mac-arm
+          os: OSX
+          arch: Arm
+          extension: zip
+          requires:
+            - package
+            - build-connector-win
+            - Mac Intel Build
+            - Mac ARM Build
+          filters: *build_filters
+      
+      - deploy-connector:
+          context: do-spaces-speckle-releases
+          name: deploy-mac-intel
+          file_slug: qgis-mac-intel
+          os: OSX
+          arch: Intel
+          extension: zip
+          requires:
+            - package
+            - build-connector-win
+            - Mac Intel Build
+            - Mac ARM Build
+          filters: *build_filters

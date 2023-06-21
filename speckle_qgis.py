@@ -9,7 +9,7 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 from datetime import datetime
 
 import threading
-from plugin_utils.helpers import findFeatColors, findOrCreatePath, getAppName, removeSpecialCharacters
+from plugin_utils.helpers import getAppName, removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsLayerTreeGroup, QgsCoordinateReferenceSystem,
                        QgsRasterLayer, QgsVectorLayer,
@@ -129,6 +129,7 @@ class SpeckleQGIS:
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.pluginIsActive = False
+        
 
     # noinspection PyMethodMayBeStatic
 
@@ -277,42 +278,20 @@ class SpeckleQGIS:
             # Get and clear message
             message = str(self.dockwidget.messageInput.text())
             self.dockwidget.messageInput.setText("")
-
-            if not self.dockwidget.experimental.isChecked(): 
+            
+            try:
+                streamWrapper = self.active_stream[0]
+                client = streamWrapper.get_client()
+                self.dataStorage.active_account = client.account
                 
                 try:
-                    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Send", "is": False, "connector_version": str(self.version)})
+                    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
                 except Exception as e:
                     logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
-                
-                self.onSend(message)
-            else:
-                try:
-                    print(self.theads_total)
-                    print(threading.active_count())
-                    print(threading.enumerate())
-                    #if threading.active_count() - 2 > self.theads_total:
-                    #    logToUser("Please wait for other Send/Receive operations to finish", level = 1, plugin=self.dockwidget)
-                    #    return
-                    streamWrapper = self.active_stream[0]
-                    client = streamWrapper.get_client()
-                    self.dataStorage.active_account = client.account
-                    
-                    try:
-                        metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
-                    except Exception as e:
-                        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
-                    
-                    #with ThreadPoolExecutor(max_workers=1) as executor:
-                    #    future = executor.submit(self.onSend, message)
-                        
-                    #    print("RESULT")
-                    #    print(future.result())
-                    #    print("FINISHED")
-                    t = threading.Thread(target=self.onSend, args=(message,))
-                    #t.daemon = True
-                    t.start()
-                except: self.onSend(message)
+
+                t = threading.Thread(target=self.onSend, args=(message,))
+                t.start()
+            except: self.onSend(message)
         # receive 
         elif self.btnAction == 1: 
             ################### repeated 
@@ -356,7 +335,7 @@ class SpeckleQGIS:
                 logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
                 return
             ########################################### end of repeated 
-
+            r'''
             if not self.dockwidget.experimental.isChecked(): 
                 
                 try:
@@ -365,18 +344,19 @@ class SpeckleQGIS:
                     logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
                 self.onReceive()
             else:
+            '''
+            try:
+                streamWrapper = self.active_stream[0]
+                client = streamWrapper.get_client()
+                self.dataStorage.active_account = client.account
                 try:
-                    streamWrapper = self.active_stream[0]
-                    client = streamWrapper.get_client()
-                    self.dataStorage.active_account = client.account
-                    try:
-                        metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
-                    except Exception as e:
-                        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
+                except Exception as e:
+                    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
 
-                    t = threading.Thread(target=self.onReceive, args=())
-                    t.start()
-                except: self.onReceive()
+                t = threading.Thread(target=self.onReceive, args=())
+                t.start()
+            except: self.onReceive()
 
     def onSend(self, message: str):
         """Handles action when Send button is pressed."""
@@ -679,6 +659,8 @@ class SpeckleQGIS:
 
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
+
+                self.dockwidget.runButton.clicked.connect(self.onRunButtonClicked)
                 
                 self.dockwidget.signal_1.connect(addVectorMainThread)
                 self.dockwidget.signal_2.connect(addBimMainThread)

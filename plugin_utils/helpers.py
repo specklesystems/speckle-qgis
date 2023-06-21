@@ -16,7 +16,6 @@ def findOrCreatePath(path: str):
 
 def removeSpecialCharacters(text: str) -> str:
     new_text = text.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
-    #new_text = text.encode('iso-8859-1', errors='ignore').decode('utf-8')
     return new_text
 
 def splitTextIntoLines(text: str = "", number: int= 70) -> str: 
