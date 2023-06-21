@@ -27,6 +27,29 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVe
         specklePoint.z = z
         specklePoint.units = "m"
 
+        
+        offset_x = dataStorage.crs_offset_x
+        offset_y = dataStorage.crs_offset_y
+        rotation = dataStorage.crs_rotation
+        if offset_x is not None and isinstance(offset_x, float):
+            pt.x -= offset_x
+        if offset_y is not None and isinstance(offset_y, float):
+            pt.y -= offset_y
+        if rotation is not None and isinstance(rotation, float) and -360< rotation <360:
+            a = rotation * math.pi / 180
+            x2 = pt.x
+            y2 = pt.y
+
+            if a > 0: # turn counterclockwise on send
+                x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
+                y2 = pt.x*math.sin(a) + pt.y*math.cos(a)         
+
+            if a < 0: # turn clockwise on send
+                x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
+                y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)
+            pt.x = x2
+            pt.y = y2
+
         col = featureColorfromNativeRenderer(feature, layer)
         specklePoint['displayStyle'] = {}
         specklePoint['displayStyle']['color'] = col
@@ -40,6 +63,28 @@ def pointToNative(pt: Point, dataStorage = None) -> QgsPoint:
     """Converts a Speckle Point to QgsPoint"""
     try:
         pt = scalePointToNative(pt, pt.units, dataStorage)
+        offset_x = dataStorage.crs_offset_x
+        offset_y = dataStorage.crs_offset_y
+        rotation = dataStorage.crs_rotation
+        if offset_x is not None and isinstance(offset_x, float):
+            pt.x += offset_x
+        if offset_y is not None and isinstance(offset_y, float):
+            pt.y += offset_y
+        if rotation is not None and isinstance(rotation, float) and -360< rotation <360:
+            a = rotation * math.pi / 180
+            x2 = pt.x
+            y2 = pt.y
+
+            if a > 0: # turn clockwise on receive
+                x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
+                y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)
+            if a < 0: # turn counterclockwise on receive
+                x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
+                y2 = pt.x*math.sin(a) + pt.y*math.cos(a)         
+
+            pt.x = x2
+            pt.y = y2
+
         return QgsPoint(pt.x, pt.y, pt.z)
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

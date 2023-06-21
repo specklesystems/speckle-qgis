@@ -160,6 +160,10 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
 
         crs = selectedLayer.crs()
 
+        offset_x = plugin.dataStorage.crs_offset_x
+        offset_y = plugin.dataStorage.crs_offset_y
+        rotation = plugin.dataStorage.crs_rotation
+
         units_proj = plugin.dataStorage.currentUnits
         units_layer_native = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
 
@@ -169,8 +173,8 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
 
         # Convert CRS to speckle, use the projectCRS
         print(projectCRS.toWkt())
-        speckleReprojectedCrs = CRS(authority_id=projectCRS.authid(), name=str(projectCRS.description()), wkt=projectCRS.toWkt(), units=units_proj) 
-        layerCRS = CRS(authority_id=crs.authid(), name=str(crs.description()), wkt=crs.toWkt(), units=units_layer, units_native = units_layer_native) 
+        speckleReprojectedCrs = CRS(authority_id=projectCRS.authid(), name=str(projectCRS.description()), wkt=projectCRS.toWkt(), units=units_proj, offset_x=offset_x, offset_y=offset_y, rotation=rotation) 
+        layerCRS = CRS(authority_id=crs.authid(), name=str(crs.description()), wkt=crs.toWkt(), units=units_layer, units_native = units_layer_native, offset_x=offset_x, offset_y=offset_y, rotation=rotation) 
         
         renderer = selectedLayer.renderer()
         layerRenderer = rendererToSpeckle(renderer) 

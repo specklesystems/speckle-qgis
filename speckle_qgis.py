@@ -44,6 +44,7 @@ from speckle.converter.layers import addBimMainThread, addCadMainThread, addRast
 from speckle.converter.layers.feature import bimFeatureToNative, cadFeatureToNative
 from speckle.converter.layers.symbology import rasterRendererToNative, vectorRendererToNative
 from speckle.converter.layers.utils import colorFromSpeckle, findAndClearLayerGroup, tryCreateGroup, trySaveCRS
+
 from specklepy_qt_ui.DataStorage import DataStorage
 
 from speckle.utils.panel_logging import logger
@@ -73,8 +74,8 @@ class SpeckleQGIS:
 
     qgis_project: QgsProject
 
-    lat: float
-    lon: float
+    #lat: float
+    #lon: float
 
     accounts: List[Account]
 
@@ -107,8 +108,8 @@ class SpeckleQGIS:
 
         self.btnAction = 0
 
-        self.lat = 0.0
-        self.lon = 0.0
+        #self.lat = 0.0
+        #self.lon = 0.0
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
@@ -274,7 +275,7 @@ class SpeckleQGIS:
         # send 
         if self.btnAction == 0: 
             # Reset Survey point
-            self.dockwidget.populateSurveyPoint(self)
+            #self.dockwidget.populateSurveyPoint(self)
             # Get and clear message
             message = str(self.dockwidget.messageInput.text())
             self.dockwidget.messageInput.setText("")
@@ -449,7 +450,7 @@ class SpeckleQGIS:
                 if self.qgis_project.crs().isValid() is False: metr_projected = None
                 
                 try:
-                    metr_crs = True if self.lat!=0 and self.lon!=0 and str(self.lat) in projectCRS.toWkt() and str(self.lon) in projectCRS.toWkt() else False
+                    metr_crs = True if self.dataStorage.custom_lat!=0 and self.dataStorage.custom_lon!=0 and str(self.dataStorage.custom_lat) in projectCRS.toWkt() and str(self.dataStorage.custom_lon) in projectCRS.toWkt() else False
                 except:
                     metr_crs = False
 
@@ -476,7 +477,8 @@ class SpeckleQGIS:
             return url
 
         except Exception as e:
-            if self.dockwidget.experimental.isChecked(): time.sleep(1)
+            #if self.dockwidget.experimental.isChecked(): 
+            time.sleep(1)
             logToUser("Error creating commit: "+str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
 
     def onReceive(self):
@@ -533,7 +535,7 @@ class SpeckleQGIS:
             
             projectCRS = self.qgis_project.crs()
             try:
-                metr_crs = True if self.lat!=0 and self.lon!=0 and str(self.lat) in projectCRS.toWkt() and str(self.lon) in projectCRS.toWkt() else False
+                metr_crs = True if self.dataStorage.custom_lat!=0 and self.dataStorage.custom_lon!=0 and str(self.dataStorage.custom_lat) in projectCRS.toWkt() and str(self.dataStorage.custom_lon) in projectCRS.toWkt() else False
             except:
                 metr_crs = False
             
@@ -599,7 +601,7 @@ class SpeckleQGIS:
             if self.dockwidget is not None:
                 self.active_stream = None
                 get_project_streams(self)
-                get_survey_point(self)
+                get_survey_point(self.dataStorage)
                 get_project_saved_layers(self)
                 self.dockwidget.populateSavedLayerDropdown(self)
 
@@ -661,6 +663,7 @@ class SpeckleQGIS:
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
 
                 self.dockwidget.runButton.clicked.connect(self.onRunButtonClicked)
+                self.dockwidget.runButton.clicked.connect(self.onRunButtonClicked)
                 
                 self.dockwidget.signal_1.connect(addVectorMainThread)
                 self.dockwidget.signal_2.connect(addBimMainThread)
@@ -673,7 +676,7 @@ class SpeckleQGIS:
                 self.dockwidget.addDataStorage(self)
 
             get_project_streams(self)
-            get_survey_point(self)
+            get_survey_point(self.dataStorage)
             get_project_saved_layers(self)
             self.dockwidget.populateSavedLayerDropdown(self)
             get_elevationLayer(self.dataStorage)
@@ -706,12 +709,13 @@ class SpeckleQGIS:
 
     def set_survey_point(self): 
         try:
-            from speckle.utils.project_vars import set_survey_point
-            set_survey_point(self)
+            from speckle.utils.project_vars import set_survey_point, setProjectReferenceSystem
+            set_survey_point(self.dataStorage, self.dockwidget)
+            setProjectReferenceSystem(self.dataStorage, self.dockwidget)
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
-
+    
     def onStreamCreateClicked(self):
         try:
             self.create_stream_modal = CreateStreamModalDialog(None)
@@ -750,7 +754,7 @@ class SpeckleQGIS:
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
-    
+
     def handleBranchCreate(self, br_name, description):
         try: 
             br_name = br_name.lower()
