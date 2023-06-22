@@ -842,71 +842,107 @@ class SpeckleQGIS:
             self.dockwidget.custom_crs_modal.populateRotation()
 
             self.dockwidget.custom_crs_modal.dialog_button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.customCRSApply)
+            self.dockwidget.custom_crs_modal.dialog_button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(self.crsMoreInfo)
+            
             self.dockwidget.custom_crs_modal.show()
 
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
     
-    
+    def crsMoreInfo(self):
+        import webbrowser
+        url = "https://speckle.guide/user/qgis.html#custom-project-center"
+        webbrowser.open(url, new=0, autoraise=True)
+
     def customCRSApply(self):
         index = self.dockwidget.custom_crs_modal.modeDropdown.currentIndex()
         if index == 1: # add offsets
             self.customCRSCreate()
         if index == 0: #create custom CRS
             self.crsOffsetsApply()
+        self.applyRotation()
         self.dockwidget.custom_crs_modal.close()
+
+    def applyRotation(self):
+        try:
+            from speckle.utils.project_vars import set_crs_offsets, set_rotation
+            rotate = self.dockwidget.custom_crs_modal.rotation.text() 
+            if rotate is not None and rotate != '':
+                try:
+                    rotate = float(rotate)
+                    if not -360<= rotate <=360:
+                        logToUser("Angle value must be within the range (-360, 360)", level = 1, plugin=self.dockwidget)
+                    else:
+                        # warning only if the value changed 
+                        if self.dataStorage.crs_rotation != float(rotate):
+                            self.dataStorage.crs_rotation = float(rotate)
+                            logToUser("Rotation successfully applied", level = 0, plugin=self.dockwidget)
+                except: 
+                    logToUser("Invalid Angle value", level = 2, plugin=self.dockwidget)
+             
+            else:
+                # warning only if the value changed 
+                if self.dataStorage.crs_rotation is not None:
+                    self.dataStorage.crs_rotation = None
+                    logToUser("Rotation successfully removed", level = 0, plugin=self.dockwidget)
+            set_rotation(self.dockwidget.dataStorage, self.dockwidget)
+            
+        except Exception as e: 
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                
 
     def crsOffsetsApply(self):
         try:
             from speckle.utils.project_vars import set_crs_offsets, set_rotation
-            success = 0
-            if float(self.dockwidget.custom_crs_modal.offsetX.text()) is not None and float(self.dockwidget.custom_crs_modal.offsetY.text()) is not None:
-                self.dataStorage.crs_offset_x = float(self.dockwidget.custom_crs_modal.offsetX.text())
-                self.dataStorage.crs_offset_y = float(self.dockwidget.custom_crs_modal.offsetY.text())
-                success+=1
-                logToUser("X and Y offsets successfully applied", level = 0, plugin=self.dockwidget)
-            if float(self.dockwidget.custom_crs_modal.rotation.text()) is not None:
-                self.dockwidget.dataStorage.crs_rotation = float(self.dockwidget.custom_crs_modal.rotation.text())
-                success+=1
-                logToUser("Rotation successfully applied", level = 0, plugin=self.dockwidget)
-            set_crs_offsets(self.dataStorage, self.dockwidget)
-            set_rotation(self.dockwidget.dataStorage, self.dockwidget)
-            if success ==0: 
-                logToUser("Invalid Lat/ Lon / Angle values", level = 0, plugin=self.dockwidget)
+            offX = self.dockwidget.custom_crs_modal.offsetX.text()
+            offY = self.dockwidget.custom_crs_modal.offsetY.text()
+            if offX is not None and offX != '' and offY is not None and offY != '':
+                try:
+                    # warning only if the value changed 
+                    if self.dataStorage.crs_offset_x != float(offX) or self.dataStorage.crs_offset_y != float(offY):
+                        self.dataStorage.crs_offset_x = float(offX)
+                        self.dataStorage.crs_offset_y = float(offY)
+                        logToUser("X and Y offsets successfully applied", level = 0, plugin=self.dockwidget)
+                except: 
+                    logToUser("Invalid Offset values", level = 2, plugin=self.dockwidget)
             
-        except: pass 
+            else: 
+                # warning only if the value changed 
+                if self.dataStorage.crs_offset_x != None or self.dataStorage.crs_offset_y != None:
+                    self.dataStorage.crs_offset_x = None
+                    self.dataStorage.crs_offset_y = None
+                    logToUser("X and Y offsets successfully removed", level = 0, plugin=self.dockwidget)
+            set_crs_offsets(self.dataStorage, self.dockwidget)
+
+        except Exception as e: 
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
 
     def customCRSCreate(self):
         try: 
+            from speckle.utils.project_vars import set_survey_point, setProjectReferenceSystem
             vals =[ str(self.dockwidget.custom_crs_modal.surveyPointLat.text()), str(self.dockwidget.custom_crs_modal.surveyPointLon.text()) ]
             try:
                 custom_lat, custom_lon = [float(i.replace(" ","")) for i in vals]
-                self.dataStorage.crs_offset_x = None
-                self.dataStorage.crs_offset_y = None
+                
+                if custom_lat>180 or custom_lat<-180 or custom_lon >180 or custom_lon<-180:
+                    logToUser("LAT LON values must be within (-180, 180). You can right-click on the canvas location to copy coordinates in WGS 84", level = 1, plugin=self.dockwidget)
+                    return  
+                else: 
+                    self.dockwidget.dataStorage.custom_lat = custom_lat
+                    self.dockwidget.dataStorage.custom_lon = custom_lon
+
+                    # remove offsets if custom crs applied
+                    self.dataStorage.crs_offset_x = None
+                    self.dataStorage.crs_offset_y = None
+                    self.dockwidget.custom_crs_modal.offsetX.setText('')
+                    self.dockwidget.custom_crs_modal.offsetY.setText('')
+                    set_survey_point(self.dockwidget.dataStorage, self.dockwidget)
+                    setProjectReferenceSystem(self.dockwidget.dataStorage, self.dockwidget)
+
             except:
-                logToUser("Invalid Lat / Lon values", level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
-            
-            crs_rotation = None
-            try: 
-                crs_rotation = float(self.dockwidget.custom_crs_modal.rotation.text())
-                if not -360<= crs_rotation <=360:
-                    logToUser("Angle value must be within the range (-360, 360)", level = 1, plugin=self.dockwidget)
-                else:
-                    self.dockwidget.dataStorage.crs_rotation = crs_rotation
-                    logToUser("Rotation successfully applied", level = 0, plugin=self.dockwidget)
-            except: pass
+                logToUser("Invalid Lat/Lon values", level = 2, plugin=self.dockwidget)
 
-            if custom_lat>180 or custom_lat<-180 or custom_lon >180 or custom_lon<-180:
-                logToUser("LAT LON values must be within (-180, 180). You can right-click on the canvas location to copy coordinates in WGS 84", level = 1, plugin=self.dockwidget)
-                return True 
-
-            from speckle.utils.project_vars import set_survey_point, setProjectReferenceSystem, set_rotation
-            self.dockwidget.dataStorage.custom_lat = custom_lat
-            self.dockwidget.dataStorage.custom_lon = custom_lon
-            set_survey_point(self.dockwidget.dataStorage, self.dockwidget)
-            set_rotation(self.dockwidget.dataStorage, self.dockwidget)
-            setProjectReferenceSystem(self.dockwidget.dataStorage, self.dockwidget)
 
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)

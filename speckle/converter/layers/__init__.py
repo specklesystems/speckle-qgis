@@ -739,7 +739,7 @@ def addVectorMainThread(obj: Tuple):
         
         #################################################
         if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
-            # reproject all QGIS geometry to EPSG 4326 until the CRS issue if found 
+            # reproject all QGIS polygon geometry to EPSG 4326 until the CRS issue is found 
             for i, f in enumerate(fets):
                 #reproject
                 xform = QgsCoordinateTransform(crs, QgsCoordinateReferenceSystem(4326), project)
