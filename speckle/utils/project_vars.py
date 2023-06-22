@@ -95,6 +95,37 @@ def set_project_layer_selection(plugin: SpeckleQGIS):
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget)
         return
+     
+def get_rotation(dataStorage: DataStorage):
+    try:
+        # get from saved project, set to local vars
+        proj = dataStorage.project
+        points = proj.readEntry("speckle-qgis", "crs_rotation", "")
+        if points[1] and len(points[0])>0: 
+            vals: List[str] = points[0].replace(" ","").split(";")[0]
+            dataStorage.crs_rotation = float(vals)
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return
+    
+def set_rotation(dataStorage: DataStorage, dockwidget = None):
+    try: 
+        # from widget (3 strings) to local vars AND memory (1 string)
+        proj = dataStorage.project
+        r = dataStorage.crs_rotation
+        if dataStorage.crs_rotation is None:
+            r = 0
+        proj.writeEntry("speckle-qgis", "crs_rotation", r)
+        
+        #try:
+        #    metrics.track("Connector Action", dataStorage.active_account, {"name": "Set As Center Point", "connector_version": str(dataStorage.plugin_version)})
+        #except Exception as e:
+        #    logToUser(e, level = 2, func = inspect.stack()[0][3] )
+        return True
+    
+    except Exception as e:
+        logToUser("Lat, Lon values invalid: " + str(e), level = 2)
+        return False 
     
 def get_survey_point(dataStorage: DataStorage):
     try:
@@ -102,6 +133,7 @@ def get_survey_point(dataStorage: DataStorage):
         proj = dataStorage.project
         points = proj.readEntry("speckle-qgis", "survey_point", "")
         if points[1] and len(points[0])>0: 
+            print(points[0])
             vals: List[str] = points[0].replace(" ","").split(";")[:2]
             dataStorage.custom_lat, dataStorage.custom_lon = [float(i) for i in vals]
     except Exception as e:
@@ -112,10 +144,13 @@ def set_survey_point(dataStorage: DataStorage, dockwidget = None):
     try: 
         # from widget (3 strings) to local vars AND memory (1 string)
         proj = dataStorage.project
+        x = dataStorage.custom_lat
+        y = dataStorage.custom_lon
+
         if dataStorage.custom_lat is None or dataStorage.custom_lon is None: 
-            pt = "0;0"
-        else:
-            pt = str(dataStorage.custom_lat) + ";" + str(dataStorage.custom_lon) 
+            x = 0
+            y = 0
+        pt = str(x) + ";" + str(y) 
         proj.writeEntry("speckle-qgis", "survey_point", pt)
         
         try:
@@ -127,22 +162,30 @@ def set_survey_point(dataStorage: DataStorage, dockwidget = None):
     except Exception as e:
         logToUser("Lat, Lon values invalid: " + str(e), level = 2)
         return False 
+
+def get_crs_offsets(dataStorage: DataStorage):
+    try:
+        # get from saved project, set to local vars
+        proj = dataStorage.project
+        points = proj.readEntry("speckle-qgis", "crs_offsets_rotation", "")
+        if points[1] and len(points[0])>0: 
+            vals: List[str] = points[0].replace(" ","").split(";")[:2]
+            dataStorage.crs_offset_x, dataStorage.crs_offset_y = [float(i) for i in vals]
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return
     
-def set_crs_offsets_rotation(dataStorage: DataStorage, dockwidget = None):
+def set_crs_offsets(dataStorage: DataStorage, dockwidget = None):
     try: 
         # from widget (3 strings) to local vars AND memory (1 string)
         proj = dataStorage.project
         x = dataStorage.crs_offset_x
         y = dataStorage.crs_offset_y
-        r = dataStorage.crs_rotation
 
         if dataStorage.crs_offset_x is None or dataStorage.crs_offset_y is None: 
             x = 0
             y = 0
-        if dataStorage.crs_rotation is None:
-            r = 0
-        else:
-            pt = str(x) + ";" + str(y) + ";" + str(r)
+        pt = str(x) + ";" + str(y)
         proj.writeEntry("speckle-qgis", "crs_offsets_rotation", pt)
         
         #try:

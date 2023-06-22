@@ -18,9 +18,11 @@ from specklepy.objects import Base
 from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Ellipse, Polycurve
 
 
-def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLayer, dataStorage = None) -> Union[Base, Sequence[Base], None]:
+def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLayer, dataStorage) -> Union[Base, Sequence[Base], None]:
     """Converts the provided layer feature to Speckle objects"""
     try: 
+        print("convertToSpeckle")
+        print(dataStorage)
         try:
             geom: QgsGeometry = feature.geometry()
         except:
@@ -187,7 +189,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
         return None
 
 
-def convertToNative(base: Base, dataStorage = None) -> Union[QgsGeometry, None]:
+def convertToNative(base: Base, dataStorage) -> Union[QgsGeometry, None]:
     """Converts any given base object to QgsGeometry."""
     try:
         converted = None
@@ -254,7 +256,7 @@ def convertToNative(base: Base, dataStorage = None) -> Union[QgsGeometry, None]:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def multiPointToNative(items: List[Point], dataStorage = None) -> QgsMultiPoint:
+def multiPointToNative(items: List[Point], dataStorage) -> QgsMultiPoint:
     try:
         pts = QgsMultiPoint()
         for item in items:
@@ -266,7 +268,7 @@ def multiPointToNative(items: List[Point], dataStorage = None) -> QgsMultiPoint:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def multiPolylineToNative(items: List[Polyline], dataStorage = None) -> QgsMultiLineString:
+def multiPolylineToNative(items: List[Polyline], dataStorage) -> QgsMultiLineString:
     try:
         polys = QgsMultiLineString()
         for item in items:
@@ -278,7 +280,7 @@ def multiPolylineToNative(items: List[Polyline], dataStorage = None) -> QgsMulti
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def multiPolygonToNative(items: List[Base], dataStorage = None) -> QgsMultiPolygon:
+def multiPolygonToNative(items: List[Base], dataStorage) -> QgsMultiPolygon:
     try:
         polygons = QgsMultiPolygon()
         for item in items:
@@ -290,7 +292,7 @@ def multiPolygonToNative(items: List[Base], dataStorage = None) -> QgsMultiPolyg
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def convertToNativeMulti(items: List[Base], dataStorage = None):
+def convertToNativeMulti(items: List[Base], dataStorage):
     try:
         first = items[0]
         if isinstance(first, Point):

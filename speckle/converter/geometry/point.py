@@ -12,7 +12,7 @@ from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from specklepy_qt_ui.logger import logToUser
 #from PyQt5.QtGui import QColor
 
-def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None):
+def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVectorLayer, dataStorage):
     """Converts a QgsPoint to Speckle"""
     try: 
         if isinstance(pt, QgsPointXY):
@@ -32,23 +32,27 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVe
         offset_y = dataStorage.crs_offset_y
         rotation = dataStorage.crs_rotation
         if offset_x is not None and isinstance(offset_x, float):
-            pt.x -= offset_x
+            x -= offset_x
         if offset_y is not None and isinstance(offset_y, float):
-            pt.y -= offset_y
+            y -= offset_y
         if rotation is not None and isinstance(rotation, float) and -360< rotation <360:
             a = rotation * math.pi / 180
-            x2 = pt.x
-            y2 = pt.y
+            print(a)
+            x2 = x
+            y2 = y
 
             if a > 0: # turn counterclockwise on send
-                x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
-                y2 = pt.x*math.sin(a) + pt.y*math.cos(a)         
+                x2 = x*math.cos(a) - y*math.sin(a)
+                y2 = x*math.sin(a) + y*math.cos(a)         
 
             if a < 0: # turn clockwise on send
-                x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
-                y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)
-            pt.x = x2
-            pt.y = y2
+                x2 =  x*math.cos(a) + y*math.sin(a)
+                y2 = -1*x*math.sin(a) + y*math.cos(a)
+            x = x2
+            y = y2
+
+        specklePoint.x = x
+        specklePoint.y = y
 
         col = featureColorfromNativeRenderer(feature, layer)
         specklePoint['displayStyle'] = {}
@@ -59,7 +63,7 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVe
         return None
 
 
-def pointToNative(pt: Point, dataStorage = None) -> QgsPoint:
+def pointToNative(pt: Point, dataStorage) -> QgsPoint:
     """Converts a Speckle Point to QgsPoint"""
     try:
         pt = scalePointToNative(pt, pt.units, dataStorage)
@@ -90,7 +94,7 @@ def pointToNative(pt: Point, dataStorage = None) -> QgsPoint:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def scalePointToNative(point: Point, units: str, dataStorage = None) -> Point:
+def scalePointToNative(point: Point, units: str, dataStorage) -> Point:
     """Scale point coordinates to meters"""
     try:
         scaleFactor = get_scale_factor(units, dataStorage) # to meters

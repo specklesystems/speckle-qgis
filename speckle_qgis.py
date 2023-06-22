@@ -54,7 +54,8 @@ from specklepy_qt_ui.widget_create_branch import CreateBranchModalDialog
 from specklepy_qt_ui.logger import logToUser
 
 # Import the code for the dialog
-from speckle.utils.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport 
+from speckle.utils.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport
+from specklepy_qt_ui.widget_custom_crs import CustomCRSDialog 
 
 SPECKLE_COLOR = (59,130,246)
 SPECKLE_COLOR_LIGHT = (69,140,255)
@@ -581,7 +582,7 @@ class SpeckleQGIS:
     def reloadUI(self):
         print("___RELOAD UI")
         try:
-            from speckle.utils.project_vars import get_project_streams, get_survey_point, get_project_saved_layers, get_transformations 
+            from speckle.utils.project_vars import get_project_streams, get_survey_point, get_rotation, get_crs_offsets, get_project_saved_layers, get_transformations 
 
             self.qgis_project = QgsProject.instance()
             
@@ -601,7 +602,9 @@ class SpeckleQGIS:
             if self.dockwidget is not None:
                 self.active_stream = None
                 get_project_streams(self)
+                get_rotation(self.dataStorage)
                 get_survey_point(self.dataStorage)
+                get_crs_offsets(self.dataStorage)
                 get_project_saved_layers(self)
                 self.dockwidget.populateSavedLayerDropdown(self)
 
@@ -633,7 +636,7 @@ class SpeckleQGIS:
     def run(self):
         """Run method that performs all the real work"""
         from specklepy_qt_ui.dockwidget_main import SpeckleQGISDialog
-        from speckle.utils.project_vars import get_project_streams, get_survey_point, get_elevationLayer, get_project_saved_layers, get_transformations
+        from speckle.utils.project_vars import get_project_streams, get_survey_point, get_rotation, get_crs_offsets, get_elevationLayer, get_project_saved_layers, get_transformations
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
@@ -664,6 +667,8 @@ class SpeckleQGIS:
 
                 self.dockwidget.runButton.clicked.connect(self.onRunButtonClicked)
                 self.dockwidget.runButton.clicked.connect(self.onRunButtonClicked)
+
+                self.dockwidget.crsSettings.clicked.connect(self.customCRSDialogCreate)
                 
                 self.dockwidget.signal_1.connect(addVectorMainThread)
                 self.dockwidget.signal_2.connect(addBimMainThread)
@@ -676,7 +681,9 @@ class SpeckleQGIS:
                 self.dockwidget.addDataStorage(self)
 
             get_project_streams(self)
+            get_rotation(self.dataStorage)
             get_survey_point(self.dataStorage)
+            get_crs_offsets(self.dataStorage)
             get_project_saved_layers(self)
             self.dockwidget.populateSavedLayerDropdown(self)
             get_elevationLayer(self.dataStorage)
@@ -707,6 +714,7 @@ class SpeckleQGIS:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
 
+    r'''
     def set_survey_point(self): 
         try:
             from speckle.utils.project_vars import set_survey_point, setProjectReferenceSystem
@@ -715,6 +723,7 @@ class SpeckleQGIS:
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
+    '''
     
     def onStreamCreateClicked(self):
         try:
@@ -814,3 +823,92 @@ class SpeckleQGIS:
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
+
+    def customCRSDialogCreate(self):
+        try:
+            
+            self.dataStorage.currentCRS = self.dataStorage.project.crs()
+            units = str(QgsUnitTypes.encodeUnit(self.dataStorage.project.crs().mapUnits())) 
+            self.dataStorage.currentOriginalUnits = units 
+            
+            if units is None or units == 'degrees': units = 'm'
+            self.dataStorage.currentUnits = units 
+            
+            self.dockwidget.custom_crs_modal = CustomCRSDialog(None)
+            self.dockwidget.custom_crs_modal.dataStorage = self.dataStorage
+            self.dockwidget.custom_crs_modal.populateModeDropdown()
+            self.dockwidget.custom_crs_modal.populateSurveyPoint()
+            self.dockwidget.custom_crs_modal.populateOffsets()
+            self.dockwidget.custom_crs_modal.populateRotation()
+
+            self.dockwidget.custom_crs_modal.dialog_button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.customCRSApply)
+            self.dockwidget.custom_crs_modal.show()
+
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            return
+    
+    
+    def customCRSApply(self):
+        index = self.dockwidget.custom_crs_modal.modeDropdown.currentIndex()
+        if index == 1: # add offsets
+            self.customCRSCreate()
+        if index == 0: #create custom CRS
+            self.crsOffsetsApply()
+        self.dockwidget.custom_crs_modal.close()
+
+    def crsOffsetsApply(self):
+        try:
+            from speckle.utils.project_vars import set_crs_offsets, set_rotation
+            success = 0
+            if float(self.dockwidget.custom_crs_modal.offsetX.text()) is not None and float(self.dockwidget.custom_crs_modal.offsetY.text()) is not None:
+                self.dataStorage.crs_offset_x = float(self.dockwidget.custom_crs_modal.offsetX.text())
+                self.dataStorage.crs_offset_y = float(self.dockwidget.custom_crs_modal.offsetY.text())
+                success+=1
+                logToUser("X and Y offsets successfully applied", level = 0, plugin=self.dockwidget)
+            if float(self.dockwidget.custom_crs_modal.rotation.text()) is not None:
+                self.dockwidget.dataStorage.crs_rotation = float(self.dockwidget.custom_crs_modal.rotation.text())
+                success+=1
+                logToUser("Rotation successfully applied", level = 0, plugin=self.dockwidget)
+            set_crs_offsets(self.dataStorage, self.dockwidget)
+            set_rotation(self.dockwidget.dataStorage, self.dockwidget)
+            if success ==0: 
+                logToUser("Invalid Lat/ Lon / Angle values", level = 0, plugin=self.dockwidget)
+            
+        except: pass 
+
+    def customCRSCreate(self):
+        try: 
+            vals =[ str(self.dockwidget.custom_crs_modal.surveyPointLat.text()), str(self.dockwidget.custom_crs_modal.surveyPointLon.text()) ]
+            try:
+                custom_lat, custom_lon = [float(i.replace(" ","")) for i in vals]
+                self.dataStorage.crs_offset_x = None
+                self.dataStorage.crs_offset_y = None
+            except:
+                logToUser("Invalid Lat / Lon values", level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            
+            crs_rotation = None
+            try: 
+                crs_rotation = float(self.dockwidget.custom_crs_modal.rotation.text())
+                if not -360<= crs_rotation <=360:
+                    logToUser("Angle value must be within the range (-360, 360)", level = 1, plugin=self.dockwidget)
+                else:
+                    self.dockwidget.dataStorage.crs_rotation = crs_rotation
+                    logToUser("Rotation successfully applied", level = 0, plugin=self.dockwidget)
+            except: pass
+
+            if custom_lat>180 or custom_lat<-180 or custom_lon >180 or custom_lon<-180:
+                logToUser("LAT LON values must be within (-180, 180). You can right-click on the canvas location to copy coordinates in WGS 84", level = 1, plugin=self.dockwidget)
+                return True 
+
+            from speckle.utils.project_vars import set_survey_point, setProjectReferenceSystem, set_rotation
+            self.dockwidget.dataStorage.custom_lat = custom_lat
+            self.dockwidget.dataStorage.custom_lon = custom_lon
+            set_survey_point(self.dockwidget.dataStorage, self.dockwidget)
+            set_rotation(self.dockwidget.dataStorage, self.dockwidget)
+            setProjectReferenceSystem(self.dockwidget.dataStorage, self.dockwidget)
+
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            return
+    

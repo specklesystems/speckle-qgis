@@ -24,16 +24,21 @@ from specklepy_qt_ui.logger import logToUser
 #from PyQt5.QtGui import QColor
 
 
-def polylineFromVerticesToSpeckle(vertices: Union[List[Point], QgsVertexIterator], closed: bool, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None):
+def polylineFromVerticesToSpeckle(vertices: Union[List[Point], QgsVertexIterator], closed: bool, feature: QgsFeature, layer: QgsVectorLayer, dataStorage):
     """Returns a Speckle Polyline given a list of QgsPoint instances and a boolean indicating if it's closed or not."""
     try:
+        print(dataStorage)
         if isinstance(vertices, list): 
             if len(vertices) > 0 and isinstance(vertices[0], Point):
                 specklePts = vertices
-            else: specklePts = [pointToSpeckle(pt, feature, layer) for pt in vertices] #breaks unexplainably
+            else: specklePts = [pointToSpeckle(pt, feature, layer, dataStorage) for pt in vertices] #breaks unexplainably
         elif isinstance(vertices, QgsVertexIterator):
-            specklePts: list[Point] = [pointToSpeckle(pt, feature, layer) for pt in vertices]
+            specklePts: list[Point] = [pointToSpeckle(pt, feature, layer, dataStorage) for pt in vertices]
         else: return None
+
+        if specklePts[0] is None:
+            logToUser("Polyline conversion failed", level = 2)
+            return
         #specklePts = []
         #for pt in vertices:
         #    p = pointToSpeckle(pt)
@@ -57,25 +62,25 @@ def polylineFromVerticesToSpeckle(vertices: Union[List[Point], QgsVertexIterator
         return
     
 
-def unknownLineToSpeckle(poly: QgsCompoundCurve, closed: bool, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None) -> Union[Polyline, Arc, Line, Polycurve, None]:
+def unknownLineToSpeckle(poly: QgsCompoundCurve, closed: bool, feature: QgsFeature, layer: QgsVectorLayer, dataStorage) -> Union[Polyline, Arc, Line, Polycurve, None]:
     try:
         if poly.wkbType() == 10: # CurvePolygon
             actualGeom = poly.constGet()
             actualGeom = actualGeom.segmentize()
-            return polylineToSpeckle(actualGeom, feature, layer)
+            return polylineToSpeckle(actualGeom, feature, layer, dataStorage)
 
-        elif isinstance(poly, QgsCompoundCurve): return compoudCurveToSpeckle(poly, feature, layer)
-        elif isinstance(poly, QgsCircularString): return arcToSpeckle(poly, feature, layer)
+        elif isinstance(poly, QgsCompoundCurve): return compoudCurveToSpeckle(poly, feature, layer, dataStorage)
+        elif isinstance(poly, QgsCircularString): return arcToSpeckle(poly, feature, layer, dataStorage)
         #elif isinstance(poly, QgsCurvePolygon): 
         #    poly = poly.segmentize() 
         #    return polylineFromVerticesToSpeckle(poly.vertices(), feature, layer)
-        else: return polylineFromVerticesToSpeckle(poly.vertices(), closed, feature, layer) # initial method
+        else: return polylineFromVerticesToSpeckle(poly.vertices(), closed, feature, layer, dataStorage) # initial method
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
     
-def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None):
+def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: QgsVectorLayer, dataStorage):
     try:
         try: poly = poly.constGet()
         except: pass
@@ -106,30 +111,23 @@ def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: Qg
                     for i in range(int(num_curve_segm)):
                         # TODO: check if arc 
                         segm = QgsCircularString(startPt, all_pts[1:][i*2], all_pts[1:][i*2 + 1] )
-                        newArc = arcToSpeckle(segm, feature, layer)
+                        newArc = arcToSpeckle(segm, feature, layer, dataStorage)
                         if newArc is not None: 
                             polycurve.segments.append(newArc)
                         #vert.extend(speckleArcCircleToPoints(newArc))
                         startPt = all_pts[1:][i*2 + 1]
                         pt_len += 3 
                         segments_added += 1
-                #pt1 = poly.childPoint(pt_len)
-                #pt2 = poly.childPoint(pt_len+1)
-                #pt3 = poly.childPoint(pt_len+2)
-                #circString = QgsCircularString(QgsPoint(pt1.x(), pt1.y(), pt1.z()), QgsPoint(pt2.x(), pt2.y(), pt2.z()), QgsPoint(pt3.x(), pt3.y(), pt3.z()))
-                #p = arcToSpeckle(circString, feature, layer)
-                #if p is not None: pts.extend([poly.childPoint(pt_len), poly.childPoint(pt_len+1), poly.childPoint(pt_len+2)]) 
-                #t_len += 3 # outdated: because the 3rd point will be reused as n-point of the curve
             else: 
                 segment_pts = p.replace(" ","").replace("(","").replace(")","").split(",")
                 len_segment_pts = len(segment_pts)
                 if len_segment_pts == 2: 
-                    st = pointToSpeckle(poly.childPoint(pt_len - segments_added ), feature, layer)
-                    en = pointToSpeckle(poly.childPoint(pt_len - segments_added + 1), feature, layer)
+                    st = pointToSpeckle(poly.childPoint(pt_len - segments_added ), feature, layer, dataStorage)
+                    en = pointToSpeckle(poly.childPoint(pt_len - segments_added + 1), feature, layer, dataStorage)
                     #print(poly.childPoint(pt_len+1))
                     #print(type(poly.childPoint(pt_len+1).x()))
                     if "EMPTY" in str(poly.childPoint(pt_len - segments_added + 1)): 
-                        en = pointToSpeckle(poly.childPoint(0), feature, layer)
+                        en = pointToSpeckle(poly.childPoint(0), feature, layer, dataStorage)
                     newLine = Line(units = "m", start = st, end = en)
                     polycurve.segments.append(newLine)
                     #print(p)
@@ -139,15 +137,15 @@ def compoudCurveToSpeckle(poly: QgsCompoundCurve, feature: QgsFeature, layer: Qg
                     actual_segment_pts = []
                     for k in range(len(segment_pts)):
                         ptt = poly.childPoint(pt_len - segments_added + k)
-                        actual_segment_pts.append(pointToSpeckle(ptt, feature, layer))
+                        actual_segment_pts.append(pointToSpeckle(ptt, feature, layer, dataStorage))
 
                     if actual_segment_pts[0].x == actual_segment_pts[len(actual_segment_pts)-1].x and actual_segment_pts[0].y == actual_segment_pts[len(actual_segment_pts)-1].y and actual_segment_pts[0].z == actual_segment_pts[len(actual_segment_pts)-1].z : 
                         closed_segm = True # last point will not be included (if closed) when Polyline is created 
-                        newPolyline = polylineFromVerticesToSpeckle(actual_segment_pts, closed_segm, feature, layer)
+                        newPolyline = polylineFromVerticesToSpeckle(actual_segment_pts, closed_segm, feature, layer, dataStorage)
                         polycurve.segments.append(newPolyline)
                         break
                     
-                    newPolyline = polylineFromVerticesToSpeckle(actual_segment_pts, closed_segm, feature, layer)
+                    newPolyline = polylineFromVerticesToSpeckle(actual_segment_pts, closed_segm, feature, layer, dataStorage)
                     polycurve.segments.append(newPolyline)
                     pt_len += len(actual_segment_pts)
                     segments_added += 1
@@ -199,13 +197,13 @@ def anyLineToSpeckle(geom, feature, layer, dataStorage):
         result = polylineToSpeckle(geom, feature, layer, dataStorage)
         return result
 
-def polylineToSpeckle(poly: Union[QgsLineString, QgsCircularString], feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None):
+def polylineToSpeckle(poly: Union[QgsLineString, QgsCircularString], feature: QgsFeature, layer: QgsVectorLayer, dataStorage):
     """Converts a QgsLineString to Speckle"""
     try:
         try: closed = poly.isClosed()
         except: closed = False
 
-        polyline = polylineFromVerticesToSpeckle(poly.vertices(), closed, feature, layer)
+        polyline = polylineFromVerticesToSpeckle(poly.vertices(), closed, feature, layer, dataStorage)
         # colors already set in the previous function 
         #col = featureColorfromNativeRenderer(QgsFeature(), QgsVectorLayer())
         #polyline['displayStyle'] = {}
@@ -216,16 +214,16 @@ def polylineToSpeckle(poly: Union[QgsLineString, QgsCircularString], feature: Qg
         return
     
 
-def arcToSpeckle(poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorLayer, dataStorage = None):
+def arcToSpeckle(poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorLayer, dataStorage):
     """Converts a QgsCircularString to Speckle"""
     try:
         #print("____Arc to Speckle ___")
         arc = Arc()
         vert_list = [pt for pt in poly.vertices()] 
-        arc.startPoint = pointToSpeckle(vert_list[0], feature, layer)
-        arc.midPoint = pointToSpeckle(vert_list[1], feature, layer)
-        arc.endPoint = pointToSpeckle(vert_list[2], feature, layer)
-        center, radius = getArcCenter(arc.startPoint, arc.midPoint, arc.endPoint)
+        arc.startPoint = pointToSpeckle(vert_list[0], feature, layer, dataStorage)
+        arc.midPoint = pointToSpeckle(vert_list[1], feature, layer, dataStorage)
+        arc.endPoint = pointToSpeckle(vert_list[2], feature, layer, dataStorage)
+        center, radius = getArcCenter(arc.startPoint, arc.midPoint, arc.endPoint, dataStorage)
         arc.plane = Plane()#.from_list(Point(), Vector(Point(0, 0, 1)), Vector(Point(0,1,0)), Vector(Point(-1,0,0)))
         arc.plane.origin = Point.from_list(center)
         arc.units = "m"
@@ -245,7 +243,7 @@ def arcToSpeckle(poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorL
         return
     
     
-def getArcCenter(p1: Point, p2: Point, p3: Point, dataStorage = None) -> Tuple[Point, float]:
+def getArcCenter(p1: Point, p2: Point, p3: Point, dataStorage) -> Tuple[Point, float]:
     try:
         p1 = np.array(p1.to_list())
         p2 = np.array(p2.to_list())
@@ -267,7 +265,7 @@ def getArcCenter(p1: Point, p2: Point, p3: Point, dataStorage = None) -> Tuple[P
         return None, None 
     
 
-def lineToNative(line: Line, dataStorage = None) -> QgsLineString:
+def lineToNative(line: Line, dataStorage) -> QgsLineString:
     """Converts a Speckle Line to QgsLineString"""
     try:
         line = QgsLineString(pointToNative(line.start, dataStorage), pointToNative(line.end, dataStorage))
@@ -277,18 +275,18 @@ def lineToNative(line: Line, dataStorage = None) -> QgsLineString:
         return
     
 
-def polylineToNative(poly: Polyline, dataStorage = None) -> QgsLineString:
+def polylineToNative(poly: Polyline, dataStorage) -> QgsLineString:
     """Converts a Speckle Polyline to QgsLineString"""
     try: 
         # this function can be called from Multipolyline, hence extra check if the type of segment in not Polyline
         if isinstance(poly, Polycurve): 
-            return polycurveToNative(poly)
+            return polycurveToNative(poly, dataStorage)
         elif isinstance(poly, Arc): 
-            return arcToNative(poly)
+            return arcToNative(poly, dataStorage)
         elif isinstance(poly, Circle): 
-            return circleToNative(poly)
+            return circleToNative(poly, dataStorage)
         elif isinstance(poly, Ellipse): 
-            return ellipseToNative(poly)
+            return ellipseToNative(poly, dataStorage)
 
         if poly.closed is False: 
             polyline = QgsLineString([pointToNative(pt, dataStorage ) for pt in poly.as_points()])
@@ -303,7 +301,7 @@ def polylineToNative(poly: Polyline, dataStorage = None) -> QgsLineString:
         return
     
 
-def ellipseToNative(poly: Ellipse, dataStorage = None)-> QgsLineString:
+def ellipseToNative(poly: Ellipse, dataStorage)-> QgsLineString:
     """Converts a Speckle Ellipse to QgsLineString"""
     try: 
         try: angle = atan( poly.plane.xdir.y / poly.plane.xdir.x ) 
@@ -317,18 +315,18 @@ def ellipseToNative(poly: Ellipse, dataStorage = None)-> QgsLineString:
         return
     
 
-def curveToNative(poly: Curve, dataStorage = None) -> QgsLineString:
+def curveToNative(poly: Curve, dataStorage) -> QgsLineString:
     """Converts a Speckle Curve to QgsLineString"""
     try: 
         display = poly.displayValue
-        curve = polylineToNative(display, dataStorage ) 
+        curve = polylineToNative(display, dataStorage) 
         return curve
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
     
 
-def arcToNative(poly: Arc, dataStorage = None) -> QgsCircularString:
+def arcToNative(poly: Arc, dataStorage) -> QgsCircularString:
     """Converts a Speckle Arc to QgsCircularString"""
     try:
         arc = QgsCircularString(pointToNative(poly.startPoint, dataStorage ), pointToNative(poly.midPoint, dataStorage ), pointToNative(poly.endPoint, dataStorage ))
@@ -338,7 +336,7 @@ def arcToNative(poly: Arc, dataStorage = None) -> QgsCircularString:
         return
     
 
-def circleToNative(poly: Circle, dataStorage = None) -> QgsLineString:
+def circleToNative(poly: Circle, dataStorage) -> QgsLineString:
     """Converts a Speckle Circle to QgsLineString"""
     try: 
         scaleFactor = get_scale_factor(poly.units, dataStorage )
@@ -350,7 +348,7 @@ def circleToNative(poly: Circle, dataStorage = None) -> QgsLineString:
         return
     
 
-def polycurveToNative(poly: Polycurve, dataStorage = None) -> QgsLineString:
+def polycurveToNative(poly: Polycurve, dataStorage) -> QgsLineString:
 
     try: 
         curve = QgsCompoundCurve()
@@ -365,7 +363,7 @@ def polycurveToNative(poly: Polycurve, dataStorage = None) -> QgsLineString:
 
             for segm in poly.segments: # Line, Polyline, Curve, Arc, Circle
                 if isinstance(segm,Line):  
-                    converted = lineToNative(segm) # QgsLineString
+                    converted = lineToNative(segm, dataStorage) # QgsLineString
                     if singleSegm == 1: return converted
                     
                     #if len(points) == 0: 
@@ -375,7 +373,7 @@ def polycurveToNative(poly: Polycurve, dataStorage = None) -> QgsLineString:
                     #curve.addVertex(converted.endPoint())
 
                 elif isinstance(segm,Polyline):  
-                    converted = polylineToNative(segm) # QgsLineString
+                    converted = polylineToNative(segm, dataStorage) # QgsLineString
                     if singleSegm == 1: return converted
 
                     #for k in range(converted.childCount()-1):
@@ -383,7 +381,7 @@ def polycurveToNative(poly: Polycurve, dataStorage = None) -> QgsLineString:
                     #    curve.addVertex(converted.childPoint(k))
                     
                 elif isinstance(segm,Curve):  
-                    converted = curveToNative(segm) # QgsLineString
+                    converted = curveToNative(segm, dataStorage) # QgsLineString
                     if singleSegm == 1: return converted
 
                     #for k in range(converted.childCount()):
@@ -393,7 +391,7 @@ def polycurveToNative(poly: Polycurve, dataStorage = None) -> QgsLineString:
                 elif isinstance(segm,Circle):  
                     pts = [pointToNative(pt, dataStorage ) for pt in speckleArcCircleToPoints(segm)]
                     converted = QgsLineString(pts) # QgsLineString
-                    if singleSegm == 1: return circleToNative(segm)
+                    if singleSegm == 1: return circleToNative(segm, dataStorage)
                     else: return None
                     #converted = circleToNative(segm) # QgsLineString
                 elif isinstance(segm,Arc):  
@@ -403,11 +401,11 @@ def polycurveToNative(poly: Polycurve, dataStorage = None) -> QgsLineString:
                     
                     #curve.addCurve(converted.childPoint(0),converted.childPoint(1),converted.childPoint(2))
 
-                    if singleSegm == 1: return arcToNative(segm)
+                    if singleSegm == 1: return arcToNative(segm, dataStorage)
                 elif isinstance(segm, Ellipse):  
-                    pts = [pointToNative(pt, dataStorage ) for pt in speckleEllipseToPoints(segm)]
+                    pts = [pointToNative(pt, dataStorage ) for pt in speckleEllipseToPoints(segm, dataStorage)]
                     converted =  QgsLineString(pts) # QgsLineString
-                    if singleSegm == 1: return arcToNative(segm)
+                    if singleSegm == 1: return arcToNative(segm, dataStorage)
                     else: return None
                 else: # return a part of the curve 
                     logToUser(f"Part of the polycurve cannot be converted", level = 1, func = inspect.stack()[0][3])
@@ -470,12 +468,12 @@ def arcToQgisPoints(poly: Arc):
 '''
 
 
-def speckleEllipseToPoints(poly: Ellipse, dataStorage = None) -> List[Point]:
+def speckleEllipseToPoints(poly: Ellipse, dataStorage) -> List[Point]:
     try:
-        qgsLineStr = ellipseToNative(poly)
+        qgsLineStr = ellipseToNative(poly, dataStorage)
         points = qgsLineStr.vertices()
 
-        specklePts = [pointToSpeckle(pt, None, None) for pt in points]
+        specklePts = [pointToSpeckle(pt, None, None, dataStorage) for pt in points]
         return specklePts
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

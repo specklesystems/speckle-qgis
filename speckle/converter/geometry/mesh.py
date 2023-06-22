@@ -19,7 +19,7 @@ from qgis.core import (
     )
 #from panda3d.core import Triangulator
 
-def meshToNative(meshes: List[Mesh], dataStorage = None) -> QgsMultiPolygon:
+def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
     try:
         multiPolygon = QgsMultiPolygon()
         for mesh in meshes:
@@ -38,7 +38,7 @@ def meshToNative(meshes: List[Mesh], dataStorage = None) -> QgsMultiPolygon:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
     
-def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage = None):
+def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
     """Converts a Speckle Mesh to QgsGeometry"""
     try:
         print("06___________________Mesh to Native")
@@ -86,7 +86,7 @@ def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str, dataStorage = None):
+def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str, dataStorage):
     
     print("07___________________fill_multi_mesh_parts")
     try:
@@ -109,7 +109,7 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage = None):
+def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage):
     
     try:
         parts_list, types_list = deconstructSpeckleMesh(mesh) 
@@ -121,7 +121,7 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage =
 
     return w
 
-def deconstructSpeckleMesh(mesh: Mesh, dataStorage = None):
+def deconstructSpeckleMesh(mesh: Mesh, dataStorage):
     
     #print("deconstructSpeckleMesh")
     try:
@@ -153,7 +153,7 @@ def deconstructSpeckleMesh(mesh: Mesh, dataStorage = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return [],[]
 
-def constructMeshFromRaster(vertices, faces, colors, dataStorage = None):
+def constructMeshFromRaster(vertices, faces, colors, dataStorage):
     try:
         mesh = Mesh.create(vertices, faces, colors)
         mesh.units = "m"
@@ -162,7 +162,7 @@ def constructMeshFromRaster(vertices, faces, colors, dataStorage = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def constructMesh(vertices, faces, colors, dataStorage = None):
+def constructMesh(vertices, faces, colors, dataStorage):
     try:
         mesh = Mesh.create(vertices, faces, colors)
         mesh.units = "m"
@@ -174,7 +174,7 @@ def constructMesh(vertices, faces, colors, dataStorage = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height = None, dataStorage = None):
+def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height, dataStorage):
     try:
         faces = []
         faces_cap = []
