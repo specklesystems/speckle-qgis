@@ -286,10 +286,10 @@ class SpeckleQGIS:
                 client = streamWrapper.get_client()
                 self.dataStorage.active_account = client.account
                 
-                try:
-                    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
-                except Exception as e:
-                    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                #try:
+                #    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
+                #except Exception as e:
+                #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
 
                 t = threading.Thread(target=self.onSend, args=(message,))
                 t.start()
@@ -351,10 +351,10 @@ class SpeckleQGIS:
                 streamWrapper = self.active_stream[0]
                 client = streamWrapper.get_client()
                 self.dataStorage.active_account = client.account
-                try:
-                    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
-                except Exception as e:
-                    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                #try:
+                #    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
+                #except Exception as e:
+                #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
 
                 t = threading.Thread(target=self.onReceive, args=())
                 t.start()
@@ -470,7 +470,7 @@ class SpeckleQGIS:
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
 
             if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
-                    logToUser("Data has been sent in the units 'degrees'. It is advisable to set the project CRS to Projected type (e.g. EPSG:32631) to be able to receive geometry correctly in CAD/BIM software. You can also create a custom CRS by setting geographic coordinates and using 'Set as a project center' function.", level = 1, plugin = self.dockwidget)
+                logToUser("Data has been sent in the units 'degrees'. It is advisable to set the project CRS to Projected type (e.g. EPSG:32631) to be able to receive geometry correctly in CAD/BIM software. You can also create a custom CRS by setting geographic coordinates and using 'Set as a project center' function.", level = 1, plugin = self.dockwidget)
             
             logToUser(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
             self.dataStorage.sending_layers = None
@@ -708,6 +708,7 @@ class SpeckleQGIS:
     def onStreamAddButtonClicked(self):
         try:
             self.add_stream_modal = AddStreamModalDialog(None)
+            self.add_stream_modal.dataStorage = self.dataStorage 
             self.add_stream_modal.handleStreamAdd.connect(self.handleStreamAdd)
             self.add_stream_modal.show()
         except Exception as e:
@@ -744,6 +745,10 @@ class SpeckleQGIS:
             new_client.authenticate_with_token(token=account.token)
 
             str_id = new_client.stream.create(name=str_name, description = description, is_public = is_public) 
+
+            try: metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Stream Create", "connector_version": str(self.dataStorage.plugin_version)})
+            except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+
             if isinstance(str_id, GraphQLException) or isinstance(str_id, SpeckleException):
                 logToUser(str_id.message, level = 2, plugin = self.dockwidget)
                 return
@@ -774,8 +779,11 @@ class SpeckleQGIS:
                 account.serverInfo.url.startswith("https")
             )
             new_client.authenticate_with_token(token=account.token)
-            #description = "No description provided"
             br_id = new_client.branch.create(stream_id = sw.stream_id, name = br_name, description = description) 
+            
+            try: metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Branch Create", "connector_version": str(self.version)})
+            except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+
             if isinstance(br_id, GraphQLException):
                 logToUser(br_id.message, level = 1, plugin = self.dockwidget)
 
@@ -878,6 +886,10 @@ class SpeckleQGIS:
                         if self.dataStorage.crs_rotation != float(rotate):
                             self.dataStorage.crs_rotation = float(rotate)
                             logToUser("Rotation successfully applied", level = 0, plugin=self.dockwidget)
+        
+                            try: metrics.track("Connector Action", self.dataStorage.active_account, {"name": "CRS Rotation Add", "connector_version": str(self.dataStorage.plugin_version)})
+                            except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3] )
+
                 except: 
                     logToUser("Invalid Angle value", level = 2, plugin=self.dockwidget)
              
@@ -886,11 +898,15 @@ class SpeckleQGIS:
                 if self.dataStorage.crs_rotation is not None:
                     self.dataStorage.crs_rotation = None
                     logToUser("Rotation successfully removed", level = 0, plugin=self.dockwidget)
+        
+                    try: metrics.track("Connector Action", self.dataStorage.active_account, {"name": "CRS Rotation Remove", "connector_version": str(self.dataStorage.plugin_version)})
+                    except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3] )
+
             set_rotation(self.dockwidget.dataStorage, self.dockwidget)
             
         except Exception as e: 
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
-                
+
 
     def crsOffsetsApply(self):
         try:
@@ -904,6 +920,10 @@ class SpeckleQGIS:
                         self.dataStorage.crs_offset_x = float(offX)
                         self.dataStorage.crs_offset_y = float(offY)
                         logToUser("X and Y offsets successfully applied", level = 0, plugin=self.dockwidget)
+        
+                        try: metrics.track("Connector Action", self.dataStorage.active_account, {"name": "CRS Offset Add", "connector_version": str(self.dataStorage.plugin_version)})
+                        except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3] )
+
                 except: 
                     logToUser("Invalid Offset values", level = 2, plugin=self.dockwidget)
             
@@ -913,6 +933,10 @@ class SpeckleQGIS:
                     self.dataStorage.crs_offset_x = None
                     self.dataStorage.crs_offset_y = None
                     logToUser("X and Y offsets successfully removed", level = 0, plugin=self.dockwidget)
+        
+                    try: metrics.track("Connector Action", self.dataStorage.active_account, {"name": "CRS Offset Remove", "connector_version": str(self.dataStorage.plugin_version)})
+                    except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3] )
+
             set_crs_offsets(self.dataStorage, self.dockwidget)
 
         except Exception as e: 
@@ -939,6 +963,9 @@ class SpeckleQGIS:
                     self.dockwidget.custom_crs_modal.offsetY.setText('')
                     set_survey_point(self.dockwidget.dataStorage, self.dockwidget)
                     setProjectReferenceSystem(self.dockwidget.dataStorage, self.dockwidget)
+        
+                    try: metrics.track("Connector Action", self.dataStorage.active_account, {"name": "CRS Custom Create", "connector_version": str(self.dataStorage.plugin_version)})
+                    except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3] )
 
             except:
                 logToUser("Invalid Lat/Lon values", level = 2, plugin=self.dockwidget)

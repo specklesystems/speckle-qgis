@@ -87,10 +87,8 @@ def set_project_layer_selection(plugin: SpeckleQGIS):
         
         print(value)
         proj.writeEntry("speckle-qgis", "project_layer_selection", value)
-        try:
-            metrics.track("Connector Action", plugin.dataStorage.active_account, {"name": "Save Layer Selection", "connector_version": str(plugin.version)})
-        except Exception as e:
-            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
+        try: metrics.track("Connector Action", plugin.dataStorage.active_account, {"name": "Save Layer Selection", "connector_version": str(plugin.dataStorage.plugin_version)})
+        except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget)
@@ -116,11 +114,6 @@ def set_rotation(dataStorage: DataStorage, dockwidget = None):
         if dataStorage.crs_rotation is None:
             r = 0
         proj.writeEntry("speckle-qgis", "crs_rotation", r)
-        
-        #try:
-        #    metrics.track("Connector Action", dataStorage.active_account, {"name": "Set As Center Point", "connector_version": str(dataStorage.plugin_version)})
-        #except Exception as e:
-        #    logToUser(e, level = 2, func = inspect.stack()[0][3] )
         return True
     
     except Exception as e:
@@ -188,10 +181,6 @@ def set_crs_offsets(dataStorage: DataStorage, dockwidget = None):
         pt = str(x) + ";" + str(y)
         proj.writeEntry("speckle-qgis", "crs_offsets_rotation", pt)
         
-        #try:
-        #    metrics.track("Connector Action", dataStorage.active_account, {"name": "Set As Center Point", "connector_version": str(dataStorage.plugin_version)})
-        #except Exception as e:
-        #    logToUser(e, level = 2, func = inspect.stack()[0][3] )
         return True
     
     except Exception as e:
