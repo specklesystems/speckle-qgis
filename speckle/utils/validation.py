@@ -9,7 +9,7 @@ from specklepy.logging.exceptions import SpeckleException, GraphQLException
 
 from speckle.utils.panel_logging import logger
 from qgis.core import Qgis
-from specklepy_qt_ui.logger import logToUser
+from speckle.utils.panel_logging import logToUser
   
 def tryGetStream (sw: StreamWrapper) -> Stream:
     try:

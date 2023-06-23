@@ -36,7 +36,7 @@ from speckle.converter.layers.symbology import vectorRendererToNative, rasterRen
 from PyQt5.QtGui import QColor
 import numpy as np
 
-from specklepy_qt_ui.logger import logToUser
+from speckle.utils.panel_logging import logToUser
 
 GEOM_LINE_TYPES = ["Objects.Geometry.Line", "Objects.Geometry.Polyline", "Objects.Geometry.Curve", "Objects.Geometry.Arc", "Objects.Geometry.Circle", "Objects.Geometry.Ellipse", "Objects.Geometry.Polycurve"]
 

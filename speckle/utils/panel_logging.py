@@ -2,9 +2,12 @@
 import inspect
 from qgis.core import Qgis, QgsMessageLog
 from qgis.PyQt.QtWidgets import QPushButton
-from specklepy_qt_ui.logger import logToUser
+from specklepy_qt_ui.qt_ui.logger import logToUser as logToUser_UI
 import webbrowser
 
+def logToUser(msg: str, func=None, level: int = 2, plugin = None, url = "", blue = False):
+    logToUser_UI(msg, func, level, plugin, url, blue)
+    logger.writeToLog(msg, level, func)
 
 class Logging:
     """Holds utility methods for logging messages to QGIS"""
@@ -74,7 +77,10 @@ class Logging:
                 "Speckle", message, level=level, duration=duration
             )
     
-    def writeToLog(self, msg: str = "", level: int = 2):
+    def writeToLog(self, msg: str = "", level: int = 2, func=None, plugin=None):
+        msg = str(msg)
+        if func is not None: 
+            msg += "::" + str(func)
         self.log(msg, level)
 
 logger = Logging(None)

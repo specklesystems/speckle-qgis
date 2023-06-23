@@ -5,8 +5,8 @@ from numpy import double
 from import UpdateSavedStreams
 from import UpdateSelectedStream
 
-from specklepy_qt_ui.ConnectorBindings import ConnectorBindings
-from specklepy_qt_ui.Models.StreamState import StreamState
+from specklepy_qt_ui.qt_ui.ConnectorBindings import ConnectorBindings
+from specklepy_qt_ui.qt_ui.Models.StreamState import StreamState
 
 class QGISBindings(ConnectorBindings):
 

@@ -37,25 +37,20 @@ import webbrowser
 # Initialize Qt resources from file resources.py
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
-from speckle.converter.geometry.mesh import writeMeshToShp
-from speckle.converter.geometry.point import pointToNative
-from specklepy.objects.GIS.layers import Layer, VectorLayer, RasterLayer
 from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getSavedLayers, getSelectedLayers
-from speckle.converter.layers.feature import bimFeatureToNative, cadFeatureToNative
-from speckle.converter.layers.symbology import rasterRendererToNative, vectorRendererToNative
-from speckle.converter.layers.utils import colorFromSpeckle, findAndClearLayerGroup, tryCreateGroup, trySaveCRS
+from speckle.converter.layers.utils import findAndClearLayerGroup
 
-from specklepy_qt_ui.DataStorage import DataStorage
+from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
 from speckle.utils.panel_logging import logger
-from specklepy_qt_ui.widget_add_stream import AddStreamModalDialog
-from specklepy_qt_ui.widget_create_stream import CreateStreamModalDialog
-from specklepy_qt_ui.widget_create_branch import CreateBranchModalDialog
-from specklepy_qt_ui.logger import logToUser
+from specklepy_qt_ui.qt_ui.widget_add_stream import AddStreamModalDialog
+from specklepy_qt_ui.qt_ui.widget_create_stream import CreateStreamModalDialog
+from specklepy_qt_ui.qt_ui.widget_create_branch import CreateBranchModalDialog
+from speckle.utils.panel_logging import logToUser
 
 # Import the code for the dialog
 from speckle.utils.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport
-from specklepy_qt_ui.widget_custom_crs import CustomCRSDialog 
+from specklepy_qt_ui.qt_ui.widget_custom_crs import CustomCRSDialog 
 
 SPECKLE_COLOR = (59,130,246)
 SPECKLE_COLOR_LIGHT = (69,140,255)
@@ -635,7 +630,7 @@ class SpeckleQGIS:
 
     def run(self):
         """Run method that performs all the real work"""
-        from specklepy_qt_ui.dockwidget_main import SpeckleQGISDialog
+        from speckle.ui_widgets.dockwidget_main import SpeckleQGISDialog
         from speckle.utils.project_vars import get_project_streams, get_survey_point, get_rotation, get_crs_offsets, get_elevationLayer, get_project_saved_layers, get_transformations
 
         # Create the dialog with elements (after translation) and keep reference

@@ -17,7 +17,7 @@ import math
 import numpy as np 
 
 
-from specklepy_qt_ui.logger import logToUser
+from speckle.utils.panel_logging import logToUser
 
 ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
 

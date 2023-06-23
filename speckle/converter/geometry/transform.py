@@ -11,7 +11,7 @@ from qgis.core import (
 
 from PyQt5.QtGui import QColor
 
-from specklepy_qt_ui.logger import logToUser
+from speckle.utils.panel_logging import logToUser
 
 
 def transform(

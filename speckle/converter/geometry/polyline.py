@@ -20,7 +20,7 @@ from speckle.utils.panel_logging import logger
 from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
 from typing import List, Tuple, Union
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
-from specklepy_qt_ui.logger import logToUser
+from speckle.utils.panel_logging import logToUser
 #from PyQt5.QtGui import QColor
 
 
