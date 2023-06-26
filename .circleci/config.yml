@@ -274,6 +274,7 @@ workflows: #happens with every PR to main
           context: innosetup
       - deploy-marketplace:
           filters: 
+            tags:
               only: /([0-9]+)\.([0-9]+)\.([0-9]+)$/
             branches:
               ignore: /.*/
