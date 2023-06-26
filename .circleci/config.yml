@@ -113,6 +113,15 @@ jobs:
             SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]+//')
             VERSION=$(echo "$SEMVER" | sed -e 's/[a-zA-Z]*\///')
             python patch_version.py $VERSION
+
+      - run:
+          name: Clone
+          command: git clone git@github.com:specklesystems/specklepy_qt_ui.git specklepy_qt_ui
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - specklepy_qt_ui
+      
       - run:
           name: ZIP plugin
           command: pb_tool zip
@@ -244,7 +253,6 @@ workflows: #happens with every PR to main
           runtime: osx-arm64
           requires:
             - package
-            - build-connector-win
           filters: *build_filters
 
       - build-installer-mac:
@@ -253,7 +261,6 @@ workflows: #happens with every PR to main
           runtime: osx-x64
           requires:
             - package
-            - build-connector-win
           filters: *build_filters
 
   deploy: # build installers and deploy
@@ -318,7 +325,6 @@ workflows: #happens with every PR to main
           runtime: osx-arm64
           requires:
             - package
-            - build-connector-win
           filters: *deploy_filters
 
       - build-installer-mac:
@@ -327,7 +333,6 @@ workflows: #happens with every PR to main
           runtime: osx-x64
           requires:
             - package
-            - build-connector-win
           filters: *deploy_filters
 
       - deploy-manager2:
