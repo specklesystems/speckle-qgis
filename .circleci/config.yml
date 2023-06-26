@@ -220,9 +220,9 @@ jobs:
             /root/.dotnet/tools/Speckle.Manager.Feed deploy \
               -s qgis \
               -v ${SEMVER} \
-              -u https://releases.speckle.dev/installers/qgis/<< parameters.slug >>-${SEMVER}.<< parameters.extension >> \
+              -u https://releases.speckle.dev/installers/QGIS/<< parameters.slug >>-${SEMVER}.<< parameters.extension >> \
               -o << parameters.os >> \
-              -f speckle-sharp-ci-tools/Installers/qgis/<< parameters.slug >>-${SEMVER}.<< parameters.extension >>
+              -f speckle-sharp-ci-tools/Installers/QGIS/<< parameters.slug >>-${SEMVER}.<< parameters.extension >>
 workflows: #happens with every PR to main
   build: # build the installers, but don't persist to workspace for deployment
     jobs:
