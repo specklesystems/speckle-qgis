@@ -181,6 +181,9 @@ jobs:
     parameters:
       slug:
         type: string
+      arch:
+        type: string
+        default: Any
       os:
         type: string
       extension:
@@ -283,6 +286,7 @@ workflows: #happens with every PR to main
       - deploy-manager2:
           slug: qgis
           os: Win
+          arch: Any
           extension: exe
           requires:
             - build-connector-win
