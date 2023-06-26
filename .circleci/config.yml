@@ -8,6 +8,83 @@ orbs:
   aws-s3: circleci/aws-s3@2.0.0
 
 jobs:
+
+  get-ci-tools: # Clones our ci tools and persists them to the workspace
+    docker:
+      - image: cimg/base:2021.01
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "d1:d5:96:4d:ed:58:6e:7f:58:cc:21:5f:94:20:76:49"
+      - run:
+          name: I know Github as a host
+          command: |
+            mkdir ~/.ssh
+            touch ~/.ssh/known_hosts
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
+          name: Clone
+          command: git clone git@github.com:specklesystems/speckle-sharp-ci-tools.git speckle-sharp-ci-tools
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - speckle-sharp-ci-tools
+  get-ui: # Clones our ci tools and persists them to the workspace
+    docker:
+      - image: cimg/base:2021.01
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "d1:d5:96:4d:ed:58:6e:7f:58:cc:21:5f:94:20:76:49"
+      - run:
+          name: I know Github as a host
+          command: |
+            mkdir ~/.ssh
+            touch ~/.ssh/known_hosts
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
+          name: Clone
+          command: git clone git@github.com:specklesystems/specklepy_qt_ui.git specklepy_qt_ui
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - specklepy_qt_ui
+         
+  package:
+    executor: python/default
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ./
+      - run: 
+          name: Install dependencies
+          command: |
+            pip install pb_tool pyqt5
+      - run: 
+          name: Update version if tag build
+          command: |
+            TAG=$(if [ "${CIRCLE_TAG}" ]; then echo $CIRCLE_TAG; else echo "2.0.99.$CIRCLE_BUILD_NUM"; fi;)
+            SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]+//')
+            VERSION=$(echo "$SEMVER" | sed -e 's/[a-zA-Z]*\///')
+            python patch_version.py $VERSION
+            echo $SEMVER > ./SEMVER
+
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - specklepy_qt_ui
+            - SEMVER 
+      
+      - run:
+          name: ZIP plugin
+          command: pb_tool zip
+      - store_artifacts:
+          path: zip_build/speckle-qgis.zip
+      - persist_to_workspace:
+          root: ./
+          paths:
+            -  zip_build
+   
   build-connector-win: # Reusable job for basic connectors
     executor:
       name: win/default # comes with python 3.7.3
@@ -98,45 +175,12 @@ jobs:
           paths:
             - speckle-sharp-ci-tools/Installers/QGIS/<< parameters.slug >>*.zip
 
-  package:
-    executor: python/default
-    steps:
-      - checkout
-      - run: 
-          name: Install dependencies
-          command: |
-            pip install pb_tool pyqt5
-      - run: 
-          name: Update version if tag build
-          command: |
-            TAG=$(if [ "${CIRCLE_TAG}" ]; then echo $CIRCLE_TAG; else echo "2.0.99.$CIRCLE_BUILD_NUM"; fi;)
-            SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]+//')
-            VERSION=$(echo "$SEMVER" | sed -e 's/[a-zA-Z]*\///')
-            python patch_version.py $VERSION
-            echo $SEMVER > ./SEMVER
-
-      - run:
-          name: Clone
-          command: git clone git@github.com:specklesystems/specklepy_qt_ui.git specklepy_qt_ui
-      - persist_to_workspace:
-          root: ./
-          paths:
-            - specklepy_qt_ui
-            - SEMVER 
-      
-      - run:
-          name: ZIP plugin
-          command: pb_tool zip
-      - store_artifacts:
-          path: zip_build/speckle-qgis.zip
-      - persist_to_workspace:
-          root: ./
-          paths:
-            -  zip_build
   deploy-marketplace:
     executor: python/default
     steps:
       - checkout
+      - attach_workspace:
+          at: ./
       - run: 
           name: Install dependencies
           command: |
@@ -146,46 +190,7 @@ jobs:
       - run: 
           name: Push to marketplace
           command: python plugin_utils/plugin_upload.py -u $QGIS_USERNAME -w $QGIS_PASSWORD zip_build/speckle-qgis.zip
-  get-ci-tools: # Clones our ci tools and persists them to the workspace
-    docker:
-      - image: cimg/base:2021.01
-    steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "d1:d5:96:4d:ed:58:6e:7f:58:cc:21:5f:94:20:76:49"
-      - run:
-          name: I know Github as a host
-          command: |
-            mkdir ~/.ssh
-            touch ~/.ssh/known_hosts
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
-      - run:
-          name: Clone
-          command: git clone git@github.com:specklesystems/speckle-sharp-ci-tools.git speckle-sharp-ci-tools
-      - persist_to_workspace:
-          root: ./
-          paths:
-            - speckle-sharp-ci-tools
-  get-ui: # Clones our ci tools and persists them to the workspace
-    docker:
-      - image: cimg/base:2021.01
-    steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "d1:d5:96:4d:ed:58:6e:7f:58:cc:21:5f:94:20:76:49"
-      - run:
-          name: I know Github as a host
-          command: |
-            mkdir ~/.ssh
-            touch ~/.ssh/known_hosts
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
-      - run:
-          name: Clone
-          command: git clone git@github.com:specklesystems/specklepy_qt_ui.git specklepy_qt_ui
-      - persist_to_workspace:
-          root: ./
-          paths:
-            - specklepy_qt_ui
+
   deploy-manager2:
     docker:
       - image: mcr.microsoft.com/dotnet/sdk:6.0
@@ -206,38 +211,38 @@ jobs:
       - run:
           name: Install Manager Feed CLI
           command: dotnet tool install --global Speckle.Manager.Feed
+      - run: *restore_semver
       - run:
           name: Upload new version
           command: |
-            TAG=$(if [ "${CIRCLE_TAG}" ]; then echo $CIRCLE_TAG; else echo "0.0.0"; fi;)
-            SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]*//')
-            /root/.dotnet/tools/Speckle.Manager.Feed deploy -s << parameters.slug >> -v ${SEMVER} -u https://releases.speckle.dev/installers/<< parameters.slug >>/<< parameters.slug >>-${SEMVER}.<< parameters.extension >> -o << parameters.os >> -f speckle-sharp-ci-tools/Installers/<< parameters.slug >>/<< parameters.slug >>-${SEMVER}.<< parameters.extension >>
+            /root/.dotnet/tools/Speckle.Manager.Feed deploy \
+              -s qgis \
+              -v ${SEMVER} \
+              -u https://releases.speckle.dev/installers/<< parameters.slug >>/<< parameters.slug >>-${SEMVER}.<< parameters.extension >> \
+              -o << parameters.os >> \
+              -f speckle-sharp-ci-tools/Installers/qgis/<< parameters.slug >>-${SEMVER}.<< parameters.extension >>
 workflows: #happens with every PR to main
   build: # build the installers, but don't persist to workspace for deployment
     jobs:
-      - get-ci-tools:
+      - get-ui:
           context: github-dev-bot
-          filters:
-            branches:
-              only:
-                - main
-                - /ci\/.*/
-      - package:
-          requires:
-            - get-ci-tools 
-          filters:
-            branches:
-              only:
-                - main
-                - /ci\/.*/   
-      - build-connector-win:
-          requires:
-            - package
           filters: &build_filters
             branches:
               only:
                 - main
                 - /ci\/.*/
+      - get-ci-tools:
+          context: github-dev-bot
+          filters: *build_filters
+      - package:
+          requires:
+            - get-ui
+            - get-ci-tools 
+          filters: *build_filters
+      - build-connector-win:
+          requires:
+            - package
+          filters: *build_filters
           context: innosetup
 
       - build-installer-mac:
@@ -246,6 +251,7 @@ workflows: #happens with every PR to main
           runtime: osx-arm64
           requires:
             - package
+            - build-connector-win
           filters: *build_filters
 
       - build-installer-mac:
@@ -254,6 +260,7 @@ workflows: #happens with every PR to main
           runtime: osx-x64
           requires:
             - package
+            - build-connector-win
           filters: *build_filters
 
   deploy: # build installers and deploy
@@ -279,6 +286,7 @@ workflows: #happens with every PR to main
             branches:
               ignore: /.*/
           requires:
+            - get-ui
             - get-ci-tools 
       - build-connector-win:
           slug: qgis
@@ -334,7 +342,6 @@ workflows: #happens with every PR to main
           arch: Arm
           extension: zip
           requires:
-            - package
             - build-connector-win
             - Mac Intel Build
             - Mac ARM Build
@@ -348,7 +355,6 @@ workflows: #happens with every PR to main
           arch: Intel
           extension: zip
           requires:
-            - package
             - build-connector-win
             - Mac Intel Build
             - Mac ARM Build
