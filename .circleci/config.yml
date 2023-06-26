@@ -226,6 +226,7 @@ workflows: #happens with every PR to main
                 - /ci\/.*/   
       - build-connector-win:
           requires:
+            - get-ui
             - package
           filters:
             branches:
@@ -263,6 +264,7 @@ workflows: #happens with every PR to main
           slug: qgis
           installer: true
           requires:
+            - get-ui
             - package
           filters: &build_filters
             tags:
