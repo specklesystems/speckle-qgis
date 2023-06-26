@@ -23,7 +23,7 @@ def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
     try:
         multiPolygon = QgsMultiPolygon()
         for mesh in meshes:
-            parts_list, types_list = deconstructSpeckleMesh(mesh)
+            parts_list, types_list = deconstructSpeckleMesh(mesh, dataStorage)
             for part in parts_list: 
                 polygon = QgsPolygon()
                 pts = [Point(x=pt[0], y=pt[1], z=pt[2], units="m") for pt in part]
@@ -56,26 +56,26 @@ def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
 
             if geom.speckle_type =='Objects.Geometry.Mesh' and isinstance(geom, Mesh):
                 mesh = geom
-                w = fill_mesh_parts(w, mesh, geom.id)
+                w = fill_mesh_parts(w, mesh, geom.id, dataStorage)
             else:
                 try: 
                     if geom.displayValue and isinstance(geom.displayValue, Mesh): 
                         mesh = geom.displayValue
-                        w = fill_mesh_parts(w, mesh, geom.id)
+                        w = fill_mesh_parts(w, mesh, geom.id, dataStorage)
                     elif geom.displayValue and isinstance(geom.displayValue, List): 
                         w = fill_multi_mesh_parts(w, geom.displayValue, geom.id)
                 except: 
                     try: 
                         if geom["@displayValue"] and isinstance(geom["@displayValue"], Mesh): 
                             mesh = geom["@displayValue"]
-                            w = fill_mesh_parts(w, mesh, geom.id)
+                            w = fill_mesh_parts(w, mesh, geom.id, dataStorage)
                         elif geom["@displayValue"] and isinstance(geom["@displayValue"], List): 
                             w = fill_multi_mesh_parts(w, geom["@displayValue"], geom.id)
                     except:
                         try: 
                             if geom.displayMesh and isinstance(geom.displayMesh, Mesh): 
                                 mesh = geom.displayMesh
-                                w = fill_mesh_parts(w, mesh, geom.id)
+                                w = fill_mesh_parts(w, mesh, geom.id, dataStorage)
                             elif geom.displayMesh and isinstance(geom.displayMesh, List): 
                                 w = fill_multi_mesh_parts(w, geom.displayMesh, geom.id)
                         except: pass
@@ -96,7 +96,7 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
             if not isinstance(mesh, Mesh): continue
             try:
                 #print(f"Fill multi-mesh parts # {geom_id}")
-                parts_list_x, types_list_x = deconstructSpeckleMesh(mesh) 
+                parts_list_x, types_list_x = deconstructSpeckleMesh(mesh, dataStorage) 
                 parts_list.extend(parts_list_x)
                 types_list.extend(types_list_x)
             except Exception as e: pass 
@@ -112,7 +112,7 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
 def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage):
     
     try:
-        parts_list, types_list = deconstructSpeckleMesh(mesh) 
+        parts_list, types_list = deconstructSpeckleMesh(mesh, dataStorage) 
         w.multipatch(parts_list, partTypes=types_list ) # one type for each part
         w.record(geom_id)
 

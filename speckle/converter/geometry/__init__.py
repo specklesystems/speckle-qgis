@@ -10,7 +10,7 @@ from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint,
     QgsCircularString, QgsLineString, QgsRasterLayer,QgsVectorLayer, QgsFeature,
     QgsUnitTypes)
 from speckle.converter.geometry.utils import getPolygonFeatureHeight
-from speckle.converter.geometry.mesh import meshToNative, writeMeshToShp
+from speckle.converter.geometry.mesh import meshToNative
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from speckle.converter.geometry.polygon import *
 from speckle.converter.geometry.polyline import *

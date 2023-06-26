@@ -386,8 +386,9 @@ def addBimMainThread(obj: Tuple):
         streamBranch = obj['streamBranch'] 
         newFields = obj['newFields'] 
         geomList = obj['geomList']
+        dataStorage = plugin.dataStorage
 
-        project: QgsProject = plugin.dataStorage.project
+        project: QgsProject = dataStorage.project
 
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
         newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
@@ -396,9 +397,9 @@ def addBimMainThread(obj: Tuple):
         ###########################################
         dummy = None 
         root = project.layerTreeRoot()
-        plugin.dataStorage.all_layers = getAllLayers(root)
-        if plugin.dataStorage.all_layers is not None: 
-            if len(plugin.dataStorage.all_layers) == 0:
+        dataStorage.all_layers = getAllLayers(root)
+        if dataStorage.all_layers is not None: 
+            if len(dataStorage.all_layers) == 0:
                 dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
                 crs = QgsCoordinateReferenceSystem(4326)
                 dummy.setCrs(crs)
@@ -407,9 +408,9 @@ def addBimMainThread(obj: Tuple):
 
         
         crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-        plugin.dataStorage.currentUnits = str(QgsUnitTypes.encodeUnit(crs.mapUnits())) 
-        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
-            plugin.dataStorage.currentUnits = 'm'
+        dataStorage.currentUnits = str(QgsUnitTypes.encodeUnit(crs.mapUnits())) 
+        if dataStorage.currentUnits is None or dataStorage.currentUnits == 'degrees': 
+            dataStorage.currentUnits = 'm'
 
         if crs.isGeographic is True: 
             logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
@@ -424,7 +425,7 @@ def addBimMainThread(obj: Tuple):
         findOrCreatePath(path_bim)
         print(path_bim)
 
-        shp = writeMeshToShp(geomList, path_bim + newName_shp)
+        shp = writeMeshToShp(geomList, path_bim + newName_shp, dataStorage)
         if shp is None: return 
         print("____ meshes saved___")
         print(shp)
