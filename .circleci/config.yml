@@ -49,7 +49,6 @@ jobs:
                 root: ./
                 paths:
                   - speckle-sharp-ci-tools/Installers
-                  - SEMVER 
   
   build-installer-mac:
     macos:
@@ -122,6 +121,7 @@ jobs:
           root: ./
           paths:
             - specklepy_qt_ui
+            - SEMVER 
       
       - run:
           name: ZIP plugin
@@ -214,13 +214,6 @@ jobs:
 workflows: #happens with every PR to main
   build: # build the installers, but don't persist to workspace for deployment
     jobs:
-      - get-ui:
-          context: github-dev-bot
-          filters:
-            branches:
-              only:
-                - main
-                - /ci\/.*/
       - get-ci-tools:
           context: github-dev-bot
           filters:
