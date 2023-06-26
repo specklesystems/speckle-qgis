@@ -49,6 +49,7 @@ jobs:
                 root: ./
                 paths:
                   - speckle-sharp-ci-tools/Installers
+                  - SEMVER 
   
   build-installer-mac:
     macos:
@@ -229,7 +230,6 @@ workflows: #happens with every PR to main
                 - /ci\/.*/
       - package:
           requires:
-            - get-ui
             - get-ci-tools 
           filters:
             branches:
@@ -238,7 +238,6 @@ workflows: #happens with every PR to main
                 - /ci\/.*/   
       - build-connector-win:
           requires:
-            - get-ui
             - package
           filters: &build_filters
             branches:
@@ -286,13 +285,11 @@ workflows: #happens with every PR to main
             branches:
               ignore: /.*/
           requires:
-            - get-ui
             - get-ci-tools 
       - build-connector-win:
           slug: qgis
           installer: true
           requires:
-            - get-ui
             - package
           filters: &deploy_filters
             tags:
