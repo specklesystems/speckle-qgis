@@ -11,15 +11,15 @@ from speckle.converter.geometry.point import pointToNative
 from speckle.converter.geometry.utils import fix_orientation, projectToPolygon, triangulatePolygon
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
-from speckle.logging import logger
-from ui.logger import logToUser
+from speckle.utils.panel_logging import logger
+from speckle.utils.panel_logging import logToUser
 
 from qgis.core import (
     Qgis, QgsPoint, QgsPointXY, QgsMultiPolygon, QgsPolygon, QgsLineString, QgsFeature, QgsVectorLayer
     )
 #from panda3d.core import Triangulator
 
-def meshToNative(meshes: List[Mesh], dataStorage = None) -> QgsMultiPolygon:
+def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
     try:
         multiPolygon = QgsMultiPolygon()
         for mesh in meshes:
@@ -38,12 +38,11 @@ def meshToNative(meshes: List[Mesh], dataStorage = None) -> QgsMultiPolygon:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
     
-def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage = None):
+def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
     """Converts a Speckle Mesh to QgsGeometry"""
     try:
         print("06___________________Mesh to Native")
-        #print(meshes)
-        #print(mesh.units)
+
         try:
             w = shapefile.Writer(path) 
         except Exception as e: 
@@ -87,7 +86,7 @@ def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str, dataStorage = None):
+def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str, dataStorage):
     
     print("07___________________fill_multi_mesh_parts")
     try:
@@ -96,7 +95,7 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
         for mesh in meshes:
             if not isinstance(mesh, Mesh): continue
             try:
-                print(f"Fill multi-mesh parts # {geom_id}")
+                #print(f"Fill multi-mesh parts # {geom_id}")
                 parts_list_x, types_list_x = deconstructSpeckleMesh(mesh) 
                 parts_list.extend(parts_list_x)
                 types_list.extend(types_list_x)
@@ -110,7 +109,7 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage = None):
+def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage):
     
     try:
         parts_list, types_list = deconstructSpeckleMesh(mesh) 
@@ -122,7 +121,7 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage =
 
     return w
 
-def deconstructSpeckleMesh(mesh: Mesh, dataStorage = None):
+def deconstructSpeckleMesh(mesh: Mesh, dataStorage):
     
     #print("deconstructSpeckleMesh")
     try:
@@ -154,7 +153,7 @@ def deconstructSpeckleMesh(mesh: Mesh, dataStorage = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return [],[]
 
-def constructMeshFromRaster(vertices, faces, colors, dataStorage = None):
+def constructMeshFromRaster(vertices, faces, colors, dataStorage):
     try:
         mesh = Mesh.create(vertices, faces, colors)
         mesh.units = "m"
@@ -163,7 +162,7 @@ def constructMeshFromRaster(vertices, faces, colors, dataStorage = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def constructMesh(vertices, faces, colors, dataStorage = None):
+def constructMesh(vertices, faces, colors, dataStorage):
     try:
         mesh = Mesh.create(vertices, faces, colors)
         mesh.units = "m"
@@ -175,7 +174,7 @@ def constructMesh(vertices, faces, colors, dataStorage = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height = None, dataStorage = None):
+def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]], existing_vert: int, feature: QgsFeature, feature_geom, layer: QgsVectorLayer, height, dataStorage):
     try:
         faces = []
         faces_cap = []

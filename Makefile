@@ -1,22 +1,3 @@
-#/***************************************************************************
-# SpeckleQGIS
-#
-# SpeckleQGIS Description
-#							 -------------------
-#		begin				: 2021-08-04
-#		git sha				: $Format:%H$
-#		copyright			: (C) 2021 by Speckle Systems
-#		email				: alan@speckle.systems
-# ***************************************************************************/
-#
-#/***************************************************************************
-# *																		 *
-# *   This program is free software; you can redistribute it and/or modify  *
-# *   it under the terms of the GNU General Public License as published by  *
-# *   the Free Software Foundation; either version 2 of the License, or	 *
-# *   (at your option) any later version.								   *
-# *																		 *
-# ***************************************************************************/
 
 #################################################
 # Edit the following to match your sources lists
@@ -139,6 +120,7 @@ dclean:
 	@echo "Removing any compiled python files."
 	@echo "-----------------------------------"
 	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname "*.pyc" -delete
+	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname "*.gif" -delete
 	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname ".git" -prune -exec rm -Rf {} \;
 
 

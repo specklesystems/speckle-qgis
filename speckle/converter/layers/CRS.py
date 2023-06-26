@@ -1,7 +1,7 @@
 from typing import Optional, Union
 from specklepy.objects import Base
 
-
+r'''
 class CRS(Base):
     """A very basic GIS Coordinate Reference System stored in wkt format"""
     name: Union[str,None]
@@ -20,3 +20,4 @@ class CRS(Base):
         self.name = name if name != None else ""
         self.wkt = wkt if wkt != None else ""
         self.units = units if units != None else "m"
+'''

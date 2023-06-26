@@ -14,10 +14,10 @@ from qgis.core import (
     QgsGraduatedSymbolRenderer, QgsRasterDataProvider
 
 )
-from speckle.converter.layers.Layer import Layer, RasterLayer, VectorLayer
+from specklepy.objects.GIS.layers import Layer, RasterLayer, VectorLayer
 from PyQt5.QtGui import QColor
 
-from ui.logger import logToUser
+from speckle.utils.panel_logging import logToUser
 
 # TODO QML format: https://gis.stackexchange.com/questions/202230/loading-style-qml-file-to-layer-via-pyqgis 
 

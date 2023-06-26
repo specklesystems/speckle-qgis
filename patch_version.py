@@ -31,12 +31,18 @@ def patch_installer(tag):
 
     with open(metadata, "r") as file:
         lines = file.readlines()
+        new_lines = []
         for i, line in enumerate(lines):
             if "version=" in line: 
-                lines[i] = f'version={tag}\n'#.split("-")[0]
-                break
+                line = f'version={tag}\n'#.split("-")[0]
+            if "experimental=" in line: 
+                if "-" in tag:
+                    line = f'experimental=True\n'#.split("-")[0]
+                elif len(tag.split("."))==3 and tag!="0.0.99":
+                    line = f'experimental=False\n'#.split("-")[0]
+            new_lines.append(line)
         with open(metadata, "w") as file:
-            file.writelines(lines)
+            file.writelines(new_lines)
             print(f"Patched metadata v{tag} ")
     file.close()
 

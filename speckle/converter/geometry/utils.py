@@ -9,7 +9,7 @@ from specklepy.objects import Base
 from typing import List, Tuple, Union, Dict 
 
 #from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
-from ui.logger import logToUser
+from speckle.utils.panel_logging import logToUser
 #import time
 
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer, QgsFeature,
@@ -248,7 +248,7 @@ def getPolygonFeatureHeight(feature, layer, dataStorage):
     return height
 
 
-def specklePolycurveToPoints(poly: Polycurve, dataStorage = None) -> List[Point]:
+def specklePolycurveToPoints(poly: Polycurve, dataStorage) -> List[Point]:
     #print("_____Speckle Polycurve to points____")
     try:
         points = []
@@ -269,7 +269,7 @@ def specklePolycurveToPoints(poly: Polycurve, dataStorage = None) -> List[Point]
         return
     
 
-def speckleArcCircleToPoints(poly: Union[Arc, Circle], dataStorage = None) -> List[Point]: 
+def speckleArcCircleToPoints(poly: Union[Arc, Circle], dataStorage) -> List[Point]: 
     try:
         #print("__Arc or Circle to Points___")
         points = []
@@ -313,9 +313,10 @@ def speckleArcCircleToPoints(poly: Union[Arc, Circle], dataStorage = None) -> Li
         return [] 
     
 
-def speckleBoundaryToSpecklePts(boundary: Union[None, Polyline, Arc, Line, Polycurve], dataStorage = None) -> List[Point]:
+def speckleBoundaryToSpecklePts(boundary: Union[None, Polyline, Arc, Line, Polycurve], dataStorage) -> List[Point]:
     # add boundary points
     try:
+        print(dataStorage)
         polyBorder = []
         if isinstance(boundary, Circle) or isinstance(boundary, Arc): 
             polyBorder = speckleArcCircleToPoints(boundary, dataStorage ) 
@@ -357,7 +358,7 @@ def addCorrectUnits(geom, dataStorage):
 
 
 
-def getArcRadianAngle(arc: Arc, dataStorage = None) -> List[float]:
+def getArcRadianAngle(arc: Arc, dataStorage) -> List[float]:
     try: 
         interval = None
         normal = arc.plane.normal.z 
@@ -374,7 +375,7 @@ def getArcRadianAngle(arc: Arc, dataStorage = None) -> List[float]:
         return None, None, None 
     
 
-def getArcAngles(poly: Arc, dataStorage = None) -> Tuple[float]: 
+def getArcAngles(poly: Arc, dataStorage) -> Tuple[float]: 
     try: 
         if poly.startPoint.x == poly.plane.origin.x: angle1 = math.pi/2
         else: angle1 = atan( abs ((poly.startPoint.y - poly.plane.origin.y) / (poly.startPoint.x - poly.plane.origin.x) )) # between 0 and pi/2
@@ -397,7 +398,7 @@ def getArcAngles(poly: Arc, dataStorage = None) -> Tuple[float]:
     
 
 
-def getArcNormal(poly: Arc, midPt: Point, dataStorage = None): 
+def getArcNormal(poly: Arc, midPt: Point, dataStorage): 
     #print("____getArcNormal___")
     try:
         angle1, angle2 = getArcAngles(poly)

@@ -4,7 +4,7 @@ from qgis._core import ( Qgis, QgsProject,
                         QgsCoordinateReferenceSystem, QgsLayerTreeLayer, 
                         QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, 
                         QgsField, QgsFields, QgsLayerTreeGroup )
-from speckle.logging import logger
+from speckle.utils.panel_logging import logger
 from speckle.converter.layers import Layer
 from typing import Any, List, Tuple, Union
 from specklepy.objects import Base
@@ -17,7 +17,7 @@ import math
 import numpy as np 
 
 
-from ui.logger import logToUser
+from speckle.utils.panel_logging import logToUser
 
 ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
 

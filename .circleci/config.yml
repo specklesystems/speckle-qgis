@@ -49,6 +49,55 @@ jobs:
                 root: ./
                 paths:
                   - speckle-sharp-ci-tools/Installers
+  
+  build-installer-mac:
+    macos:
+      xcode: 12.5.1
+    parameters:
+      runtime:
+        type: string
+      slug:
+        type: string
+      installer_path:
+        type: string
+        default: speckle-sharp-ci-tools/Mac/SpeckleQGISInstall
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Install mono
+          command: |
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install mono
+      # Compress build files
+      - run:
+          name: Install dotnet
+          command: curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin
+      - run: &restore_semver
+          name: Restore Semver
+          command: SEMVER=$(cat ./SEMVER) && echo $SEMVER
+      - run:
+          name: Copy connector files to installer
+          command: |
+            mkdir -p <<parameters.installer_path >>/.installationFiles/
+            cp zip_build/speckle-qgis.zip << parameters.installer_path >>/.installationFiles
+      - run:
+          name: Build Mac installer
+          command: ~/.dotnet/dotnet publish << parameters.installer_path >>/SpeckleQGISInstall.sln -r << parameters.runtime >> -c Release
+      - run:
+          name: Zip installer
+          command: |
+            SEMVER=$(cat ./SEMVER)
+            echo $SEMVER
+            mkdir -p speckle-sharp-ci-tools/Installers/QGIS
+            (cd <<parameters.installer_path>>/bin/Release/net6.0/<< parameters.runtime >>/publish/ && zip -r - ./) > << parameters.slug >>-${SEMVER}.zip
+            cp << parameters.slug >>-${SEMVER}.zip speckle-sharp-ci-tools/Installers/QGIS/
+
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - speckle-sharp-ci-tools/Installers/QGIS/<< parameters.slug >>*.zip
+
   package:
     executor: python/default
     steps:
@@ -106,12 +155,35 @@ jobs:
           root: ./
           paths:
             - speckle-sharp-ci-tools
+  get-ui: # Clones our ci tools and persists them to the workspace
+    docker:
+      - image: cimg/base:2021.01
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "d1:d5:96:4d:ed:58:6e:7f:58:cc:21:5f:94:20:76:49"
+      - run:
+          name: I know Github as a host
+          command: |
+            mkdir ~/.ssh
+            touch ~/.ssh/known_hosts
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
+          name: Clone
+          command: git clone git@github.com:specklesystems/specklepy_qt_ui.git specklepy_qt_ui
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - specklepy_qt_ui
   deploy-manager2:
     docker:
       - image: mcr.microsoft.com/dotnet/sdk:6.0
     parameters:
       slug:
         type: string
+      arch:
+        type: string
+        default: Any
       os:
         type: string
       extension:
@@ -132,6 +204,13 @@ jobs:
 workflows: #happens with every PR to main
   build: # build the installers, but don't persist to workspace for deployment
     jobs:
+      - get-ui:
+          context: github-dev-bot
+          filters:
+            branches:
+              only:
+                - main
+                - /ci\/.*/
       - get-ci-tools:
           context: github-dev-bot
           filters:
@@ -141,6 +220,7 @@ workflows: #happens with every PR to main
                 - /ci\/.*/
       - package:
           requires:
+            - get-ui
             - get-ci-tools 
           filters:
             branches:
@@ -149,6 +229,7 @@ workflows: #happens with every PR to main
                 - /ci\/.*/   
       - build-connector-win:
           requires:
+            - get-ui
             - package
           filters:
             branches:
@@ -159,6 +240,13 @@ workflows: #happens with every PR to main
 
   deploy: # build installers and deploy
     jobs:
+      - get-ui:
+          context: github-dev-bot
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
       - get-ci-tools:
           context: github-dev-bot
           filters:
@@ -173,20 +261,22 @@ workflows: #happens with every PR to main
             branches:
               ignore: /.*/
           requires:
+            - get-ui
             - get-ci-tools 
       - build-connector-win:
           slug: qgis
           installer: true
           requires:
+            - get-ui
             - package
-          filters:
+          filters: &build_filters
             tags:
               only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
             branches:
               ignore: /.*/
           context: innosetup
       - deploy-marketplace:
-          filters:
+          filters: 
             tags:
               only: /([0-9]+)\.([0-9]+)\.([0-9]+)$/
             branches:
@@ -196,12 +286,56 @@ workflows: #happens with every PR to main
       - deploy-manager2:
           slug: qgis
           os: Win
+          arch: Any
           extension: exe
           requires:
             - build-connector-win
-          filters:
-            tags:
-              only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
-            branches:
-              ignore: /.*/ # For testing only! /ci\/.*/
+          filters: *build_filters
           context: do-spaces-speckle-releases
+      
+      
+      - build-installer-mac:
+          name: Mac ARM Build
+          slug: qgis-mac-arm
+          runtime: osx-arm64
+          requires:
+            - package
+            - build-connector-win
+          filters: *build_filters
+
+      - build-installer-mac:
+          name: Mac Intel Build
+          slug: qgis-mac-intel
+          runtime: osx-x64
+          requires:
+            - package
+            - build-connector-win
+          filters: *build_filters
+
+      - deploy-manager2:
+          context: do-spaces-speckle-releases
+          name: deploy-mac-arm
+          slug: qgis-mac-arm
+          os: OSX
+          arch: Arm
+          extension: zip
+          requires:
+            - package
+            - build-connector-win
+            - Mac Intel Build
+            - Mac ARM Build
+          filters: *build_filters
+      
+      - deploy-manager2:
+          context: do-spaces-speckle-releases
+          name: deploy-mac-intel
+          slug: qgis-mac-intel
+          os: OSX
+          arch: Intel
+          extension: zip
+          requires:
+            - package
+            - build-connector-win
+            - Mac Intel Build
+            - Mac ARM Build
+          filters: *build_filters

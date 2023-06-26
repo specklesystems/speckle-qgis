@@ -13,10 +13,10 @@ from typing import Dict, Any
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
-from speckle.converter.geometry.GisGeometryClasses import GisRasterElement
+from specklepy.objects.GIS.geometry import GisRasterElement
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
-from speckle.converter.layers.Layer import RasterLayer
-from speckle.logging import logger
+from specklepy.objects.GIS.layers import RasterLayer
+from speckle.utils.panel_logging import logger
 from speckle.converter.layers.utils import get_raster_stats, get_scale_factor_to_meter, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
@@ -24,10 +24,11 @@ import numpy as np
 import scipy as sp
 import scipy.ndimage
 
-from ui.logger import logToUser
+from speckle.utils.panel_logging import logToUser
 
-def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage = None):
-    #b = Base(units = dataStorage.currentUnits)
+def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage):
+    print("Feature to Speckle")
+    print(dataStorage)
     if dataStorage is None: return 
     units = dataStorage.currentUnits
     try:
@@ -79,7 +80,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return geom
           
-def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields, crs, path: str, dataStorage = None):
+def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields, crs, path: str, dataStorage):
     print("04_________BIM Feature To Native____________")
     try:
         exist_feat.setFields(fields)  
@@ -605,7 +606,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
     return b
 
 
-def featureToNative(feature: Base, fields: QgsFields, dataStorage = None):
+def featureToNative(feature: Base, fields: QgsFields, dataStorage):
     feat = QgsFeature()
     try:
         try: 
@@ -666,7 +667,7 @@ def featureToNative(feature: Base, fields: QgsFields, dataStorage = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return feat
 
-def cadFeatureToNative(feature: Base, fields: QgsFields, dataStorage = None):
+def cadFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
     try:
         print("______________cadFeatureToNative")
         exist_feat = QgsFeature()
