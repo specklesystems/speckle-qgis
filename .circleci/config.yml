@@ -215,6 +215,8 @@ jobs:
       - run:
           name: Upload new version
           command: |
+            SEMVER=$(cat ./SEMVER)
+            echo $SEMVER
             /root/.dotnet/tools/Speckle.Manager.Feed deploy \
               -s qgis \
               -v ${SEMVER} \
