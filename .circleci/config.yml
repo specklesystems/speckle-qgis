@@ -166,14 +166,14 @@ jobs:
           command: |
             SEMVER=$(cat ./SEMVER)
             echo $SEMVER
-            mkdir -p speckle-sharp-ci-tools/Installers/QGIS
+            mkdir -p speckle-sharp-ci-tools/Installers/qgis
             (cd <<parameters.installer_path>>/bin/Release/net6.0/<< parameters.runtime >>/publish/ && zip -r - ./) > << parameters.slug >>-${SEMVER}.zip
-            cp << parameters.slug >>-${SEMVER}.zip speckle-sharp-ci-tools/Installers/QGIS/
+            cp << parameters.slug >>-${SEMVER}.zip speckle-sharp-ci-tools/Installers/qgis/
 
       - persist_to_workspace:
           root: ./
           paths:
-            - speckle-sharp-ci-tools/Installers/QGIS/<< parameters.slug >>*.zip
+            - speckle-sharp-ci-tools/Installers/qgis/<< parameters.slug >>*.zip
 
   deploy-marketplace:
     executor: python/default
@@ -220,9 +220,9 @@ jobs:
             /root/.dotnet/tools/Speckle.Manager.Feed deploy \
               -s qgis \
               -v ${SEMVER} \
-              -u https://releases.speckle.dev/installers/QGIS/<< parameters.slug >>-${SEMVER}.<< parameters.extension >> \
+              -u https://releases.speckle.dev/installers/qgis/<< parameters.slug >>-${SEMVER}.<< parameters.extension >> \
               -o << parameters.os >> \
-              -f speckle-sharp-ci-tools/Installers/QGIS/<< parameters.slug >>-${SEMVER}.<< parameters.extension >>
+              -f speckle-sharp-ci-tools/Installers/qgis/<< parameters.slug >>-${SEMVER}.<< parameters.extension >>
 workflows: #happens with every PR to main
   build: # build the installers, but don't persist to workspace for deployment
     jobs:
