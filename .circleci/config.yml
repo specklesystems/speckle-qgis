@@ -231,7 +231,7 @@ workflows: #happens with every PR to main
           requires:
             - get-ui
             - package
-          filters:
+          filters: &build_filters
             branches:
               only:
                 - main
@@ -245,11 +245,7 @@ workflows: #happens with every PR to main
           requires:
             - package
             - build-connector-win
-          filters: &build_filters
-            tags:
-              only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
-            branches:
-              ignore: /.*/
+          filters: *build_filters
 
       - build-installer-mac:
           name: Mac Intel Build
@@ -291,7 +287,7 @@ workflows: #happens with every PR to main
           requires:
             - get-ui
             - package
-          filters: &build_filters
+          filters: &deploy_filters
             tags:
               only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
             branches:
@@ -312,7 +308,7 @@ workflows: #happens with every PR to main
           extension: exe
           requires:
             - build-connector-win
-          filters: *build_filters
+          filters: *deploy_filters
           context: do-spaces-speckle-releases
       
       
@@ -323,7 +319,7 @@ workflows: #happens with every PR to main
           requires:
             - package
             - build-connector-win
-          filters: *build_filters
+          filters: *deploy_filters
 
       - build-installer-mac:
           name: Mac Intel Build
@@ -332,7 +328,7 @@ workflows: #happens with every PR to main
           requires:
             - package
             - build-connector-win
-          filters: *build_filters
+          filters: *deploy_filters
 
       - deploy-manager2:
           context: do-spaces-speckle-releases
@@ -346,7 +342,7 @@ workflows: #happens with every PR to main
             - build-connector-win
             - Mac Intel Build
             - Mac ARM Build
-          filters: *build_filters
+          filters: *deploy_filters
       
       - deploy-manager2:
           context: do-spaces-speckle-releases
@@ -360,4 +356,4 @@ workflows: #happens with every PR to main
             - build-connector-win
             - Mac Intel Build
             - Mac ARM Build
-          filters: *build_filters
+          filters: *deploy_filters
