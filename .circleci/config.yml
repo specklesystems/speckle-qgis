@@ -308,7 +308,7 @@ workflows: #happens with every PR to main
             - build-connector-win
           filters: *build_filters
 
-      - deploy-connector:
+      - deploy-manager2:
           context: do-spaces-speckle-releases
           name: deploy-mac-arm
           file_slug: qgis-mac-arm
@@ -322,7 +322,7 @@ workflows: #happens with every PR to main
             - Mac ARM Build
           filters: *build_filters
       
-      - deploy-connector:
+      - deploy-manager2:
           context: do-spaces-speckle-releases
           name: deploy-mac-intel
           file_slug: qgis-mac-intel
