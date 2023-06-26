@@ -311,7 +311,7 @@ workflows: #happens with every PR to main
       - deploy-manager2:
           context: do-spaces-speckle-releases
           name: deploy-mac-arm
-          file_slug: qgis-mac-arm
+          slug: qgis-mac-arm
           os: OSX
           arch: Arm
           extension: zip
@@ -325,7 +325,7 @@ workflows: #happens with every PR to main
       - deploy-manager2:
           context: do-spaces-speckle-releases
           name: deploy-mac-intel
-          file_slug: qgis-mac-intel
+          slug: qgis-mac-intel
           os: OSX
           arch: Intel
           extension: zip
