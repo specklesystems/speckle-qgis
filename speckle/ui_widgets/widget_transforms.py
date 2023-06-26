@@ -236,20 +236,6 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
             logToUser(e, level = 2, func = inspect.stack()[0][3])
             return
 
-    r'''
-    def nameCheck(self):
-        return
-        try:
-            if len(self.name_field.text()) == 0 or len(self.name_field.text()) >= 3:
-                self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(True) 
-            else: 
-                self.dialog_button_box.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(False) 
-            return
-        except Exception as e:
-            logToUser(e, level = 2, func = inspect.stack()[0][3])
-            return
-    '''
-
     def populateSavedElevationLayer(self, dataStorage): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
 
         try:
