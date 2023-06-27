@@ -330,6 +330,7 @@ workflows: #happens with every PR to main
           runtime: osx-x64
           requires:
             - package
+            - Mac ARM Build
           filters: *deploy_filters
 
       - deploy-manager2:
@@ -356,4 +357,5 @@ workflows: #happens with every PR to main
             - build-connector-win
             - Mac Intel Build
             - Mac ARM Build
+            - deploy-mac-arm
           filters: *deploy_filters

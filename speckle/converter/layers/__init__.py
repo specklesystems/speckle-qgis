@@ -266,14 +266,18 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
         if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
             plugin.dataStorage.currentUnits = 'm'
 
-        #if layer.collectionType is None:
-        #    # Handle this case
-        #    return
         
         if isinstance(layer.collectionType, str) and layer.collectionType.endswith("VectorLayer"):
             vectorLayerToNative(layer, streamBranch, plugin)
             return 
         elif isinstance(layer.collectionType, str) and layer.collectionType.endswith("RasterLayer"):
+            rasterLayerToNative(layer, streamBranch, plugin)
+            return 
+        # if collectionType exists but not defined
+        elif isinstance(layer.type, str) and layer.type.endswith("VectorLayer"): # older commits
+            vectorLayerToNative(layer, streamBranch, plugin)
+            return 
+        elif isinstance(layer.type, str) and layer.type.endswith("RasterLayer"): # older commits
             rasterLayerToNative(layer, streamBranch, plugin)
             return 
     except:
@@ -701,7 +705,8 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         if newFields is None: 
             newFields = QgsFields()
         
-        plugin.dockwidget.signal_1.emit({'plugin': plugin, 'geomType': geomType, 'newName': newName, 'streamBranch': streamBranch, 'wkt': layer.crs.wkt, 'layer': layer, 'newFields': newFields, 'fets': fets})
+        objectEmit = {'plugin': plugin, 'geomType': geomType, 'newName': newName, 'streamBranch': streamBranch, 'wkt': layer.crs.wkt, 'layer': layer, 'newFields': newFields, 'fets': fets}
+        plugin.dockwidget.signal_1.emit(objectEmit)
         return 
     
     except Exception as e:
