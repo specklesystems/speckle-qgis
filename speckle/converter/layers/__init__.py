@@ -726,6 +726,8 @@ def addVectorMainThread(obj: Tuple):
 
         project: QgsProject = plugin.dataStorage.project
 
+        print(layer.name)
+
         ###########################################
         dummy = None 
         root = project.layerTreeRoot()
@@ -738,11 +740,11 @@ def addVectorMainThread(obj: Tuple):
                 project.addMapLayer(dummy, True)
         #################################################
 
-        crs = QgsCoordinateReferenceSystem.fromWkt(wkt) #moved up, because CRS of existing layer needs to be rewritten
+        crs = QgsCoordinateReferenceSystem.fromWkt(wkt) 
         srsid = trySaveCRS(crs, streamBranch)
         crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
-        print(srsid)
         authid = crs_new.authid()
+        print(authid)
         
         #################################################
         if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():

@@ -62,35 +62,58 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVe
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
+def transformSpecklePt(pt_original: Point, dataStorage) -> Point: 
+
+    offset_x = dataStorage.crs_offset_x
+    offset_y = dataStorage.crs_offset_y
+    rotation = dataStorage.crs_rotation
+
+    pt = Point(x=pt_original.x, y=pt_original.y, z=pt_original.x, units = pt_original.units)
+
+    try: applyTransforms = False if (dataStorage.receivingGISlayer and dataStorage.receivingGISlayer is True) else True 
+    except: applyTransforms = True 
+    print(applyTransforms)
+
+    if applyTransforms is True and rotation is not None and isinstance(rotation, float) and -360< rotation <360:
+        a = rotation * math.pi / 180
+        x2 = pt.x
+        y2 = pt.y
+
+        if a > 0: # turn counterclockwise on receive
+            x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
+            y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
+        elif a < 0: # turn clockwise on receive
+            x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
+            y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
+
+        pt.x = x2
+        pt.y = y2
+
+    if applyTransforms is True and offset_x is not None and isinstance(offset_x, float):
+        pt.x += offset_x
+    if applyTransforms is True and offset_y is not None and isinstance(offset_y, float):
+        pt.y += offset_y
+
+    return pt
+
+def pointToNativeWithoutTransforms(pt: Point, dataStorage) -> QgsPoint:
+    """Converts a Speckle Point to QgsPoint"""
+    try:
+        pt = scalePointToNative(pt, pt.units, dataStorage)
+        newPt = transformSpecklePt(pt, dataStorage)
+
+        return QgsPoint(newPt.x, newPt.y, newPt.z)
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None
 
 def pointToNative(pt: Point, dataStorage) -> QgsPoint:
     """Converts a Speckle Point to QgsPoint"""
     try:
         pt = scalePointToNative(pt, pt.units, dataStorage)
-        offset_x = dataStorage.crs_offset_x
-        offset_y = dataStorage.crs_offset_y
-        rotation = dataStorage.crs_rotation
-        if rotation is not None and isinstance(rotation, float) and -360< rotation <360:
-            a = rotation * math.pi / 180
-            x2 = pt.x
-            y2 = pt.y
+        newPt = transformSpecklePt(pt, dataStorage)
 
-            if a > 0: # turn counterclockwise on receive
-                x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
-                y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
-            elif a < 0: # turn clockwise on receive
-                x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
-                y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
-
-            pt.x = x2
-            pt.y = y2
-
-        if offset_x is not None and isinstance(offset_x, float):
-            pt.x += offset_x
-        if offset_y is not None and isinstance(offset_y, float):
-            pt.y += offset_y
-
-        return QgsPoint(pt.x, pt.y, pt.z)
+        return QgsPoint(newPt.x, newPt.y, newPt.z)
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None

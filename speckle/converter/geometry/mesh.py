@@ -7,7 +7,7 @@ from specklepy.objects.other import RenderMaterial
 
 import shapefile
 from shapefile import TRIANGLE_STRIP, TRIANGLE_FAN, OUTER_RING
-from speckle.converter.geometry.point import pointToNative
+from speckle.converter.geometry.point import pointToNative, pointToNativeWithoutTransforms, transformSpecklePt
 from speckle.converter.geometry.utils import fix_orientation, projectToPolygon, triangulatePolygon
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
@@ -28,7 +28,7 @@ def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
                 polygon = QgsPolygon()
                 pts = [Point(x=pt[0], y=pt[1], z=pt[2], units="m") for pt in part]
                 pts.append(pts[0])
-                boundary = QgsLineString([pointToNative(pt, dataStorage) for pt in pts])
+                boundary = QgsLineString([pointToNativeWithoutTransforms(pt, dataStorage) for pt in pts])
                 polygon.setExteriorRing(boundary)
 
                 if polygon is not None:
@@ -140,7 +140,10 @@ def deconstructSpeckleMesh(mesh: Mesh, dataStorage):
                 for i in range(vertices):
                     index_faces = count + 1 + i 
                     index_vertices = mesh.faces[index_faces]*3
-                    face.append([ scale * mesh.vertices[index_vertices], scale * mesh.vertices[index_vertices+1], scale * mesh.vertices[index_vertices+2] ]) 
+                    
+                    pt = Point(x = mesh.vertices[index_vertices], y = mesh.vertices[index_vertices+1], z = mesh.vertices[index_vertices+2], units = "m")
+                    newPt = transformSpecklePt(pt, dataStorage)
+                    face.append([ scale * newPt.x, scale * newPt.y, scale * newPt.z ]) 
 
                 parts_list.append(face)
                 types_list.append(OUTER_RING)

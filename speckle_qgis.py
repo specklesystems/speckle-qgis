@@ -483,6 +483,9 @@ class SpeckleQGIS:
 
         try:
             if not self.dockwidget: return
+
+            self.dataStorage.receivingGISlayer = False
+
             # Check if stream id/url is empty
             if self.active_stream is None:
                 logToUser("Please select a stream from the list", level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
@@ -561,10 +564,22 @@ class SpeckleQGIS:
         newGroupName = streamId + "_" + branch.name + "_" + commit.id
         newGroupName = removeSpecialCharacters(newGroupName)
         try:
-            if app.lower() == "qgis" or app.lower() == "arcgis": check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
-            else: check: Callable[[Base], bool] = lambda base: (base.speckle_type) # and base.speckle_type.endswith("Base") )
+            if app.lower() == "qgis" or app.lower() == "arcgis": 
+                self.dataStorage.receivingGISlayer = True
+                check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
+            else: 
+                check: Callable[[Base], bool] = lambda base: (base.speckle_type) # and base.speckle_type.endswith("Base") )
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
+            try: 
+                if self.dataStorage.receivingGISlayer == True:
+                    offsetsExist = True if self.dataStorage.crs_offset_x is not None and self.dataStorage.crs_offset_y is not None and (self.dataStorage.crs_offset_x != 0 or self.dataStorage.crs_offset_y != 0) else False
+                    rotationExists = True if self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation != 0  else False
+                    if (offsetsExist is True or rotationExists is True):
+                        logToUser("Offsets or/and rotation are applied on receive", level = 0, plugin = self.dockwidget)
+                self.dataStorage.receivingGISlayer = False
+            except: pass 
+
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
             logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
             #return 
