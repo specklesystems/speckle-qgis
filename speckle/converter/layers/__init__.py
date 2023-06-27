@@ -276,17 +276,18 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
         elif isinstance(layer.collectionType, str) and layer.collectionType.endswith("RasterLayer"):
             rasterLayerToNative(layer, streamBranch, plugin)
             return 
-        
-        elif isinstance(layer.type, str) and layer.type.endswith("VectorLayer"): # older commits
-            vectorLayerToNative(layer, streamBranch, plugin)
+    except:
+        try: 
+            if isinstance(layer.type, str) and layer.type.endswith("VectorLayer"): # older commits
+                vectorLayerToNative(layer, streamBranch, plugin)
+                return 
+            elif isinstance(layer.type, str) and layer.type.endswith("RasterLayer"): # older commits
+                rasterLayerToNative(layer, streamBranch, plugin)
+                return 
+            
             return 
-        elif isinstance(layer.type, str) and layer.type.endswith("RasterLayer"): # older commits
-            rasterLayerToNative(layer, streamBranch, plugin)
-            return 
-        
-        return None
-    except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        except Exception as e:
+            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
 
@@ -334,7 +335,7 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBr
             if val and isinstance(val, Mesh):
                 geom_meshes.append(val)
             elif isinstance(val, List): 
-                if isinstance(val[0], Mesh) : 
+                if len(val)>0 and isinstance(val[0], Mesh) : 
                     geom_meshes.extend(val)
         
         if len(geom_meshes)>0: 
@@ -459,7 +460,7 @@ def addBimMainThread(obj: Tuple):
                     logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
                     continue 
 
-                new_feat = bimFeatureToNative(exist_feat, f, vl.fields(), crs, path_bim)
+                new_feat = bimFeatureToNative(exist_feat, f, vl.fields(), crs, path_bim, dataStorage)
                 if new_feat is not None and new_feat != "": 
                     fetColors = findFeatColors(fetColors, f)
                     fets.append(new_feat)

@@ -3,8 +3,6 @@ import time
 from typing import Any, Callable, List, Optional
 from plugin_utils.helpers import removeSpecialCharacters 
 
-from speckle.utils.panel_logging import logger
-from qgis.core import Qgis, QgsProject
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers import geometryLayerToNative, layerToNative
 
@@ -52,7 +50,7 @@ def traverseValue(
 
 def callback(base: Base, streamBranch: str, plugin) -> bool:
     try:
-        if isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer):
+        if isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer) or base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("RasterLayer"):
             layerToNative(base, streamBranch, plugin)
         else:
             loopObj(base, "", streamBranch, plugin, [])   
@@ -61,14 +59,14 @@ def callback(base: Base, streamBranch: str, plugin) -> bool:
 
 def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
     try:
+        # dont loop primitives 
+        if not isinstance(base, Base): return
+
         memberNames = base.get_member_names()
+
         for name in memberNames:
             if name in ["id", "applicationId", "units", "speckle_type"]: continue
             # skip if traversal goes to displayValue of an object, that will be readable anyway:
-            try: 
-                if not isinstance(base, Base) and "Collection" not in base.speckle_type: continue
-            except: 
-                if not isinstance(base, Base): continue
             
             if (name == "displayValue" or name == "@displayValue") and base.speckle_type.startswith(tuple(SPECKLE_TYPES_TO_READ)): continue 
 
