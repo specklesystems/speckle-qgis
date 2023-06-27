@@ -354,7 +354,6 @@ workflows: #happens with every PR to main
           arch: Intel
           extension: zip
           requires:
-            - build-connector-win
             - Mac Intel Build
             - Mac ARM Build
             - deploy-mac-arm
