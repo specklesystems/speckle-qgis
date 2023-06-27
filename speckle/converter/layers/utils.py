@@ -388,9 +388,6 @@ def trySaveCRS(crs, streamBranch:str = ""):
     try:
         authid = crs.authid() 
         wkt = crs.toWkt()
-        print("___________________________________________")
-        print(authid)
-        print(wkt)
         if authid =='': 
             crs_id = crs.saveAsUserCrs("SpeckleCRS_" + streamBranch)
             return crs_id
