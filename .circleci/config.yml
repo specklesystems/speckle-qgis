@@ -222,6 +222,7 @@ jobs:
               -v ${SEMVER} \
               -u https://releases.speckle.dev/installers/qgis/<< parameters.slug >>-${SEMVER}.<< parameters.extension >> \
               -o << parameters.os >> \
+              -a << parameters.arch >> \
               -f speckle-sharp-ci-tools/Installers/qgis/<< parameters.slug >>-${SEMVER}.<< parameters.extension >>
 workflows: #happens with every PR to main
   build: # build the installers, but don't persist to workspace for deployment
@@ -321,7 +322,7 @@ workflows: #happens with every PR to main
           slug: qgis-mac-arm
           runtime: osx-arm64
           requires:
-            - package
+            - deploy-manager2
           filters: *deploy_filters
 
       - build-installer-mac:
@@ -329,8 +330,7 @@ workflows: #happens with every PR to main
           slug: qgis-mac-intel
           runtime: osx-x64
           requires:
-            - package
-            - Mac ARM Build
+            - deploy-mac-arm
           filters: *deploy_filters
 
       - deploy-manager2:
@@ -341,8 +341,6 @@ workflows: #happens with every PR to main
           arch: Arm
           extension: zip
           requires:
-            - build-connector-win
-            - Mac Intel Build
             - Mac ARM Build
           filters: *deploy_filters
       
@@ -355,6 +353,4 @@ workflows: #happens with every PR to main
           extension: zip
           requires:
             - Mac Intel Build
-            - Mac ARM Build
-            - deploy-mac-arm
           filters: *deploy_filters
