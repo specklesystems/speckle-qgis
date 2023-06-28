@@ -35,13 +35,11 @@ def patch_installer(tag):
         for i, line in enumerate(lines):
             if "version=" in line: 
                 line = f'version={tag}\n'#.split("-")[0]
-                continue 
             if "experimental=" in line: 
                 if "-" in tag:
                     line = f'experimental=True\n'#.split("-")[0]
                 elif len(tag.split("."))==3 and tag!="0.0.99":
                     line = f'experimental=False\n'#.split("-")[0]
-                continue 
             new_lines.append(line)
         with open(metadata, "w") as file:
             file.writelines(new_lines)
