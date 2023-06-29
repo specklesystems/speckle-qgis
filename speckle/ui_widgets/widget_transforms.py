@@ -34,6 +34,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         
         self.attr_label.setEnabled(False)
         self.attrDropdown.setEnabled(False)
+        self.dialog_button.setText("Apply")
 
         self.populateTransforms()
         self.populateLayersByTransform()
@@ -177,8 +178,16 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
                         ds = gdal.Open(layer.source(), gdal.GA_ReadOnly)
                         if ds is None:
                             continue
-                    
-                        listItem = layer.name()
+
+                        # for satellites
+                        if "texture" in transform.lower():
+                            listItem = layer.name()
+                        # for elevation to mesh
+                        elif "mesh" in transform.lower():
+                            try:
+                                if layer.bandCount()==1:
+                                    listItem = layer.name()
+                            except: pass 
                 
                 if listItem is not None:
                     layers_dropdown.append(listItem)
@@ -256,6 +265,8 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
                     # avoiding tiling layers 
                     ds = gdal.Open(layer.source(), gdal.GA_ReadOnly)
                     if ds is None:
+                        continue
+                    elif layer.bandCount() != 1:
                         continue
 
                     listItem = layer.name()
