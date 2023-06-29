@@ -7,13 +7,12 @@ from specklepy.transports.server import ServerTransport
 from specklepy.api.client import SpeckleClient
 from specklepy.logging.exceptions import SpeckleException, GraphQLException
 
-from speckle.utils.panel_logging import logger
-from qgis.core import Qgis
 from speckle.utils.panel_logging import logToUser
   
-def tryGetStream (sw: StreamWrapper) -> Stream:
+def tryGetStream (sw: StreamWrapper, client: SpeckleClient = None) -> Stream:
     try:
-        client = sw.get_client()
+        if not isinstance(client, SpeckleClient):
+            client = sw.get_client()
         stream = client.stream.get(id = sw.stream_id, branch_limit = 100, commit_limit = 100)
         if isinstance(stream, GraphQLException):
             raise SpeckleException(stream.errors[0]['message'])
