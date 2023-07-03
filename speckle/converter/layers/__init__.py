@@ -211,7 +211,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             
             if extrusionApplied is True:
                 if not layerName.endswith("_Mesh"): layerName += "_Mesh" 
-                attributes["Speckle_ID"] = 10 
+                attributes["Speckle_ID"] = 10 # string type 
 
             geomType = getLayerGeomType(selectedLayer)
             features = selectedLayer.getFeatures()

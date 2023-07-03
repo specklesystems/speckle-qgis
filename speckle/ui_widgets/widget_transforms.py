@@ -93,10 +93,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
                     exists +=1
                     displayUserMsg("Selected layer already has a transformation applied", level=1) 
                     break
-                if ("elevation" in transform_name and "mesh" in transform_name and "texture" not in transform_name) and transform_name == current_transf_name: # in transforms
-                    exists +=1
-                    displayUserMsg(f"Layer '{current_layer_name}' is already assigned as a 3d elevation", level=1) 
-                    break 
+                
             if exists == 0:
                 layer = None
                 for l in self.dataStorage.all_layers: 

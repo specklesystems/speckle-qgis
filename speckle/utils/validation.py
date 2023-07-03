@@ -27,8 +27,6 @@ def tryGetClient(sw: StreamWrapper, dataStorage, write = False, dockwidget = Non
                         if write == False:
                             # try get stream, only read access needed
                             print("only read access needed")
-                            print(client.account)
-                            print(stream)
                             return client, stream 
                         else: 
                             # check write access 
@@ -37,8 +35,6 @@ def tryGetClient(sw: StreamWrapper, dataStorage, write = False, dockwidget = Non
                                 savedRole = stream.role 
                                 savedStreamId = stream.id
                             else: 
-                                print(client.account)
-                                print(stream)
                                 return client, stream 
         if savedRole is not None and savedStreamId is not None:
             logToUser(f"You don't have write access to the stream '{savedStreamId}'. You role is '{savedRole}'", level = 2, func = inspect.stack()[0][3], plugin = dockwidget)

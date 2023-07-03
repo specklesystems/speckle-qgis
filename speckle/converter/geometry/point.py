@@ -12,6 +12,34 @@ from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.utils.panel_logging import logToUser
 #from PyQt5.QtGui import QColor
 
+def applyOffsetsRotation(x, y, dataStorage):
+    try:
+        offset_x = dataStorage.crs_offset_x
+        offset_y = dataStorage.crs_offset_y
+        rotation = dataStorage.crs_rotation
+        if offset_x is not None and isinstance(offset_x, float):
+            x -= offset_x
+        if offset_y is not None and isinstance(offset_y, float):
+            y -= offset_y
+        if rotation is not None and isinstance(rotation, float) and -360< rotation <360:
+            a = rotation * math.pi / 180
+            x2 = x
+            y2 = y
+
+            if a < 0: # turn counterclockwise on send
+                x2 = x*math.cos(a) - y*math.sin(a)
+                y2 = x*math.sin(a) + y*math.cos(a)         
+
+            elif a > 0: # turn clockwise on send
+                x2 =  x*math.cos(a) + y*math.sin(a)
+                y2 = -1*x*math.sin(a) + y*math.cos(a)
+            x = x2
+            y = y2
+        return x, y
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None, None 
+
 def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVectorLayer, dataStorage):
     """Converts a QgsPoint to Speckle"""
     try: 
@@ -27,32 +55,7 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVe
         specklePoint.z = z
         specklePoint.units = "m"
 
-        
-        offset_x = dataStorage.crs_offset_x
-        offset_y = dataStorage.crs_offset_y
-        rotation = dataStorage.crs_rotation
-        if offset_x is not None and isinstance(offset_x, float):
-            x -= offset_x
-        if offset_y is not None and isinstance(offset_y, float):
-            y -= offset_y
-        if rotation is not None and isinstance(rotation, float) and -360< rotation <360:
-            a = rotation * math.pi / 180
-            #print(a)
-            x2 = x
-            y2 = y
-
-            if a < 0: # turn counterclockwise on send
-                x2 = x*math.cos(a) - y*math.sin(a)
-                y2 = x*math.sin(a) + y*math.cos(a)         
-
-            elif a > 0: # turn clockwise on send
-                x2 =  x*math.cos(a) + y*math.sin(a)
-                y2 = -1*x*math.sin(a) + y*math.cos(a)
-            x = x2
-            y = y2
-
-        specklePoint.x = x
-        specklePoint.y = y
+        specklePoint.x, specklePoint.y = applyOffsetsRotation(x, y, dataStorage)
 
         col = featureColorfromNativeRenderer(feature, layer)
         specklePoint['displayStyle'] = {}
