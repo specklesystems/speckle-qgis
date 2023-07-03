@@ -37,7 +37,7 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVe
             y -= offset_y
         if rotation is not None and isinstance(rotation, float) and -360< rotation <360:
             a = rotation * math.pi / 180
-            print(a)
+            #print(a)
             x2 = x
             y2 = y
 

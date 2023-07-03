@@ -139,8 +139,8 @@ def isFlat(ptList):
 
 def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, height, projectZval, dataStorage):
     """Converts a QgsPolygon to Speckle"""
-    print("Polygon To Speckle")
-    print(dataStorage)
+    #print("Polygon To Speckle")
+    #print(dataStorage)
     polygon = GisPolygonGeometry(units = "m")
     try:
         boundary, voidsNative = getPolyBoundaryVoids(geom, feature, layer, dataStorage)

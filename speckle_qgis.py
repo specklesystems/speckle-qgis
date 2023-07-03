@@ -49,7 +49,7 @@ from specklepy_qt_ui.qt_ui.widget_create_branch import CreateBranchModalDialog
 from speckle.utils.panel_logging import logToUser
 
 # Import the code for the dialog
-from speckle.utils.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport
+from speckle.utils.validation import tryGetClient, tryGetStream, validateBranch, validateCommit, validateStream, validateTransport
 from specklepy_qt_ui.qt_ui.widget_custom_crs import CustomCRSDialog 
 
 SPECKLE_COLOR = (59,130,246)
@@ -302,16 +302,18 @@ class SpeckleQGIS:
                 # Get the stream wrapper
                 streamWrapper = self.active_stream[0]
                 streamId = streamWrapper.stream_id
-                client = streamWrapper.get_client()
+
+                #client = streamWrapper.get_client()
+                client, stream = tryGetClient(streamWrapper, self.dataStorage, False, self.dockwidget)
+                stream = validateStream(stream, self.dockwidget)
+                if stream == None: 
+                    return
             except Exception as e:
                 logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
 
             # Ensure the stream actually exists
             try:
-                stream = validateStream(streamWrapper, self.dockwidget)
-                if stream == None: 
-                    return
                 
                 branchName = str(self.dockwidget.streamBranchDropdown.currentText())
                 branch = validateBranch(stream, branchName, True, self.dockwidget)
@@ -399,10 +401,13 @@ class SpeckleQGIS:
             streamWrapper = self.active_stream[0]
             streamName = self.active_stream[1].name
             streamId = streamWrapper.stream_id
-            client = streamWrapper.get_client()
+            #client = streamWrapper.get_client()
+            client, stream = tryGetClient(streamWrapper, self.dataStorage, True, self.dockwidget)
+            if not isinstance(client, SpeckleClient) or not isinstance(stream, Stream): 
+                return
 
-            stream = validateStream(streamWrapper, self.dockwidget)
-            if stream == None: 
+            stream = validateStream(stream, self.dockwidget)
+            if not isinstance(stream, Stream): 
                 return
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
@@ -421,8 +426,8 @@ class SpeckleQGIS:
         try:
             # this serialises the block and sends it to the transport
             objId = operations.send(base=base_obj, transports=[transport])
-        except SpeckleException as e:
-            logToUser("Error sending data: " + str(e.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+        except Exception as e:
+            logToUser("Error sending data: " + str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
 
         #logToUser("long errror something something msg1", level=2, plugin= self.dockwidget)
@@ -494,16 +499,21 @@ class SpeckleQGIS:
             # Get the stream wrapper
             streamWrapper = self.active_stream[0]
             streamId = streamWrapper.stream_id
-            client = streamWrapper.get_client()
+
+            #client = streamWrapper.get_client()
+            client, stream = tryGetClient(streamWrapper, self.dataStorage, False, self.dockwidget)
+            if not isinstance(client, SpeckleClient) or not isinstance(stream, Stream): 
+                return 
+            stream = validateStream(stream, self.dockwidget)
+            if not isinstance(stream, Stream): 
+                return
+
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
 
         # Ensure the stream actually exists
         try:
-            stream = validateStream(streamWrapper, self.dockwidget)
-            if stream == None: 
-                return
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
             branch = validateBranch(stream, branchName, True, self.dockwidget)
@@ -607,7 +617,7 @@ class SpeckleQGIS:
             self.dataStorage.all_layers = getAllLayers(root)
             self.dockwidget.addDataStorage(self)
 
-            self.is_setup = self.check_for_accounts()
+            self.is_setup = self.dataStorage.check_for_accounts()
 
             if self.dockwidget is not None:
                 self.active_stream = None
@@ -620,25 +630,6 @@ class SpeckleQGIS:
 
                 self.dockwidget.reloadDialogUI(self)
 
-        except Exception as e:
-            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
-            return
-
-    def check_for_accounts(self):
-        try:
-            def go_to_manager():
-                webbrowser.open("https://speckle-releases.netlify.app/")
-            accounts = get_local_accounts()
-            self.dataStorage.accounts = accounts
-            if len(accounts) == 0:
-                logToUser("No accounts were found. Please remember to install the Speckle Manager and setup at least one account", level = 1, url="https://speckle-releases.netlify.app/", func = inspect.stack()[0][3], plugin = self.dockwidget) #, action_text="Download Manager", callback=go_to_manager)
-                return False
-            for acc in accounts:
-                if acc.isDefault: 
-                    self.dataStorage.default_account = acc 
-                    self.dataStorage.active_account = acc 
-                    break 
-            return True
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
@@ -657,7 +648,7 @@ class SpeckleQGIS:
     
         get_transformations(self.dataStorage)
 
-        self.is_setup = self.check_for_accounts()
+        self.is_setup = self.dataStorage.check_for_accounts()
             
         if self.pluginIsActive:
             self.reloadUI()
@@ -783,11 +774,10 @@ class SpeckleQGIS:
         try: 
             br_name = br_name.lower()
             sw: StreamWrapper = self.active_stream[0]
-            account = sw.get_account()
-            new_client = SpeckleClient(
-                account.serverInfo.url,
-                account.serverInfo.url.startswith("https")
-            )
+            new_client, stream = tryGetClient(sw, self.dataStorage, True, self.dockwidget)
+            account = new_client.account
+            #account = sw.get_account()
+            #new_client = SpeckleClient( account.serverInfo.url, account.serverInfo.url.startswith("https") )
             new_client.authenticate_with_token(token=account.token)
             br_id = new_client.branch.create(stream_id = sw.stream_id, name = br_name, description = description) 
             
@@ -797,7 +787,8 @@ class SpeckleQGIS:
             if isinstance(br_id, GraphQLException):
                 logToUser(br_id.message, level = 1, plugin = self.dockwidget)
 
-            self.active_stream = (sw, tryGetStream(sw))
+            self.dataStorage.check_for_accounts()
+            self.active_stream = (sw, tryGetStream(sw, self.dataStorage, False, self.dockwidget))
             self.current_streams[0] = self.active_stream
 
             self.dockwidget.populateActiveStreamBranchDropdown(self)
@@ -816,7 +807,8 @@ class SpeckleQGIS:
             streamExists = 0
             index = 0
 
-            stream = tryGetStream(sw)
+            self.dataStorage.check_for_accounts()
+            stream = tryGetStream(sw, self.dataStorage, False, self.dockwidget)
             
             for st in self.current_streams: 
                 #if isinstance(st[1], SpeckleException) or isinstance(stream, SpeckleException): pass 

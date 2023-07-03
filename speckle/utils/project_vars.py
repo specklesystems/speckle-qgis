@@ -32,24 +32,11 @@ def get_project_streams(plugin: SpeckleQGIS):
                 try:
                     sw = StreamWrapper(url)
                     try: 
-                        plugin.check_for_accounts()
-                        new_client = None
-                        stream = None 
-                        for acc in plugin.dataStorage.accounts:
-                            try:
-                                # only check accounts on selected server 
-                                if acc.serverInfo.url in url:
-                                    new_client = SpeckleClient( acc.serverInfo.url, acc.serverInfo.url.startswith("https") )
-                                    new_client.authenticate_with_account(acc)
-                                    if new_client.account.token is not None:
-                                        stream = tryGetStream(sw, new_client)
-                                        if isinstance(stream, Stream): 
-                                            break 
-                            except Exception as e: print(e)  
-                    except SpeckleException as e:
-                        logToUser(e.message, level = 1, func = inspect.stack()[0][3])
+                        plugin.dataStorage.check_for_accounts()
+                        stream = tryGetStream(sw, plugin.dataStorage, False, plugin.dockwidget)
+                    except Exception as e:
+                        logToUser(e, level = 1, func = inspect.stack()[0][3])
                         stream = None
-                    #strId = stream.id # will cause exception if invalid
                     temp.append((sw, stream))
                 except SpeckleException as e:
                     logToUser(e.message, level = 1, func = inspect.stack()[0][3])

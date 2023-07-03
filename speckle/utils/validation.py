@@ -8,22 +8,59 @@ from specklepy.api.client import SpeckleClient
 from specklepy.logging.exceptions import SpeckleException, GraphQLException
 
 from speckle.utils.panel_logging import logToUser
-  
-def tryGetStream (sw: StreamWrapper, client: SpeckleClient = None) -> Stream:
+
+def tryGetClient(sw: StreamWrapper, dataStorage, write = False, dockwidget = None):
+    # only streams with write access 
     try:
-        if not isinstance(client, SpeckleClient):
-            client = sw.get_client()
-        stream = client.stream.get(id = sw.stream_id, branch_limit = 100, commit_limit = 100)
-        if isinstance(stream, GraphQLException):
-            raise SpeckleException(stream.errors[0]['message'])
+        client = None
+        savedRole = None
+        savedStreamId = None
+        for acc in dataStorage.accounts:
+            # only check accounts on selected server 
+            if acc.serverInfo.url in sw.server_url:
+                client = SpeckleClient( acc.serverInfo.url, acc.serverInfo.url.startswith("https") )
+                client.authenticate_with_account(acc)
+                if client.account.token is not None:
+                    stream = client.stream.get(id = sw.stream_id, branch_limit = 100, commit_limit = 100)
+                    if isinstance(stream, Stream): 
+                        print(stream.role)
+                        if write == False:
+                            # try get stream, only read access needed
+                            print("only read access needed")
+                            print(client.account)
+                            print(stream)
+                            return client, stream 
+                        else: 
+                            # check write access 
+                            print("write access needed")
+                            if stream.role is None or (isinstance(stream.role, str) and "reviewer" in stream.role):
+                                savedRole = stream.role 
+                                savedStreamId = stream.id
+                            else: 
+                                print(client.account)
+                                print(stream)
+                                return client, stream 
+        if savedRole is not None and savedStreamId is not None:
+            logToUser(f"You don't have write access to the stream '{savedStreamId}'. You role is '{savedRole}'", level = 2, func = inspect.stack()[0][3], plugin = dockwidget)
+
+        return None, None
+    except Exception as e: 
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = dockwidget)
+        return None, None
+
+def tryGetStream(sw: StreamWrapper, dataStorage, write = False, dockwidget = None) -> Stream:
+    try:
+        print("tryGetStream")
+        client, stream = tryGetClient(sw, dataStorage, write, dockwidget)
         return stream
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = dockwidget)
+        return None 
 
-def validateStream(streamWrapper: StreamWrapper, dockwidget) -> Union[Stream, None]:
+def validateStream(stream: Stream, dockwidget) -> Union[Stream, None]:
     try: 
-        stream = tryGetStream(streamWrapper)
+        #dockwidget.dataStorage.check_for_accounts()
+        #stream = tryGetStream(streamWrapper, dockwidget.dataStorage)
 
         if isinstance(stream, SpeckleException): return None
 
@@ -87,6 +124,7 @@ def validateCommit(branch: Branch, commitId: str, dockwidget = None) -> Union[Co
 def validateTransport(client: SpeckleClient, streamId: str) -> Union[ServerTransport, None]:
     try: 
         transport = ServerTransport(client=client, stream_id=streamId)
+        print(transport)
         return transport
     except Exception as e: 
         logToUser("Make sure you have sufficient permissions: " + str(e), level = 1, func = inspect.stack()[0][3])
