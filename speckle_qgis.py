@@ -712,7 +712,10 @@ class SpeckleQGIS:
         try:
             self.add_stream_modal = AddStreamModalDialog(None)
             self.add_stream_modal.dataStorage = self.dataStorage 
+            self.add_stream_modal.connect()
+            self.add_stream_modal.onAccountSelected(0)
             self.add_stream_modal.handleStreamAdd.connect(self.handleStreamAdd)
+            #self.add_stream_modal.getAllStreams()
             self.add_stream_modal.show()
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)

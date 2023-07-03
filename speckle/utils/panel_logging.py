@@ -6,6 +6,7 @@ from specklepy_qt_ui.qt_ui.logger import logToUser as logToUser_UI
 import webbrowser
 
 def logToUser(msg: str, func=None, level: int = 2, plugin = None, url = "", blue = False):
+    msg = str(msg)
     logToUser_UI(msg, func, level, plugin, url, blue)
     logger.writeToLog(msg.replace('\n', '. ') + " " + url, level, func)
 
