@@ -669,7 +669,6 @@ class SpeckleQGIS:
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
 
                 self.dockwidget.runButton.clicked.connect(self.onRunButtonClicked)
-                self.dockwidget.runButton.clicked.connect(self.onRunButtonClicked)
 
                 self.dockwidget.crsSettings.clicked.connect(self.customCRSDialogCreate)
                 

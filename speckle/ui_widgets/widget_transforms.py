@@ -130,6 +130,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
 
     def onOkClicked(self):
         try:
+            self.saveElevationLayer()
             self.close()
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3])
@@ -318,4 +319,3 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
             
     def onMoreInfo(self):
         webbrowser.open("https://speckle.guide/user/qgis.html#transformations")
-        
