@@ -2,6 +2,19 @@ import os
 from typing import List
 from textwrap import wrap
 
+def constructCommitURL(streamWrapper, branch_id, commit_id: str) -> str:
+    import requests 
+    streamUrl = streamWrapper.stream_url.split("?")[0].split("&")[0].split("@")[0]
+    r = requests.get(streamUrl)
+    
+    # check for frontend2 
+    try: 
+        header = r.headers['x-speckle-frontend-2']
+        url = streamUrl.replace("streams", "projects") + "/models/" + branch_id + "@" + commit_id
+    except:
+        url = streamUrl.replace("projects", "streams") + "/commits/" + commit_id
+    return url 
+
 def getAppName(name: str) -> str:
     new_name = ""
     for i, x in enumerate(str(name)):

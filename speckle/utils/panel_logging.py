@@ -7,7 +7,7 @@ import webbrowser
 
 def logToUser(msg: str, func=None, level: int = 2, plugin = None, url = "", blue = False):
     logToUser_UI(msg, func, level, plugin, url, blue)
-    logger.writeToLog(msg, level, func)
+    logger.writeToLog(msg.replace('\n', '. ') + " " + url, level, func)
 
 class Logging:
     """Holds utility methods for logging messages to QGIS"""

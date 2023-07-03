@@ -9,7 +9,7 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 from datetime import datetime
 
 import threading
-from plugin_utils.helpers import getAppName, removeSpecialCharacters
+from plugin_utils.helpers import constructCommitURL, getAppName, removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsLayerTreeGroup, QgsCoordinateReferenceSystem,
                        QgsRasterLayer, QgsVectorLayer,
@@ -412,6 +412,7 @@ class SpeckleQGIS:
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
             branch = validateBranch(stream, branchName, False, self.dockwidget)
+            branchId = branch.id
             if branch == None: 
                 return
 
@@ -463,7 +464,8 @@ class SpeckleQGIS:
             if isinstance(commit_id, SpeckleException):
                 logToUser("Error creating commit: "+str(commit_id.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
-            url: str = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
+            url: str = constructCommitURL(streamWrapper, branchId, commit_id)
+            
             
             #self.dockwidget.hideWait()
             #self.dockwidget.showLink(url, streamName)
