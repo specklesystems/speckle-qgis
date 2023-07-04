@@ -42,10 +42,10 @@ hasProcessingProvider=no
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=python, speckle, interoperability, collaboration
+tags=python, speckle, interoperability, collaboration, bim, cad 
 
 homepage=http://speckle.systems
-category=Plugins
+category=Web
 icon=icon.png
 # experimental flag
 experimental=True

@@ -121,6 +121,7 @@ def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], s
 
         for i, layer in enumerate(layers):
 
+            logToUser(f"Converting layer '{layer.name()}'...", level = 0, plugin = plugin.dockwidget)
             if plugin.dataStorage.savedTransforms is not None:
                 for item in plugin.dataStorage.savedTransforms:
                     layer_name = item.split("  ->  ")[0].split(" (\'")[0]

@@ -16,7 +16,7 @@ from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsUnitTypes)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QApplication, QAction, QDockWidget, QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QApplication, QAction, QMenu, QDockWidget, QVBoxLayout, QWidget
 from qgis.PyQt import QtWidgets
 from qgis import PyQt
 
@@ -397,6 +397,7 @@ class SpeckleQGIS:
             if base_obj.elements is None:
                 return 
 
+            logToUser(f"Sending data to the server...", level = 0, plugin = self.dockwidget)
             # Get the stream wrapper
             streamWrapper = self.active_stream[0]
             streamName = self.active_stream[1].name
