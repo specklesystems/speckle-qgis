@@ -24,7 +24,7 @@ from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint,
                        QgsRendererCategory,
                        QgsSymbol, QgsUnitTypes, QgsVectorFileWriter)
 from specklepy.objects.GIS.geometry import GisPolygonElement
-from speckle.converter.geometry.point import pointToNative
+from speckle.converter.geometry.point import pointToNative, transformSpecklePt
 from specklepy.objects.GIS.CRS import CRS
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
@@ -43,25 +43,52 @@ GEOM_LINE_TYPES = ["Objects.Geometry.Line", "Objects.Geometry.Polyline", "Object
 
 def getAllLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode = None):
     try:
+        #print("Root tree: ")
+        #print(tree)
+        layers = []
+
         if parent is None:
             parent = tree 
         
         if isinstance(parent, QgsLayerTreeLayer): 
+            #print("QgsLayerTreeLayer")
+            #print(parent)
             return [parent.layer()] 
         
         elif isinstance(parent, QgsLayerTreeGroup): 
+            #print("QgsLayerTreeGroup")
+            #print(parent)
             children = parent.children()
-            layers = []
-            for node in children:            
-                if tree.isLayer(node):
-                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
-                        layers.append(node.layer())
-                    continue
-                if tree.isGroup(node):
+            
+            for node in children: 
+                #print(node)
+                if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
+                    #print("node")
+                    #print(node)
+                    if isinstance(node, QgsLayerTreeLayer):
+                        if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
+                            layers.append(node.layer())
+                        continue
+                elif isinstance(node, QgsLayerTreeNode):
+                    try:
+                        visible = node.itemVisibilityChecked()
+                        #print("node layer")
+                        node.setItemVisibilityChecked(True)
+                        #print(node.children())
+                        #print(node.checkedLayers())
+                        for lyr in node.checkedLayers():
+                            #print(lyr)
+                            if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
+                                layers.append(lyr) 
+                        node.setItemVisibilityChecked(visible)
+                    except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3]) 
+                elif tree.isGroup(node):
+                    #print("group")
                     for lyr in getAllLayers(tree, node):
                         if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
                             layers.append(lyr) 
                     #layers.extend( [ lyr for lyr in getAllLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
+        #print(layers)
         return layers
     
     except Exception as e:
@@ -787,6 +814,8 @@ def addVectorMainThread(obj: Tuple):
             findOrCreatePath(p)
             file_name = os.path.join(p, newName )
             print(file_name)
+            print(vl)
+            print(fets)
             writer = QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", QgsCoordinateReferenceSystem(4326), "GeoJSON", overrideGeometryType = True, forceMulti = True, includeZ = True)
             del writer 
 
@@ -880,6 +909,7 @@ def addRasterMainThread(obj: Tuple):
         layer = obj['layer'] 
         
         project: QgsProject = plugin.dataStorage.project
+        dataStorage = plugin.dataStorage
 
         ###########################################
         dummy = None 
@@ -970,7 +1000,7 @@ def addRasterMainThread(obj: Tuple):
             band.WriteArray(rasterband) # or "rasterband.T"
         
         # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
-        pt = None
+        pt = None 
         try:
             try:
                 pt = QgsPoint(feat.x_origin, feat.y_origin, 0)
