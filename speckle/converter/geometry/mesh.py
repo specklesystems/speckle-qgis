@@ -171,6 +171,7 @@ def constructMesh(vertices, faces, colors, dataStorage):
         mesh.units = "m"
         material = RenderMaterial()
         material.diffuse = colors[0]
+        material.name = str(colors[0])
         mesh.renderMaterial = material 
         return mesh
     except Exception as e:
