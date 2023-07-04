@@ -80,7 +80,7 @@ class Logging:
     
     def writeToLog(self, msg: str = "", level: int = 2, func=None, plugin=None):
         msg = str(msg)
-        if func is not None: 
+        if func is not None and func != "None": 
             msg += "::" + str(func)
         self.log(msg, level)
 

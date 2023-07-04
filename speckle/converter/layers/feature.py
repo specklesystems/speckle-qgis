@@ -1,8 +1,11 @@
+from datetime import datetime
 from distutils.log import error
 import inspect
 import math
+import os
 from tokenize import String
 from typing import List
+from plugin_utils.helpers import findOrCreatePath
 from qgis._core import (QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, QgsRasterBandStats, QgsFeature, QgsFields, 
     QgsField, QgsVectorLayer, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsProject,
     QgsUnitTypes )
@@ -18,7 +21,7 @@ from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRast
 from specklepy.objects.GIS.layers import RasterLayer
 from speckle.converter.geometry.point import applyOffsetsRotation
 from speckle.utils.panel_logging import logger
-from speckle.converter.layers.utils import get_raster_stats, get_scale_factor_to_meter, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
+from speckle.converter.layers.utils import get_raster_stats, get_scale_factor_to_meter, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, tryCreateGroup, validateAttributeName 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 import numpy as np 
@@ -295,10 +298,29 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             elevationLayer = selectedLayer
         
         if elevationLayer is not None:
-            elevation_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
-            array_band = elevation_arrays[0]
             settings_elevation_layer = get_raster_stats(elevationLayer)
             elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt, elevationProj = settings_elevation_layer
+            
+            # reproject the elevation layer 
+            if elevationProj is not None and rasterProj is not None and elevationProj != rasterProj:
+                try: 
+                    print("reproject elevation layer")
+                    print(elevationLayer.source())
+                    print(elevationLayer.crs().authid())
+                    p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M")
+                    findOrCreatePath(p)
+                    path = p
+                    out = p + "\\out.tif"
+                    gdal.Warp(out, elevationLayer.source(), dstSRS = selectedLayer.crs().authid(), xRes = elevationResX, yRes = elevationResY ) 
+                    
+                    elevationLayer = QgsRasterLayer(out, '', 'gdal')
+                    settings_elevation_layer = get_raster_stats(elevationLayer)
+                    elevationResX, elevationResY, elevationOriginX, elevationOriginY, elevationSizeX, elevationSizeY, elevationWkt, elevationProj = settings_elevation_layer
+                except Exception as e:
+                    logToUser(f"Reprojection did not succeed: {e}", level = 0)
+            elevation_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
+            array_band = elevation_arrays[0]
+
             height_array = np.where( (array_band < const) | (array_band > -1*const) | (array_band == all_na[0]), np.nan, array_band)
             try:
                 height_array = height_array.astype(float)
@@ -331,6 +353,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         elif texture_transform is True and rasterDimensions[1]*rasterDimensions[0]>=250000:
             # warning if >= 500x500 raster is being projected to any elevation 
             logToUser(f"Texture transformation for the layer '{selectedLayer.name()}' might take a while 🕒", level = 0, plugin = plugin.dockwidget)
+            largeTransform = True 
         ############################################################
         faces_array = []
         colors_array = []
