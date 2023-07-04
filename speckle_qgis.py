@@ -583,6 +583,7 @@ class SpeckleQGIS:
         newGroupName = removeSpecialCharacters(newGroupName)
         try:
             if app.lower() == "qgis" or app.lower() == "arcgis": 
+                print(app.lower())
                 self.dataStorage.receivingGISlayer = True
                 check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
             else: 
@@ -590,7 +591,7 @@ class SpeckleQGIS:
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
             try: 
-                if self.dataStorage.receivingGISlayer == True:
+                if self.dataStorage.receivingGISlayer == False:
                     offsetsExist = True if self.dataStorage.crs_offset_x is not None and self.dataStorage.crs_offset_y is not None and (self.dataStorage.crs_offset_x != 0 or self.dataStorage.crs_offset_y != 0) else False
                     rotationExists = True if self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation != 0  else False
                     if (offsetsExist is True or rotationExists is True):

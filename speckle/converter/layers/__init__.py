@@ -61,10 +61,8 @@ def getAllLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode = None):
             children = parent.children()
             
             for node in children: 
-                #print(node)
                 if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
-                    #print("node")
-                    #print(node)
+
                     if isinstance(node, QgsLayerTreeLayer):
                         if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
                             layers.append(node.layer())
@@ -72,23 +70,19 @@ def getAllLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode = None):
                 elif isinstance(node, QgsLayerTreeNode):
                     try:
                         visible = node.itemVisibilityChecked()
-                        #print("node layer")
                         node.setItemVisibilityChecked(True)
-                        #print(node.children())
-                        #print(node.checkedLayers())
                         for lyr in node.checkedLayers():
                             #print(lyr)
                             if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
                                 layers.append(lyr) 
                         node.setItemVisibilityChecked(visible)
-                    except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3]) 
+                    except Exception as e: 
+                        logToUser(e, level = 2, func = inspect.stack()[0][3]) 
                 elif tree.isGroup(node):
-                    #print("group")
                     for lyr in getAllLayers(tree, node):
                         if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
                             layers.append(lyr) 
-                    #layers.extend( [ lyr for lyr in getAllLayers(tree, node) if isinstance(lyr.layer(), QgsVectorLayer) or isinstance(lyr.layer(), QgsRasterLayer) ] )
-        #print(layers)
+
         return layers
     
     except Exception as e:
@@ -722,6 +716,14 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
         elif geomType =="Multipoint": geomType = "Point"
         elif geomType == 'MultiPatch': geomType = "Polygon"
         
+        plugin.dataStorage.receivingGISlayer = True
+        try:
+            plugin.dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
+            plugin.dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
+            plugin.dataStorage.current_layer_crs_rotation = layer.crs.rotation
+        except Exception as e:
+            print(e) 
+
         fets = []
         newFields = getLayerAttributes(layer.features)
         for f in layer.features: 
@@ -752,6 +754,15 @@ def addVectorMainThread(obj: Tuple):
         newFields = obj['newFields'] 
         fets = obj['fets']
 
+        dataStorage = plugin.dataStorage
+        dataStorage.receivingGISlayer = True
+        try:
+            dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
+            dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
+            dataStorage.current_layer_crs_rotation = layer.crs.rotation
+        except Exception as e:
+            print(e) 
+        
         project: QgsProject = plugin.dataStorage.project
 
         print(layer.name)
@@ -814,8 +825,8 @@ def addVectorMainThread(obj: Tuple):
             findOrCreatePath(p)
             file_name = os.path.join(p, newName )
             print(file_name)
-            print(vl)
-            print(fets)
+            #print(vl)
+            #print(fets)
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.fileEncoding = "utf-8" 
             #options.destCRS = QgsCoordinateReferenceSystem(4326)
@@ -900,6 +911,14 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
 
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
+        plugin.dataStorage.receivingGISlayer = True
+        try:
+            plugin.dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
+            plugin.dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
+            plugin.dataStorage.current_layer_crs_rotation = layer.crs.rotation
+        except Exception as e:
+            print(e) 
+
         plugin.dockwidget.signal_4.emit({'plugin': plugin, 'layerName': layerName, 'newName': newName, 'streamBranch': streamBranch, 'layer': layer})
         
         return 
@@ -917,13 +936,14 @@ def addRasterMainThread(obj: Tuple):
         
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
+        dataStorage.receivingGISlayer = True
 
         ###########################################
         dummy = None 
         root = project.layerTreeRoot()
-        plugin.dataStorage.all_layers = getAllLayers(root)
-        if plugin.dataStorage.all_layers is not None: 
-            if len(plugin.dataStorage.all_layers) == 0:
+        dataStorage.all_layers = getAllLayers(root)
+        if dataStorage.all_layers is not None: 
+            if len(dataStorage.all_layers) == 0:
                 dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
                 crs = QgsCoordinateReferenceSystem(4326)
                 dummy.setCrs(crs)
@@ -1027,6 +1047,18 @@ def addRasterMainThread(obj: Tuple):
             logToUser("Raster layer doesn't have the origin point", level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
             return 
         
+        try: # if the CRS has offset props
+            ptSpeckle = Point(x = pt.x(), y = pt.y(), z = 0, units = "m")
+            dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
+            dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
+            dataStorage.current_layer_crs_rotation = layer.crs.rotation 
+            
+            ptSpeckleTransformed = transformSpecklePt(ptSpeckle, dataStorage) 
+            dataStorage.current_layer_crs_offset_x = dataStorage.current_layer_crs_offset_y = dataStorage.current_layer_crs_rotation = None 
+        
+            pt = pointToNative(ptSpeckleTransformed, plugin.dataStorage)
+        except Exception as e: print(e)
+
         xform = QgsCoordinateTransform(crs, crsRaster, project)
         pt.transform(xform)
         try:

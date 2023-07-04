@@ -73,30 +73,65 @@ def transformSpecklePt(pt_original: Point, dataStorage) -> Point:
 
     pt = Point(x=pt_original.x, y=pt_original.y, z=pt_original.x, units = pt_original.units)
 
-    try: applyTransforms = False if (dataStorage.receivingGISlayer and dataStorage.receivingGISlayer is True) else True 
-    except: applyTransforms = True 
-    print(applyTransforms)
+    gisLayer = None
+    try:
+        gisLayer = dataStorage.receivingGISlayer
+        #print(gisLayer)
+        applyTransforms = False if (gisLayer and gisLayer is True) else True 
+    except Exception as e: 
+        print(e) 
+        applyTransforms = True 
 
-    if applyTransforms is True and rotation is not None and isinstance(rotation, float) and -360< rotation <360:
-        a = rotation * math.pi / 180
-        x2 = pt.x
-        y2 = pt.y
+    # for non-GIS layers 
+    if applyTransforms is True:
+        #print("transform non-gis layer")
+        if rotation is not None and isinstance(rotation, float) and -360< rotation <360:
+            a = rotation * math.pi / 180
+            x2 = pt.x
+            y2 = pt.y
 
-        if a > 0: # turn counterclockwise on receive
-            x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
-            y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
-        elif a < 0: # turn clockwise on receive
-            x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
-            y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
+            if a > 0: # turn counterclockwise on receive
+                x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
+                y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
+            elif a < 0: # turn clockwise on receive
+                x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
+                y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
 
-        pt.x = x2
-        pt.y = y2
+            pt.x = x2
+            pt.y = y2
+        if offset_x is not None and isinstance(offset_x, float) and offset_y is not None and isinstance(offset_y, float):
+            pt.x += offset_x
+            pt.y += offset_y
 
-    if applyTransforms is True and offset_x is not None and isinstance(offset_x, float):
-        pt.x += offset_x
-    if applyTransforms is True and offset_y is not None and isinstance(offset_y, float):
-        pt.y += offset_y
+    # for GIS layers
+    if gisLayer is True: 
+        #print("transform gis layer")
+        try:
+            offset_x = dataStorage.current_layer_crs_offset_x
+            offset_y = dataStorage.current_layer_crs_offset_y
+            rotation = dataStorage.current_layer_crs_rotation
+            
+            if rotation is not None and isinstance(rotation, float) and -360< rotation <360:
+                a = rotation * math.pi / 180
+                x2 = pt.x
+                y2 = pt.y
 
+                if a > 0: # turn counterclockwise on receive
+                    x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
+                    y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
+                elif a < 0: # turn clockwise on receive
+                    x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
+                    y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
+
+                pt.x = x2
+                pt.y = y2
+            if offset_x is not None and isinstance(offset_x, float) and offset_y is not None and isinstance(offset_y, float):
+                pt.x += offset_x
+                pt.y += offset_y
+        except Exception as e: 
+            print(e)  
+
+    #print(pt)
     return pt
 
 def pointToNativeWithoutTransforms(pt: Point, dataStorage) -> QgsPoint:
