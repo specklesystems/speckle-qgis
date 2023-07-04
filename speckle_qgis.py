@@ -392,6 +392,11 @@ class SpeckleQGIS:
             if units is None or units == 'degrees': units = 'm'
             self.dataStorage.currentUnits = units 
 
+            if (self.dataStorage.crs_offset_x is not None and self.dataStorage.crs_offset_x) != 0 or (self.dataStorage.crs_offset_y is not None and self.dataStorage.crs_offset_y):
+                logToUser(f"Applying CRS offsets: x={self.dataStorage.crs_offset_x}, y={self.dataStorage.crs_offset_y}", level = 0, plugin = self.dockwidget)
+            if (self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation) != 0 :
+                logToUser(f"Applying CRS rotation: {self.dataStorage.crs_rotation}°", level = 0, plugin = self.dockwidget)
+
             base_obj = Collection(units = units, collectionType = "QGIS commit", name = "QGIS commit")
             base_obj.elements = convertSelectedLayers(layers, [],[], projectCRS, self)
             if base_obj.elements is None:
@@ -656,6 +661,7 @@ class SpeckleQGIS:
         if self.pluginIsActive:
             self.reloadUI()
         else:
+            print("Plugin inactive, launch")
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
@@ -951,7 +957,7 @@ class SpeckleQGIS:
 
     def customCRSCreate(self):
         try: 
-            from speckle.utils.project_vars import set_survey_point, setProjectReferenceSystem
+            from speckle.utils.project_vars import set_survey_point, set_crs_offsets, setProjectReferenceSystem
             vals =[ str(self.dockwidget.custom_crs_modal.surveyPointLat.text()), str(self.dockwidget.custom_crs_modal.surveyPointLon.text()) ]
             try:
                 custom_lat, custom_lon = [float(i.replace(" ","")) for i in vals]
@@ -963,13 +969,17 @@ class SpeckleQGIS:
                     self.dockwidget.dataStorage.custom_lat = custom_lat
                     self.dockwidget.dataStorage.custom_lon = custom_lon
 
-                    # remove offsets if custom crs applied
-                    self.dataStorage.crs_offset_x = None
-                    self.dataStorage.crs_offset_y = None
-                    self.dockwidget.custom_crs_modal.offsetX.setText('')
-                    self.dockwidget.custom_crs_modal.offsetY.setText('')
                     set_survey_point(self.dockwidget.dataStorage, self.dockwidget)
                     setProjectReferenceSystem(self.dockwidget.dataStorage, self.dockwidget)
+                    
+                    # remove offsets if custom crs applied
+                    if (self.dataStorage.crs_offset_x != None and self.dataStorage.crs_offset_x != 0) or (self.dataStorage.crs_offset_y != None and self.dataStorage.crs_offset_y != 0):
+                        self.dataStorage.crs_offset_x = None
+                        self.dataStorage.crs_offset_y = None
+                        self.dockwidget.custom_crs_modal.offsetX.setText('')
+                        self.dockwidget.custom_crs_modal.offsetY.setText('')
+                        set_crs_offsets(self.dataStorage, self.dockwidget)
+                        logToUser("X and Y offsets removed", level = 0, plugin=self.dockwidget)
         
                     try: metrics.track("Connector Action", self.dataStorage.active_account, {"name": "CRS Custom Create", "connector_version": str(self.dataStorage.plugin_version)})
                     except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3] )

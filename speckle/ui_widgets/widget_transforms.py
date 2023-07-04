@@ -41,6 +41,8 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         self.populateSavedTransforms(self.dataStorage)
         self.populateSavedElevationLayer(self.dataStorage)
 
+        #self.elevationLayerDropdown.currentIndexChanged.connect(self.saveElevationLayer)
+
     def populateSavedTransforms(self, dataStorage): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
 
         if dataStorage is not None: 
@@ -290,6 +292,11 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         if self.dataStorage is None: return 
 
         layerName = str(self.elevationLayerDropdown.currentText()) 
+        try: 
+            if self.dataStorage.elevationLayer.name() == layerName:
+                return
+        except: pass
+
         if len(layerName) < 1: 
             layer = None 
         else:
@@ -311,6 +318,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
             
         self.dataStorage.elevationLayer = layer 
         set_elevationLayer(self.dataStorage)
+        logToUser(f"Elevation layer '{layerName}' successfully set", level = 0, func = inspect.stack()[0][3] )
             
         try:
             metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Add transformation on Send", "Transformation": "Set Layer as Elevation", "connector_version": str(self.dataStorage.plugin_version)})

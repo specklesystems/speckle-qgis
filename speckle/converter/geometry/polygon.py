@@ -105,9 +105,9 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
         for pt in boundaryPts: 
             posX, posY = reprojectPt(pt.x(), pt.y(), polygonWkt, polygonProj, rasterWkt, rasterProj)
             index1, index2, remainder1, remainder2 = getArrayIndicesFromXY( settings_elevation_layer, posX, posY )
-            print("___finding elevation__")
-            print(posX)
-            print(index1)
+            #print("___finding elevation__")
+            #print(posX)
+            #print(index1)
 
             if index1 is None:  continue 
             else: 

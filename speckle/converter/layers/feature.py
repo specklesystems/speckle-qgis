@@ -293,6 +293,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             elevationLayer = getElevationLayer(dataStorage) 
         elif terrain_transform is True:
             elevationLayer = selectedLayer
+        
         if elevationLayer is not None:
             elevation_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
             array_band = elevation_arrays[0]
@@ -314,18 +315,19 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                         arr.append(new_row)
                     height_array = np.array(arr).astype(float)
                 except:
-                    height_array = height_array[[isinstance(i, float) for i in height_array]]
-        
+                    height_array = height_array[[isinstance(i, float) for i in height_array]] 
         else:
             elevation_arrays = all_mins = all_maxs = all_na = None
             elevationResX = elevationResY = elevationOriginX = elevationOriginY = elevationSizeX = elevationSizeY = elevationWkt = None
             height_array = None
-            
+        
+        largeTransform = False
         if texture_transform is True and elevationLayer is None:
             logToUser(f"Elevation layer is not found. Texture transformation for layer '{selectedLayer.name()}' will not be applied", level = 1, plugin = plugin.dockwidget)
         elif texture_transform is True and rasterDimensions[1]*rasterDimensions[0]>=10000 and elevationProj is not None and rasterProj is not None and elevationProj != rasterProj:
             # warning if >= 100x100 raster is being projected to an elevation with different CRS 
-            logToUser(f"Texture transformation for the layer '{selectedLayer.name()}' might take a while 🕒", level = 0, plugin = plugin.dockwidget)
+            logToUser(f"Texture transformation for the layer '{selectedLayer.name()}' might take a while 🕒\nTip: reproject one of the layers (texture or elevation) to the other layer's CRS. When both layers have the same CRS, texture transformation will be much faster.", level = 0, plugin = plugin.dockwidget)
+            largeTransform  = True
         elif texture_transform is True and rasterDimensions[1]*rasterDimensions[0]>=250000:
             # warning if >= 500x500 raster is being projected to any elevation 
             logToUser(f"Texture transformation for the layer '{selectedLayer.name()}' might take a while 🕒", level = 0, plugin = plugin.dockwidget)
@@ -335,6 +337,21 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         vertices_array = []
         array_z = [] # size is large by 1 than the raster size, in both dimensions 
         for v in range(rasterDimensions[1] ): #each row, Y
+            if largeTransform is True:
+                if v == int(rasterDimensions[1]/20): 
+                    logToUser(f"Converting layer '{selectedLayer.name()}': 5%...", level = 0, plugin = plugin.dockwidget)
+                elif v == int(rasterDimensions[1]/10): 
+                    logToUser(f"Converting layer '{selectedLayer.name()}': 10%...", level = 0, plugin = plugin.dockwidget)
+                elif v == int(rasterDimensions[1]/5): 
+                    logToUser(f"Converting layer '{selectedLayer.name()}': 20%...", level = 0, plugin = plugin.dockwidget)
+                elif v == int(rasterDimensions[1]*2/5): 
+                    logToUser(f"Converting layer '{selectedLayer.name()}': 40%...", level = 0, plugin = plugin.dockwidget)
+                elif v == int(rasterDimensions[1]*3/5): 
+                    logToUser(f"Converting layer '{selectedLayer.name()}': 60%...", level = 0, plugin = plugin.dockwidget)
+                elif v == int(rasterDimensions[1]*4/5): 
+                    logToUser(f"Converting layer '{selectedLayer.name()}': 80%...", level = 0, plugin = plugin.dockwidget)
+                elif v == int(rasterDimensions[1]*9/10): 
+                    logToUser(f"Converting layer '{selectedLayer.name()}': 90%...", level = 0, plugin = plugin.dockwidget)
             vertices = []
             faces = []
             colors = []
