@@ -816,7 +816,14 @@ def addVectorMainThread(obj: Tuple):
             print(file_name)
             print(vl)
             print(fets)
-            writer = QgsVectorFileWriter.writeAsVectorFormat(vl, file_name, "utf-8", QgsCoordinateReferenceSystem(4326), "GeoJSON", overrideGeometryType = True, forceMulti = True, includeZ = True)
+            options = QgsVectorFileWriter.SaveVectorOptions()
+            options.fileEncoding = "utf-8" 
+            #options.destCRS = QgsCoordinateReferenceSystem(4326)
+            options.driverName = "GeoJSON"
+            options.overrideGeometryType = QgsWkbTypes.parseType('MultiPolygonZ')
+            options.forceMulti = True
+            options.includeZ = True
+            writer = QgsVectorFileWriter.writeAsVectorFormatV3(layer = vl, fileName  = file_name, transformContext = project.transformContext(), options = options)
             del writer 
 
             # geojson writer fix 
@@ -835,7 +842,7 @@ def addVectorMainThread(obj: Tuple):
                             for i, line in enumerate(lines):
                                 print(line)
                                 if '"type": "Polygon"' in line:
-                                    line = line.replace('"type": "Polygon"','"type": "MultiPolygon"')
+                                    line = line.replace('"type": "Polygon"','"type": "MultiPolygonZ"')
                                 if " ] ] ] " in line and '"coordinates": [ [ [ [ ' not in line: 
                                     line = line.replace(" ] ] ] ", " ] ] ] ] ")
                                 if '"coordinates": [ [ [ ' in line and '"coordinates": [ [ [ [ ' not in line: 
