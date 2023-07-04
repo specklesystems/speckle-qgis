@@ -192,6 +192,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
 def convertToNative(base: Base, dataStorage) -> Union[QgsGeometry, None]:
     """Converts any given base object to QgsGeometry."""
     try:
+        #print("convertToNative")
         converted = None
         conversions = [
             (Point, pointToNative),

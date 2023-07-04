@@ -71,7 +71,7 @@ def transformSpecklePt(pt_original: Point, dataStorage) -> Point:
     offset_y = dataStorage.crs_offset_y
     rotation = dataStorage.crs_rotation
 
-    pt = Point(x=pt_original.x, y=pt_original.y, z=pt_original.x, units = pt_original.units)
+    pt = Point(x=pt_original.x, y=pt_original.y, z=pt_original.z, units = pt_original.units)
 
     gisLayer = None
     try:
@@ -138,7 +138,7 @@ def pointToNativeWithoutTransforms(pt: Point, dataStorage) -> QgsPoint:
     """Converts a Speckle Point to QgsPoint"""
     try:
         pt = scalePointToNative(pt, pt.units, dataStorage)
-        newPt = transformSpecklePt(pt, dataStorage)
+        newPt = pt #transformSpecklePt(pt, dataStorage)
 
         return QgsPoint(newPt.x, newPt.y, newPt.z)
     except Exception as e:

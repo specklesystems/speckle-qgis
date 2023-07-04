@@ -24,7 +24,7 @@ from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint,
                        QgsRendererCategory,
                        QgsSymbol, QgsUnitTypes, QgsVectorFileWriter)
 from specklepy.objects.GIS.geometry import GisPolygonElement
-from speckle.converter.geometry.point import pointToNative, transformSpecklePt
+from speckle.converter.geometry.point import pointToNative, pointToNativeWithoutTransforms, transformSpecklePt
 from specklepy.objects.GIS.CRS import CRS
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
@@ -702,6 +702,7 @@ def addCadMainThread(obj: Tuple):
 
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
     try:
+        print("vectorLayerToNative")
         project: QgsProject = plugin.qgis_project
         layerName = removeSpecialCharacters(layer.name) 
 
@@ -1028,11 +1029,14 @@ def addRasterMainThread(obj: Tuple):
         
         # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
         pt = None 
+        ptSpeckle = None 
         try:
             try:
                 pt = QgsPoint(feat.x_origin, feat.y_origin, 0)
+                ptSpeckle = Point(x = feat.x_origin, y = feat.y_origin, z = 0, units = feat.units)
             except: 
                 pt = QgsPoint(feat["X_min"], feat["Y_min"], 0)
+                ptSpeckle = Point(x = feat["X_min"], y = feat["Y_min"], z = 0, units = feat.units)
         except: 
             try:
                 displayVal = feat.displayValue
@@ -1040,23 +1044,25 @@ def addRasterMainThread(obj: Tuple):
                 displayVal = feat["displayValue"]
             if displayVal is not None:
                 if isinstance(displayVal[0], Point): 
-                    pt = pointToNative(displayVal[0], plugin.dataStorage)
+                    pt = pointToNativeWithoutTransforms(displayVal[0], plugin.dataStorage)
+                    ptSpeckle = displayVal[0]
                 if isinstance(displayVal[0], Mesh): 
                     pt = QgsPoint(displayVal[0].vertices[0], displayVal[0].vertices[1])
-        if pt is None:
+                    ptSpeckle = Point(x = displayVal[0].vertices[0], y = displayVal[0].vertices[1], z = displayVal[0].vertices[2], units = displayVal[0].units)
+        if pt is None or ptSpeckle is None:
             logToUser("Raster layer doesn't have the origin point", level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
             return 
         
         try: # if the CRS has offset props
-            ptSpeckle = Point(x = pt.x(), y = pt.y(), z = 0, units = "m")
+            #ptSpeckle = Point(x = pt.x(), y = pt.y(), z = 0, units = "m")
             dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
             dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
             dataStorage.current_layer_crs_rotation = layer.crs.rotation 
             
-            ptSpeckleTransformed = transformSpecklePt(ptSpeckle, dataStorage) 
+            #ptSpeckleTransformed = transformSpecklePt(ptSpeckle, dataStorage) 
+            pt = pointToNative(ptSpeckle, plugin.dataStorage) # already transforms the offsets 
             dataStorage.current_layer_crs_offset_x = dataStorage.current_layer_crs_offset_y = dataStorage.current_layer_crs_rotation = None 
         
-            pt = pointToNative(ptSpeckleTransformed, plugin.dataStorage)
         except Exception as e: print(e)
 
         xform = QgsCoordinateTransform(crs, crsRaster, project)
