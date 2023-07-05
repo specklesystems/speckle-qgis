@@ -19,13 +19,13 @@ LOCALES =
 # translation
 SOURCES = \
 	__init__.py \
-	speckle_qgis.py speckle_qgis_dialog.py
+	speckle_qgis.py 
 
 PLUGINNAME = speckle_qgis
 
 PY_FILES = \
 	__init__.py \
-	speckle_qgis.py speckle_qgis_dialog.py
+	speckle_qgis.py 
 
 UI_FILES = speckle_qgis_dialog_base.ui
 

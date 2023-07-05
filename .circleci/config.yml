@@ -59,7 +59,7 @@ jobs:
       - run: 
           name: Install dependencies
           command: |
-            pip install pb_tool pyqt5
+            pip install pb_tool pyqt5==5.15.8
       - run: 
           name: Update version if tag build
           command: |
