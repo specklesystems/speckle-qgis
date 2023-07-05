@@ -46,15 +46,15 @@ jobs:
           name: Clone
           command:  |
             git clone git@github.com:specklesystems/specklepy_qt_ui.git specklepy_qt_ui
+      - run:
+          name: Remove Git Artifacts
+          command: |
+            rm specklepy_qt_ui/*.git
+            rm specklepy_qt_ui/*.gitignore
       - persist_to_workspace:
           root: ./
           paths:
             - specklepy_qt_ui
-      - run:
-          name: Remove Git Artifacts
-          command: |
-            rm ./*.git
-            rm ./*.gitignore
          
   package:
     executor: python/default
