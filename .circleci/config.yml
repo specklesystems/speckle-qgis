@@ -77,7 +77,6 @@ jobs:
           root: ./
           paths:
             - zip_build
-            - specklepy_qt_ui
             - SEMVER 
    
   build-connector-win: # Reusable job for basic connectors
@@ -174,12 +173,12 @@ jobs:
     executor: python/default
     steps:
       - checkout
-      - attach_workspace:
-          at: ./
       - run: 
           name: Install dependencies
           command: |
             pip install future
+      - attach_workspace:
+          at: ./
       - run: 
           name: Push to marketplace
           command: python plugin_utils/plugin_upload.py -u $QGIS_USERNAME -w $QGIS_PASSWORD zip_build/speckle-qgis.zip
