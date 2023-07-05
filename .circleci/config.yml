@@ -50,6 +50,8 @@ jobs:
           name: Remove Git Artifacts
           command: |
             ls -alR
+            rm ./specklepy_qt_ui/.git/
+            rm ./specklepy_qt_ui/.gitignore
       - persist_to_workspace:
           root: ./
           paths:
