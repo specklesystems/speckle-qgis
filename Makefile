@@ -21,7 +21,7 @@ SOURCES = \
 	__init__.py \
 	speckle_qgis.py 
 
-PLUGINNAME = speckle_qgis
+PLUGINNAME = speckle-qgis
 
 PY_FILES = \
 	__init__.py \

@@ -59,7 +59,7 @@ jobs:
       - run: 
           name: Install dependencies
           command: |
-            pip install pb_tool pyqt5==5.15.8
+            pip install pb_tool pyqt5
       - run: 
           name: Update version if tag build
           command: |
@@ -67,7 +67,6 @@ jobs:
             SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]+//')
             VERSION=$(echo "$SEMVER" | sed -e 's/[a-zA-Z]*\///')
             python patch_version.py $VERSION
-            echo $SEMVER > ./SEMVER
       - run:
           name: ZIP plugin
           command: pb_tool zip
@@ -77,7 +76,6 @@ jobs:
           root: ./
           paths:
             - zip_build
-            - SEMVER 
    
   build-connector-win: # Reusable job for basic connectors
     executor:
@@ -144,9 +142,6 @@ jobs:
       - run:
           name: Install dotnet
           command: curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin
-      - run: &restore_semver
-          name: Restore Semver
-          command: SEMVER=$(cat ./SEMVER) && echo $SEMVER
       - run:
           name: Copy connector files to installer
           command: |
@@ -158,8 +153,8 @@ jobs:
       - run:
           name: Zip installer
           command: |
-            SEMVER=$(cat ./SEMVER)
-            echo $SEMVER
+            TAG=$(if [ "${CIRCLE_TAG}" ]; then echo $CIRCLE_TAG; else echo "2.0.99.$CIRCLE_BUILD_NUM"; fi;)
+            SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]+//')
             mkdir -p speckle-sharp-ci-tools/Installers/qgis
             (cd <<parameters.installer_path>>/bin/Release/net6.0/<< parameters.runtime >>/publish/ && zip -r - ./) > << parameters.slug >>-${SEMVER}.zip
             cp << parameters.slug >>-${SEMVER}.zip speckle-sharp-ci-tools/Installers/qgis/
@@ -203,12 +198,11 @@ jobs:
       - run:
           name: Install Manager Feed CLI
           command: dotnet tool install --global Speckle.Manager.Feed
-      - run: *restore_semver
       - run:
           name: Upload new version
           command: |
-            SEMVER=$(cat ./SEMVER)
-            echo $SEMVER
+            TAG=$(if [ "${CIRCLE_TAG}" ]; then echo $CIRCLE_TAG; else echo "0.0.0"; fi;)
+            SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]*//')
             /root/.dotnet/tools/Speckle.Manager.Feed deploy \
               -s qgis \
               -v ${SEMVER} \
