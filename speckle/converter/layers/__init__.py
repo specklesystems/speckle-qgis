@@ -99,7 +99,7 @@ def getSavedLayers(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
             try: 
                 id = item[0].id()
             except:
-                logToUser(f'Saved layer not found: "{item[1]}"', level = 1, func = inspect.stack()[0][3])
+                logToUser(f'Saved layer not found: "{item[1]}"', level = 1, plugin = plugin.dockwidget)
                 continue
             found = 0
             for l in project.mapLayers().values():
@@ -108,7 +108,7 @@ def getSavedLayers(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
                     found += 1
                     break 
             if found == 0: 
-                logToUser(f'Saved layer not found: "{item[1]}"', level = 1, func = inspect.stack()[0][3])
+                logToUser(f'Saved layer not found: "{item[1]}"', level = 1, plugin = plugin.dockwidget)
         
         return layers
     except Exception as e:
@@ -984,7 +984,7 @@ def addRasterMainThread(obj: Tuple):
             p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             findOrCreatePath(p)
             source_folder = p
-            logToUser(f"Project directory not found. Raster layers will be saved to \"{p}\".", level = 1, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+            logToUser(f"Project directory not found. Raster layers will be saved to \"{p}\".", level = 1, plugin = plugin.dockwidget)
 
         path_fn = source_folder + "/Layers_Speckle/raster_layers/" + streamBranch+ "/" 
         if not os.path.exists(path_fn): os.makedirs(path_fn)
@@ -1051,7 +1051,7 @@ def addRasterMainThread(obj: Tuple):
                     pt = QgsPoint(displayVal[0].vertices[0], displayVal[0].vertices[1])
                     ptSpeckle = Point(x = displayVal[0].vertices[0], y = displayVal[0].vertices[1], z = displayVal[0].vertices[2], units = displayVal[0].units)
         if pt is None or ptSpeckle is None:
-            logToUser("Raster layer doesn't have the origin point", level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+            logToUser("Raster layer doesn't have the origin point", level = 2, plugin = plugin.dockwidget)
             return 
         
         try: # if the CRS has offset props
