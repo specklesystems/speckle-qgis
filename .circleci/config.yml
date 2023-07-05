@@ -76,7 +76,7 @@ jobs:
       - persist_to_workspace:
           root: ./
           paths:
-            -  zip_build
+            - zip_build
             - specklepy_qt_ui
             - SEMVER 
    
@@ -180,8 +180,6 @@ jobs:
           name: Install dependencies
           command: |
             pip install future
-      - attach_workspace:
-          at: ./
       - run: 
           name: Push to marketplace
           command: python plugin_utils/plugin_upload.py -u $QGIS_USERNAME -w $QGIS_PASSWORD zip_build/speckle-qgis.zip
