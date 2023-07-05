@@ -43,6 +43,7 @@ def main(parameters, arguments):
         print(server.plugin)
         with open(arguments[0], 'rb') as handle:
             print(handle)
+            print(handle.read())
             plugin_id, version_id = server.plugin.upload(
                 xmlrpc.client.Binary(handle.read()))
         print("Plugin ID: %s" % plugin_id)
