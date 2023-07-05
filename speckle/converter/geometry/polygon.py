@@ -33,7 +33,7 @@ from speckle.utils.panel_logging import logToUser
 def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, dataStorage):
 
     polygon = GisPolygonGeometry(units = "m")
-    print(dataStorage)
+    #print(dataStorage)
     try: 
 
         vertices = []
@@ -105,9 +105,9 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
         for pt in boundaryPts: 
             posX, posY = reprojectPt(pt.x(), pt.y(), polygonWkt, polygonProj, rasterWkt, rasterProj)
             index1, index2, remainder1, remainder2 = getArrayIndicesFromXY( settings_elevation_layer, posX, posY )
-            print("___finding elevation__")
-            print(posX)
-            print(index1)
+            #print("___finding elevation__")
+            #print(posX)
+            #print(index1)
 
             if index1 is None:  continue 
             else: 
@@ -139,8 +139,8 @@ def isFlat(ptList):
 
 def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, height, projectZval, dataStorage):
     """Converts a QgsPolygon to Speckle"""
-    print("Polygon To Speckle")
-    print(dataStorage)
+    #print("Polygon To Speckle")
+    #print(dataStorage)
     polygon = GisPolygonGeometry(units = "m")
     try:
         boundary, voidsNative = getPolyBoundaryVoids(geom, feature, layer, dataStorage)

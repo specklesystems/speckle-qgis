@@ -6,8 +6,9 @@ from specklepy_qt_ui.qt_ui.logger import logToUser as logToUser_UI
 import webbrowser
 
 def logToUser(msg: str, func=None, level: int = 2, plugin = None, url = "", blue = False):
+    msg = str(msg)
     logToUser_UI(msg, func, level, plugin, url, blue)
-    logger.writeToLog(msg, level, func)
+    logger.writeToLog(msg.replace('\n', '. ') + " " + url, level, func)
 
 class Logging:
     """Holds utility methods for logging messages to QGIS"""
@@ -79,7 +80,7 @@ class Logging:
     
     def writeToLog(self, msg: str = "", level: int = 2, func=None, plugin=None):
         msg = str(msg)
-        if func is not None: 
+        if func is not None and func != "None": 
             msg += "::" + str(func)
         self.log(msg, level)
 

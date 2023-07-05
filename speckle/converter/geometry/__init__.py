@@ -21,8 +21,8 @@ from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, 
 def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLayer, dataStorage) -> Union[Base, Sequence[Base], None]:
     """Converts the provided layer feature to Speckle objects"""
     try: 
-        print("convertToSpeckle")
-        print(dataStorage)
+        #print("convertToSpeckle")
+        #print(dataStorage)
         try:
             geom: QgsGeometry = feature.geometry()
         except:
@@ -192,6 +192,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
 def convertToNative(base: Base, dataStorage) -> Union[QgsGeometry, None]:
     """Converts any given base object to QgsGeometry."""
     try:
+        #print("convertToNative")
         converted = None
         conversions = [
             (Point, pointToNative),

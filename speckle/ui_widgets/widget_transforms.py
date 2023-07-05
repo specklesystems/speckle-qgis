@@ -34,11 +34,14 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         
         self.attr_label.setEnabled(False)
         self.attrDropdown.setEnabled(False)
+        self.dialog_button.setText("Apply")
 
         self.populateTransforms()
         self.populateLayersByTransform()
         self.populateSavedTransforms(self.dataStorage)
         self.populateSavedElevationLayer(self.dataStorage)
+
+        #self.elevationLayerDropdown.currentIndexChanged.connect(self.saveElevationLayer)
 
     def populateSavedTransforms(self, dataStorage): #, savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):
 
@@ -92,10 +95,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
                     exists +=1
                     displayUserMsg("Selected layer already has a transformation applied", level=1) 
                     break
-                if ("elevation" in transform_name and "mesh" in transform_name and "texture" not in transform_name) and transform_name == current_transf_name: # in transforms
-                    exists +=1
-                    displayUserMsg(f"Layer '{current_layer_name}' is already assigned as a 3d elevation", level=1) 
-                    break 
+                
             if exists == 0:
                 layer = None
                 for l in self.dataStorage.all_layers: 
@@ -132,6 +132,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
 
     def onOkClicked(self):
         try:
+            self.saveElevationLayer()
             self.close()
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3])
@@ -177,8 +178,16 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
                         ds = gdal.Open(layer.source(), gdal.GA_ReadOnly)
                         if ds is None:
                             continue
-                    
-                        listItem = layer.name()
+
+                        # for satellites
+                        if "texture" in transform.lower():
+                            listItem = layer.name()
+                        # for elevation to mesh
+                        elif "mesh" in transform.lower():
+                            try:
+                                if layer.bandCount()==1:
+                                    listItem = layer.name()
+                            except: pass 
                 
                 if listItem is not None:
                     layers_dropdown.append(listItem)
@@ -257,6 +266,8 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
                     ds = gdal.Open(layer.source(), gdal.GA_ReadOnly)
                     if ds is None:
                         continue
+                    elif layer.bandCount() != 1:
+                        continue
 
                     listItem = layer.name()
                     self.elevationLayerDropdown.addItem(listItem)  
@@ -281,6 +292,11 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         if self.dataStorage is None: return 
 
         layerName = str(self.elevationLayerDropdown.currentText()) 
+        try: 
+            if self.dataStorage.elevationLayer.name() == layerName:
+                return
+        except: pass
+
         if len(layerName) < 1: 
             layer = None 
         else:
@@ -302,6 +318,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
             
         self.dataStorage.elevationLayer = layer 
         set_elevationLayer(self.dataStorage)
+        logToUser(f"Elevation layer '{layerName}' successfully set", level = 0, func = inspect.stack()[0][3] )
             
         try:
             metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Add transformation on Send", "Transformation": "Set Layer as Elevation", "connector_version": str(self.dataStorage.plugin_version)})
@@ -310,4 +327,3 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
             
     def onMoreInfo(self):
         webbrowser.open("https://speckle.guide/user/qgis.html#transformations")
-        

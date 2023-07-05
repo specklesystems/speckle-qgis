@@ -123,7 +123,7 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage):
 
 def deconstructSpeckleMesh(mesh: Mesh, dataStorage):
     
-    #print("deconstructSpeckleMesh")
+    print("deconstructSpeckleMesh")
     try:
         scale = get_scale_factor(mesh.units, dataStorage)
         parts_list = []
@@ -171,6 +171,7 @@ def constructMesh(vertices, faces, colors, dataStorage):
         mesh.units = "m"
         material = RenderMaterial()
         material.diffuse = colors[0]
+        material.name = str(colors[0])
         mesh.renderMaterial = material 
         return mesh
     except Exception as e:

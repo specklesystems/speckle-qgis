@@ -9,7 +9,9 @@ from speckle_qgis import SpeckleQGIS
 
 from specklepy.logging.exceptions import SpeckleException 
 from specklepy.api.wrapper import StreamWrapper
+from specklepy.api.models import Stream
 from specklepy.logging import metrics
+from specklepy.api.client import SpeckleClient
 
 from speckle.utils.panel_logging import logger
 from qgis.core import (Qgis, QgsProject, QgsCoordinateReferenceSystem)
@@ -30,11 +32,11 @@ def get_project_streams(plugin: SpeckleQGIS):
                 try:
                     sw = StreamWrapper(url)
                     try: 
-                        stream = tryGetStream(sw)
-                    except SpeckleException as e:
-                        logToUser(e.message, level = 1, func = inspect.stack()[0][3])
+                        plugin.dataStorage.check_for_accounts()
+                        stream = tryGetStream(sw, plugin.dataStorage, False, plugin.dockwidget)
+                    except Exception as e:
+                        logToUser(e, level = 1, func = inspect.stack()[0][3])
                         stream = None
-                    #strId = stream.id # will cause exception if invalid
                     temp.append((sw, stream))
                 except SpeckleException as e:
                     logToUser(e.message, level = 1, func = inspect.stack()[0][3])

@@ -9,14 +9,14 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 from datetime import datetime
 
 import threading
-from plugin_utils.helpers import getAppName, removeSpecialCharacters
+from plugin_utils.helpers import constructCommitURL, getAppName, removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsLayerTreeGroup, QgsCoordinateReferenceSystem,
                        QgsRasterLayer, QgsVectorLayer,
                        QgsUnitTypes)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QRect 
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QApplication, QAction, QDockWidget, QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QApplication, QAction, QMenu, QDockWidget, QVBoxLayout, QWidget
 from qgis.PyQt import QtWidgets
 from qgis import PyQt
 
@@ -49,7 +49,7 @@ from specklepy_qt_ui.qt_ui.widget_create_branch import CreateBranchModalDialog
 from speckle.utils.panel_logging import logToUser
 
 # Import the code for the dialog
-from speckle.utils.validation import tryGetStream, validateBranch, validateCommit, validateStream, validateTransport
+from speckle.utils.validation import tryGetClient, tryGetStream, validateBranch, validateCommit, validateStream, validateTransport
 from specklepy_qt_ui.qt_ui.widget_custom_crs import CustomCRSDialog 
 
 SPECKLE_COLOR = (59,130,246)
@@ -302,16 +302,18 @@ class SpeckleQGIS:
                 # Get the stream wrapper
                 streamWrapper = self.active_stream[0]
                 streamId = streamWrapper.stream_id
-                client = streamWrapper.get_client()
+
+                #client = streamWrapper.get_client()
+                client, stream = tryGetClient(streamWrapper, self.dataStorage, False, self.dockwidget)
+                stream = validateStream(stream, self.dockwidget)
+                if stream == None: 
+                    return
             except Exception as e:
                 logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
 
             # Ensure the stream actually exists
             try:
-                stream = validateStream(streamWrapper, self.dockwidget)
-                if stream == None: 
-                    return
                 
                 branchName = str(self.dockwidget.streamBranchDropdown.currentText())
                 branch = validateBranch(stream, branchName, True, self.dockwidget)
@@ -390,23 +392,33 @@ class SpeckleQGIS:
             if units is None or units == 'degrees': units = 'm'
             self.dataStorage.currentUnits = units 
 
+            if (self.dataStorage.crs_offset_x is not None and self.dataStorage.crs_offset_x) != 0 or (self.dataStorage.crs_offset_y is not None and self.dataStorage.crs_offset_y):
+                logToUser(f"Applying CRS offsets: x={self.dataStorage.crs_offset_x}, y={self.dataStorage.crs_offset_y}", level = 0, plugin = self.dockwidget)
+            if (self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation) != 0 :
+                logToUser(f"Applying CRS rotation: {self.dataStorage.crs_rotation}°", level = 0, plugin = self.dockwidget)
+
             base_obj = Collection(units = units, collectionType = "QGIS commit", name = "QGIS commit")
             base_obj.elements = convertSelectedLayers(layers, [],[], projectCRS, self)
             if base_obj.elements is None:
                 return 
 
+            logToUser(f"Sending data to the server...", level = 0, plugin = self.dockwidget)
             # Get the stream wrapper
             streamWrapper = self.active_stream[0]
             streamName = self.active_stream[1].name
             streamId = streamWrapper.stream_id
-            client = streamWrapper.get_client()
+            #client = streamWrapper.get_client()
+            client, stream = tryGetClient(streamWrapper, self.dataStorage, True, self.dockwidget)
+            if not isinstance(client, SpeckleClient) or not isinstance(stream, Stream): 
+                return
 
-            stream = validateStream(streamWrapper, self.dockwidget)
-            if stream == None: 
+            stream = validateStream(stream, self.dockwidget)
+            if not isinstance(stream, Stream): 
                 return
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
             branch = validateBranch(stream, branchName, False, self.dockwidget)
+            branchId = branch.id
             if branch == None: 
                 return
 
@@ -421,8 +433,8 @@ class SpeckleQGIS:
         try:
             # this serialises the block and sends it to the transport
             objId = operations.send(base=base_obj, transports=[transport])
-        except SpeckleException as e:
-            logToUser("Error sending data: " + str(e.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+        except Exception as e:
+            logToUser("Error sending data: " + str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
 
         #logToUser("long errror something something msg1", level=2, plugin= self.dockwidget)
@@ -458,7 +470,8 @@ class SpeckleQGIS:
             if isinstance(commit_id, SpeckleException):
                 logToUser("Error creating commit: "+str(commit_id.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
-            url: str = streamWrapper.stream_url.split("?")[0] + "/commits/" + commit_id
+            url: str = constructCommitURL(streamWrapper, branchId, commit_id)
+            
             
             #self.dockwidget.hideWait()
             #self.dockwidget.showLink(url, streamName)
@@ -494,16 +507,21 @@ class SpeckleQGIS:
             # Get the stream wrapper
             streamWrapper = self.active_stream[0]
             streamId = streamWrapper.stream_id
-            client = streamWrapper.get_client()
+
+            #client = streamWrapper.get_client()
+            client, stream = tryGetClient(streamWrapper, self.dataStorage, False, self.dockwidget)
+            if not isinstance(client, SpeckleClient) or not isinstance(stream, Stream): 
+                return 
+            stream = validateStream(stream, self.dockwidget)
+            if not isinstance(stream, Stream): 
+                return
+
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
 
         # Ensure the stream actually exists
         try:
-            stream = validateStream(streamWrapper, self.dockwidget)
-            if stream == None: 
-                return
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
             branch = validateBranch(stream, branchName, True, self.dockwidget)
@@ -565,6 +583,7 @@ class SpeckleQGIS:
         newGroupName = removeSpecialCharacters(newGroupName)
         try:
             if app.lower() == "qgis" or app.lower() == "arcgis": 
+                print(app.lower())
                 self.dataStorage.receivingGISlayer = True
                 check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
             else: 
@@ -572,7 +591,7 @@ class SpeckleQGIS:
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
             try: 
-                if self.dataStorage.receivingGISlayer == True:
+                if self.dataStorage.receivingGISlayer == False:
                     offsetsExist = True if self.dataStorage.crs_offset_x is not None and self.dataStorage.crs_offset_y is not None and (self.dataStorage.crs_offset_x != 0 or self.dataStorage.crs_offset_y != 0) else False
                     rotationExists = True if self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation != 0  else False
                     if (offsetsExist is True or rotationExists is True):
@@ -607,7 +626,7 @@ class SpeckleQGIS:
             self.dataStorage.all_layers = getAllLayers(root)
             self.dockwidget.addDataStorage(self)
 
-            self.is_setup = self.check_for_accounts()
+            self.is_setup = self.dataStorage.check_for_accounts()
 
             if self.dockwidget is not None:
                 self.active_stream = None
@@ -620,25 +639,6 @@ class SpeckleQGIS:
 
                 self.dockwidget.reloadDialogUI(self)
 
-        except Exception as e:
-            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
-            return
-
-    def check_for_accounts(self):
-        try:
-            def go_to_manager():
-                webbrowser.open("https://speckle-releases.netlify.app/")
-            accounts = get_local_accounts()
-            self.dataStorage.accounts = accounts
-            if len(accounts) == 0:
-                logToUser("No accounts were found. Please remember to install the Speckle Manager and setup at least one account", level = 1, url="https://speckle-releases.netlify.app/", func = inspect.stack()[0][3], plugin = self.dockwidget) #, action_text="Download Manager", callback=go_to_manager)
-                return False
-            for acc in accounts:
-                if acc.isDefault: 
-                    self.dataStorage.default_account = acc 
-                    self.dataStorage.active_account = acc 
-                    break 
-            return True
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
@@ -657,11 +657,12 @@ class SpeckleQGIS:
     
         get_transformations(self.dataStorage)
 
-        self.is_setup = self.check_for_accounts()
+        self.is_setup = self.dataStorage.check_for_accounts()
             
         if self.pluginIsActive:
             self.reloadUI()
         else:
+            print("Plugin inactive, launch")
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
@@ -675,7 +676,6 @@ class SpeckleQGIS:
                 self.qgis_project.fileNameChanged.connect(self.reloadUI)
                 self.qgis_project.homePathChanged.connect(self.reloadUI)
 
-                self.dockwidget.runButton.clicked.connect(self.onRunButtonClicked)
                 self.dockwidget.runButton.clicked.connect(self.onRunButtonClicked)
 
                 self.dockwidget.crsSettings.clicked.connect(self.customCRSDialogCreate)
@@ -719,7 +719,10 @@ class SpeckleQGIS:
         try:
             self.add_stream_modal = AddStreamModalDialog(None)
             self.add_stream_modal.dataStorage = self.dataStorage 
+            self.add_stream_modal.connect()
+            self.add_stream_modal.onAccountSelected(0)
             self.add_stream_modal.handleStreamAdd.connect(self.handleStreamAdd)
+            #self.add_stream_modal.getAllStreams()
             self.add_stream_modal.show()
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
@@ -783,11 +786,10 @@ class SpeckleQGIS:
         try: 
             br_name = br_name.lower()
             sw: StreamWrapper = self.active_stream[0]
-            account = sw.get_account()
-            new_client = SpeckleClient(
-                account.serverInfo.url,
-                account.serverInfo.url.startswith("https")
-            )
+            new_client, stream = tryGetClient(sw, self.dataStorage, True, self.dockwidget)
+            account = new_client.account
+            #account = sw.get_account()
+            #new_client = SpeckleClient( account.serverInfo.url, account.serverInfo.url.startswith("https") )
             new_client.authenticate_with_token(token=account.token)
             br_id = new_client.branch.create(stream_id = sw.stream_id, name = br_name, description = description) 
             
@@ -797,7 +799,8 @@ class SpeckleQGIS:
             if isinstance(br_id, GraphQLException):
                 logToUser(br_id.message, level = 1, plugin = self.dockwidget)
 
-            self.active_stream = (sw, tryGetStream(sw))
+            self.dataStorage.check_for_accounts()
+            self.active_stream = (sw, tryGetStream(sw, self.dataStorage, False, self.dockwidget))
             self.current_streams[0] = self.active_stream
 
             self.dockwidget.populateActiveStreamBranchDropdown(self)
@@ -816,7 +819,8 @@ class SpeckleQGIS:
             streamExists = 0
             index = 0
 
-            stream = tryGetStream(sw)
+            self.dataStorage.check_for_accounts()
+            stream = tryGetStream(sw, self.dataStorage, False, self.dockwidget)
             
             for st in self.current_streams: 
                 #if isinstance(st[1], SpeckleException) or isinstance(stream, SpeckleException): pass 
@@ -954,7 +958,7 @@ class SpeckleQGIS:
 
     def customCRSCreate(self):
         try: 
-            from speckle.utils.project_vars import set_survey_point, setProjectReferenceSystem
+            from speckle.utils.project_vars import set_survey_point, set_crs_offsets, setProjectReferenceSystem
             vals =[ str(self.dockwidget.custom_crs_modal.surveyPointLat.text()), str(self.dockwidget.custom_crs_modal.surveyPointLon.text()) ]
             try:
                 custom_lat, custom_lon = [float(i.replace(" ","")) for i in vals]
@@ -966,13 +970,17 @@ class SpeckleQGIS:
                     self.dockwidget.dataStorage.custom_lat = custom_lat
                     self.dockwidget.dataStorage.custom_lon = custom_lon
 
-                    # remove offsets if custom crs applied
-                    self.dataStorage.crs_offset_x = None
-                    self.dataStorage.crs_offset_y = None
-                    self.dockwidget.custom_crs_modal.offsetX.setText('')
-                    self.dockwidget.custom_crs_modal.offsetY.setText('')
                     set_survey_point(self.dockwidget.dataStorage, self.dockwidget)
                     setProjectReferenceSystem(self.dockwidget.dataStorage, self.dockwidget)
+                    
+                    # remove offsets if custom crs applied
+                    if (self.dataStorage.crs_offset_x != None and self.dataStorage.crs_offset_x != 0) or (self.dataStorage.crs_offset_y != None and self.dataStorage.crs_offset_y != 0):
+                        self.dataStorage.crs_offset_x = None
+                        self.dataStorage.crs_offset_y = None
+                        self.dockwidget.custom_crs_modal.offsetX.setText('')
+                        self.dockwidget.custom_crs_modal.offsetY.setText('')
+                        set_crs_offsets(self.dataStorage, self.dockwidget)
+                        logToUser("X and Y offsets removed", level = 0, plugin=self.dockwidget)
         
                     try: metrics.track("Connector Action", self.dataStorage.active_account, {"name": "CRS Custom Create", "connector_version": str(self.dataStorage.plugin_version)})
                     except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3] )

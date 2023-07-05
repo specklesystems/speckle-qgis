@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/plugins/speckle_qgis" >
+    <qresource prefix="/plugins/speckle-qgis" >
         <file>icon.png</file>
     </qresource>
 </RCC>

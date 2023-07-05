@@ -316,7 +316,7 @@ def speckleArcCircleToPoints(poly: Union[Arc, Circle], dataStorage) -> List[Poin
 def speckleBoundaryToSpecklePts(boundary: Union[None, Polyline, Arc, Line, Polycurve], dataStorage) -> List[Point]:
     # add boundary points
     try:
-        print(dataStorage)
+        #print(dataStorage)
         polyBorder = []
         if isinstance(boundary, Circle) or isinstance(boundary, Arc): 
             polyBorder = speckleArcCircleToPoints(boundary, dataStorage ) 
