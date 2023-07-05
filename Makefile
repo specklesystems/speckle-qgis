@@ -121,8 +121,8 @@ dclean:
 	@echo "-----------------------------------"
 	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname "*.pyc" -delete
 	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname "*.gif" -delete
-	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname "*.git" -delete
-	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname "*.gitignore" -delete
+	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)/specklepy_qt_ui -iname "*.git" -delete
+	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)/specklepy_qt_ui -iname "*.gitignore" -delete
 	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname ".git" -prune -exec rm -Rf {} \;
 
 
