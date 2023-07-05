@@ -318,7 +318,7 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
 
 
 def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str, plugin):
-    print("01______BIM layer to native")
+    print("01_____GEOMETRY layer to native")
     try:
         print(layerName)
         geom_meshes = []
@@ -333,7 +333,6 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBr
         
         #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
         for geom in layerContentList:
-
             if isinstance(geom, Point): 
                 geom_points.append(geom)
                 continue
@@ -346,7 +345,7 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBr
                     continue
                 elif geom["baseLine"].speckle_type in GEOM_LINE_TYPES:
                     geom_polylines.append(geom["baseLine"])
-                    continue
+                    # don't skip the rest if baseLine is found 
             except: pass # check for the Meshes
 
             # get list of display values for Meshes

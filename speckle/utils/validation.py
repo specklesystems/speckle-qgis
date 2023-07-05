@@ -120,7 +120,7 @@ def validateCommit(branch: Branch, commitId: str, dockwidget = None) -> Union[Co
 def validateTransport(client: SpeckleClient, streamId: str) -> Union[ServerTransport, None]:
     try: 
         transport = ServerTransport(client=client, stream_id=streamId)
-        print(transport)
+        #print(transport)
         return transport
     except Exception as e: 
         logToUser("Make sure you have sufficient permissions: " + str(e), level = 1, func = inspect.stack()[0][3])

@@ -83,6 +83,10 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids): # "name
             try: # loop through objects with Speckletype prop, but don't go through parts of Speckle Geometry object
                 if not value.speckle_type.startswith("Objects.Geometry."): 
                     loopObj(value, name, streamBranch, plugin, used_ids)
+                    # for Revit definitions that are stored as a Base prop, rather than elements:
+                    #if name.endswith("definition"):
+                    #    geometryLayerToNative([value], name, streamBranch, plugin)
+                    #    time.sleep(0.3)
                 elif value.id not in used_ids: # if geometry
                     used_ids.append(value.id)
                     loopVal([value], name, streamBranch, plugin, used_ids)
