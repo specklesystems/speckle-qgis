@@ -49,7 +49,7 @@ jobs:
       - run:
           name: Remove Git Artifacts
           command: |
-            ls
+            ls -alR
       - persist_to_workspace:
           root: ./
           paths:
