@@ -959,12 +959,14 @@ def addRasterMainThread(obj: Tuple):
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
         # try, in case of older version "rasterCrs" will not exist 
         try: 
+            if layer.rasterCrs.wkt is None or layer.rasterCrs.wkt =="":
+                raise Exception
             crsRasterWkt = str(layer.rasterCrs.wkt)
             crsRaster = QgsCoordinateReferenceSystem.fromWkt(layer.rasterCrs.wkt) #moved up, because CRS of existing layer needs to be rewritten
         except: 
             crsRasterWkt = str(layer.crs.wkt)
             crsRaster = crs
-            logToUser(f"Raster layer {layer.name} might have been sent from the older version of plugin. Try sending it again for more accurate results.", level = 1, func = inspect.stack()[0][3])
+            logToUser(f"Raster layer '{layer.name}' might have been sent from the older version of plugin. Try sending it again for more accurate results.", level = 1, plugin = plugin.dockwidget)
         
         srsid = trySaveCRS(crsRaster, streamBranch)
         crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
@@ -1063,7 +1065,8 @@ def addRasterMainThread(obj: Tuple):
             dataStorage.current_layer_crs_offset_x = dataStorage.current_layer_crs_offset_y = dataStorage.current_layer_crs_rotation = None 
         
         except Exception as e: print(e)
-
+        print(crs)
+        print(crsRaster)
         xform = QgsCoordinateTransform(crs, crsRaster, project)
         pt.transform(xform)
         try:

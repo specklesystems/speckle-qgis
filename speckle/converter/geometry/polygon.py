@@ -33,7 +33,7 @@ from speckle.utils.panel_logging import logToUser
 def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, dataStorage):
 
     polygon = GisPolygonGeometry(units = "m")
-    print(dataStorage)
+    #print(dataStorage)
     try: 
 
         vertices = []
