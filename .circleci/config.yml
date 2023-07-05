@@ -53,8 +53,8 @@ jobs:
       - run:
           name: Remove Git Artifacts
           command: |
-            rm *.git
-            rm *.gitignore
+            rm ./*.git
+            rm ./*.gitignore
          
   package:
     executor: python/default
