@@ -54,6 +54,8 @@ jobs:
     executor: python/default
     steps:
       - checkout
+      - attach_workspace:
+          at: ./
       - run: 
           name: Install dependencies
           command: |
