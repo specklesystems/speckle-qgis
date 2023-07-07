@@ -27,7 +27,7 @@ from speckle.utils.panel_logging import logToUser
 def polylineFromVerticesToSpeckle(vertices: Union[List[Point], QgsVertexIterator], closed: bool, feature: QgsFeature, layer: QgsVectorLayer, dataStorage):
     """Returns a Speckle Polyline given a list of QgsPoint instances and a boolean indicating if it's closed or not."""
     try:
-        print(dataStorage)
+        #print(dataStorage)
         if isinstance(vertices, list): 
             if len(vertices) > 0 and isinstance(vertices[0], Point):
                 specklePts = vertices

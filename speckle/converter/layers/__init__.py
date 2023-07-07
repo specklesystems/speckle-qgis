@@ -143,6 +143,14 @@ def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], s
         for i, layer in enumerate(layers):
 
             logToUser(f"Converting layer '{layer.name()}'...", level = 0, plugin = plugin.dockwidget)
+            try: 
+                for item in plugin.dataStorage.savedTransforms:
+                    layer_name = item.split("  ->  ")[0].split(" (\'")[0]
+                    transform_name = item.split("  ->  ")[1]
+                    if layer_name == layer.name():
+                        logToUser(f"Applying transformation to layer '{layer_name}': '{transform_name}'", level = 0, plugin = plugin.dockwidget)
+            except Exception as e: print(e)
+
             if plugin.dataStorage.savedTransforms is not None:
                 for item in plugin.dataStorage.savedTransforms:
                     layer_name = item.split("  ->  ")[0].split(" (\'")[0]
@@ -166,7 +174,12 @@ def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], s
                             logToUser("Raster layer transformation cannot be applied when the project CRS is set to Geographic type", level = 2, plugin = plugin.dockwidget)
                             return None
             
-            result.append(layerToSpeckle(layer, projectCRS, plugin))
+            converted = layerToSpeckle(layer, projectCRS, plugin)
+            print(converted)
+            if converted is not None:
+                result.append(converted)
+            else: 
+                logToUser(f"Layer '{layer.name()}' conversion failed", level = 2, plugin = plugin.dockwidget)
         
         return result
     except Exception as e:
@@ -268,6 +281,9 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         if isinstance(selectedLayer, QgsRasterLayer):
             # write feature attributes
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
+            #print(b)
+            if b is None: 
+                return None 
             layerObjs.append(b)
             # Convert layer to speckle
             layerBase = RasterLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, elements=layerObjs)
@@ -277,7 +293,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             return layerBase
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
+        return None 
 
 
 def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: str, plugin) -> Union[QgsVectorLayer, QgsRasterLayer, None]:

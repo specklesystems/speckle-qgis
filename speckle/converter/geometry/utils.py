@@ -73,10 +73,10 @@ def triangulatePolygon(geom):
         else: 
             dict_shape= {'vertices': vertices, 'segments': segments }
         try:
-            print(type(vertices[0][0]))
-            print(vertices)
-            print(segments)
-            print(holes)
+            #print(type(vertices[0][0]))
+            #print(vertices)
+            #print(segments)
+            #print(holes)
             t = tr.triangulate(dict_shape, 'p')
             #t = {'vertices': vertices, 'triangles': [[0,1,2]]}
             #print(t)
