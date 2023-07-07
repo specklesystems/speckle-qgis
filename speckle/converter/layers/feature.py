@@ -195,6 +195,9 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         #   logToUser("Large layer: ", level = 1, func = inspect.stack()[0][3])
 
         ds = gdal.Open(selectedLayer.source(), gdal.GA_ReadOnly)
+        if ds is None:
+            return None
+
         originX = ds.GetGeoTransform()[0]
         originY = ds.GetGeoTransform()[3]
         rasterOriginPoint = QgsPointXY(originX, originY)
@@ -644,10 +647,12 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         else: 
             logToUser("Something went wrong. Mesh cannot be created, only raster data will be sent. ", level = 2, plugin = plugin.dockwidget)
 
+        return b
+
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None 
         
-    return b
 
 
 def featureToNative(feature: Base, fields: QgsFields, dataStorage):

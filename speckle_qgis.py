@@ -399,7 +399,8 @@ class SpeckleQGIS:
 
             base_obj = Collection(units = units, collectionType = "QGIS commit", name = "QGIS commit")
             base_obj.elements = convertSelectedLayers(layers, [],[], projectCRS, self)
-            if base_obj.elements is None:
+            if base_obj.elements is None or (isinstance(base_obj.elements, List) and len(base_obj.elements) == 0):
+                logToUser(f"No data to send", level = 2, plugin = self.dockwidget)
                 return 
 
             logToUser(f"Sending data to the server...", level = 0, plugin = self.dockwidget)
@@ -548,6 +549,8 @@ class SpeckleQGIS:
             transport = validateTransport(client, streamId)
             if transport == None: 
                 return 
+            
+            logToUser("Receiving data...", level = 0, plugin=self.dockwidget)
             commitObj = operations.receive(objId, transport, None)
             
             projectCRS = self.qgis_project.crs()

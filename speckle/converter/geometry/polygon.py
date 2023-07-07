@@ -56,7 +56,7 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
                                 [polyBorder[2].x, polyBorder[2].y, polyBorder[2].z] ]
                 for pt in pts:
                     z_val = pt.z
-                    print(str(z_val))
+                    #print(str(z_val))
                     # project the pts on the plane
                     point = [pt.x, pt.y, 0]
                     z_val = projectToPolygon( point , plane_pts)
@@ -155,7 +155,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
         for v in voidsNative:
             pts_fixed = []
             v_speckle = unknownLineToSpeckle(v, True, feature, layer, dataStorage)
-            pts = speckleBoundaryToSpecklePts(v_speckle)
+            pts = speckleBoundaryToSpecklePts(v_speckle, dataStorage)
             
             plane_pts = [ [polyBorder[0].x, polyBorder[0].y, polyBorder[0].z],
                             [polyBorder[1].x, polyBorder[1].y, polyBorder[1].z],
