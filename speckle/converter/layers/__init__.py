@@ -94,7 +94,7 @@ def getSavedLayers(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     
     layers = []
     try:
-        project = plugin.qgis_project
+        project = plugin.project
         for item in plugin.dataStorage.current_layers:
             try: 
                 id = item[0].id()
@@ -138,7 +138,7 @@ def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], s
     """Converts the current selected layers to Speckle"""
     result = []
     try:
-        project: QgsProject = plugin.qgis_project
+        project: QgsProject = plugin.project
 
         for i, layer in enumerate(layers):
 
@@ -190,7 +190,7 @@ def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], s
 def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], projectCRS: QgsCoordinateReferenceSystem, plugin) -> VectorLayer or RasterLayer: #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     """Converts a given QGIS Layer to Speckle"""
     try:
-        project: QgsProject = plugin.qgis_project
+        project: QgsProject = plugin.project
         layerName = selectedLayer.name()
 
         crs = selectedLayer.crs()
@@ -298,7 +298,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
 
 def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: str, plugin) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
     try:
-        project: QgsProject = plugin.qgis_project
+        project: QgsProject = plugin.project
         #plugin.dataStorage.currentCRS = project.crs()
         plugin.dataStorage.currentUnits = layer.crs.units 
         if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
@@ -395,7 +395,7 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBr
 def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: str, streamBranch: str, plugin): 
     print("02_________BIM vector layer to native_____")
     try: 
-        #project: QgsProject = plugin.qgis_project
+        #project: QgsProject = plugin.project
         print(layerName_old)
 
         layerName = layerName_old[:50]
@@ -566,7 +566,7 @@ def addBimMainThread(obj: Tuple):
 def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str, plugin) -> QgsVectorLayer: 
     print("___________cadVectorLayerToNative")
     try:
-        project: QgsProject = plugin.qgis_project
+        project: QgsProject = plugin.project
 
         #get Project CRS, use it by default for the new received layer
         vl = None
@@ -718,7 +718,7 @@ def addCadMainThread(obj: Tuple):
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
     try:
         print("vectorLayerToNative")
-        project: QgsProject = plugin.qgis_project
+        project: QgsProject = plugin.project
         layerName = removeSpecialCharacters(layer.name) 
 
         #find ID of the layer with a matching name in the "latest" group 
@@ -922,7 +922,7 @@ def addVectorMainThread(obj: Tuple):
     
 def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
     try:
-        #project = plugin.qgis_project
+        #project = plugin.project
         layerName = removeSpecialCharacters(layer.name) + "_Speckle"
 
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'

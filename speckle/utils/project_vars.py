@@ -22,7 +22,7 @@ from specklepy_qt_ui.qt_ui.widget_custom_crs import CustomCRSDialog
 
 def get_project_streams(plugin: SpeckleQGIS):
     try:
-        proj = plugin.qgis_project
+        proj = plugin.project
         saved_streams = proj.readEntry("speckle-qgis", "project_streams", "")
         temp = []
         ######### need to check whether saved streams are available (account reachable)
@@ -49,7 +49,7 @@ def get_project_streams(plugin: SpeckleQGIS):
     
 def set_project_streams(plugin: SpeckleQGIS):
     try:
-        proj = plugin.qgis_project
+        proj = plugin.project
         value = ",".join([stream[0].stream_url for stream in plugin.current_streams])
         proj.writeEntry("speckle-qgis", "project_streams", value)
     except Exception as e:
@@ -58,7 +58,7 @@ def set_project_streams(plugin: SpeckleQGIS):
   
 def get_project_saved_layers(plugin: SpeckleQGIS):
     try:
-        proj = plugin.qgis_project
+        proj = plugin.project
         saved_layers = proj.readEntry("speckle-qgis", "project_layer_selection", "")
         temp = []
         print(saved_layers)
@@ -83,7 +83,7 @@ def get_project_saved_layers(plugin: SpeckleQGIS):
 
 def set_project_layer_selection(plugin: SpeckleQGIS):
     try:
-        proj = plugin.qgis_project
+        proj = plugin.project
         #value = ",".join([x.id() for x in self.iface.layerTreeView().selectedLayers()]) #'points_qgis2_b22ed3d0_0ff9_40d2_97f2_bd17a350d698' <qgis._core.QgsVectorDataProvider object at 0x000002627D9D4790>
         value = ",".join([x[0].id() for x in plugin.dataStorage.current_layers]) 
         

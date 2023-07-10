@@ -68,7 +68,7 @@ class SpeckleQGIS:
 
     active_stream: Optional[Tuple[StreamWrapper, Stream]] 
 
-    qgis_project: QgsProject
+    project: QgsProject
 
     #lat: float
     #lon: float
@@ -93,7 +93,7 @@ class SpeckleQGIS:
         self.version = "0.0.99"
         self.gis_version = Qgis.QGIS_VERSION.encode('iso-8859-1', errors='ignore').decode('utf-8')
         self.iface = iface
-        self.qgis_project = QgsProject.instance()
+        self.project = QgsProject.instance()
         self.current_streams = []
         self.active_stream = None
         #self.default_account = None 
@@ -262,8 +262,8 @@ class SpeckleQGIS:
         #print(threading.active_count())
 
         # set the project instance 
-        self.qgis_project = QgsProject.instance()
-        self.dataStorage.project = self.qgis_project
+        self.project = QgsProject.instance()
+        self.dataStorage.project = self.project
         self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
 
         # https://www.opengis.ch/2016/09/07/using-threads-in-qgis-python-plugins/
@@ -328,7 +328,7 @@ class SpeckleQGIS:
                 # If group exists, remove layers inside  
                 newGroupName = streamId + "_" + branch.name + "_" + commit.id
                 newGroupName = removeSpecialCharacters(newGroupName)
-                findAndClearLayerGroup(self.qgis_project, newGroupName, commit.id)
+                findAndClearLayerGroup(self.project, newGroupName, commit.id)
 
             except Exception as e:
                 logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
@@ -364,7 +364,7 @@ class SpeckleQGIS:
             if not self.dockwidget: return
             #self.dockwidget.showWait()
             
-            projectCRS = self.qgis_project.crs()
+            projectCRS = self.project.crs()
 
             bySelection = True
             if self.dockwidget.layerSendModeDropdown.currentIndex() == 1: 
@@ -456,7 +456,7 @@ class SpeckleQGIS:
                 metr_branches = len(self.active_stream[1].branches.items)
                 metr_collab = len(self.active_stream[1].collaborators)
                 metr_projected = True if not projectCRS.isGeographic() else False
-                if self.qgis_project.crs().isValid() is False: metr_projected = None
+                if self.project.crs().isValid() is False: metr_projected = None
                 
                 try:
                     metr_crs = True if self.dataStorage.custom_lat!=0 and self.dataStorage.custom_lon!=0 and str(self.dataStorage.custom_lat) in projectCRS.toWkt() and str(self.dataStorage.custom_lon) in projectCRS.toWkt() else False
@@ -478,7 +478,7 @@ class SpeckleQGIS:
             #self.dockwidget.showLink(url, streamName)
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
 
-            if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
+            if self.project.crs().isGeographic() is True or self.project.crs().isValid() is False: 
                 logToUser("Data has been sent in the units 'degrees'. It is advisable to set the project CRS to Projected type (e.g. EPSG:32631) to be able to receive geometry correctly in CAD/BIM software. You can also create a custom CRS by setting geographic coordinates and using 'Set as a project center' function.", level = 1, plugin = self.dockwidget)
             
             logToUser(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
@@ -553,14 +553,14 @@ class SpeckleQGIS:
             logToUser("Receiving data...", level = 0, plugin=self.dockwidget)
             commitObj = operations.receive(objId, transport, None)
             
-            projectCRS = self.qgis_project.crs()
+            projectCRS = self.project.crs()
             try:
                 metr_crs = True if self.dataStorage.custom_lat!=0 and self.dataStorage.custom_lon!=0 and str(self.dataStorage.custom_lat) in projectCRS.toWkt() and str(self.dataStorage.custom_lon) in projectCRS.toWkt() else False
             except:
                 metr_crs = False
             
             metr_projected = True if not projectCRS.isGeographic() else False
-            if self.qgis_project.crs().isValid() is False: metr_projected = None
+            if self.project.crs().isValid() is False: metr_projected = None
             try:
                 metrics.track(metrics.RECEIVE, self.dataStorage.active_account, {"hostAppFullVersion":self.gis_version, "sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
             except:
@@ -574,7 +574,7 @@ class SpeckleQGIS:
             )
 
             if app.lower() != "qgis" and app.lower() != "arcgis": 
-                if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
+                if self.project.crs().isGeographic() is True or self.project.crs().isValid() is False: 
                     logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD/BIM geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
             #logger.log(f"Succesfully received {objId}")
 
@@ -616,11 +616,11 @@ class SpeckleQGIS:
         try:
             from speckle.utils.project_vars import get_project_streams, get_survey_point, get_rotation, get_crs_offsets, get_project_saved_layers, get_transformations 
 
-            self.qgis_project = QgsProject.instance()
+            self.project = QgsProject.instance()
             
             self.dataStorage = DataStorage()
             self.dataStorage.plugin_version = self.version
-            self.dataStorage.project = self.qgis_project
+            self.dataStorage.project = self.project
         
             get_transformations(self.dataStorage)
             
@@ -653,10 +653,10 @@ class SpeckleQGIS:
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        self.qgis_project = QgsProject.instance()
+        self.project = QgsProject.instance()
         self.dataStorage = DataStorage()
         self.dataStorage.plugin_version = self.version
-        self.dataStorage.project = self.qgis_project
+        self.dataStorage.project = self.project
     
         get_transformations(self.dataStorage)
 
@@ -676,8 +676,8 @@ class SpeckleQGIS:
                 self.dockwidget.runSetup(self)
                 self.dockwidget.createMappingDialog()
 
-                self.qgis_project.fileNameChanged.connect(self.reloadUI)
-                self.qgis_project.homePathChanged.connect(self.reloadUI)
+                self.project.fileNameChanged.connect(self.reloadUI)
+                self.project.homePathChanged.connect(self.reloadUI)
 
                 self.dockwidget.runButton.clicked.connect(self.onRunButtonClicked)
 
