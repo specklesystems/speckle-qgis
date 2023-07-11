@@ -68,8 +68,13 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
             if name in ["id", "applicationId", "units", "speckle_type"]: continue
             # skip if traversal goes to displayValue of an object, that will be readable anyway:
             
-            if (name == "displayValue" or name == "@displayValue") and base.speckle_type.startswith(tuple(SPECKLE_TYPES_TO_READ)): continue 
-
+            if (name == "displayValue" or name == "@displayValue") and base.speckle_type.startswith(tuple(SPECKLE_TYPES_TO_READ)): 
+                continue 
+            
+            try: 
+                if "View" in base[name].speckle_type or "RevitMaterial" in base[name].speckle_type: continue
+            except: pass
+            
             try: 
                 loopVal(base[name], baseName + "_" + name, streamBranch, plugin, used_ids)
             except: pass
