@@ -1,18 +1,20 @@
+import copy
 import inspect
+from speckle.utils.panel_logging import logger
+from speckle.converter.layers import Layer
+from typing import Any, Dict, List, Tuple, Union
+from specklepy.objects import Base
+from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
+
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from qgis._core import ( Qgis, QgsProject, 
                         QgsCoordinateReferenceSystem, QgsLayerTreeLayer, 
                         QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, 
                         QgsField, QgsFields, QgsLayerTreeGroup )
-from speckle.utils.panel_logging import logger
-from speckle.converter.layers import Layer
-from typing import Any, List, Tuple, Union
-from specklepy.objects import Base
-from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
-
 from PyQt5.QtGui import QColor
 
 from osgeo import gdal, ogr, osr 
+
 import math
 import numpy as np 
 
@@ -21,23 +23,26 @@ from speckle.utils.panel_logging import logToUser
 
 ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
 
-def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = "", commit_id: str = ""):
+def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
     try:
-        root = project_gis.layerTreeRoot()
+        #root = project_gis.layerTreeRoot()
         
-        if root.findGroup(newGroupName) is not None:
-            layerGroup = root.findGroup(newGroupName)
+        print("clearGroup: " + str(newGroupName))
+        layerGroup = root.findGroup(newGroupName)
+        if layerGroup is not None or newGroupName is None:
+            if newGroupName is None: layerGroup = root
             for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
                 if isinstance(child, QgsLayerTreeLayer): 
-
                     if isinstance(child.layer(), QgsVectorLayer): 
-                        if "Speckle_ID" in child.layer().fields().names() and child.layer().name().startswith(commit_id + "_"): 
-                            project_gis.removeMapLayer(child.layerId())
+                        if "Speckle_ID" in child.layer().fields().names() and child.layer().name().lower().endswith(("_mesh", "_polylines", "_points")): 
+                            plugin.project.removeMapLayer(child.layerId())
                     
                     elif isinstance(child.layer(), QgsRasterLayer): 
                         if "_Speckle" in child.layer().name(): 
-                            project_gis.removeMapLayer(child.layerId())
-
+                            plugin.project.removeMapLayer(child.layerId())
+                else: # group
+                    print(child)
+                    findAndClearLayerGroup(child, None, plugin)
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
@@ -625,9 +630,36 @@ def moveVerticallySegment(poly, height):
     return poly 
 
 
-def tryCreateGroup(project, streamBranch):
+def tryCreateGroupTree(root, fullGroupName, plugin = None):
     #CREATE A GROUP "received blabla" with sublayers
-    newGroupName = f'{streamBranch}'
+    print("_________CREATE GROUP TREE: " + fullGroupName)
+
+    #receive_layer_tree: dict = plugin.receive_layer_tree
+    receive_layer_list = fullGroupName.split("_x_x_")
+    path_list = []
+    for x in receive_layer_list:
+        if len(x)>0: path_list.append(x)
+    group_to_create_name = path_list[0]
+
+    layerGroup = QgsLayerTreeGroup(group_to_create_name)
+    if root.findGroup(group_to_create_name) is not None:
+        layerGroup = root.findGroup(group_to_create_name) # -> QgsLayerTreeNode
+    else:
+        layerGroup = root.insertGroup(0,group_to_create_name) #root.addChildNode(layerGroup)
+    layerGroup.setExpanded(True)
+    layerGroup.setItemVisibilityChecked(True)
+
+    path_list.pop(0)
+
+    if len(path_list)>0:
+        layerGroup = tryCreateGroupTree(layerGroup, "_x_x_".join(path_list), plugin)
+
+    return layerGroup
+
+def tryCreateGroup(project, groupName, plugin = None):
+    #CREATE A GROUP "received blabla" with sublayers
+    print("_________CREATE GROUP: " + groupName)
+    newGroupName = f'{groupName}'
     root = project.layerTreeRoot()
     layerGroup = QgsLayerTreeGroup(newGroupName)
 
@@ -637,5 +669,46 @@ def tryCreateGroup(project, streamBranch):
         layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
     layerGroup.setItemVisibilityChecked(True)
+
+    if plugin is not None:
+        plugin.current_layer_group = layerGroup
+
     return layerGroup
 
+
+def findUpdateJsonItemPath(tree: Dict, full_path_str: str):
+    try:
+        new_tree = copy.deepcopy(tree)
+
+        path_list_original = full_path_str.split("_x_x_")
+        path_list = []
+        for x in path_list_original:
+            if len(x)>0: path_list.append(x)
+        attr_found = False
+
+        for i, item in enumerate(new_tree.items()):
+            attr, val_dict = item
+
+            if attr == path_list[0]: 
+                attr_found = True 
+                path_list.pop(0)
+                if len(path_list)>0: # if the path is not finished: 
+                    all_names = val_dict.keys() 
+                    if len(path_list) == 1 and path_list[0] in all_names: # already in a tree
+                        return new_tree
+                    else:
+                        branch = findUpdateJsonItemPath(val_dict, "_x_x_".join(path_list)) 
+                        new_tree.update({attr:branch}) 
+        
+        if attr_found is False and len(path_list)>0: # create a new branch at the top level 
+            if len(path_list) == 1:
+                new_tree.update({path_list[0]:{}})
+                return new_tree
+            else:
+                branch = findUpdateJsonItemPath({path_list[0]:{}}, "_x_x_".join(path_list)) 
+                new_tree.update(branch) 
+        return new_tree 
+    except Exception as e:
+        print(e)
+        return tree
+             

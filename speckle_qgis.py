@@ -4,7 +4,7 @@ import inspect
 import os.path
 import sys
 import time 
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from datetime import datetime
 
@@ -19,6 +19,8 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QApplication, QAction, QMenu, QDockWidget, QVBoxLayout, QWidget
 from qgis.PyQt import QtWidgets
 from qgis import PyQt
+
+#from PyQt5.QtCore import pyqtSignal
 
 import sip
 
@@ -38,7 +40,7 @@ import webbrowser
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getSavedLayers, getSelectedLayers
-from speckle.converter.layers.utils import findAndClearLayerGroup
+from speckle.converter.layers.utils import findAndClearLayerGroup, tryCreateGroup
 
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
@@ -65,6 +67,8 @@ class SpeckleQGIS:
     create_stream_modal: CreateStreamModalDialog
     current_streams: List[Tuple[StreamWrapper, Stream]]  #{id:(sw,st),id2:()}
     current_layers: List[Tuple[Union[QgsVectorLayer, QgsRasterLayer], str, str]] = []
+    #current_layer_group: Any
+    receive_layer_tree: Dict  
 
     active_stream: Optional[Tuple[StreamWrapper, Stream]] 
 
@@ -77,6 +81,7 @@ class SpeckleQGIS:
 
     theads_total: int
     dataStorage: DataStorage
+    #signal_groupCreate = pyqtSignal(object)
 
     def __init__(self, iface):
         """Constructor.
@@ -96,6 +101,8 @@ class SpeckleQGIS:
         self.project = QgsProject.instance()
         self.current_streams = []
         self.active_stream = None
+        #self.current_layer_group = None 
+        self.receive_layer_tree = None 
         #self.default_account = None 
         #self.accounts = [] 
         #self.active_account = None 
@@ -328,7 +335,7 @@ class SpeckleQGIS:
                 # If group exists, remove layers inside  
                 newGroupName = streamId + "_" + branch.name + "_" + commit.id
                 newGroupName = removeSpecialCharacters(newGroupName)
-                findAndClearLayerGroup(self.project, newGroupName, commit.id)
+                findAndClearLayerGroup(self.project.layerTreeRoot(), newGroupName, self)
 
             except Exception as e:
                 logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
@@ -591,6 +598,8 @@ class SpeckleQGIS:
                 check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
             else: 
                 check: Callable[[Base], bool] = lambda base: (base.speckle_type) # and base.speckle_type.endswith("Base") )
+            self.receive_layer_tree = {str(newGroupName): {}}
+            #print(self.receive_layer_tree)
             traverseObject(self, commitObj, callback, check, str(newGroupName))
             
             try: 
@@ -687,6 +696,8 @@ class SpeckleQGIS:
                 self.dockwidget.signal_2.connect(addBimMainThread)
                 self.dockwidget.signal_3.connect(addCadMainThread)
                 self.dockwidget.signal_4.connect(addRasterMainThread)
+
+                #self.signal_groupCreate.connect(tryCreateGroup)
                 
             else: 
                 root = self.dataStorage.project.layerTreeRoot()

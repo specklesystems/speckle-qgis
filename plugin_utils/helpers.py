@@ -28,7 +28,8 @@ def findOrCreatePath(path: str):
         os.makedirs(path)
 
 def removeSpecialCharacters(text: str) -> str:
-    new_text = text.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
+    new_text = text.replace("<","_").replace(">","_").replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("|","_").replace("\"","_").replace("\'","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_").replace(",","_").replace(".","_")
+    new_text = new_text.replace("_____","_").replace("____","_").replace("___","_").replace("__","_")
     return new_text
 
 def splitTextIntoLines(text: str = "", number: int= 70) -> str: 

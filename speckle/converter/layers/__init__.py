@@ -28,7 +28,7 @@ from speckle.converter.geometry.point import pointToNative, pointToNativeWithout
 from specklepy.objects.GIS.CRS import CRS
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, trySaveCRS, validateAttributeName
+from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, tryCreateGroupTree, trySaveCRS, validateAttributeName
 from speckle.converter.geometry.mesh import writeMeshToShp
 
 from speckle.converter.layers.symbology import vectorRendererToNative, rasterRendererToNative, rendererToSpeckle
@@ -334,9 +334,9 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
 
 
 def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str, plugin):
-    print("01_____GEOMETRY layer to native")
+    #print("01_____GEOMETRY layer to native")
     try:
-        print(layerName)
+        #print(layerName)
         geom_meshes = []
         
         geom_points = []
@@ -396,16 +396,16 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
     print("02_________BIM vector layer to native_____")
     try: 
         #project: QgsProject = plugin.project
-        print(layerName_old)
+        #print(layerName_old)
 
-        layerName = layerName_old[:50]
+        layerName = layerName_old#[:50]
         layerName = removeSpecialCharacters(layerName) 
-        print(layerName)
+        #print(layerName)
 
         #get Project CRS, use it by default for the new received layer
         vl = None
-        layerName = layerName + "_" + geomType
-        print(layerName)
+        #layerName = layerName + "_" + geomType
+        #print(layerName)
 
         if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
         
@@ -432,8 +432,18 @@ def addBimMainThread(obj: Tuple):
 
         project: QgsProject = dataStorage.project
 
-        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
-        newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
+        geom_print = geomType
+        if "MultiPolygonZ" in geom_print:  geom_print = "Mesh"
+        elif "LineStringZ" in geom_print:  geom_print = "Polyline"
+        elif "PointZ" in geom_print:  geom_print = "Point"
+
+        shortName = layerName.split("_x_x_")[len(layerName.split("_x_x_"))-1][:50] 
+        print(f"Final short name: {shortName}")
+        layerName = layerName.split(shortName)[0] + shortName + ("_" + geom_print)
+        finalName = shortName + ("_" + geom_print)
+        print(f"Final layer name: {finalName}")
+        #newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
+        newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{finalName[:30]}'
 
 
         ###########################################
@@ -462,7 +472,7 @@ def addBimMainThread(obj: Tuple):
         path = p
         #logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", level = 1, func = inspect.stack()[0][3])
 
-        path_bim = path + "/Layers_Speckle/BIM_layers/" + streamBranch+ "/" + layerName + "/" #arcpy.env.workspace + "\\" #
+        path_bim = path + "/Layers_Speckle/BIM_layers/" + streamBranch+ "/" + layerName[:30] + "/" #arcpy.env.workspace + "\\" #
 
         findOrCreatePath(path_bim)
         print(path_bim)
@@ -472,8 +482,9 @@ def addBimMainThread(obj: Tuple):
         print("____ meshes saved___")
         print(shp)
 
-        vl_shp = QgsVectorLayer( shp + ".shp", newName, "ogr") # do something to distinguish: stream_id_latest_name
-        vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid(), newName, "memory") # do something to distinguish: stream_id_latest_name
+
+        vl_shp = QgsVectorLayer( shp + ".shp", finalName, "ogr") # do something to distinguish: stream_id_latest_name
+        vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid(), finalName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
 
@@ -514,7 +525,12 @@ def addBimMainThread(obj: Tuple):
         
         vl.updateExtents()
         vl.commitChanges()
-        layerGroup = tryCreateGroup(project, streamBranch)
+
+        #plugin.receive_layer_tree = findUpdateJsonItemPath(plugin.receive_layer_tree, streamBranch + "_x_x_" + baseName_pass)
+        #print(plugin.receive_layer_tree)
+        print(layerName) 
+        groupName = streamBranch + "_x_x_" + layerName.split(finalName)[0]
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         layerGroup.addLayer(vl)
 
@@ -573,7 +589,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
         layerName = removeSpecialCharacters(layerName) 
 
-        layerName = layerName + "_" + geomType
+        #layerName = layerName + "_" + geomType
         print(layerName)
 
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
@@ -586,7 +602,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         print(newFields.toList())
         print(geomList)
         
-        plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'newName': newName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
+        plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
         return 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
@@ -596,12 +612,23 @@ def addCadMainThread(obj: Tuple):
     try:
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
-        newName = obj['newName'] 
+        layerName = obj['layerName'] 
         streamBranch = obj['streamBranch'] 
         newFields = obj['newFields'] 
         geomList = obj['geomList']
 
         project: QgsProject = plugin.dataStorage.project
+
+        
+        geom_print = geomType
+        if "MultiPolygonZ" in geom_print:  geom_print = "Mesh"
+        elif "LineStringZ" in geom_print:  geom_print = "Polyline"
+        elif "PointZ" in geom_print:  geom_print = "Point"
+
+        shortName = layerName.split("_x_x_")[len(layerName.split("_x_x_"))-1][:50] 
+        
+        layerName = layerName.split(shortName)[0] + shortName + ("_" + geom_print)
+        finalName = shortName + ("_" + geom_print)
 
         ###########################################
         dummy = None 
@@ -625,7 +652,7 @@ def addCadMainThread(obj: Tuple):
             logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
 
         
-        vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid() , newName, "memory") # do something to distinguish: stream_id_latest_name
+        vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid() , finalName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
 
@@ -664,7 +691,8 @@ def addCadMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
-        layerGroup = tryCreateGroup(project, streamBranch)
+        groupName = streamBranch + "_x_x_" + layerName.split(finalName)[0]
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         layerGroup.addLayer(vl)
 

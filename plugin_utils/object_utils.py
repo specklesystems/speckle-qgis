@@ -9,7 +9,8 @@ from speckle.converter.layers import geometryLayerToNative, layerToNative
 import threading
 from specklepy.objects import Base
 
-from speckle.utils.panel_logging import logToUser
+from speckle.converter.layers.utils import findUpdateJsonItemPath
+
 
 SPECKLE_TYPES_TO_READ = ["Objects.Geometry.", "Objects.BuiltElements.", "IFC"] # will properly traverse and check for displayValue
 
@@ -63,16 +64,45 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
         if not isinstance(base, Base): return
 
         memberNames = base.get_member_names()
+        
+        baseName_pass = removeSpecialCharacters(baseName)
+        #print(plugin.receive_layer_tree)
+        plugin.receive_layer_tree = findUpdateJsonItemPath(plugin.receive_layer_tree, streamBranch + "_x_x_" + baseName_pass)
+        #print(plugin.receive_layer_tree)
 
         for name in memberNames:
-            if name in ["id", "applicationId", "units", "speckle_type"]: continue
+            if name in ["id", "applicationId", "units", "speckle_type"]: 
+                continue
             # skip if traversal goes to displayValue of an object, that will be readable anyway:
             
-            if (name == "displayValue" or name == "@displayValue") and base.speckle_type.startswith(tuple(SPECKLE_TYPES_TO_READ)): continue 
+            if (name == "displayValue" or name == "@displayValue") and base.speckle_type.startswith(tuple(SPECKLE_TYPES_TO_READ)): 
+                continue 
+            
+            try: 
+                if "View" in base[name].speckle_type or "RevitMaterial" in base[name].speckle_type: continue
+            except: pass
 
             try: 
-                loopVal(base[name], baseName + "_" + name, streamBranch, plugin, used_ids)
-            except: pass
+                name_pass = name
+                if (name == "elements" and isinstance(base[name], list)) or (name == "displayValue" or name == "@displayValue"):
+                    try: 
+                        name_pass = base["Name"]
+                        if not (name_pass, str) or (isinstance(name_pass, str) and len(name_pass)<=1): raise Exception
+                    except: 
+                        try: 
+                            name_pass = base["name"]
+                            if not (name_pass, str) or (isinstance(name_pass, str) and len(name_pass)<=1): raise Exception
+                        except: 
+                            try: 
+                                name_pass = base["type"]
+                                if not (name_pass, str) or (isinstance(name_pass, str) and len(name_pass)<=1): raise Exception
+                            except: name_pass = name 
+                if name_pass is None: 
+                    name_pass = name
+                
+                if base[name] is not None:
+                    loopVal(base[name], baseName_pass + "_x_x_" + name_pass, streamBranch, plugin, used_ids)
+            except Exception as e: print(e)
     except: pass
 
 def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids): # "name" is the parent object/property/layer name
@@ -81,6 +111,9 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids): # "name
         name = removeSpecialCharacters(name)
         if isinstance(value, Base): 
             try: # loop through objects with Speckletype prop, but don't go through parts of Speckle Geometry object
+                
+                if "View" in value.speckle_type or "RevitMaterial" in value.speckle_type: return
+
                 if not value.speckle_type.startswith("Objects.Geometry."): 
                     loopObj(value, name, streamBranch, plugin, used_ids)
                     # for Revit definitions that are stored as a Base prop, rather than elements:
@@ -102,7 +135,11 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids): # "name
                 loopVal(item, name, streamBranch, plugin, used_ids)
 
                 if not isinstance(item, Base): continue
-                if "View" in item.speckle_type: continue
+                if "View" in item.speckle_type or "RevitMaterial" in item.speckle_type: continue
+
+                #print(name)
+                #print(value)
+                #print(item.speckle_type)
                 if item.speckle_type and item.speckle_type.startswith("IFC"): 
                     # keep traversing infinitely, just don't run repeated conversion for the same list of objects
                     try: 
@@ -138,4 +175,3 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids): # "name
                             break
                     except: pass 
     except: pass 
-

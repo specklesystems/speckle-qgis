@@ -85,7 +85,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
         return geom
           
 def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields, crs, path: str, dataStorage):
-    print("04_________BIM Feature To Native____________")
+    #print("04_________BIM Feature To Native____________")
     try:
         exist_feat.setFields(fields)  
 
