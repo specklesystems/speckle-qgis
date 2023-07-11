@@ -746,7 +746,7 @@ def addCadMainThread(obj: Tuple):
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
     try:
         #print("vectorLayerToNative")
-        project: QgsProject = plugin.qgis_project
+        project: QgsProject = plugin.project
         layerName = removeSpecialCharacters(layer.name) 
 
         #find ID of the layer with a matching name in the "latest" group 

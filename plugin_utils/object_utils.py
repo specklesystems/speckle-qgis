@@ -86,19 +86,19 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
                 name_pass = name
                 if (name == "elements" and isinstance(base[name], list)) or (name == "displayValue" or name == "@displayValue"):
                     try: 
-                        name_pass = base["Name"]
-                        if not (name_pass, str) or (isinstance(name_pass, str) and len(name_pass)<=1): raise Exception
+                        if (base["name"], str) and len(base["name"])>1 and base["name"]!="null": name_pass = base["name"]
+                        else: raise Exception
                     except: 
                         try: 
-                            name_pass = base["name"]
-                            if not (name_pass, str) or (isinstance(name_pass, str) and len(name_pass)<=1): raise Exception
+                            if (base["Name"], str) and len(base["Name"])>1 and base["Name"]!="null": name_pass = base["Name"]
+                            else: raise Exception
                         except: 
                             try: 
-                                name_pass = base["type"]
-                                if not (name_pass, str) or (isinstance(name_pass, str) and len(name_pass)<=1): raise Exception
+                                if (base["type"], str) and len(base["type"])>1 and base["type"]!="null": name_pass = base["type"]
+                                else: raise Exception
                             except: name_pass = name 
-                if name_pass is None: 
-                    name_pass = name
+                #if name_pass is None: 
+                #    name_pass = name
                 
                 if base[name] is not None:
                     loopVal(base[name], baseName_pass + "_x_x_" + name_pass, streamBranch, plugin, used_ids)
