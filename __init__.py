@@ -40,7 +40,7 @@ def classFactory(iface):  # pylint: disable=invalid-name
     from specklepy.logging import metrics
     
     version = Qgis.QGIS_VERSION.encode('iso-8859-1', errors='ignore').decode('utf-8').split(".")[0]
-    metrics.set_host_app("QGIS", f"QGIS {version}")
+    metrics.set_host_app("QGIS", f"QGIS{version}")
     return SpeckleQGIS(iface)
 
 class EmptyClass:

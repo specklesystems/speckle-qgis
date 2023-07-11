@@ -1,10 +1,10 @@
 
 import os
 
-from specklepy.api.wrapper import StreamWrapper
-from specklepy.api.models import Branch, Stream, Streams
+from specklepy.core.api.wrapper import StreamWrapper
+from specklepy.core.api.models import Branch, Stream, Streams
 from specklepy.logging.exceptions import GraphQLException, SpeckleException
-from specklepy.api.credentials import Account
+from specklepy.core.api.credentials import Account
 
 import unittest   # The test framework
 # remove SetUp
