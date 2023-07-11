@@ -393,7 +393,7 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBr
         return  
 
 def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: str, streamBranch: str, plugin): 
-    print("02_________BIM vector layer to native_____")
+    #print("02_________BIM vector layer to native_____")
     try: 
         #project: QgsProject = plugin.project
         #print(layerName_old)
@@ -410,8 +410,8 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
         
         newFields = getLayerAttributes(geomList)
-        print("___________Layer fields_____________")
-        print(newFields.toList())
+        #print("___________Layer fields_____________")
+        #print(newFields.toList())
                 
         plugin.dockwidget.signal_2.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
         return 
@@ -475,12 +475,12 @@ def addBimMainThread(obj: Tuple):
         path_bim = path + "/Layers_Speckle/BIM_layers/" + streamBranch+ "/" + layerName[:30] + "/" #arcpy.env.workspace + "\\" #
 
         findOrCreatePath(path_bim)
-        print(path_bim)
+        #print(path_bim)
 
         shp = writeMeshToShp(geomList, path_bim + newName_shp, dataStorage)
         if shp is None: return 
-        print("____ meshes saved___")
-        print(shp)
+        #print("____ meshes saved___")
+        #print(shp)
 
 
         vl_shp = QgsVectorLayer( shp + ".shp", finalName, "ogr") # do something to distinguish: stream_id_latest_name
@@ -540,7 +540,7 @@ def addBimMainThread(obj: Tuple):
 
             plugin_dir = os.path.dirname(__file__)
             renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
-            print(renderer3d)
+            #print(renderer3d)
 
             vl.loadNamedStyle(renderer3d)
             vl.triggerRepaint()
@@ -580,7 +580,7 @@ def addBimMainThread(obj: Tuple):
 
 
 def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str, plugin) -> QgsVectorLayer: 
-    print("___________cadVectorLayerToNative")
+    #print("___________cadVectorLayerToNative")
     try:
         project: QgsProject = plugin.project
 
@@ -590,7 +590,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         layerName = removeSpecialCharacters(layerName) 
 
         #layerName = layerName + "_" + geomType
-        print(layerName)
+        #print(layerName)
 
         newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
 
@@ -599,8 +599,8 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
         
         newFields = getLayerAttributes(geomList)
-        print(newFields.toList())
-        print(geomList)
+        #newFields.toList())
+        #print(geomList)
         
         plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
         return 
@@ -669,7 +669,7 @@ def addCadMainThread(obj: Tuple):
             new_feat = cadFeatureToNative(f, newFields, plugin.dataStorage)
             # update attrs for the next feature (if more fields were added from previous feature)
 
-            print("________cad feature to add") 
+            #print("________cad feature to add") 
             if new_feat is not None and new_feat != "": 
                 fets.append(new_feat)
                 for a in newFields.toList(): 
@@ -730,7 +730,7 @@ def addCadMainThread(obj: Tuple):
 
             plugin_dir = os.path.dirname(__file__)
             renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
-            print(renderer3d)
+            #print(renderer3d)
 
             vl.loadNamedStyle(renderer3d)
             vl.triggerRepaint()
@@ -745,8 +745,8 @@ def addCadMainThread(obj: Tuple):
 
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
     try:
-        print("vectorLayerToNative")
-        project: QgsProject = plugin.project
+        #print("vectorLayerToNative")
+        project: QgsProject = plugin.qgis_project
         layerName = removeSpecialCharacters(layer.name) 
 
         #find ID of the layer with a matching name in the "latest" group 
@@ -809,7 +809,7 @@ def addVectorMainThread(obj: Tuple):
         
         project: QgsProject = plugin.dataStorage.project
 
-        print(layer.name)
+        #print(layer.name)
 
         ###########################################
         dummy = None 
@@ -827,7 +827,7 @@ def addVectorMainThread(obj: Tuple):
         srsid = trySaveCRS(crs, streamBranch)
         crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
         authid = crs_new.authid()
-        print(authid)
+        #print(authid)
         
         #################################################
         if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
@@ -868,7 +868,7 @@ def addVectorMainThread(obj: Tuple):
             p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             findOrCreatePath(p)
             file_name = os.path.join(p, newName )
-            print(file_name)
+            #print(file_name)
             #print(vl)
             #print(fets)
             options = QgsVectorFileWriter.SaveVectorOptions()
@@ -895,7 +895,7 @@ def addVectorMainThread(obj: Tuple):
                         if polygonType is True:
                             new_lines = []
                             for i, line in enumerate(lines):
-                                print(line)
+                                #print(line)
                                 if '"type": "Polygon"' in line:
                                     line = line.replace('"type": "Polygon"','"type": "MultiPolygonZ"')
                                 if " ] ] ] " in line and '"coordinates": [ [ [ [ ' not in line: 
@@ -935,7 +935,7 @@ def addVectorMainThread(obj: Tuple):
 
             plugin_dir = os.path.dirname(__file__)
             renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
-            print(renderer3d)
+            #print(renderer3d)
 
             vl.loadNamedStyle(renderer3d)
             vl.triggerRepaint()
@@ -1109,8 +1109,8 @@ def addRasterMainThread(obj: Tuple):
             dataStorage.current_layer_crs_offset_x = dataStorage.current_layer_crs_offset_y = dataStorage.current_layer_crs_rotation = None 
         
         except Exception as e: print(e)
-        print(crs)
-        print(crsRaster)
+        #print(crs)
+        #print(crsRaster)
         xform = QgsCoordinateTransform(crs, crsRaster, project)
         pt.transform(xform)
         try:

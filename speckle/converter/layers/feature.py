@@ -31,8 +31,8 @@ import scipy.ndimage
 from speckle.utils.panel_logging import logToUser
 
 def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage):
-    print("Feature to Speckle")
-    print(dataStorage)
+    #print("Feature to Speckle")
+    #print(dataStorage)
     if dataStorage is None: return 
     units = dataStorage.currentUnits
     try:

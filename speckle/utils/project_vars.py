@@ -61,7 +61,7 @@ def get_project_saved_layers(plugin: SpeckleQGIS):
         proj = plugin.project
         saved_layers = proj.readEntry("speckle-qgis", "project_layer_selection", "")
         temp = []
-        print(saved_layers)
+        #print(saved_layers)
         if saved_layers[1] and len(saved_layers[0]) != 0:
             
             for id in saved_layers[0].split(","):
@@ -75,7 +75,7 @@ def get_project_saved_layers(plugin: SpeckleQGIS):
                     logToUser(f'Saved layer not found: "{id}"', level = 1, func = inspect.stack()[0][3])
         plugin.dataStorage.current_layers = temp.copy()
         plugin.dataStorage.saved_layers = temp.copy()
-        print(temp)
+        #print(temp)
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget)
@@ -87,7 +87,7 @@ def set_project_layer_selection(plugin: SpeckleQGIS):
         #value = ",".join([x.id() for x in self.iface.layerTreeView().selectedLayers()]) #'points_qgis2_b22ed3d0_0ff9_40d2_97f2_bd17a350d698' <qgis._core.QgsVectorDataProvider object at 0x000002627D9D4790>
         value = ",".join([x[0].id() for x in plugin.dataStorage.current_layers]) 
         
-        print(value)
+        #print(value)
         proj.writeEntry("speckle-qgis", "project_layer_selection", value)
         try: metrics.track("Connector Action", plugin.dataStorage.active_account, {"name": "Save Layer Selection", "connector_version": str(plugin.dataStorage.plugin_version)})
         except Exception as e: logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=plugin.dockwidget )
@@ -128,7 +128,7 @@ def get_survey_point(dataStorage: DataStorage):
         proj = dataStorage.project
         points = proj.readEntry("speckle-qgis", "survey_point", "")
         if points[1] and len(points[0])>0: 
-            print(points[0])
+            #print(points[0])
             vals: List[str] = points[0].replace(" ","").split(";")[:2]
             dataStorage.custom_lat, dataStorage.custom_lon = [float(i) for i in vals]
     except Exception as e:
