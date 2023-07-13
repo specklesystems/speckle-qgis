@@ -1,10 +1,10 @@
 
 import inspect
 from typing import Union
-from specklepy.api.wrapper import StreamWrapper
-from specklepy.api.models import Stream, Branch, Commit 
+from specklepy.core.api.wrapper import StreamWrapper
+from specklepy.core.api.models import Stream, Branch, Commit 
 from specklepy.transports.server import ServerTransport
-from specklepy.api.client import SpeckleClient
+from specklepy.core.api.client import SpeckleClient
 from specklepy.logging.exceptions import SpeckleException, GraphQLException
 
 from speckle.utils.panel_logging import logToUser

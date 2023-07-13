@@ -8,10 +8,10 @@ from speckle.converter.layers.utils import getElevationLayer, trySaveCRS
 from speckle_qgis import SpeckleQGIS
 
 from specklepy.logging.exceptions import SpeckleException 
-from specklepy.api.wrapper import StreamWrapper
-from specklepy.api.models import Stream
+from specklepy.core.api.wrapper import StreamWrapper
+from specklepy.core.api.models import Stream
 from specklepy.logging import metrics
-from specklepy.api.client import SpeckleClient
+from specklepy.core.api.client import SpeckleClient
 
 from speckle.utils.panel_logging import logger
 from qgis.core import (Qgis, QgsProject, QgsCoordinateReferenceSystem)
@@ -148,10 +148,10 @@ def set_survey_point(dataStorage: DataStorage, dockwidget = None):
         pt = str(x) + ";" + str(y) 
         proj.writeEntry("speckle-qgis", "survey_point", pt)
         
-        try:
-            metrics.track("Connector Action", dataStorage.active_account, {"name": "Set As Center Point", "connector_version": str(dataStorage.plugin_version)})
-        except Exception as e:
-            logToUser(e, level = 2, func = inspect.stack()[0][3] )
+        #try:
+        #    metrics.track("Connector Action", dataStorage.active_account, {"name": "Set As Center Point", "connector_version": str(dataStorage.plugin_version)})
+        #except Exception as e:
+        #    logToUser(e, level = 2, func = inspect.stack()[0][3] )
         return True
     
     except Exception as e:

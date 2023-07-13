@@ -81,7 +81,7 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
             try: 
                 if "View" in base[name].speckle_type or "RevitMaterial" in base[name].speckle_type: continue
             except: pass
-
+            
             try: 
                 name_pass = name
                 if (name == "elements" and isinstance(base[name], list)) or (name == "displayValue" or name == "@displayValue"):

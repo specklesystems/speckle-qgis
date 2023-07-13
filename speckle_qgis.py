@@ -26,13 +26,13 @@ import sip
 
 from specklepy.core.api import operations
 from specklepy.logging.exceptions import SpeckleException, GraphQLException
-from specklepy.api.models import Stream
-from specklepy.api.wrapper import StreamWrapper
+from specklepy.core.api.models import Stream
+from specklepy.core.api.wrapper import StreamWrapper
 from specklepy.objects import Base
 from specklepy.objects.other import Collection
 from specklepy.transports.server import ServerTransport
 from specklepy.core.api.credentials import Account, get_local_accounts #, StreamWrapper
-from specklepy.api.client import SpeckleClient
+from specklepy.core.api.client import SpeckleClient
 from specklepy.logging import metrics
 import webbrowser
 
@@ -720,6 +720,7 @@ class SpeckleQGIS:
             self.dockwidget.enableElements(self)
     
     def populateSelectedLayerDropdown(self):
+        print("populateSelectedLayerDropdown")
         from speckle.utils.project_vars import set_project_layer_selection
         layers = getSelectedLayers(self)
         current_layers = []
