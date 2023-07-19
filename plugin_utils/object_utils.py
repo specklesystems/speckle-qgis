@@ -75,8 +75,22 @@ def callback(base: Base, streamBranch: str, nameBase: str, plugin) -> bool:
 
 def getBaseValidName(base: Base, name: str) -> str:
     name_pass = name
+    search = 0
+    try:
+        if (name == "elements" and isinstance(base[name], list)):
+            search = 1
+    except: pass
+    try:
+        if (name == "displayValue" or name == "@displayValue"):
+            search = 1
+    except: pass 
+    try:
+        if (name == "definition" and isinstance(base[name], Base)):
+            search = 1
+    except: pass
+
     try: 
-        if (name == "elements" and isinstance(base[name], list)) or (name == "displayValue" or name == "@displayValue"):
+        if search == 1:
             try: 
                 if (base["name"], str) and len(base["name"])>1 and base["name"]!="null": name_pass = base["name"]
                 else: raise Exception
@@ -88,7 +102,11 @@ def getBaseValidName(base: Base, name: str) -> str:
                     try: 
                         if (base["type"], str) and len(base["type"])>1 and base["type"]!="null": name_pass = base["type"]
                         else: raise Exception
-                    except: name_pass = name 
+                    except: 
+                        try: 
+                            if (base["category"], str) and len(base["category"])>1 and base["category"]!="null": name_pass = base["category"]
+                            else: raise Exception
+                        except: name_pass = name 
     except Exception as e: print(e)
     return name_pass
 
@@ -119,9 +137,9 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids, matr
             name_pass = baseName_pass + SYMBOL + getBaseValidName(base, name)
             
             if base[name] is not None:
-                if name_pass.endswith("definition"):
+                if name.endswith("definition"):
                     try:
-                        print("if base[name] is not None")
+                        print("__DEFINITION IN NAME: "+ name)
                         print(name_pass)
                         matrixList = base["transform"].matrix
                         try:
@@ -130,18 +148,17 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids, matr
                             if matrix2 is None:
                                 geometryLayerToNative([base[name]], name, streamBranch, plugin, None)
                                 
-                            else: # matrix2 not None 
+                            else: # both not None 
                                 if matrix is not None: 
                                     print("if")
-                                    matrix = matrix * matrix2
+                                    matrix = matrix2 * matrix
                                 else: # matrix is None 
                                     print("else")
                                     matrix = matrix2
-                                geometryLayerToNative([base[name]], name, streamBranch, plugin, matrix)
+                                geometryLayerToNative([base[name]], name_pass, streamBranch, plugin, matrix)
 
                         except: matrix = None
                         print(matrix)
-                        #geometryLayerToNative([base[name]], name, streamBranch, plugin, matrix)
                         time.sleep(0.3)
                     except Exception as e: print(f"ERROR: {e}") 
                 loopVal(base[name], name_pass, streamBranch, plugin, used_ids, matrix)     
@@ -157,32 +174,29 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids, matrix =
                 if "View" in value.speckle_type or "RevitMaterial" in value.speckle_type: return
 
                 if not value.speckle_type.startswith("Objects.Geometry."): 
-                    print("if not value.speckle_type.startswith")
-                    print(matrix)
+                    #print("if not value.speckle_type.startswith")
+                    #print(matrix)
                     loopObj(value, name, streamBranch, plugin, used_ids, matrix)
                 elif value.id not in used_ids: # if geometry
                     used_ids.append(value.id)
                     loopVal([value], name, streamBranch, plugin, used_ids, matrix)
             except: 
-                print("except")
-                print(matrix)
+                #print("except")
+                #print(matrix)
                 loopObj(value, name, streamBranch, plugin, used_ids, matrix)
 
         elif isinstance(value, List):
-            #streamBranch = streamBranch.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
+            print("LOOP VAL - LIST")
             streamBranch = removeSpecialCharacters(streamBranch)
 
             objectListConverted = 0
             for i, item in enumerate(value):
                 used_ids.append(item.id)
-                loopVal(item, name, streamBranch, plugin, used_ids)
+                loopVal(item, name, streamBranch, plugin, used_ids, matrix)
 
                 if not isinstance(item, Base): continue
                 if "View" in item.speckle_type or "RevitMaterial" in item.speckle_type: continue
 
-                #print(name)
-                #print(value)
-                #print(item.speckle_type)
                 if item.speckle_type and item.speckle_type.startswith("IFC"): 
                     # keep traversing infinitely, just don't run repeated conversion for the same list of objects
                     try: 
