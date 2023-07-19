@@ -7,7 +7,7 @@ from specklepy.objects.other import RenderMaterial
 
 import shapefile
 from shapefile import TRIANGLE_STRIP, TRIANGLE_FAN, OUTER_RING
-from speckle.converter.geometry.point import pointToNative, pointToNativeWithoutTransforms, transformSpecklePt
+from speckle.converter.geometry.point import applyTransformMatrix, pointToNative, pointToNativeWithoutTransforms, transformSpecklePt
 from speckle.converter.geometry.utils import fix_orientation, projectToPolygon, triangulatePolygon
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
@@ -143,6 +143,7 @@ def deconstructSpeckleMesh(mesh: Mesh, dataStorage):
                     
                     pt = Point(x = mesh.vertices[index_vertices], y = mesh.vertices[index_vertices+1], z = mesh.vertices[index_vertices+2], units = "m")
                     newPt = transformSpecklePt(pt, dataStorage)
+                    newPt = applyTransformMatrix(newPt, dataStorage)
                     face.append([ scale * newPt.x, scale * newPt.y, scale * newPt.z ]) 
 
                 parts_list.append(face)

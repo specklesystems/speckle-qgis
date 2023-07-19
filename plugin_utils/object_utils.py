@@ -1,5 +1,6 @@
 
 import time
+import numpy as np
 from typing import Any, Callable, List, Optional
 from plugin_utils.helpers import SYMBOL, removeSpecialCharacters 
 
@@ -91,7 +92,7 @@ def getBaseValidName(base: Base, name: str) -> str:
     except Exception as e: print(e)
     return name_pass
 
-def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
+def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids, matrix = None):
     try:
         # dont loop primitives 
         if not isinstance(base, Base): return
@@ -115,14 +116,38 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
                 if "View" in base[name].speckle_type or "RevitMaterial" in base[name].speckle_type: continue
             except: pass
             
-            name_pass = getBaseValidName(base, name)
-
+            name_pass = baseName_pass + SYMBOL + getBaseValidName(base, name)
+            
             if base[name] is not None:
-                loopVal(base[name], baseName_pass + SYMBOL + name_pass, streamBranch, plugin, used_ids)
+                if name_pass.endswith("definition"):
+                    try:
+                        print("if base[name] is not None")
+                        print(name_pass)
+                        matrixList = base["transform"].matrix
+                        try:
+                            matrix2 = np.matrix(matrixList).reshape(4, 4)
+                            matrix2 = matrix2.transpose()
+                            if matrix2 is None:
+                                geometryLayerToNative([base[name]], name, streamBranch, plugin, None)
+                                
+                            else: # matrix2 not None 
+                                if matrix is not None: 
+                                    print("if")
+                                    matrix = matrix * matrix2
+                                else: # matrix is None 
+                                    print("else")
+                                    matrix = matrix2
+                                geometryLayerToNative([base[name]], name, streamBranch, plugin, matrix)
 
-    except: pass
+                        except: matrix = None
+                        print(matrix)
+                        #geometryLayerToNative([base[name]], name, streamBranch, plugin, matrix)
+                        time.sleep(0.3)
+                    except Exception as e: print(f"ERROR: {e}") 
+                loopVal(base[name], name_pass, streamBranch, plugin, used_ids, matrix)     
+    except Exception as e: print(e) 
 
-def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids): # "name" is the parent object/property/layer name
+def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids, matrix = None): # "name" is the parent object/property/layer name
     
     try: 
         name = removeSpecialCharacters(name)
@@ -132,16 +157,16 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids): # "name
                 if "View" in value.speckle_type or "RevitMaterial" in value.speckle_type: return
 
                 if not value.speckle_type.startswith("Objects.Geometry."): 
-                    loopObj(value, name, streamBranch, plugin, used_ids)
-                    # for Revit definitions that are stored as a Base prop, rather than elements:
-                    #if name.endswith("definition"):
-                    #    geometryLayerToNative([value], name, streamBranch, plugin)
-                    #    time.sleep(0.3)
+                    print("if not value.speckle_type.startswith")
+                    print(matrix)
+                    loopObj(value, name, streamBranch, plugin, used_ids, matrix)
                 elif value.id not in used_ids: # if geometry
                     used_ids.append(value.id)
-                    loopVal([value], name, streamBranch, plugin, used_ids)
+                    loopVal([value], name, streamBranch, plugin, used_ids, matrix)
             except: 
-                loopObj(value, name, streamBranch, plugin, used_ids)
+                print("except")
+                print(matrix)
+                loopObj(value, name, streamBranch, plugin, used_ids, matrix)
 
         elif isinstance(value, List):
             #streamBranch = streamBranch.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")

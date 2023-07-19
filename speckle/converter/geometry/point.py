@@ -1,5 +1,6 @@
 import inspect
 import math
+import numpy as np
 
 from qgis.core import (
     QgsPoint,
@@ -149,12 +150,26 @@ def pointToNative(pt: Point, dataStorage) -> QgsPoint:
     """Converts a Speckle Point to QgsPoint"""
     try:
         pt = scalePointToNative(pt, pt.units, dataStorage)
+        pt = applyTransformMatrix(pt, dataStorage)
         newPt = transformSpecklePt(pt, dataStorage)
 
         return QgsPoint(newPt.x, newPt.y, newPt.z)
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
+
+def applyTransformMatrix(pt: Point, dataStorage):
+    try:
+        if dataStorage.matrix is not None:
+            #print(f"__PT: {(pt.x, pt.y, pt.z)}")
+            #print(dataStorage.matrix)
+            b = np.matrix([pt.x, pt.y, pt.z, 1]) 
+            res = b* dataStorage.matrix 
+            #print(res)
+            x,y,z = res.item(0), res.item(1), res.item(2)
+            return Point(x=x, y=y, z=z, units = pt.units)
+        else: return pt
+    except Exception as e: print(e)
 
 def scalePointToNative(point: Point, units: str, dataStorage) -> Point:
     """Scale point coordinates to meters"""

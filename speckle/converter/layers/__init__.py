@@ -449,7 +449,7 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
         return  
 
 
-def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str, plugin):
+def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str, plugin, matrix = None):
     #print("01_____GEOMETRY layer to native")
     try:
         #print(layerName)
@@ -496,11 +496,11 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBr
                     geom_meshes.extend(val)
         
         if len(geom_meshes)>0: 
-            bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch, plugin) 
+            bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch, plugin, matrix) 
         if len(geom_points)>0: 
-            cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch, plugin)
+            cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch, plugin, matrix)
         if len(geom_polylines)>0: 
-            cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch, plugin)
+            cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch, plugin, matrix)
 
         return True
     
@@ -508,7 +508,7 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBr
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
-def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: str, streamBranch: str, plugin): 
+def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: str, streamBranch: str, plugin, matrix: list = None): 
     #print("02_________BIM vector layer to native_____")
     try: 
         #project: QgsProject = plugin.project
@@ -529,7 +529,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         #print("___________Layer fields_____________")
         #print(newFields.toList())
                 
-        plugin.dockwidget.signal_2.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
+        plugin.dockwidget.signal_2.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         return 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
@@ -544,7 +544,10 @@ def addBimMainThread(obj: Tuple):
         streamBranch = obj['streamBranch'] 
         newFields = obj['newFields'] 
         geomList = obj['geomList']
+        matrix = obj['matrix']
+        
         dataStorage = plugin.dataStorage
+        dataStorage.matrix = matrix
 
         project: QgsProject = dataStorage.project
 
@@ -594,6 +597,7 @@ def addBimMainThread(obj: Tuple):
         #print(path_bim)
 
         shp = writeMeshToShp(geomList, path_bim + newName_shp, dataStorage)
+        dataStorage.matrix = None
         if shp is None: return 
         #print("____ meshes saved___")
         #print(shp)
@@ -693,7 +697,7 @@ def addBimMainThread(obj: Tuple):
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
 
 
-def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str, plugin) -> QgsVectorLayer: 
+def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str, plugin, matrix = None) -> QgsVectorLayer: 
     #print("___________cadVectorLayerToNative")
     try:
         project: QgsProject = plugin.project
@@ -716,7 +720,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         #newFields.toList())
         #print(geomList)
         
-        plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
+        plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         return 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
@@ -730,8 +734,11 @@ def addCadMainThread(obj: Tuple):
         streamBranch = obj['streamBranch'] 
         newFields = obj['newFields'] 
         geomList = obj['geomList']
+        matrix = obj['matrix']
 
         project: QgsProject = plugin.dataStorage.project
+        dataStorage = plugin.dataStorage
+        dataStorage.matrix = matrix
 
         
         geom_print = geomType
@@ -795,6 +802,7 @@ def addCadMainThread(obj: Tuple):
             else:
                 logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
 
+        dataStorage.matrix = None
         
         # add Layer attribute fields
         pr.addAttributes(newFields)
