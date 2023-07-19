@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from datetime import datetime
 
 import threading
+from plugin_utils.threads import KThread 
 from plugin_utils.helpers import constructCommitURL, getAppName, removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsLayerTreeGroup, QgsCoordinateReferenceSystem,
@@ -265,8 +266,7 @@ class SpeckleQGIS:
     def onRunButtonClicked(self):
         print("onRUN")
         # set QGIS threads number only the first time: 
-        if self.theads_total==0: self.theads_total = threading.active_count()
-        #print(threading.active_count())
+        #if self.theads_total==0: self.theads_total = threading.active_count()
 
         # set the project instance 
         self.project = QgsProject.instance()
@@ -287,13 +287,8 @@ class SpeckleQGIS:
                 streamWrapper = self.active_stream[0]
                 client = streamWrapper.get_client()
                 self.dataStorage.active_account = client.account
-                
-                #try:
-                #    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
-                #except Exception as e:
-                #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
 
-                t = threading.Thread(target=self.onSend, args=(message,))
+                t = KThread(target=self.onSend, name="speckle_send", args=(message,))
                 t.start()
             except: self.onSend(message)
         # receive 
@@ -341,26 +336,13 @@ class SpeckleQGIS:
                 logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
                 return
             ########################################### end of repeated 
-            r'''
-            if not self.dockwidget.experimental.isChecked(): 
-                
-                try:
-                    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": False, "connector_version": str(self.version)})
-                except Exception as e:
-                    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
-                self.onReceive()
-            else:
-            '''
+
             try:
                 streamWrapper = self.active_stream[0]
                 client = streamWrapper.get_client()
                 self.dataStorage.active_account = client.account
-                #try:
-                #    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
-                #except Exception as e:
-                #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
 
-                t = threading.Thread(target=self.onReceive, args=())
+                t = KThread(target=self.onReceive, name="speckle_receive", args=())
                 t.start()
             except: self.onReceive()
 
@@ -1008,4 +990,12 @@ class SpeckleQGIS:
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
+    
+    def cancelOperations(self):
+        print("____cancelOperations______")
+        for t in threading.enumerate():
+            print(t.name)
+            if 'speckle_send' in t.name or 'speckle_receive' in t.name:
+                t.kill() 
+        print(threading.enumerate())
     

@@ -41,19 +41,6 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
 
         self.mappingSendDialog.runSetup()
 
-    def populateUI(self, plugin):
-        try:
-
-            self.populateLayerSendModeDropdown()
-            self.populateProjectStreams(plugin)
-
-            self.runBtnStatusChanged(plugin)
-            self.runButton.setEnabled(False) 
-            
-        except Exception as e:
-            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
-            return
-    
     def completeStreamSection(self, plugin):
         try:
             self.streams_remove_button.clicked.connect( lambda: self.onStreamRemoveButtonClicked(plugin) )
