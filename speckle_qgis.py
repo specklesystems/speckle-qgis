@@ -268,6 +268,16 @@ class SpeckleQGIS:
         # set QGIS threads number only the first time: 
         #if self.theads_total==0: self.theads_total = threading.active_count()
 
+        all_threads = threading.enumerate()
+
+        for t in all_threads:
+            if t.name.startswith('speckle'):
+                name = "" 
+                if "receive" in t.name: name = "Receive"
+                if "send" in t.name: name = "Send"
+                logToUser(f"Previous {name} operation is still running", level = 2, plugin=self.dockwidget)
+                return
+
         # set the project instance 
         self.project = QgsProject.instance()
         self.dataStorage.project = self.project
@@ -287,6 +297,7 @@ class SpeckleQGIS:
                 streamWrapper = self.active_stream[0]
                 client = streamWrapper.get_client()
                 self.dataStorage.active_account = client.account
+                logToUser(f"Sending data... Click here to cancel", level = 0, url = "cancel", plugin = self.dockwidget)
 
                 t = KThread(target=self.onSend, name="speckle_send", args=(message,))
                 t.start()
@@ -341,6 +352,7 @@ class SpeckleQGIS:
                 streamWrapper = self.active_stream[0]
                 client = streamWrapper.get_client()
                 self.dataStorage.active_account = client.account
+                logToUser("Receiving data... Click here to cancel", level = 0, url = "cancel", plugin=self.dockwidget)
 
                 t = KThread(target=self.onReceive, name="speckle_receive", args=())
                 t.start()
@@ -474,12 +486,13 @@ class SpeckleQGIS:
             logToUser(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
             self.dataStorage.sending_layers = None
 
-            return url
 
         except Exception as e:
             #if self.dockwidget.experimental.isChecked(): 
             time.sleep(1)
             logToUser("Error creating commit: "+str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+
+        self.dockwidget.cancelOperations()
 
     def onReceive(self):
         """Handles action when the Receive button is pressed"""
@@ -540,7 +553,6 @@ class SpeckleQGIS:
             if transport == None: 
                 return 
             
-            logToUser("Receiving data...", level = 0, plugin=self.dockwidget)
             commitObj = operations.receive(objId, transport, None)
             
             projectCRS = self.project.crs()
@@ -601,7 +613,8 @@ class SpeckleQGIS:
         except Exception as e:
             #if self.dockwidget.experimental.isChecked(): time.sleep(1)
             logToUser("Receive failed: "+ str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
-            return
+
+        self.dockwidget.cancelOperations()
 
     def reloadUI(self):
         print("___RELOAD UI")
@@ -990,12 +1003,3 @@ class SpeckleQGIS:
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
-    
-    def cancelOperations(self):
-        print("____cancelOperations______")
-        for t in threading.enumerate():
-            print(t.name)
-            if 'speckle_send' in t.name or 'speckle_receive' in t.name:
-                t.kill() 
-        print(threading.enumerate())
-    

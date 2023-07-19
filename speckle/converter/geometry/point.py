@@ -168,8 +168,8 @@ def applyTransformMatrix(pt: Point, dataStorage):
             #print(res)
             x,y,z = res.item(0), res.item(1), res.item(2)
             return Point(x=x, y=y, z=z, units = pt.units)
-        else: return pt
     except Exception as e: print(e)
+    return pt 
 
 def scalePointToNative(point: Point, units: str, dataStorage) -> Point:
     """Scale point coordinates to meters"""

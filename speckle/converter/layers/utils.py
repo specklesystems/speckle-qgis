@@ -634,7 +634,7 @@ def moveVerticallySegment(poly, height):
 
 def tryCreateGroupTree(root, fullGroupName, plugin = None):
     #CREATE A GROUP "received blabla" with sublayers
-    print("_________CREATE GROUP TREE: " + fullGroupName)
+    #print("_________CREATE GROUP TREE: " + fullGroupName)
 
     #receive_layer_tree: dict = plugin.receive_layer_tree
     receive_layer_list = fullGroupName.split(SYMBOL)

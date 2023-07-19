@@ -139,8 +139,6 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids, matr
             if base[name] is not None:
                 if name.endswith("definition"):
                     try:
-                        print("__DEFINITION IN NAME: "+ name)
-                        print(name_pass)
                         matrixList = base["transform"].matrix
                         try:
                             matrix2 = np.matrix(matrixList).reshape(4, 4)
@@ -150,15 +148,12 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids, matr
                                 
                             else: # both not None 
                                 if matrix is not None: 
-                                    print("if")
                                     matrix = matrix2 * matrix
                                 else: # matrix is None 
-                                    print("else")
                                     matrix = matrix2
                                 geometryLayerToNative([base[name]], name_pass, streamBranch, plugin, matrix)
 
                         except: matrix = None
-                        print(matrix)
                         time.sleep(0.3)
                     except Exception as e: print(f"ERROR: {e}") 
                 loopVal(base[name], name_pass, streamBranch, plugin, used_ids, matrix)     
@@ -174,15 +169,11 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids, matrix =
                 if "View" in value.speckle_type or "RevitMaterial" in value.speckle_type: return
 
                 if not value.speckle_type.startswith("Objects.Geometry."): 
-                    #print("if not value.speckle_type.startswith")
-                    #print(matrix)
                     loopObj(value, name, streamBranch, plugin, used_ids, matrix)
                 elif value.id not in used_ids: # if geometry
                     used_ids.append(value.id)
                     loopVal([value], name, streamBranch, plugin, used_ids, matrix)
             except: 
-                #print("except")
-                #print(matrix)
                 loopObj(value, name, streamBranch, plugin, used_ids, matrix)
 
         elif isinstance(value, List):

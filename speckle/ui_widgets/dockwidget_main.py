@@ -1,3 +1,4 @@
+import threading
 from specklepy_qt_ui.qt_ui.dockwidget_main import SpeckleQGISDialog as SpeckleQGISDialog_UI
 import specklepy_qt_ui.qt_ui
 
@@ -89,3 +90,13 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self)
             return
         
+    def cancelOperations(self):
+        print("____cancelOperations______")
+        for t in threading.enumerate():
+            print(t.name)
+            if 'speckle_' in t.name:
+                print(f"thread to kill: {t}")
+                t.kill() 
+                t.join()
+        print(threading.enumerate())
+    

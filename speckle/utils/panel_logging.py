@@ -44,7 +44,7 @@ class Logging:
         if level==1: level = Qgis.Warning
         if level==2: level = Qgis.Critical
         
-        def openLink(url):
+        def btnClicked(url):
             try:
                 if url == "": return
                 webbrowser.open(url, new=0, autoraise=True)
@@ -54,7 +54,7 @@ class Logging:
         widget = self.qgisInterface.messageBar().createMessage("Speckle", message)
         button = QPushButton(widget)
         button.setText(action_text)
-        button.pressed.connect(lambda: openLink(url))
+        button.pressed.connect(lambda: btnClicked(url))
         widget.layout().addWidget(button)
         self.qgisInterface.messageBar().pushWidget(widget, level, duration)
 
