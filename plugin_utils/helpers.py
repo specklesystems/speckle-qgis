@@ -2,6 +2,21 @@ import os
 from typing import List
 from textwrap import wrap
 
+SYMBOL = "_x_x_"
+
+def jsonFromList(jsonObj: dict, levels: list):
+    print("jsonFromList")
+    if len(levels) == 0: return jsonObj
+    lastLevel = jsonObj
+    for l in levels:
+        print(lastLevel)
+        try: 
+            lastLevel = lastLevel[l]
+        except: 
+            lastLevel.update({l: {}})
+    print(jsonObj)
+    return jsonObj 
+
 def constructCommitURL(streamWrapper, branch_id, commit_id: str) -> str:
     import requests 
     streamUrl = streamWrapper.stream_url.split("?")[0].split("&")[0].split("@")[0]

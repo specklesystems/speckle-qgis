@@ -1,11 +1,13 @@
 import copy
 from typing import Dict
 
+from plugin_utils.helpers import SYMBOL
+
 
 def findUpdateJsonItemPath(tree: Dict, full_path_str: str):
     new_tree = copy.deepcopy(tree)
 
-    path_list = full_path_str.split("_x_x_")
+    path_list = full_path_str.split(SYMBOL)
     attr_found = False
 
     for i, item in enumerate(new_tree.items()):
@@ -22,7 +24,7 @@ def findUpdateJsonItemPath(tree: Dict, full_path_str: str):
                 if len(path_list) == 1 and path_list[0] in all_names: # already in a tree
                     return new_tree
                 else:
-                    branch = findUpdateJsonItemPath(val_dict, "_x_x_".join(path_list)) 
+                    branch = findUpdateJsonItemPath(val_dict, SYMBOL.join(path_list)) 
                     print("BRANCH")
                     print(branch)
                     new_tree.update({attr:branch}) 
@@ -33,7 +35,7 @@ def findUpdateJsonItemPath(tree: Dict, full_path_str: str):
             new_tree.update({path_list[0]:{}})
             return new_tree
         else:
-            branch = findUpdateJsonItemPath({path_list[0]:{}}, "_x_x_".join(path_list)) 
+            branch = findUpdateJsonItemPath({path_list[0]:{}}, SYMBOL.join(path_list)) 
             print("BRANCH CREATE")
             print(branch)
             new_tree.update(branch) 

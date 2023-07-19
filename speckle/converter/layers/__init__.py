@@ -13,7 +13,7 @@ from datetime import datetime
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
-from plugin_utils.helpers import findFeatColors, findOrCreatePath, removeSpecialCharacters
+from plugin_utils.helpers import findFeatColors, findOrCreatePath, jsonFromList, removeSpecialCharacters
 #from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
 from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint, 
                        QgsVectorLayer, QgsProject, QgsWkbTypes,
@@ -27,8 +27,10 @@ from specklepy.objects.GIS.geometry import GisPolygonElement
 from speckle.converter.geometry.point import pointToNative, pointToNativeWithoutTransforms, transformSpecklePt
 from specklepy.objects.GIS.CRS import CRS
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
+from specklepy.objects.other import Collection
+
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import colorFromSpeckle, colorFromSpeckle, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, tryCreateGroupTree, trySaveCRS, validateAttributeName
+from speckle.converter.layers.utils import collectionsFromJson, colorFromSpeckle, colorFromSpeckle, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, tryCreateGroupTree, trySaveCRS, validateAttributeName
 from speckle.converter.geometry.mesh import writeMeshToShp
 
 from speckle.converter.layers.symbology import vectorRendererToNative, rasterRendererToNative, rendererToSpeckle
@@ -37,6 +39,8 @@ from PyQt5.QtGui import QColor
 import numpy as np
 
 from speckle.utils.panel_logging import logToUser
+
+from plugin_utils.helpers import SYMBOL
 
 GEOM_LINE_TYPES = ["Objects.Geometry.Line", "Objects.Geometry.Polyline", "Objects.Geometry.Curve", "Objects.Geometry.Arc", "Objects.Geometry.Circle", "Objects.Geometry.Ellipse", "Objects.Geometry.Polycurve"]
 
@@ -61,33 +65,115 @@ def getAllLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode = None):
             children = parent.children()
             
             for node in children: 
+                #print(node)
                 if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
+                    #print("QgsLayerTreeLayer")
 
-                    if isinstance(node, QgsLayerTreeLayer):
-                        if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
-                            layers.append(node.layer())
-                        continue
+                    #if isinstance(node, QgsLayerTreeLayer):
+                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
+                        layers.append(node.layer())
+                    continue
+                elif tree.isGroup(node):
+                    #print("is Group")
+                    for lyr in getAllLayers(tree, node):
+                        if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
+                            layers.append(lyr) 
                 elif isinstance(node, QgsLayerTreeNode):
+                    #print("QgsLayerTreeNode")
                     try:
                         visible = node.itemVisibilityChecked()
                         node.setItemVisibilityChecked(True)
                         for lyr in node.checkedLayers():
+                            #print("layer in a node")
                             #print(lyr)
                             if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
                                 layers.append(lyr) 
                         node.setItemVisibilityChecked(visible)
                     except Exception as e: 
                         logToUser(e, level = 2, func = inspect.stack()[0][3]) 
-                elif tree.isGroup(node):
-                    for lyr in getAllLayers(tree, node):
-                        if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
-                            layers.append(lyr) 
-
+        #print("Final layers: ")        
+        #print(layers)
         return layers
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return [parent] 
+
+
+def getAllLayersWithTree(tree: QgsLayerTree, parent: QgsLayerTreeNode = None, existingStructure: str = ""):
+    try:
+        print("Root tree with structure: ")
+        print(tree)
+        layers = []
+        tree_structure = [] 
+        existingStructure = existingStructure.replace(SYMBOL+SYMBOL, SYMBOL)
+
+        if parent is None:
+            parent = tree 
+        
+        if isinstance(parent, QgsLayerTreeLayer): 
+            print("QgsLayerTreeLayer")
+            print(parent)
+            newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
+            tree_structure.append(newStructure)
+            
+            print("Final layers: ")        
+            print([parent.layer()])
+            print(newStructure)
+            return ([parent.layer()], tree_structure) 
+        
+        elif isinstance(parent, QgsLayerTreeGroup): 
+            children = parent.children()
+            
+            for node in children: 
+                if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
+                    print("QgsLayerTreeLayer")
+
+                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
+                        layers.append(node.layer())
+                        newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
+                        tree_structure.append(newStructure + parent.name())
+                    continue
+                elif tree.isGroup(node):
+                    print("is Group")
+                    print(existingStructure)
+                    newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
+                    result = getAllLayersWithTree(tree, node, newStructure + parent.name())
+                    print(result)
+                    for i, lyr in enumerate(result[0]):
+                        if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
+                            print(i)
+                            print(lyr)
+                            print(result[1][i])
+                            layers.append(lyr) 
+                            newStructureGroup = (existingStructure + result[1][i]).replace(SYMBOL+SYMBOL, SYMBOL)
+                            tree_structure.append(newStructureGroup)
+                            print(layers)
+                            print(tree_structure)
+                elif isinstance(node, QgsLayerTreeNode):
+                    try:
+                        visible = node.itemVisibilityChecked()
+                        node.setItemVisibilityChecked(True)
+                        for lyr in node.checkedLayers():
+                            print("layer in a node")
+                            print(lyr)
+                            if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
+                                layers.append(lyr) 
+                                newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
+                                tree_structure.append(newStructure + parent.name())
+                        node.setItemVisibilityChecked(visible)
+                    except Exception as e: 
+                        logToUser(e, level = 2, func = inspect.stack()[0][3]) 
+
+        print("Final layers: ")        
+        print(layers)
+        print(tree_structure)
+        return (layers, tree_structure)
+    
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return None, None 
+
 
 def getSavedLayers(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
@@ -117,31 +203,52 @@ def getSavedLayers(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
 
 def getSelectedLayers(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
+    return getSelectedLayersWithStructure(plugin)[0] 
 
-    layers = []
+def getSelectedLayersWithStructure(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+    """Gets a list of all layers in the given QgsLayerTree"""
+    print("__getSelectedLayersWithStructure")
+    layers = [] 
+    tree_structure = [] 
     try:
         self = plugin.dockwidget
         selected_layers = plugin.iface.layerTreeView().selectedNodes()
-        layers = []
         
         for item in selected_layers:
             root = self.dataStorage.project.layerTreeRoot()
-            layers.extend(getAllLayers(root, item))
-        return layers
+
+            results = getAllLayersWithTree(root, item)
+            layers.extend(results[0])
+            tree_structure.extend(results[1])
+            print(results[0])
+            print(results[1])
+        return layers, tree_structure
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return layers 
+        return None, None 
 
-
-def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], selectedLayerIndex: List[int], selectedLayerNames: List[str], projectCRS: QgsCoordinateReferenceSystem, plugin) -> List[Union[VectorLayer, RasterLayer]]:
+def convertSelectedLayers(baseCollection: Collection, layers: List[Union[QgsVectorLayer, QgsRasterLayer]], tree_structure: List[str], projectCRS: QgsCoordinateReferenceSystem, plugin) -> List[Union[VectorLayer, RasterLayer]]:
     """Converts the current selected layers to Speckle"""
+    print("____convertSelectedLayers")
     result = []
     try:
         project: QgsProject = plugin.project
 
+        ## Generate dictionnary from the list of layers to send 
+        jsonTree = {}
         for i, layer in enumerate(layers):
+            structure = tree_structure[i]
+            print(structure)
+            if structure.startswith(SYMBOL): structure = structure[len(SYMBOL):]
+            print(structure)
+            levels = structure.split(SYMBOL)
+            while '' in levels: levels.remove('')
 
+            print(levels)
+            jsonTree = jsonFromList(jsonTree, levels)
+
+        for i, layer in enumerate(layers):
             logToUser(f"Converting layer '{layer.name()}'...", level = 0, plugin = plugin.dockwidget)
             try: 
                 for item in plugin.dataStorage.savedTransforms:
@@ -175,16 +282,25 @@ def convertSelectedLayers(layers: List[Union[QgsVectorLayer, QgsRasterLayer]], s
                             return None
             
             converted = layerToSpeckle(layer, projectCRS, plugin)
+            
+            print("____CONVERT")
             print(converted)
+            print(tree_structure[i])
+  
             if converted is not None:
-                result.append(converted)
+                structure = tree_structure[i]
+                if structure.startswith(SYMBOL): structure = structure[len(SYMBOL):]
+                levels = structure.split(SYMBOL)
+                while '' in levels: levels.remove('')
+                
+                baseCollection = collectionsFromJson(jsonTree, levels, converted, baseCollection)
             else: 
                 logToUser(f"Layer '{layer.name()}' conversion failed", level = 2, plugin = plugin.dockwidget)
         
-        return result
+        return baseCollection
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return []
+        return baseCollection
 
 
 def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], projectCRS: QgsCoordinateReferenceSystem, plugin) -> VectorLayer or RasterLayer: #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
@@ -296,7 +412,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         return None 
 
 
-def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: str, plugin) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: str, nameBase: str, plugin) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
     try:
         project: QgsProject = plugin.project
         #plugin.dataStorage.currentCRS = project.crs()
@@ -306,25 +422,25 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
 
         
         if isinstance(layer.collectionType, str) and layer.collectionType.endswith("VectorLayer"):
-            vectorLayerToNative(layer, streamBranch, plugin)
+            vectorLayerToNative(layer, streamBranch, nameBase, plugin)
             return 
         elif isinstance(layer.collectionType, str) and layer.collectionType.endswith("RasterLayer"):
-            rasterLayerToNative(layer, streamBranch, plugin)
+            rasterLayerToNative(layer, streamBranch, nameBase, plugin)
             return 
         # if collectionType exists but not defined
         elif isinstance(layer.type, str) and layer.type.endswith("VectorLayer"): # older commits
-            vectorLayerToNative(layer, streamBranch, plugin)
+            vectorLayerToNative(layer, streamBranch, nameBase, plugin)
             return 
         elif isinstance(layer.type, str) and layer.type.endswith("RasterLayer"): # older commits
-            rasterLayerToNative(layer, streamBranch, plugin)
+            rasterLayerToNative(layer, streamBranch, nameBase, plugin)
             return 
     except:
         try: 
             if isinstance(layer.type, str) and layer.type.endswith("VectorLayer"): # older commits
-                vectorLayerToNative(layer, streamBranch, plugin)
+                vectorLayerToNative(layer, streamBranch, nameBase, plugin)
                 return 
             elif isinstance(layer.type, str) and layer.type.endswith("RasterLayer"): # older commits
-                rasterLayerToNative(layer, streamBranch, plugin)
+                rasterLayerToNative(layer, streamBranch, nameBase, plugin)
                 return 
             
             return 
@@ -437,7 +553,7 @@ def addBimMainThread(obj: Tuple):
         elif "LineStringZ" in geom_print:  geom_print = "Polyline"
         elif "PointZ" in geom_print:  geom_print = "Point"
 
-        shortName = layerName.split("_x_x_")[len(layerName.split("_x_x_"))-1][:50] 
+        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
         print(f"Final short name: {shortName}")
         layerName = layerName.split(shortName)[0] + shortName + ("_" + geom_print)
         finalName = shortName + ("_" + geom_print)
@@ -526,10 +642,8 @@ def addBimMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
-        #plugin.receive_layer_tree = findUpdateJsonItemPath(plugin.receive_layer_tree, streamBranch + "_x_x_" + baseName_pass)
-        #print(plugin.receive_layer_tree)
         print(layerName) 
-        groupName = streamBranch + "_x_x_" + layerName.split(finalName)[0]
+        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
         layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         layerGroup.addLayer(vl)
@@ -625,7 +739,7 @@ def addCadMainThread(obj: Tuple):
         elif "LineStringZ" in geom_print:  geom_print = "Polyline"
         elif "PointZ" in geom_print:  geom_print = "Point"
 
-        shortName = layerName.split("_x_x_")[len(layerName.split("_x_x_"))-1][:50] 
+        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
         
         layerName = layerName.split(shortName)[0] + shortName + ("_" + geom_print)
         finalName = shortName + ("_" + geom_print)
@@ -691,7 +805,7 @@ def addCadMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
-        groupName = streamBranch + "_x_x_" + layerName.split(finalName)[0]
+        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
         layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         layerGroup.addLayer(vl)
@@ -743,14 +857,15 @@ def addCadMainThread(obj: Tuple):
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
           
 
-def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, plugin):
+def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase: str, plugin):
     try:
-        #print("vectorLayerToNative")
+        print("vectorLayerToNative")
         project: QgsProject = plugin.project
-        layerName = removeSpecialCharacters(layer.name) 
+        layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name) 
+        print(layerName)
 
-        #find ID of the layer with a matching name in the "latest" group 
-        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
+        newName = layerName #f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
+        print(newName)
 
         # particularly if the layer comes from ArcGIS
         geomType = layer.geomType # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
@@ -810,6 +925,12 @@ def addVectorMainThread(obj: Tuple):
         project: QgsProject = plugin.dataStorage.project
 
         #print(layer.name)
+        
+        shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL))-1][:50] 
+        print(f"Final short name: {shortName}")
+        layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
+        finalName = shortName #+ ("_" + geom_print)
+        print(f"Final layer name: {finalName}")
 
         ###########################################
         dummy = None 
@@ -843,7 +964,7 @@ def addVectorMainThread(obj: Tuple):
         #################################################
 
         vl = None
-        vl = QgsVectorLayer(geomType + "?crs=" + authid, newName, "memory") # do something to distinguish: stream_id_latest_name
+        vl = QgsVectorLayer(geomType + "?crs=" + authid, finalName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
 
@@ -860,7 +981,9 @@ def addVectorMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
-        layerGroup = tryCreateGroup(project, streamBranch)
+        #layerGroup = tryCreateGroup(project, streamBranch)
+        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         #################################################
         if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
@@ -911,7 +1034,7 @@ def addVectorMainThread(obj: Tuple):
                     return 
 
             vl = None 
-            vl = QgsVectorLayer(file_name + ".geojson", newName, "ogr")
+            vl = QgsVectorLayer(file_name + ".geojson", finalName, "ogr")
             #vl.setCrs(QgsCoordinateReferenceSystem(4326))
             project.addMapLayer(vl, False)
         
@@ -948,12 +1071,13 @@ def addVectorMainThread(obj: Tuple):
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
           
     
-def rasterLayerToNative(layer: RasterLayer, streamBranch: str, plugin):
+def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, plugin):
     try:
         #project = plugin.project
-        layerName = removeSpecialCharacters(layer.name) + "_Speckle"
+        #layerName = removeSpecialCharacters(layer.name) + "_Speckle"
+        layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name) + "_Speckle"
 
-        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
+        newName = layerName #f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
         plugin.dataStorage.receivingGISlayer = True
         try:
@@ -981,6 +1105,12 @@ def addRasterMainThread(obj: Tuple):
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
         dataStorage.receivingGISlayer = True
+
+
+        shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL))-1][:50] 
+        print(f"Final short name: {shortName}")
+        layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
+        finalName = shortName #+ ("_" + geom_print)
 
         ###########################################
         dummy = None 
@@ -1123,7 +1253,7 @@ def addRasterMainThread(obj: Tuple):
         # close the rater datasource by setting it equal to None
         ds = None
 
-        raster_layer = QgsRasterLayer(fn, newName, 'gdal')
+        raster_layer = QgsRasterLayer(fn, finalName, 'gdal')
         project.addMapLayer(raster_layer, False)
         
         layerGroup = tryCreateGroup(project, streamBranch)

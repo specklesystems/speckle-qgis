@@ -1,7 +1,7 @@
 
 import time
 from typing import Any, Callable, List, Optional
-from plugin_utils.helpers import removeSpecialCharacters 
+from plugin_utils.helpers import SYMBOL, removeSpecialCharacters 
 
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers import geometryLayerToNative, layerToNative
@@ -20,19 +20,30 @@ def traverseObject(
     callback: Optional[Callable[[Base, str, Any], bool]],
     check: Optional[Callable[[Base], bool]],
     streamBranch: str,
+    nameBase: str = ""
 ):
+    print("___traverseObject")
     if check and check(base):
-        res = callback(base, streamBranch, plugin) if callback else False
+        res = callback(base, streamBranch, nameBase, plugin) if callback else False
         if res:
             return
     memberNames = base.get_member_names()
     for name in memberNames:
+        print("for name in memberNames:")
         try:
             if ["id", "applicationId", "units", "speckle_type"].index(name):
                 continue
         except:
             pass
-        traverseValue(plugin, base[name], callback, check, streamBranch)
+        
+        if nameBase == SYMBOL + "QGIS commit":
+            name_pass = getBaseValidName(base, name)
+        else: 
+            name_pass = nameBase + SYMBOL + getBaseValidName(base, name)
+        # check again 
+        if name_pass == SYMBOL + "QGIS commit": name_pass = ""
+        print(name_pass)
+        traverseValue(plugin, base[name], callback, check, streamBranch, name_pass)
 
 
 def traverseValue(
@@ -41,22 +52,44 @@ def traverseValue(
     callback: Optional[Callable[[Base, str, Any], bool]],
     check: Optional[Callable[[Base], bool]],
     streamBranch: str,
+    name: str,
 ):
+    print("________traverseValue")
     if isinstance(value, Base):
-        traverseObject(plugin, value, callback, check, streamBranch)
+        traverseObject(plugin, value, callback, check, streamBranch, name)
     if isinstance(value, List):
         for item in value:
-            traverseValue(plugin, item, callback, check, streamBranch)
+            traverseValue(plugin, item, callback, check, streamBranch, name)
 
-
-def callback(base: Base, streamBranch: str, plugin) -> bool:
+def callback(base: Base, streamBranch: str, nameBase: str, plugin) -> bool:
+    print("___CALLBACK")
+    print(nameBase)
     try:
         if isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer) or base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("RasterLayer"):
-            layerToNative(base, streamBranch, plugin)
+            layerToNative(base, streamBranch, nameBase, plugin)
         else:
             loopObj(base, "", streamBranch, plugin, [])   
         return True 
     except: return 
+
+def getBaseValidName(base: Base, name: str) -> str:
+    name_pass = name
+    try: 
+        if (name == "elements" and isinstance(base[name], list)) or (name == "displayValue" or name == "@displayValue"):
+            try: 
+                if (base["name"], str) and len(base["name"])>1 and base["name"]!="null": name_pass = base["name"]
+                else: raise Exception
+            except: 
+                try: 
+                    if (base["Name"], str) and len(base["Name"])>1 and base["Name"]!="null": name_pass = base["Name"]
+                    else: raise Exception
+                except: 
+                    try: 
+                        if (base["type"], str) and len(base["type"])>1 and base["type"]!="null": name_pass = base["type"]
+                        else: raise Exception
+                    except: name_pass = name 
+    except Exception as e: print(e)
+    return name_pass
 
 def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
     try:
@@ -67,7 +100,7 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
         
         baseName_pass = removeSpecialCharacters(baseName)
         #print(plugin.receive_layer_tree)
-        plugin.receive_layer_tree = findUpdateJsonItemPath(plugin.receive_layer_tree, streamBranch + "_x_x_" + baseName_pass)
+        plugin.receive_layer_tree = findUpdateJsonItemPath(plugin.receive_layer_tree, streamBranch + SYMBOL + baseName_pass)
         #print(plugin.receive_layer_tree)
 
         for name in memberNames:
@@ -82,27 +115,11 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids):
                 if "View" in base[name].speckle_type or "RevitMaterial" in base[name].speckle_type: continue
             except: pass
             
-            try: 
-                name_pass = name
-                if (name == "elements" and isinstance(base[name], list)) or (name == "displayValue" or name == "@displayValue"):
-                    try: 
-                        if (base["name"], str) and len(base["name"])>1 and base["name"]!="null": name_pass = base["name"]
-                        else: raise Exception
-                    except: 
-                        try: 
-                            if (base["Name"], str) and len(base["Name"])>1 and base["Name"]!="null": name_pass = base["Name"]
-                            else: raise Exception
-                        except: 
-                            try: 
-                                if (base["type"], str) and len(base["type"])>1 and base["type"]!="null": name_pass = base["type"]
-                                else: raise Exception
-                            except: name_pass = name 
-                #if name_pass is None: 
-                #    name_pass = name
-                
-                if base[name] is not None:
-                    loopVal(base[name], baseName_pass + "_x_x_" + name_pass, streamBranch, plugin, used_ids)
-            except Exception as e: print(e)
+            name_pass = getBaseValidName(base, name)
+
+            if base[name] is not None:
+                loopVal(base[name], baseName_pass + SYMBOL + name_pass, streamBranch, plugin, used_ids)
+
     except: pass
 
 def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids): # "name" is the parent object/property/layer name
@@ -127,7 +144,8 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids): # "name
                 loopObj(value, name, streamBranch, plugin, used_ids)
 
         elif isinstance(value, List):
-            streamBranch = streamBranch.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
+            #streamBranch = streamBranch.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
+            streamBranch = removeSpecialCharacters(streamBranch)
 
             objectListConverted = 0
             for i, item in enumerate(value):

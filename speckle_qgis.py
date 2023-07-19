@@ -39,7 +39,7 @@ import webbrowser
 # Initialize Qt resources from file resources.py
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
-from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getSavedLayers, getSelectedLayers
+from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getAllLayersWithTree, getSavedLayers, getSelectedLayers, getSelectedLayersWithStructure
 from speckle.converter.layers.utils import findAndClearLayerGroup, tryCreateGroup
 
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
@@ -378,7 +378,8 @@ class SpeckleQGIS:
                 bySelection = False 
                 layers = getSavedLayers(self)
             else: 
-                layers = getSelectedLayers(self) # List[QgsLayerTreeNode]
+                #layers = getSelectedLayers(self) # List[QgsLayerTreeNode]
+                layers, tree_structure = getSelectedLayersWithStructure(self)
 
             # Check if stream id/url is empty
             if self.active_stream is None:
@@ -387,7 +388,7 @@ class SpeckleQGIS:
             
             # Check if no layers are selected
             if len(layers) == 0: #len(selectedLayerNames) == 0:
-                logToUser("No layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
+                logToUser("No valid layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
             self.dataStorage.sending_layers = layers
 
@@ -404,8 +405,8 @@ class SpeckleQGIS:
             if (self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation) != 0 :
                 logToUser(f"Applying CRS rotation: {self.dataStorage.crs_rotation}°", level = 0, plugin = self.dockwidget)
 
-            base_obj = Collection(units = units, collectionType = "QGIS commit", name = "QGIS commit")
-            base_obj.elements = convertSelectedLayers(layers, [],[], projectCRS, self)
+            base_obj = Collection(units = units, collectionType = "QGIS commit", name = "QGIS commit", elements = [])
+            base_obj = convertSelectedLayers(base_obj, layers, tree_structure, projectCRS, self)
             if base_obj.elements is None or (isinstance(base_obj.elements, List) and len(base_obj.elements) == 0):
                 logToUser(f"No data to send", level = 2, plugin = self.dockwidget)
                 return 
@@ -600,7 +601,7 @@ class SpeckleQGIS:
                 check: Callable[[Base], bool] = lambda base: (base.speckle_type) # and base.speckle_type.endswith("Base") )
             self.receive_layer_tree = {str(newGroupName): {}}
             #print(self.receive_layer_tree)
-            traverseObject(self, commitObj, callback, check, str(newGroupName))
+            traverseObject(self, commitObj, callback, check, str(newGroupName), "")
             
             try: 
                 if self.dataStorage.receivingGISlayer == False:

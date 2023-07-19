@@ -1,9 +1,11 @@
 import copy
 import inspect
+from plugin_utils.helpers import SYMBOL
 from speckle.utils.panel_logging import logger
 from speckle.converter.layers import Layer
 from typing import Any, Dict, List, Tuple, Union
 from specklepy.objects import Base
+from specklepy.objects.other import Collection
 from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
 
 from PyQt5.QtCore import QVariant, QDate, QDateTime
@@ -635,7 +637,7 @@ def tryCreateGroupTree(root, fullGroupName, plugin = None):
     print("_________CREATE GROUP TREE: " + fullGroupName)
 
     #receive_layer_tree: dict = plugin.receive_layer_tree
-    receive_layer_list = fullGroupName.split("_x_x_")
+    receive_layer_list = fullGroupName.split(SYMBOL)
     path_list = []
     for x in receive_layer_list:
         if len(x)>0: path_list.append(x)
@@ -652,7 +654,7 @@ def tryCreateGroupTree(root, fullGroupName, plugin = None):
     path_list.pop(0)
 
     if len(path_list)>0:
-        layerGroup = tryCreateGroupTree(layerGroup, "_x_x_".join(path_list), plugin)
+        layerGroup = tryCreateGroupTree(layerGroup, SYMBOL.join(path_list), plugin)
 
     return layerGroup
 
@@ -680,7 +682,7 @@ def findUpdateJsonItemPath(tree: Dict, full_path_str: str):
     try:
         new_tree = copy.deepcopy(tree)
 
-        path_list_original = full_path_str.split("_x_x_")
+        path_list_original = full_path_str.split(SYMBOL)
         path_list = []
         for x in path_list_original:
             if len(x)>0: path_list.append(x)
@@ -697,7 +699,7 @@ def findUpdateJsonItemPath(tree: Dict, full_path_str: str):
                     if len(path_list) == 1 and path_list[0] in all_names: # already in a tree
                         return new_tree
                     else:
-                        branch = findUpdateJsonItemPath(val_dict, "_x_x_".join(path_list)) 
+                        branch = findUpdateJsonItemPath(val_dict, SYMBOL.join(path_list)) 
                         new_tree.update({attr:branch}) 
         
         if attr_found is False and len(path_list)>0: # create a new branch at the top level 
@@ -705,10 +707,47 @@ def findUpdateJsonItemPath(tree: Dict, full_path_str: str):
                 new_tree.update({path_list[0]:{}})
                 return new_tree
             else:
-                branch = findUpdateJsonItemPath({path_list[0]:{}}, "_x_x_".join(path_list)) 
+                branch = findUpdateJsonItemPath({path_list[0]:{}}, SYMBOL.join(path_list)) 
                 new_tree.update(branch) 
         return new_tree 
     except Exception as e:
         print(e)
         return tree
              
+
+def collectionsFromJson(jsonObj: dict, levels: list, layerConverted, baseCollection: Collection):
+    print("collectionsFromJson")
+    print(jsonObj)
+    print(levels)
+    print(layerConverted)
+    print(baseCollection)
+    print(baseCollection.name)
+    print(baseCollection.elements)
+    if jsonObj == {} or len(levels)==0: 
+        print("RETURN")
+        baseCollection.elements.append(layerConverted)
+        return baseCollection
+    
+    lastLevel = baseCollection
+    for i, l in enumerate(levels):
+
+            sub_collection_found = 0
+            for item in lastLevel.elements:
+                print("___ITEM")
+                print(l)
+                if item.name == l: 
+                    print("___ITEM FOUND")
+                    print(l)
+                    lastLevel = item
+                    sub_collection_found = 1
+                    break 
+            if sub_collection_found == 0:
+                print("___ SUB COLLECTION NOT FOUND")
+                subCollection = Collection(units = "m", collectionType = "QGIS Layer Group", name = l, elements = []) 
+                lastLevel.elements.append(subCollection)
+                lastLevel = lastLevel.elements[len(lastLevel.elements)-1] # reassign last element 
+
+            if i == len(levels)-1: # if last level
+                lastLevel.elements.append(layerConverted)
+
+    return baseCollection 
