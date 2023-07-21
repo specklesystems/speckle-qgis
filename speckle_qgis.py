@@ -297,7 +297,7 @@ class SpeckleQGIS:
                 streamWrapper = self.active_stream[0]
                 client = streamWrapper.get_client()
                 self.dataStorage.active_account = client.account
-                logToUser(f"Sending data... Click here to cancel", level = 0, url = "cancel", plugin = self.dockwidget)
+                logToUser(f"Sending data... \nClick here to cancel", level = 0, url = "cancel", plugin = self.dockwidget)
 
                 t = KThread(target=self.onSend, name="speckle_send", args=(message,))
                 t.start()
@@ -352,7 +352,7 @@ class SpeckleQGIS:
                 streamWrapper = self.active_stream[0]
                 client = streamWrapper.get_client()
                 self.dataStorage.active_account = client.account
-                logToUser("Receiving data... Click here to cancel", level = 0, url = "cancel", plugin=self.dockwidget)
+                logToUser("Receiving data... \nClick here to cancel", level = 0, url = "cancel", plugin=self.dockwidget)
 
                 t = KThread(target=self.onReceive, name="speckle_receive", args=())
                 t.start()
@@ -483,7 +483,8 @@ class SpeckleQGIS:
             if self.project.crs().isGeographic() is True or self.project.crs().isValid() is False: 
                 logToUser("Data has been sent in the units 'degrees'. It is advisable to set the project CRS to Projected type (e.g. EPSG:32631) to be able to receive geometry correctly in CAD/BIM software. You can also create a custom CRS by setting geographic coordinates and using 'Set as a project center' function.", level = 1, plugin = self.dockwidget)
             
-            logToUser(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
+            self.dockwidget.msgLog.removeBtnUrl("cancel") 
+            logToUser("👌 Data sent to \'" + str(streamName) + "\'" + "\nClick to view commit online", level = 0, plugin=self.dockwidget, url = url)
             self.dataStorage.sending_layers = None
 
 
@@ -606,8 +607,10 @@ class SpeckleQGIS:
                 self.dataStorage.receivingGISlayer = False
             except: pass 
 
+            url: str = constructCommitURL(streamWrapper, branch.id, commit.id)
+
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
-            logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
+            logToUser("👌 Data received \nClick to view commit online", level = 0, plugin = self.dockwidget, url=url, blue = True)
             #return 
             
         except Exception as e:
