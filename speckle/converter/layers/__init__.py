@@ -532,8 +532,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         plugin.dockwidget.signal_2.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
-        time.sleep(0.3)
-        
+
         return 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
@@ -727,7 +726,6 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
-        time.sleep(0.3)
 
         return 
     except Exception as e:
@@ -914,8 +912,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
         plugin.dockwidget.signal_1.emit(objectEmit)
         
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
-        time.sleep(0.3)
-        
+
         return 
     
     except Exception as e:
@@ -1110,8 +1107,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, pl
         plugin.dockwidget.signal_4.emit({'plugin': plugin, 'layerName': layerName, 'newName': newName, 'streamBranch': streamBranch, 'layer': layer})
         
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
-        time.sleep(0.3)
-        
+
         return 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
