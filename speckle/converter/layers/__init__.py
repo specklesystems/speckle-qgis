@@ -24,7 +24,7 @@ from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint,
                        QgsRendererCategory,
                        QgsSymbol, QgsUnitTypes, QgsVectorFileWriter)
 from specklepy.objects.GIS.geometry import GisPolygonElement
-from speckle.converter.geometry.point import pointToNative, pointToNativeWithoutTransforms, transformSpecklePt
+from speckle.converter.geometry.point import pointToNative, pointToNativeWithoutTransforms
 from specklepy.objects.GIS.CRS import CRS
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
