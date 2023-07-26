@@ -41,14 +41,14 @@ def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
 def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
     """Converts a Speckle Mesh to QgsGeometry"""
     try:
-        print("06___________________Mesh to Native")
+        #print("06___________________Mesh to Native")
 
         try:
             w = shapefile.Writer(path) 
         except Exception as e: 
             logToUser(e)
             return 
-        print(w)
+        #print(w)
         w.field('speckle_id', 'C')
 
         shapes = []
@@ -80,7 +80,7 @@ def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
                                 w = fill_multi_mesh_parts(w, geom.displayMesh, geom.id)
                         except: pass
         w.close()
-        print("06-end___________________Mesh to Native")
+        #print("06-end___________________Mesh to Native")
         return path
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
@@ -88,7 +88,7 @@ def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
 
 def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str, dataStorage):
     
-    print("07___________________fill_multi_mesh_parts")
+    #print("07___________________fill_multi_mesh_parts")
     try:
         parts_list = []
         types_list = []
@@ -103,7 +103,7 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
         
         w.multipatch(parts_list, partTypes=types_list ) # one type for each part
         w.record(geom_id)
-        print("07-end___________________fill_multi_mesh_parts")
+        #print("07-end___________________fill_multi_mesh_parts")
         return w
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

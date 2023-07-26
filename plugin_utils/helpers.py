@@ -32,8 +32,8 @@ def removeSpecialCharacters(text: str) -> str:
     return new_text
 
 def splitTextIntoLines(text: str = "", number: int= 70) -> str: 
-    print("__splitTextIntoLines")
-    print(text)
+    #print("__splitTextIntoLines")
+    #print(text)
     msg = ""
     try:
         if len(text)>number:
@@ -48,7 +48,7 @@ def splitTextIntoLines(text: str = "", number: int= 70) -> str:
             msg = text
     except Exception as e:
         print(e)
-        print(text)
+        #print(text)
     return msg
 
 def findFeatColors(fetColors: List, f):

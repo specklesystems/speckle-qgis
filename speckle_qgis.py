@@ -256,7 +256,7 @@ class SpeckleQGIS:
             return
 
     def onRunButtonClicked(self):
-        print("onRUN")
+        #print("onRUN")
         # set QGIS threads number only the first time: 
         if self.theads_total==0: self.theads_total = threading.active_count()
         #print(threading.active_count())
@@ -493,7 +493,7 @@ class SpeckleQGIS:
 
     def onReceive(self):
         """Handles action when the Receive button is pressed"""
-        print("Receive")
+        #print("Receive")
 
         try:
             if not self.dockwidget: return

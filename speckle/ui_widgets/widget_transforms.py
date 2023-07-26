@@ -119,7 +119,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         from speckle.utils.project_vars import set_transformations
         if self.transformationsList.currentItem() is not None:
             listItem = self.transformationsList.currentItem().text()
-            print(listItem)
+            #print(listItem)
             
             if listItem in self.dataStorage.savedTransforms: 
                 self.dataStorage.savedTransforms.remove(listItem)
