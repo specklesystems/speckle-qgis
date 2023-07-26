@@ -28,7 +28,7 @@ def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
                 polygon = QgsPolygon()
                 pts = [Point(x=pt[0], y=pt[1], z=pt[2], units="m") for pt in part]
                 pts.append(pts[0])
-                boundary = QgsLineString([pointToNativeWithoutTransforms(pt, dataStorage) for pt in pts])
+                boundary = QgsLineString([pointToNative(pt, dataStorage) for pt in pts])
                 polygon.setExteriorRing(boundary)
 
                 if polygon is not None:
@@ -97,6 +97,10 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
             try:
                 #print(f"Fill multi-mesh parts # {geom_id}")
                 parts_list_x, types_list_x = deconstructSpeckleMesh(mesh, dataStorage) 
+                for i, face in enumerate(parts_list_x):
+                    for k, p in enumerate(face):
+                        pt = transformSpecklePt(Point(x = p[0], y= p[1], z = p[2], units = "m"), dataStorage)
+                        parts_list_x[i][k] = [pt.x, pt.y, pt.z]
                 parts_list.extend(parts_list_x)
                 types_list.extend(types_list_x)
             except Exception as e: pass 
@@ -113,6 +117,10 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage):
     
     try:
         parts_list, types_list = deconstructSpeckleMesh(mesh, dataStorage) 
+        for i, face in enumerate(parts_list):
+            for k, p in enumerate(face):
+                pt = transformSpecklePt(Point(x = p[0], y= p[1], z = p[2], units = "m"), dataStorage)
+                parts_list[i][k] = [pt.x, pt.y, pt.z]
         w.multipatch(parts_list, partTypes=types_list ) # one type for each part
         w.record(geom_id)
 
@@ -142,8 +150,8 @@ def deconstructSpeckleMesh(mesh: Mesh, dataStorage):
                     index_vertices = mesh.faces[index_faces]*3
                     
                     pt = Point(x = mesh.vertices[index_vertices], y = mesh.vertices[index_vertices+1], z = mesh.vertices[index_vertices+2], units = "m")
-                    newPt = transformSpecklePt(pt, dataStorage)
-                    face.append([ scale * newPt.x, scale * newPt.y, scale * newPt.z ]) 
+                    #newPt = transformSpecklePt(pt, dataStorage)
+                    face.append([ scale * pt.x, scale * pt.y, scale * pt.z ]) 
 
                 parts_list.append(face)
                 types_list.append(OUTER_RING)
