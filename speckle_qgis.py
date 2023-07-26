@@ -585,6 +585,14 @@ class SpeckleQGIS:
         newGroupName = streamId + "_" + branch.name + "_" + commit.id
         newGroupName = removeSpecialCharacters(newGroupName)
         try:
+            if (self.dataStorage.crs_offset_x is not None and self.dataStorage.crs_offset_x) != 0 or (self.dataStorage.crs_offset_y is not None and self.dataStorage.crs_offset_y):
+                logToUser(f"Applying CRS offsets: x={self.dataStorage.crs_offset_x}, y={self.dataStorage.crs_offset_y}", level = 0, plugin = self.dockwidget)
+            if (self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation) != 0 :
+                logToUser(f"Applying CRS rotation: {self.dataStorage.crs_rotation}°", level = 0, plugin = self.dockwidget)
+        except:
+            pass
+
+        try:
             if app.lower() == "qgis" or app.lower() == "arcgis": 
                 print(app.lower())
                 self.dataStorage.receivingGISlayer = True
