@@ -177,7 +177,7 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids, matrix =
                 loopObj(value, name, streamBranch, plugin, used_ids, matrix)
 
         elif isinstance(value, List):
-            print("LOOP VAL - LIST")
+            #print("LOOP VAL - LIST")
             streamBranch = removeSpecialCharacters(streamBranch)
 
             objectListConverted = 0

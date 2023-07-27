@@ -27,7 +27,7 @@ import sip
 
 from specklepy.core.api import operations
 from specklepy.logging.exceptions import SpeckleException, GraphQLException
-from specklepy.core.api.models import Stream
+from specklepy.core.api.models import Stream, Branch, Commit 
 from specklepy.core.api.wrapper import StreamWrapper
 from specklepy.objects import Base
 from specklepy.objects.other import Collection
@@ -72,6 +72,8 @@ class SpeckleQGIS:
     receive_layer_tree: Dict  
 
     active_stream: Optional[Tuple[StreamWrapper, Stream]] 
+    active_branch: Optional[Branch] = None
+    active_commit: Optional[Commit] = None
 
     project: QgsProject
 
@@ -530,11 +532,13 @@ class SpeckleQGIS:
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
             branch = validateBranch(stream, branchName, True, self.dockwidget)
+            print(branch)
             if branch == None: 
                 return
 
             commitId = str(self.dockwidget.commitDropdown.currentText())
             commit = validateCommit(branch, commitId, self.dockwidget)
+            print(commit)
             if commit == None: 
                 return
 
@@ -789,7 +793,7 @@ class SpeckleQGIS:
                 return
             else:
                 sw = StreamWrapper(account.serverInfo.url + "/streams/" + str_id)
-                self.handleStreamAdd(sw)
+                self.handleStreamAdd((sw, None, None))
             return 
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
@@ -834,15 +838,27 @@ class SpeckleQGIS:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
 
-    def handleStreamAdd(self, sw: StreamWrapper):
+    def handleStreamAdd(self, objectPacked: Tuple):
         try: 
             from speckle.utils.project_vars import set_project_streams
-            
+            print("handleStreamAdd")
+            sw, branch, commit = objectPacked
+            print(sw)
+            print(branch)
+            print(commit)
             streamExists = 0
             index = 0
 
             self.dataStorage.check_for_accounts()
             stream = tryGetStream(sw, self.dataStorage, False, self.dockwidget)
+            #print(stream)
+
+            if stream is not None and branch in stream.branches.items:
+                self.active_branch = branch
+                self.active_commit = commit
+            else:
+                self.active_branch = None 
+                self.active_commit = None 
             
             for st in self.current_streams: 
                 #if isinstance(st[1], SpeckleException) or isinstance(stream, SpeckleException): pass 

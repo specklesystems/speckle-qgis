@@ -110,7 +110,7 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
         layersInGroup = getAllLayers(root, layerGroup)
         for lyr in layersInGroup:
             if isinstance(lyr, QgsVectorLayer): 
-                if "Speckle_ID" in lyr.fields().names() and lyr.name().lower().endswith(("_mesh", "_polylines", "_points")): 
+                if "Speckle_ID" in lyr.fields().names() and lyr.name().endswith(("_Mesh", "_Polyline", "_Point")): 
                     print(lyr.name())
                     plugin.project.removeMapLayer(lyr)
             
