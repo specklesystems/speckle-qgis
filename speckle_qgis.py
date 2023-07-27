@@ -532,13 +532,11 @@ class SpeckleQGIS:
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
             branch = validateBranch(stream, branchName, True, self.dockwidget)
-            print(branch)
             if branch == None: 
                 return
 
             commitId = str(self.dockwidget.commitDropdown.currentText())
             commit = validateCommit(branch, commitId, self.dockwidget)
-            print(commit)
             if commit == None: 
                 return
 
@@ -842,11 +840,7 @@ class SpeckleQGIS:
     def handleStreamAdd(self, objectPacked: Tuple):
         try: 
             from speckle.utils.project_vars import set_project_streams
-            print("handleStreamAdd")
             sw, branch, commit = objectPacked
-            print(sw)
-            print(branch)
-            print(commit)
             streamExists = 0
             index = 0
 
