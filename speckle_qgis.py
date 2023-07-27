@@ -608,15 +608,6 @@ class SpeckleQGIS:
             self.receive_layer_tree = {str(newGroupName): {}}
             #print(self.receive_layer_tree)
             traverseObject(self, commitObj, callback, check, str(newGroupName), "")
-            
-            try: 
-                if self.dataStorage.receivingGISlayer == False:
-                    offsetsExist = True if self.dataStorage.crs_offset_x is not None and self.dataStorage.crs_offset_y is not None and (self.dataStorage.crs_offset_x != 0 or self.dataStorage.crs_offset_y != 0) else False
-                    rotationExists = True if self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation != 0  else False
-                    if (offsetsExist is True or rotationExists is True):
-                        logToUser("Offsets or/and rotation are applied on receive", level = 0, plugin = self.dockwidget)
-                self.dataStorage.receivingGISlayer = False
-            except: pass 
 
             url: str = constructCommitURL(streamWrapper, branch.id, commit.id)
 

@@ -139,6 +139,7 @@ def pointToNativeWithoutTransforms(pt: Point, dataStorage) -> QgsPoint:
     """Converts a Speckle Point to QgsPoint"""
     try:
         pt = scalePointToNative(pt, pt.units, dataStorage)
+        pt = applyTransformMatrix(pt, dataStorage)
         newPt = pt #transformSpecklePt(pt, dataStorage)
 
         return QgsPoint(newPt.x, newPt.y, newPt.z)
@@ -167,6 +168,7 @@ def applyTransformMatrix(pt: Point, dataStorage):
             res = b* dataStorage.matrix 
             #print(res)
             x,y,z = res.item(0), res.item(1), res.item(2)
+            #print(f"__PT: {(x, y, z)}")
             return Point(x=x, y=y, z=z, units = pt.units)
     except Exception as e: print(e)
     return pt 

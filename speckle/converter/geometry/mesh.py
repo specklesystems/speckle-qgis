@@ -7,7 +7,7 @@ from specklepy.objects.other import RenderMaterial
 
 import shapefile
 from shapefile import TRIANGLE_STRIP, TRIANGLE_FAN, OUTER_RING
-from speckle.converter.geometry.point import applyTransformMatrix, pointToNative, pointToNativeWithoutTransforms, transformSpecklePt
+from speckle.converter.geometry.point import applyTransformMatrix, pointToNative, pointToNativeWithoutTransforms, scalePointToNative, transformSpecklePt
 from speckle.converter.geometry.utils import fix_orientation, projectToPolygon, triangulatePolygon
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
@@ -41,7 +41,7 @@ def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
 def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
     """Converts a Speckle Mesh to QgsGeometry"""
     try:
-        #print("06___________________Mesh to Native")
+        print("06___________________writeMeshToShp")
 
         try:
             w = shapefile.Writer(path) 
@@ -99,7 +99,8 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
                 parts_list_x, types_list_x = deconstructSpeckleMesh(mesh, dataStorage) 
                 for i, face in enumerate(parts_list_x):
                     for k, p in enumerate(face):
-                        pt = transformSpecklePt(Point(x = p[0], y= p[1], z = p[2], units = "m"), dataStorage)
+                        pt = Point(x = p[0], y= p[1], z = p[2], units = mesh.units)
+                        pt = transformSpecklePt(pt, dataStorage)
                         parts_list_x[i][k] = [pt.x, pt.y, pt.z]
                 parts_list.extend(parts_list_x)
                 types_list.extend(types_list_x)
@@ -119,7 +120,8 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage):
         parts_list, types_list = deconstructSpeckleMesh(mesh, dataStorage) 
         for i, face in enumerate(parts_list):
             for k, p in enumerate(face):
-                pt = transformSpecklePt(Point(x = p[0], y= p[1], z = p[2], units = "m"), dataStorage)
+                pt = Point(x = p[0], y= p[1], z = p[2], units = mesh.units)
+                pt = transformSpecklePt(pt, dataStorage)
                 parts_list[i][k] = [pt.x, pt.y, pt.z]
         w.multipatch(parts_list, partTypes=types_list ) # one type for each part
         w.record(geom_id)
@@ -150,7 +152,7 @@ def deconstructSpeckleMesh(mesh: Mesh, dataStorage):
                     index_vertices = mesh.faces[index_faces]*3
                     
                     pt = Point(x = mesh.vertices[index_vertices], y = mesh.vertices[index_vertices+1], z = mesh.vertices[index_vertices+2], units = "m")
-                    #newPt = transformSpecklePt(pt, dataStorage)
+                    pt = applyTransformMatrix(pt, dataStorage)
                     face.append([ scale * pt.x, scale * pt.y, scale * pt.z ]) 
 
                 parts_list.append(face)

@@ -138,6 +138,7 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids, matr
             
             if base[name] is not None:
                 if name.endswith("definition"):
+                    print("___Definition object: " + name)
                     try:
                         matrixList = base["transform"].matrix
                         try:
@@ -151,6 +152,7 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids, matr
                                     matrix = matrix2 * matrix
                                 else: # matrix is None 
                                     matrix = matrix2
+                                #print(matrix)
                                 geometryLayerToNative([base[name]], name_pass, streamBranch, plugin, matrix)
 
                         except: matrix = None
