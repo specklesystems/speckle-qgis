@@ -1058,34 +1058,36 @@ def addVectorMainThread(obj: Tuple):
             del writer 
 
             # geojson writer fix 
-            if "polygon" in geomType.lower():
-                try:
-                    with open(file_name + ".geojson", "r") as file:
-                        lines = file.readlines()
-                        polygonType = False
+            #if "polygon" in geomType.lower():
+            try:
+                with open(file_name + ".geojson", "r") as file:
+                    lines = file.readlines()
+                    polygonType = False
+                    for i, line in enumerate(lines):
+                        if '"type": "Polygon"' in line: 
+                            polygonType = True
+                            break
+
+                    if polygonType is True:
+                        new_lines = []
                         for i, line in enumerate(lines):
-                            if '"type": "Polygon"' in line: 
-                                polygonType = True
-                                break
+                            #print(line)
+                            if '"type": "Polygon"' in line:
+                                line = line.replace('"type": "Polygon"','"type": "MultiPolygonZ"')
+                            if " ] ] ] " in line and '"coordinates": [ [ [ [ ' not in line: 
+                                line = line.replace(" ] ] ] ", " ] ] ] ] ")
+                            if '"coordinates": [ [ [ ' in line and '"coordinates": [ [ [ [ ' not in line: 
+                                line = line.replace('"coordinates": [ [ [ ', '"coordinates": [ [ [ [ ')
+                            new_lines.append(line)
+                        with open(file_name + ".geojson", "w") as file:
+                            file.writelines(new_lines)
+                file.close()
+            except Exception as e: 
+                logToUser(e, level = 2, func = inspect.stack()[0][3])
+                return 
 
-                        if polygonType is True:
-                            new_lines = []
-                            for i, line in enumerate(lines):
-                                #print(line)
-                                if '"type": "Polygon"' in line:
-                                    line = line.replace('"type": "Polygon"','"type": "MultiPolygonZ"')
-                                if " ] ] ] " in line and '"coordinates": [ [ [ [ ' not in line: 
-                                    line = line.replace(" ] ] ] ", " ] ] ] ] ")
-                                if '"coordinates": [ [ [ ' in line and '"coordinates": [ [ [ [ ' not in line: 
-                                    line = line.replace('"coordinates": [ [ [ ', '"coordinates": [ [ [ [ ')
-                                new_lines.append(line)
-                            with open(file_name + ".geojson", "w") as file:
-                                file.writelines(new_lines)
-                    file.close()
-                except Exception as e: 
-                    logToUser(e, level = 2, func = inspect.stack()[0][3])
-                    return 
-
+            finalName += "_Mesh"
+            
             vl = None 
             vl = QgsVectorLayer(file_name + ".geojson", finalName, "ogr")
             #vl.setCrs(QgsCoordinateReferenceSystem(4326))
