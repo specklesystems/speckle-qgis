@@ -41,7 +41,7 @@ import webbrowser
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getAllLayersWithTree, getSavedLayers, getSelectedLayers, getSelectedLayersWithStructure
-from speckle.converter.layers.utils import findAndClearLayerGroup, tryCreateGroup
+from speckle.converter.layers import findAndClearLayerGroup
 
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 

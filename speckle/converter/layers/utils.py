@@ -1,8 +1,6 @@
 import copy
 import inspect
 from plugin_utils.helpers import SYMBOL
-from speckle.utils.panel_logging import logger
-from speckle.converter.layers import Layer
 from typing import Any, Dict, List, Tuple, Union
 from specklepy.objects import Base
 from specklepy.objects.other import Collection
@@ -24,30 +22,6 @@ import numpy as np
 from speckle.utils.panel_logging import logToUser
 
 ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
-
-def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
-    try:
-        #root = project_gis.layerTreeRoot()
-        
-        print("clearGroup: " + str(newGroupName))
-        layerGroup = root.findGroup(newGroupName)
-        if layerGroup is not None or newGroupName is None:
-            if newGroupName is None: layerGroup = root
-            for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
-                if isinstance(child, QgsLayerTreeLayer): 
-                    if isinstance(child.layer(), QgsVectorLayer): 
-                        if "Speckle_ID" in child.layer().fields().names() and child.layer().name().lower().endswith(("_mesh", "_polylines", "_points")): 
-                            plugin.project.removeMapLayer(child.layerId())
-                    
-                    elif isinstance(child.layer(), QgsRasterLayer): 
-                        if "_Speckle" in child.layer().name(): 
-                            plugin.project.removeMapLayer(child.layerId())
-                else: # group
-                    print(child)
-                    findAndClearLayerGroup(child, None, plugin)
-    except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return
 
 def getLayerGeomType(layer: QgsVectorLayer): #https://qgis.org/pyqgis/3.0/core/Wkb/QgsWkbTypes.html 
     #print(layer.wkbType())

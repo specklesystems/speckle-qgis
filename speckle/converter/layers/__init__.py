@@ -99,6 +99,46 @@ def getAllLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode = None):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return [parent] 
 
+def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
+    try:
+        #root = project_gis.layerTreeRoot()
+        
+        print("clearGroup: " + str(newGroupName))
+        layerGroup = root.findGroup(newGroupName)
+        if layerGroup is None: return
+
+        layersInGroup = getAllLayers(root, layerGroup)
+        for lyr in layersInGroup:
+            if isinstance(lyr, QgsVectorLayer): 
+                if "Speckle_ID" in lyr.fields().names() and lyr.name().lower().endswith(("_mesh", "_polylines", "_points")): 
+                    print(lyr.name())
+                    plugin.project.removeMapLayer(lyr)
+            
+            elif isinstance(lyr, QgsRasterLayer): 
+                if "_Speckle" in lyr.name(): 
+                    print(lyr.name())
+                    plugin.project.removeMapLayer(lyr)
+
+        r'''
+        if layerGroup is not None or newGroupName is None:
+            if newGroupName is None: layerGroup = root
+            for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
+                if isinstance(child, QgsLayerTreeLayer): 
+                    if isinstance(child.layer(), QgsVectorLayer): 
+                        if "Speckle_ID" in child.layer().fields().names() and child.layer().name().lower().endswith(("_mesh", "_polylines", "_points")): 
+                            plugin.project.removeMapLayer(child.layerId())
+                    
+                    elif isinstance(child.layer(), QgsRasterLayer): 
+                        if "_Speckle" in child.layer().name(): 
+                            plugin.project.removeMapLayer(child.layerId())
+                else: # group
+                    print(child)
+                    findAndClearLayerGroup(child, None, plugin)
+        ''' 
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return
+
 
 def getAllLayersWithTree(tree: QgsLayerTree, parent: QgsLayerTreeNode = None, existingStructure: str = ""):
     try:
