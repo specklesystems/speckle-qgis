@@ -119,7 +119,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         from speckle.utils.project_vars import set_transformations
         if self.transformationsList.currentItem() is not None:
             listItem = self.transformationsList.currentItem().text()
-            print(listItem)
+            #print(listItem)
             
             if listItem in self.dataStorage.savedTransforms: 
                 self.dataStorage.savedTransforms.remove(listItem)
@@ -318,7 +318,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
             
         self.dataStorage.elevationLayer = layer 
         set_elevationLayer(self.dataStorage)
-        logToUser(f"Elevation layer '{layerName}' successfully set", level = 0, func = inspect.stack()[0][3] )
+        logToUser(f"Elevation layer '{layerName}' successfully set", level = 0 )
             
         try:
             metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Add transformation on Send", "Transformation": "Set Layer as Elevation", "connector_version": str(self.dataStorage.plugin_version)})

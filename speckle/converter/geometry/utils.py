@@ -6,7 +6,8 @@ import math
 import random
 from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Vector
 from specklepy.objects import Base
-from typing import List, Tuple, Union, Dict 
+from typing import List, Tuple, Union, Dict
+from speckle.converter.geometry.point import applyOffsetsRotation 
 
 #from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
 from speckle.utils.panel_logging import logToUser
@@ -60,13 +61,13 @@ def projectToPolygon(point: List, polygonPts: List):
     return z 
 
 
-def triangulatePolygon(geom): 
+def triangulatePolygon(geom, dataStorage): 
     try:
         import triangle as tr
         vertices = []
         segments = []
         holes = []
-        vertices, vertices3d, segments, holes = getPolyPtsSegments(geom)
+        vertices, vertices3d, segments, holes = getPolyPtsSegments(geom, dataStorage)
 
         if len(holes)>0: 
             dict_shape= {'vertices': vertices, 'segments': segments, 'holes': holes}
@@ -89,7 +90,7 @@ def triangulatePolygon(geom):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None, None
 
-def getPolyPtsSegments(geom):
+def getPolyPtsSegments(geom, dataStorage):
     vertices = []
     vertices3d = []
     segmList = []
@@ -113,10 +114,15 @@ def getPolyPtsSegments(geom):
         else: 
             pointListLocal.append(pt)
     for i,pt in enumerate(pointListLocal):
-        #print(pt)
-        vertices.append([pt.x(),pt.y()])
-        try: vertices3d.append([pt.x(),pt.y(),pt.z()])
-        except: vertices3d.append([pt.x(),pt.y(), 0]) # project boundary to 0
+        x, y = applyOffsetsRotation(pt.x(), pt.y(), dataStorage)
+        vertices.append([x, y])
+        try: 
+            vertices3d.append([x, y, pt.z()])
+        except: 
+            vertices3d.append([x, y, 0])
+
+        #try: vertices3d.append([pt.x(),pt.y(),pt.z()])
+        #except: vertices3d.append([pt.x(),pt.y(), 0]) # project boundary to 0
         if i>0: 
             segmList.append([startLen+i-1, startLen+i])
         if i == len(pointListLocal)-1: #also add a cap
@@ -139,12 +145,22 @@ def getPolyPtsSegments(geom):
                     pass
                 else: 
                     pointListLocal.append(pt) 
-            holes.append(getHolePt(pointListLocal))
 
+            hole = getHolePt(pointListLocal)
+            x, y = applyOffsetsRotation(hole[0], hole[1], dataStorage)
+            holes.append([x, y])
             for i,pt in enumerate(pointListLocal):
-                vertices.append([pt.x(),pt.y()])
-                try: vertices3d.append([pt.x(),pt.y(), pt.z()])
-                except: vertices3d.append([pt.x(),pt.y(), None]) # leave voids Z as None, fill later
+                
+                x, y = applyOffsetsRotation(pt.x(), pt.y(), dataStorage)
+                vertices.append([x, y])
+                try: 
+                    vertices3d.append([x, y, pt.z()])
+                except: 
+                    vertices3d.append([x, y, None])
+
+                #vertices.append([pt.x(),pt.y()])
+                #try: vertices3d.append([pt.x(),pt.y(), pt.z()])
+                #except: vertices3d.append([pt.x(),pt.y(), None]) # leave voids Z as None, fill later
                 if i>0: 
                     segmList.append([startLen+i-1, startLen+i])
                 if i == len(pointListLocal)-1: #also add a cap

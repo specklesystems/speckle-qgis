@@ -24,7 +24,7 @@ from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint,
                        QgsRendererCategory,
                        QgsSymbol, QgsUnitTypes, QgsVectorFileWriter)
 from specklepy.objects.GIS.geometry import GisPolygonElement
-from speckle.converter.geometry.point import pointToNative, pointToNativeWithoutTransforms, transformSpecklePt
+from speckle.converter.geometry.point import pointToNative, pointToNativeWithoutTransforms
 from specklepy.objects.GIS.CRS import CRS
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from specklepy.objects.other import Collection
@@ -282,11 +282,7 @@ def convertSelectedLayers(baseCollection: Collection, layers: List[Union[QgsVect
                             return None
             
             converted = layerToSpeckle(layer, projectCRS, plugin)
-            
-            print("____CONVERT")
-            print(converted)
-            print(tree_structure[i])
-  
+            #print(converted)
             if converted is not None:
                 structure = tree_structure[i]
                 if structure.startswith(SYMBOL): structure = structure[len(SYMBOL):]
@@ -323,7 +319,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         layerObjs = []
 
         # Convert CRS to speckle, use the projectCRS
-        print(projectCRS.toWkt())
+        #print(projectCRS.toWkt())
         speckleReprojectedCrs = CRS(authority_id=projectCRS.authid(), name=str(projectCRS.description()), wkt=projectCRS.toWkt(), units=units_proj, offset_x=offset_x, offset_y=offset_y, rotation=rotation) 
         layerCRS = CRS(authority_id=crs.authid(), name=str(crs.description()), wkt=crs.toWkt(), units=units_layer, units_native = units_layer_native, offset_x=offset_x, offset_y=offset_y, rotation=rotation) 
         
@@ -720,7 +716,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
 
         
         newFields = getLayerAttributes(geomList)
-        #newFields.toList())
+        #print(newFields.toList())
         #print(geomList)
         
         plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})

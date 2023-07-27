@@ -28,7 +28,7 @@ def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
                 polygon = QgsPolygon()
                 pts = [Point(x=pt[0], y=pt[1], z=pt[2], units="m") for pt in part]
                 pts.append(pts[0])
-                boundary = QgsLineString([pointToNativeWithoutTransforms(pt, dataStorage) for pt in pts])
+                boundary = QgsLineString([pointToNative(pt, dataStorage) for pt in pts])
                 polygon.setExteriorRing(boundary)
 
                 if polygon is not None:
@@ -41,14 +41,14 @@ def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
 def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
     """Converts a Speckle Mesh to QgsGeometry"""
     try:
-        print("06___________________Mesh to Native")
+        #print("06___________________Mesh to Native")
 
         try:
             w = shapefile.Writer(path) 
         except Exception as e: 
             logToUser(e)
             return 
-        print(w)
+        #print(w)
         w.field('speckle_id', 'C')
 
         shapes = []
@@ -80,7 +80,7 @@ def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
                                 w = fill_multi_mesh_parts(w, geom.displayMesh, geom.id)
                         except: pass
         w.close()
-        print("06-end___________________Mesh to Native")
+        #print("06-end___________________Mesh to Native")
         return path
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
@@ -88,7 +88,7 @@ def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
 
 def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str, dataStorage):
     
-    print("07___________________fill_multi_mesh_parts")
+    #print("07___________________fill_multi_mesh_parts")
     try:
         parts_list = []
         types_list = []
@@ -97,13 +97,17 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
             try:
                 #print(f"Fill multi-mesh parts # {geom_id}")
                 parts_list_x, types_list_x = deconstructSpeckleMesh(mesh, dataStorage) 
+                for i, face in enumerate(parts_list_x):
+                    for k, p in enumerate(face):
+                        pt = transformSpecklePt(Point(x = p[0], y= p[1], z = p[2], units = "m"), dataStorage)
+                        parts_list_x[i][k] = [pt.x, pt.y, pt.z]
                 parts_list.extend(parts_list_x)
                 types_list.extend(types_list_x)
             except Exception as e: pass 
         
         w.multipatch(parts_list, partTypes=types_list ) # one type for each part
         w.record(geom_id)
-        print("07-end___________________fill_multi_mesh_parts")
+        #print("07-end___________________fill_multi_mesh_parts")
         return w
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
@@ -113,6 +117,10 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage):
     
     try:
         parts_list, types_list = deconstructSpeckleMesh(mesh, dataStorage) 
+        for i, face in enumerate(parts_list):
+            for k, p in enumerate(face):
+                pt = transformSpecklePt(Point(x = p[0], y= p[1], z = p[2], units = "m"), dataStorage)
+                parts_list[i][k] = [pt.x, pt.y, pt.z]
         w.multipatch(parts_list, partTypes=types_list ) # one type for each part
         w.record(geom_id)
 
@@ -142,9 +150,8 @@ def deconstructSpeckleMesh(mesh: Mesh, dataStorage):
                     index_vertices = mesh.faces[index_faces]*3
                     
                     pt = Point(x = mesh.vertices[index_vertices], y = mesh.vertices[index_vertices+1], z = mesh.vertices[index_vertices+2], units = "m")
-                    newPt = transformSpecklePt(pt, dataStorage)
-                    newPt = applyTransformMatrix(newPt, dataStorage)
-                    face.append([ scale * newPt.x, scale * newPt.y, scale * newPt.z ]) 
+                    #newPt = transformSpecklePt(pt, dataStorage)
+                    face.append([ scale * pt.x, scale * pt.y, scale * pt.z ]) 
 
                 parts_list.append(face)
                 types_list.append(OUTER_RING)
@@ -270,7 +277,7 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             universal_z_value = polyBorder[0].z 
             
             # get points from original geometry #################################
-            triangulated_geom, vertices3d = triangulatePolygon(feature_geom)
+            triangulated_geom, vertices3d = triangulatePolygon(feature_geom, dataStorage)
             # get substitute value for missing z-val
             existing_3d_pts = []
             for i, p in enumerate(vertices3d): 

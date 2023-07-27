@@ -13,7 +13,7 @@ from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.utils.panel_logging import logToUser
 #from PyQt5.QtGui import QColor
 
-def applyOffsetsRotation(x, y, dataStorage):
+def applyOffsetsRotation(x, y, dataStorage): # on Send 
     try:
         offset_x = dataStorage.crs_offset_x
         offset_y = dataStorage.crs_offset_y
@@ -66,7 +66,7 @@ def pointToSpeckle(pt: QgsPoint or QgsPointXY, feature: QgsFeature, layer: QgsVe
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
 
-def transformSpecklePt(pt_original: Point, dataStorage) -> Point: 
+def transformSpecklePt(pt_original: Point, dataStorage) -> Point: # on Receive 
 
     offset_x = dataStorage.crs_offset_x
     offset_y = dataStorage.crs_offset_y
@@ -106,7 +106,7 @@ def transformSpecklePt(pt_original: Point, dataStorage) -> Point:
 
     # for GIS layers
     if gisLayer is True: 
-        #print("transform gis layer")
+        #print("transform GIS layer")
         try:
             offset_x = dataStorage.current_layer_crs_offset_x
             offset_y = dataStorage.current_layer_crs_offset_y

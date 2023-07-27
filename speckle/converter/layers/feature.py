@@ -604,15 +604,15 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
                 try:
                     unitsRaster = QgsUnitTypes.encodeUnit(selectedLayer.crs().mapUnits())
                     unitsElevation = QgsUnitTypes.encodeUnit(elevationLayer.crs().mapUnits())
-                    print(unitsRaster)
-                    print(unitsElevation)
+                    #print(unitsRaster)
+                    #print(unitsElevation)
                     resRasterX = get_scale_factor_to_meter(unitsRaster) * rasterResXY[0] 
                     resElevX = get_scale_factor_to_meter(unitsElevation) * elevationResX 
-                    print(resRasterX)
-                    print(resElevX)
+                    #print(resRasterX)
+                    #print(resElevX)
                     if resRasterX/resElevX >=2 or resElevX/resRasterX >=2:
                         sigma = math.sqrt(max(resRasterX/resElevX, resElevX/resRasterX))
-                        print(sigma)
+                        #print(sigma)
                 except: pass 
 
             gaussian_array = sp.ndimage.filters.gaussian_filter(array_z_filled, sigma, mode='nearest')

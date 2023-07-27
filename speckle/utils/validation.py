@@ -23,14 +23,14 @@ def tryGetClient(sw: StreamWrapper, dataStorage, write = False, dockwidget = Non
                 if client.account.token is not None:
                     stream = client.stream.get(id = sw.stream_id, branch_limit = 100, commit_limit = 100)
                     if isinstance(stream, Stream): 
-                        print(stream.role)
+                        #print(stream.role)
                         if write == False:
                             # try get stream, only read access needed
-                            print("only read access needed")
+                            #print("only read access needed")
                             return client, stream 
                         else: 
                             # check write access 
-                            print("write access needed")
+                            #print("write access needed")
                             if stream.role is None or (isinstance(stream.role, str) and "reviewer" in stream.role):
                                 savedRole = stream.role 
                                 savedStreamId = stream.id
@@ -46,7 +46,7 @@ def tryGetClient(sw: StreamWrapper, dataStorage, write = False, dockwidget = Non
 
 def tryGetStream(sw: StreamWrapper, dataStorage, write = False, dockwidget = None) -> Stream:
     try:
-        print("tryGetStream")
+        #print("tryGetStream")
         client, stream = tryGetClient(sw, dataStorage, write, dockwidget)
         return stream
     except Exception as e:
