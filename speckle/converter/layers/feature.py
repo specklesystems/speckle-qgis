@@ -16,7 +16,7 @@ from typing import Dict, Any
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
-from specklepy.objects.GIS.geometry import GisRasterElement
+from specklepy.objects.GIS.geometry import GisRasterElement, GisNonGeometryElement 
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from specklepy.objects.GIS.layers import RasterLayer
 from speckle.converter.geometry.point import applyOffsetsRotation
@@ -30,42 +30,41 @@ import scipy.ndimage
 
 from speckle.utils.panel_logging import logToUser
 
-def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage):
-    #print("Feature to Speckle")
+def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage):
+    print("Feature to Speckle")
     #print(dataStorage)
     if dataStorage is None: return 
     units = dataStorage.currentUnits
     try:
         geom = None
-        #apply transformation if needed
-        if sourceCRS != targetCRS:
-            xform = QgsCoordinateTransform(sourceCRS, targetCRS, project)
-            geometry = f.geometry()
-            geometry.transform(xform)
-            f.setGeometry(geometry)
-
-        # Try to extract geometry
-        try:
-            geom = convertToSpeckle(f, selectedLayer, dataStorage)
-            
-            #b.geometry = [] 
-            attributes = Base()
-            if geom is not None and geom!="None": 
-                if isinstance(geom.geometry, List):
-
-                    for g in geom.geometry:
-                        if g is not None and g!="None": 
-                            pass
-                        else:
-                            logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-                            print(g)
-            else: 
-                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-                print(geom)
         
-        except Exception as error:
-            logToUser("Error converting geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
+        if geomType == "None":
+            geom = GisNonGeometryElement()
+        else: 
+            #apply transformation if needed
+            if sourceCRS != targetCRS:
+                xform = QgsCoordinateTransform(sourceCRS, targetCRS, project)
+                geometry = f.geometry()
+                geometry.transform(xform)
+                f.setGeometry(geometry)
+            # Try to extract geometry
+            try:
+                geom = convertToSpeckle(f, selectedLayer, dataStorage)
+                if geom is not None and geom!="None": 
+                    if isinstance(geom.geometry, List):
+                        for g in geom.geometry:
+                            if g is not None and g!="None": 
+                                pass
+                            else:
+                                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
+                                print(g)
+                else: 
+                    logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
+                    print(geom)
+            except Exception as error:
+                logToUser("Error converting geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
 
+        attributes = Base()
         for name in fieldnames: 
             corrected = validateAttributeName(name, fieldnames)
             f_name = f[name]
@@ -77,8 +76,8 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordin
                     else: x += ", " + str(attr)
                 f_name = x 
             attributes[corrected] = f_name
-        if geom is not None and geom!="None":
-            geom.attributes = attributes
+        #if geom is not None and geom!="None":
+        geom.attributes = attributes
         return geom
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])

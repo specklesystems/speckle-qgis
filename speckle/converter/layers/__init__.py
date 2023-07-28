@@ -342,6 +342,7 @@ def convertSelectedLayers(baseCollection: Collection, layers: List[Union[QgsVect
 def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], projectCRS: QgsCoordinateReferenceSystem, plugin) -> VectorLayer or RasterLayer: #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     """Converts a given QGIS Layer to Speckle"""
     try:
+        print("___layerToSpeckle")
         project: QgsProject = plugin.project
         layerName = selectedLayer.name()
 
@@ -356,6 +357,10 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
 
         units_layer = units_layer_native
         if crs.isGeographic(): units_layer = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
+        
+        if "unknown" in units_layer: units_layer = "m" # if no-geometry layer
+        #print(units_layer)
+        #print(type(units_layer))
         layerObjs = []
 
         # Convert CRS to speckle, use the projectCRS
@@ -367,10 +372,12 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         layerRenderer = rendererToSpeckle(renderer) 
         
         if isinstance(selectedLayer, QgsVectorLayer):
+            print("_____isinstance(selectedLayer, QgsVectorLayer)____")
 
             fieldnames = [] #[str(field.name()) for field in selectedLayer.fields()]
             attributes = Base()
             for field in selectedLayer.fields():
+                print(str(field.name()))
                 fieldnames.append(str(field.name()))
                 corrected = validateAttributeName(str(field.name()), [])
                 attribute_type = field.type()
@@ -401,6 +408,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 attributes["Speckle_ID"] = 10 # string type 
 
             geomType = getLayerGeomType(selectedLayer)
+            print(geomType)
             features = selectedLayer.getFeatures()
 
             elevationLayer = getElevationLayer(plugin.dataStorage) 
@@ -410,7 +418,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             
             # write features 
             for i, f in enumerate(features):
-                b = featureToSpeckle(fieldnames, f, crs, projectCRS, project, selectedLayer, plugin.dataStorage)
+                b = featureToSpeckle(fieldnames, f, geomType, crs, projectCRS, project, selectedLayer, plugin.dataStorage)
                 #if b is None: continue 
 
                 if extrusionApplied is True and isinstance(b, GisPolygonElement):
