@@ -104,7 +104,8 @@ class SpeckleQGIS:
         self.project = QgsProject.instance()
         self.current_streams = []
         self.active_stream = None
-        #self.current_layer_group = None 
+        self.active_branch = None 
+        self.active_commit = None 
         self.receive_layer_tree = None 
         #self.default_account = None 
         #self.accounts = [] 
@@ -612,7 +613,7 @@ class SpeckleQGIS:
             url: str = constructCommitURL(streamWrapper, branch.id, commit.id)
 
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
-            logToUser("👌 Data received \nClick to view commit online", level = 0, plugin = self.dockwidget, url=url, blue = True)
+            logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
             #return 
             
         except Exception as e:
@@ -888,7 +889,8 @@ class SpeckleQGIS:
             self.dockwidget.custom_crs_modal.populateRotation()
 
             self.dockwidget.custom_crs_modal.dialog_button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.customCRSApply)
-            self.dockwidget.custom_crs_modal.dialog_button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(self.crsMoreInfo)
+            crs_info_url = "https://speckle.guide/user/qgis.html#custom-project-center"
+            self.dockwidget.custom_crs_modal.dialog_button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(lambda: self.openUrl(crs_info_url) )
             
             self.dockwidget.custom_crs_modal.show()
 
@@ -896,10 +898,19 @@ class SpeckleQGIS:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
     
-    def crsMoreInfo(self):
+    def openUrl(self, url: str = ""):
         import webbrowser
-        url = "https://speckle.guide/user/qgis.html#custom-project-center"
-        webbrowser.open(url, new=0, autoraise=True)
+        #url = "https://speckle.guide/user/qgis.html#custom-project-center"
+        try: 
+            if "/commits/" in url or "/models/" in url:
+                metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Open In Web", "connector_version": str(self.dataStorage.plugin_version), "data": "Commit"})
+            else:
+                metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Open In Web", "connector_version": str(self.dataStorage.plugin_version)})
+        except Exception as e: 
+            logToUser(e, level = 2, func = inspect.stack()[0][3] )
+        
+        if url is not None and url != "":
+            webbrowser.open(url, new=0, autoraise=True)
 
     def customCRSApply(self):
         index = self.dockwidget.custom_crs_modal.modeDropdown.currentIndex()

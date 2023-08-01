@@ -17,11 +17,12 @@ def jsonFromList(jsonObj: dict, levels: list):
     print(jsonObj)
     return jsonObj 
 
-def constructCommitURL(streamWrapper, branch_id, commit_id: str) -> str:
+def constructCommitURL(streamWrapper, branch_id: str = None, commit_id: str = None) -> str:
     import requests 
     streamUrl = streamWrapper.stream_url.split("?")[0].split("&")[0].split("@")[0]
     r = requests.get(streamUrl)
     
+    url = streamUrl 
     # check for frontend2 
     try: 
         header = r.headers['x-speckle-frontend-2']
