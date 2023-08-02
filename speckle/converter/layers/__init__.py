@@ -939,7 +939,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
             plugin.dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
             plugin.dataStorage.current_layer_crs_rotation = layer.crs.rotation
         except Exception as e:
-            print(e) 
+            print(str(e) + "  ::vectorLayerToNative") 
 
         fets = []
         newFields = getLayerAttributes(layer.features)

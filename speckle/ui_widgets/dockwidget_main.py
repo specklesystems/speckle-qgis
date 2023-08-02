@@ -98,5 +98,7 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
                 print(f"thread to kill: {t}")
                 t.kill() 
                 t.join()
-        print(threading.enumerate())
+        # not printed if same thread 
+        print("Remaining threads: ")
+        print(threading.enumerate()) 
     
