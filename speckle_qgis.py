@@ -831,14 +831,18 @@ class SpeckleQGIS:
 
     def handleStreamAdd(self, objectPacked: Tuple):
         try: 
+            print("___handleStreamAdd")
             from speckle.utils.project_vars import set_project_streams
             sw, branch, commit = objectPacked
+            print(sw)
+            print(branch)
+            print(commit)
             streamExists = 0
             index = 0
 
             self.dataStorage.check_for_accounts()
             stream = tryGetStream(sw, self.dataStorage, False, self.dockwidget)
-            #print(stream)
+            print(stream)
 
             if stream is not None and branch in stream.branches.items:
                 self.active_branch = branch
@@ -847,6 +851,8 @@ class SpeckleQGIS:
                 self.active_branch = None 
                 self.active_commit = None 
             
+            try: print(f"ACTIVE BRANCH NAME: {self.active_branch.name}")
+            except: print("ACTIVE BRANCH IS NONE")
             for st in self.current_streams: 
                 #if isinstance(st[1], SpeckleException) or isinstance(stream, SpeckleException): pass 
                 if isinstance(stream, Stream) and st[0].stream_id == stream.id: 
