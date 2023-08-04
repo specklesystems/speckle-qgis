@@ -144,6 +144,7 @@ def getAllLayersWithTree(tree: QgsLayerTree, parent: QgsLayerTreeNode = None, ex
     try:
         print("Root tree with structure: ")
         print(tree)
+        print(parent)
         layers = []
         tree_structure = [] 
         existingStructure = existingStructure.replace(SYMBOL+SYMBOL, SYMBOL)
@@ -204,6 +205,22 @@ def getAllLayersWithTree(tree: QgsLayerTree, parent: QgsLayerTreeNode = None, ex
                         node.setItemVisibilityChecked(visible)
                     except Exception as e: 
                         logToUser(e, level = 2, func = inspect.stack()[0][3]) 
+        
+        elif isinstance(parent, QgsLayerTreeNode):
+            try:
+                visible = parent.itemVisibilityChecked()
+                parent.setItemVisibilityChecked(True)
+                for lyr in parent.checkedLayers():
+                    print("layer in a node")
+                    print(lyr)
+                    if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
+                        layers.append(lyr) 
+                        newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
+                        tree_structure.append(newStructure + tree.name())
+                parent.setItemVisibilityChecked(visible)
+            except Exception as e: 
+                logToUser(e, level = 2, func = inspect.stack()[0][3]) 
+
 
         print("Final layers: ")        
         print(layers)
@@ -253,6 +270,7 @@ def getSelectedLayersWithStructure(plugin) -> List[ Union[QgsLayerTreeLayer, Qgs
     try:
         self = plugin.dockwidget
         selected_layers = plugin.iface.layerTreeView().selectedNodes()
+        print(selected_layers)
         
         for item in selected_layers:
             root = self.dataStorage.project.layerTreeRoot()
