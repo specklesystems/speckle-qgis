@@ -5,9 +5,9 @@ from qgis.PyQt.QtWidgets import QPushButton
 from specklepy_qt_ui.qt_ui.logger import logToUser as logToUser_UI
 import webbrowser
 
-def logToUser(msg: str, func=None, level: int = 2, plugin = None, url = "", blue = False):
+def logToUser(msg: str, func=None, level: int = 2, plugin = None, url = "", blue = False, report = False):
     msg = str(msg)
-    logToUser_UI(msg, func, level, plugin, url, blue)
+    logToUser_UI(msg, func, level, plugin, url, blue, report)
     logger.writeToLog(msg.replace('\n', '. ') + " " + url, level, func)
 
 class Logging:

@@ -487,7 +487,7 @@ class SpeckleQGIS:
                 logToUser("Data has been sent in the units 'degrees'. It is advisable to set the project CRS to Projected type (e.g. EPSG:32631) to be able to receive geometry correctly in CAD/BIM software. You can also create a custom CRS by setting geographic coordinates and using 'Set as a project center' function.", level = 1, plugin = self.dockwidget)
             
             self.dockwidget.msgLog.removeBtnUrl("cancel") 
-            logToUser("👌 Data sent to \'" + str(streamName) + "\'" + "\nClick to view commit online", level = 0, plugin=self.dockwidget, url = url)
+            logToUser("👌 Data sent to \'" + str(streamName) + "\'" + "\nClick to view commit online", level = 0, plugin=self.dockwidget, url = url, report = True)
             self.dataStorage.sending_layers = None
 
 
@@ -613,7 +613,7 @@ class SpeckleQGIS:
             url: str = constructCommitURL(streamWrapper, branch.id, commit.id)
 
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
-            logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
+            logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True, report = True)
             #return 
             
         except Exception as e:
