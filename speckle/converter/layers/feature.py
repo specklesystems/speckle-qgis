@@ -21,7 +21,7 @@ from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRast
 from specklepy.objects.GIS.layers import RasterLayer
 from speckle.converter.geometry.point import applyOffsetsRotation
 from speckle.utils.panel_logging import logger
-from speckle.converter.layers.utils import get_raster_stats, get_scale_factor_to_meter, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, tryCreateGroup, validateAttributeName 
+from speckle.converter.layers.utils import get_raster_stats, get_scale_factor_to_meter, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 import numpy as np 

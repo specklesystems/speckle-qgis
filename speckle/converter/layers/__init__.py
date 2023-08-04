@@ -1339,7 +1339,9 @@ def addRasterMainThread(obj: Tuple):
         raster_layer = QgsRasterLayer(fn, finalName, 'gdal')
         project.addMapLayer(raster_layer, False)
         
-        layerGroup = tryCreateGroup(project, streamBranch)
+        #layerGroup = tryCreateGroup(project, streamBranch)
+        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
         layerGroup.addLayer(raster_layer)
 
         dataProvider = raster_layer.dataProvider()
