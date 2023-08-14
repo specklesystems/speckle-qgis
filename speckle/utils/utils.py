@@ -4,7 +4,7 @@ import traceback
 import subprocess
 from qgis.core import QgsMessageLog, Qgis
 
-from speckle.utils.panel_logging import logger
+#from speckle.utils.panel_logging import logger
 
 MESSAGE_CATEGORY = "Speckle"
 

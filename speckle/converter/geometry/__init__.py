@@ -2,7 +2,7 @@
 
 from numpy import isin
 from specklepy.objects.GIS.geometry import GisLineElement, GisPointElement, GisPolygonElement
-from speckle.utils.panel_logging import logger
+#from speckle.utils.panel_logging import logger
 from typing import List, Union
 
 from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint, 

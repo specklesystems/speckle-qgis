@@ -502,31 +502,6 @@ def getElevationLayer(dataStorage):
     except: 
         return None
 
-    #root = dataStorage.project.layerTreeRoot()
-    #dataStorage.all_layers = getAllLayers(root)   
-    #for i, layer in enumerate(dataStorage.all_layers):
-    #    if 
-
-    return elevationLayer 
-    
-    if dataStorage.savedTransforms is not None:
-        all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
-        all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
-        for item in dataStorage.savedTransforms:
-            layer_name = item.split("  ->  ")[0]
-            transform_name = item.split("  ->  ")[1]
-
-            if "elevation" in transform_name.lower() and "mesh" in transform_name.lower() and "texture" not in transform_name.lower(): 
-                # find a layer for meshing, if mesh transformation exists 
-                for l in dataStorage.all_layers: 
-                    if layer_name == l.name():
-                        return l  
-                        
-                        # also check if the layer is selected for sending
-                        for sending_l in dataStorage.sending_layers:
-                            if sending_l.name() == l.name():
-                                return sending_l 
-    return None 
 
 def get_raster_stats(rasterLayer):
     try:

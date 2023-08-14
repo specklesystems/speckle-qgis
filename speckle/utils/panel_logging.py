@@ -59,8 +59,8 @@ class Logging:
         self.qgisInterface.messageBar().pushWidget(widget, level, duration)
 
 
-    def logToUser(self, message: str, level: Qgis.MessageLevel = Qgis.Info, duration: int =10, func=None, plugin=None):
-        return
+    #def logToUser(self, message: str, level: Qgis.MessageLevel = Qgis.Info, duration: int =10, func=None, plugin=None):
+    #    return
     
     def logToUserPanel(self, message: str, level: Qgis.MessageLevel = Qgis.Info, duration: int =20, func=None, plugin=None):
         """Logs a specific message to the user in QGIS"""
