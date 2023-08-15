@@ -289,6 +289,7 @@ def getSelectedLayersWithStructure(plugin) -> List[ Union[QgsLayerTreeLayer, Qgs
 def convertSelectedLayers(baseCollection: Collection, layers: List[Union[QgsVectorLayer, QgsRasterLayer]], tree_structure: List[str], projectCRS: QgsCoordinateReferenceSystem, plugin) -> List[Union[VectorLayer, RasterLayer]]:
     """Converts the current selected layers to Speckle"""
     print("____convertSelectedLayers")
+    dataStorage = plugin.dataStorage
     result = []
     try:
         project: QgsProject = plugin.project
@@ -361,6 +362,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
     """Converts a given QGIS Layer to Speckle"""
     try:
         print("___layerToSpeckle")
+        dataStorage = plugin.dataStorage
         project: QgsProject = plugin.project
         layerName = selectedLayer.name()
 
@@ -435,7 +437,9 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 logToUser(f"Elevation layer is not found. Layer '{selectedLayer.name()}' will not be projected on a 3d elevation.", level = 1, plugin = plugin.dockwidget)
             
             # write features 
+            all_errors_count = 0
             for i, f in enumerate(features):
+                dataStorage.latestActionFeaturesReport.append({"feature_id": str(i+1), "obj_type": "", "errors": ""})
                 b = featureToSpeckle(fieldnames, f, geomType, crs, projectCRS, project, selectedLayer, plugin.dataStorage)
                 #if b is None: continue 
 
@@ -447,10 +451,18 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                                 g.boundary = None
                                 g.voids = None
                 layerObjs.append(b)
+                if dataStorage.latestActionFeaturesReport[len(dataStorage.latestActionReport)-1]["errors"] != "":
+                    all_errors_count +=1
 
             # Convert layer to speckle
             layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, attributes = attributes, geomType=geomType)
-            #layerBase.type="VectorLayer"
+            if all_errors_count == 0:
+                dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": layerBase.speckle_type, "errors": ""})
+            else: 
+                dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": layerBase.speckle_type, "errors": f"{all_errors_count} features failed"})
+            for item in dataStorage.latestActionFeaturesReport:
+                dataStorage.latestActionReport.append(item)
+
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
             #print(layerBase.features)
@@ -461,16 +473,20 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
             #print(b)
             if b is None: 
+                dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": "Raster Layer", "errors": "Layer failed to send"})
                 return None 
             layerObjs.append(b)
             # Convert layer to speckle
             layerBase = RasterLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, elements=layerObjs)
             #layerBase.type="RasterLayer"
+            dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": layerBase.speckle_type, "errors": ""})
+
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
             return layerBase
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": "", "errors": f"Layer conversion failed: {e}"})
         return None 
 
 
@@ -511,7 +527,7 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
         return  
 
 
-def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBranch: str, plugin, matrix = None):
+def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: str, streamBranch: str, plugin, matrix = None):
     #print("01_____GEOMETRY layer to native")
     try:
         #print(layerName)
@@ -558,11 +574,11 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBr
                     geom_meshes.extend(val)
         
         if len(geom_meshes)>0: 
-            bimVectorLayerToNative(geom_meshes, layerName, "Mesh", streamBranch, plugin, matrix) 
+            bimVectorLayerToNative(geom_meshes, layerName, val_id, "Mesh", streamBranch, plugin, matrix) 
         if len(geom_points)>0: 
-            cadVectorLayerToNative(geom_points, layerName, "Points", streamBranch, plugin, matrix)
+            cadVectorLayerToNative(geom_points, layerName, val_id, "Points", streamBranch, plugin, matrix)
         if len(geom_polylines)>0: 
-            cadVectorLayerToNative(geom_polylines, layerName, "Polylines", streamBranch, plugin, matrix)
+            cadVectorLayerToNative(geom_polylines, layerName, val_id, "Polylines", streamBranch, plugin, matrix)
 
         return True
     
@@ -570,7 +586,7 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, streamBr
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
 
-def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: str, streamBranch: str, plugin, matrix: list = None): 
+def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, val_id: str, geomType: str, streamBranch: str, plugin, matrix: list = None): 
     #print("02_________BIM vector layer to native_____")
     try: 
         #project: QgsProject = plugin.project
@@ -591,7 +607,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, geomType: s
         #print("___________Layer fields_____________")
         #print(newFields.toList())
         
-        plugin.dockwidget.signal_2.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
+        plugin.dockwidget.signal_2.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
 
@@ -606,6 +622,7 @@ def addBimMainThread(obj: Tuple):
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         layerName = obj['layerName'] 
+        layer_id = obj['layer_id']
         streamBranch = obj['streamBranch'] 
         newFields = obj['newFields'] 
         geomList = obj['geomList']
@@ -613,6 +630,8 @@ def addBimMainThread(obj: Tuple):
         
         dataStorage = plugin.dataStorage
         dataStorage.matrix = matrix
+        dataStorage.latestActionLayers.append(layerName)
+        report_features = []
 
         project: QgsProject = dataStorage.project
 
@@ -664,8 +683,8 @@ def addBimMainThread(obj: Tuple):
         shp = writeMeshToShp(geomList, path_bim + newName_shp, dataStorage)
         dataStorage.matrix = None
         if shp is None: return 
-        #print("____ meshes saved___")
-        #print(shp)
+        print("____ meshes saved___")
+        print(shp)
 
 
         vl_shp = QgsVectorLayer( shp + ".shp", finalName, "ogr") # do something to distinguish: stream_id_latest_name
@@ -686,7 +705,14 @@ def addBimMainThread(obj: Tuple):
         fetIds = []
         fetColors = []
         
+        
+        report_features = []
+        all_feature_errors_count = 0
         for i,f in enumerate(geomList[:]): 
+            
+            # pre-fill report:
+            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
+
             try:
                 exist_feat: None = None
                 for n, shape in enumerate(vl_shp.getFeatures()):
@@ -695,6 +721,7 @@ def addBimMainThread(obj: Tuple):
                         break
                 if exist_feat is None: 
                     logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
+                    report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid geometry"})
                     continue 
 
                 new_feat = bimFeatureToNative(exist_feat, f, vl.fields(), crs, path_bim, dataStorage)
@@ -705,8 +732,11 @@ def addBimMainThread(obj: Tuple):
                     fetIds.append(f.id)
                 else:
                     logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
+                    report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid geometry"})
+                    
             except Exception as e: 
                 logToUser(e, level = 2, func = inspect.stack()[0][3])
+                report_features[len(report_features)-1].update({"errors": f"{e}"})
         
         vl.updateExtents()
         vl.commitChanges()
@@ -758,11 +788,23 @@ def addBimMainThread(obj: Tuple):
         try: project.removeMapLayer(dummy)
         except: pass
         
+        # report
+        obj_type = geom_print + " Vector Layer"
+        if all_feature_errors_count == 0:
+            dataStorage.latestActionReport.append({"speckle_id": f"{finalName} {layer_id}", "obj_type": obj_type, "errors": ""})
+        else: 
+            dataStorage.latestActionReport.append({"speckle_id": f"{finalName} {layer_id}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
+        for item in report_features:
+            dataStorage.latestActionReport.append(item)
+        
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        # report 
+        obj_type = geom_print + "Vector Layer"
+        dataStorage.latestActionReport.append({"speckle_id": f"{finalName} {layer_id}", "obj_type": obj_type, "errors": f"{e}"})
 
 
-def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, streamBranch: str, plugin, matrix = None) -> QgsVectorLayer: 
+def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, geomType: str, streamBranch: str, plugin, matrix = None) -> QgsVectorLayer: 
     #print("___________cadVectorLayerToNative")
     try:
         project: QgsProject = plugin.project
@@ -785,7 +827,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         #print(newFields.toList())
         #print(geomList)
         
-        plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
+        plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
 
@@ -795,10 +837,12 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, geomType: str, 
         return  
     
 def addCadMainThread(obj: Tuple):
+    print("___addCadMainThread")
     try:
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         layerName = obj['layerName'] 
+        layer_id = obj['layer_id']
         streamBranch = obj['streamBranch'] 
         newFields = obj['newFields'] 
         geomList = obj['geomList']
@@ -807,6 +851,7 @@ def addCadMainThread(obj: Tuple):
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
         dataStorage.matrix = matrix
+        dataStorage.latestActionLayers.append(layerName)
 
         
         geom_print = geomType
@@ -854,7 +899,14 @@ def addCadMainThread(obj: Tuple):
         fets = []
         fetIds = []
         fetColors = []
+
+        report_features = []
+        all_feature_errors_count = 0
         for f in geomList[:]: 
+
+            # pre-fill report:
+            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
+
             new_feat = cadFeatureToNative(f, newFields, plugin.dataStorage)
             # update attrs for the next feature (if more fields were added from previous feature)
 
@@ -869,7 +921,9 @@ def addCadMainThread(obj: Tuple):
                 fetColors = findFeatColors(fetColors, f)
             else:
                 logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-
+                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid geometry"})
+                all_feature_errors_count += 1
+            
         dataStorage.matrix = None
         
         # add Layer attribute fields
@@ -928,10 +982,21 @@ def addCadMainThread(obj: Tuple):
 
         try: project.removeMapLayer(dummy)
         except: pass
-        
+
+        # report
+        obj_type = geom_print + " Vector Layer" if "Mesh" not in geom_print else "Multipolygon Vector Layer"
+        if all_feature_errors_count == 0:
+            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": ""})
+        else: 
+            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
+        for item in report_features:
+            dataStorage.latestActionReport.append(item)
+
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-          
+        # report
+        obj_type = geom_print + "Vector Layer"
+        dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
 
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase: str, plugin):
     try:
@@ -960,17 +1025,25 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
             print(str(e) + "  ::vectorLayerToNative") 
 
         fets = []
+        report_features = []
+        all_feature_errors_count = 0
+
         newFields = getLayerAttributes(layer.features)
         for f in layer.features: 
+            # pre-fill report:
+            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
+
             new_feat = featureToNative(f, newFields, plugin.dataStorage)
             if new_feat is not None and new_feat != "": fets.append(new_feat)
             else:
                 logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-        
+                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid geometry"})
+                all_feature_errors_count += 1
+            
         if newFields is None: 
             newFields = QgsFields()
         
-        objectEmit = {'plugin': plugin, 'geomType': geomType, 'newName': newName, 'streamBranch': streamBranch, 'wkt': layer.crs.wkt, 'layer': layer, 'newFields': newFields, 'fets': fets}
+        objectEmit = {'plugin': plugin, 'geomType': geomType, 'newName': newName, 'report_features': report_features, 'streamBranch': streamBranch, 'wkt': layer.crs.wkt, 'layer': layer, 'newFields': newFields, 'fets': fets}
         plugin.dockwidget.signal_1.emit(objectEmit)
         
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
@@ -982,6 +1055,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
         return  
     
 def addVectorMainThread(obj: Tuple):
+    print("___addVectorMainThread")
     try:
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
@@ -991,6 +1065,9 @@ def addVectorMainThread(obj: Tuple):
         layer = obj['layer'] 
         newFields = obj['newFields'] 
         fets = obj['fets']
+        
+        #dataStorage.latestActionLayers.append(layer.name)
+        report_features = obj['report_features']
 
         dataStorage = plugin.dataStorage
         dataStorage.receivingGISlayer = True
@@ -1011,6 +1088,7 @@ def addVectorMainThread(obj: Tuple):
         finalName = shortName #+ ("_" + geom_print)
         print(f"Final layer name: {finalName}")
 
+        dataStorage.latestActionLayers.append(finalName)
         ###########################################
         dummy = None 
         root = project.layerTreeRoot()
@@ -1147,10 +1225,26 @@ def addVectorMainThread(obj: Tuple):
 
         try: project.removeMapLayer(dummy)
         except: pass
+        
+        # report
+        all_feature_errors_count = 0
+        for item in report_features:
+            if item["errors"] != "": all_feature_errors_count += 1
+
+        obj_type = "Vector Layer"
+        if all_feature_errors_count == 0:
+            dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": obj_type, "errors": ""})
+        else: 
+            dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
+        for item in report_features:
+            dataStorage.latestActionReport.append(item)
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-          
+        # report
+        obj_type = "Vector Layer"
+        dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+
     
 def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, plugin):
     try:
@@ -1195,6 +1289,8 @@ def addRasterMainThread(obj: Tuple):
         layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
         finalName = shortName #+ ("_" + geom_print)
 
+        #report on receive:
+        dataStorage.latestActionLayers.append(finalName)
         ###########################################
         dummy = None 
         root = project.layerTreeRoot()
@@ -1350,10 +1446,14 @@ def addRasterMainThread(obj: Tuple):
         try: raster_layer.setRenderer(rendererNew)
         except: pass
 
-
         try: project.removeMapLayer(dummy)
         except: pass
 
+        #report on receive:
+        dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": "Raster Layer", "errors": ""})
+
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        #report on receive:
+        dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": "Raster Layer", "errors": f"Receiving layer {layer.name} failed"})
           

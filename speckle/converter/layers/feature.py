@@ -20,7 +20,7 @@ from specklepy.objects.GIS.geometry import GisRasterElement, GisNonGeometryEleme
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from specklepy.objects.GIS.layers import RasterLayer
 from speckle.converter.geometry.point import applyOffsetsRotation
-from speckle.utils.panel_logging import logger
+#from speckle.utils.panel_logging import logger
 from speckle.converter.layers.utils import get_raster_stats, get_scale_factor_to_meter, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
@@ -35,11 +35,13 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
     #print(dataStorage)
     if dataStorage is None: return 
     units = dataStorage.currentUnits
+    new_report = {"obj_type": "", "errors": ""}
     try:
         geom = None
         
         if geomType == "None":
             geom = GisNonGeometryElement()
+            new_report = {"obj_type": geom.speckle_type, "errors": ""}
         else: 
             #apply transformation if needed
             if sourceCRS != targetCRS:
@@ -47,21 +49,35 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
                 geometry = f.geometry()
                 geometry.transform(xform)
                 f.setGeometry(geometry)
+            
             # Try to extract geometry
+            skipped_msg = "Feature skipped due to invalid geometry"
             try:
                 geom = convertToSpeckle(f, selectedLayer, dataStorage)
+                print(geom)
+                print(geom.geometry)
                 if geom is not None and geom!="None": 
-                    if isinstance(geom.geometry, List):
-                        for g in geom.geometry:
-                            if g is not None and g!="None": 
-                                pass
-                            else:
-                                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-                                print(g)
-                else: 
-                    logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
+                    if not isinstance(geom.geometry, List):
+                        logToUser("Geometry not in list format", level = 2, func = inspect.stack()[0][3])
+                        return None 
+                    
+                    all_errors = ""
+                    for g in geom.geometry:
+                        print(g) 
+                        if g is None or g=="None": 
+                            all_errors += skipped_msg + ", "
+                            logToUser(skipped_msg, level = 2, func = inspect.stack()[0][3])
+                            print(g) 
+                    if len(geom.geometry) == 0:
+                        all_errors = "No geometry converted"
+                    new_report.update({"obj_type": geom.speckle_type, "errors": all_errors})
+                                
+                else: # geom is None
+                    new_report = {"obj_type": "", "errors": skipped_msg}
+                    logToUser(skipped_msg, level = 2, func = inspect.stack()[0][3])
                     print(geom)
             except Exception as error:
+                new_report = {"obj_type": "", "errors": "Error converting geometry: " + str(error)}
                 logToUser("Error converting geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
 
         attributes = Base()
@@ -78,8 +94,13 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
             attributes[corrected] = f_name
         #if geom is not None and geom!="None":
         geom.attributes = attributes
+        
+        dataStorage.latestActionFeaturesReport[len(dataStorage.latestActionFeaturesReport)-1].update(new_report)
         return geom
+    
     except Exception as e:
+        new_report.update({"errors": e})
+        dataStorage.latestActionFeaturesReport[len(dataStorage.latestActionFeaturesReport)-1].update(new_report)
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return geom
           

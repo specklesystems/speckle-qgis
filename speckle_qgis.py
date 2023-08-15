@@ -45,7 +45,7 @@ from speckle.converter.layers import findAndClearLayerGroup
 
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
-from speckle.utils.panel_logging import logger
+#from speckle.utils.panel_logging import logger
 from specklepy_qt_ui.qt_ui.widget_add_stream import AddStreamModalDialog
 from specklepy_qt_ui.qt_ui.widget_create_stream import CreateStreamModalDialog
 from specklepy_qt_ui.qt_ui.widget_create_branch import CreateBranchModalDialog
@@ -384,16 +384,18 @@ class SpeckleQGIS:
                 return
             
             # Check if no layers are selected
-            if len(layers) == 0: #len(selectedLayerNames) == 0:
+            if len(layers) == 0 or layers is None: #len(selectedLayerNames) == 0:
                 logToUser("No valid layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
-            self.dataStorage.sending_layers = layers
+            self.dataStorage.latestActionLayers = layers 
+            print(layers)
 
             root = self.dataStorage.project.layerTreeRoot()
             self.dataStorage.all_layers = getAllLayers(root)
             self.dockwidget.mappingSendDialog.populateSavedTransforms(self.dataStorage)
             
             units = str(QgsUnitTypes.encodeUnit(projectCRS.mapUnits())) 
+            self.dataStorage.latestActionUnits = units 
             if units is None or units == 'degrees': units = 'm'
             self.dataStorage.currentUnits = units 
 
@@ -402,9 +404,11 @@ class SpeckleQGIS:
             if (self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation) != 0 :
                 logToUser(f"Applying CRS rotation: {self.dataStorage.crs_rotation}°", level = 0, plugin = self.dockwidget)
 
+            self.dataStorage.latestActionReport = []
+            self.dataStorage.latestActionFeaturesReport = []
             base_obj = Collection(units = units, collectionType = "QGIS commit", name = "QGIS commit", elements = [])
             base_obj = convertSelectedLayers(base_obj, layers, tree_structure, projectCRS, self)
-            if base_obj.elements is None or (isinstance(base_obj.elements, List) and len(base_obj.elements) == 0):
+            if base_obj is None or base_obj.elements is None or (isinstance(base_obj.elements, List) and len(base_obj.elements) == 0):
                 logToUser(f"No data to send", level = 2, plugin = self.dockwidget)
                 return 
 
@@ -439,6 +443,8 @@ class SpeckleQGIS:
         try:
             # this serialises the block and sends it to the transport
             objId = operations.send(base=base_obj, transports=[transport])
+            self.dockwidget.msgLog.removeBtnUrl("cancel") 
+            self.dataStorage.latestActionTime = str(datetime.now().strftime("%d/%m/%Y, %H:%M:%S"))
         except Exception as e:
             logToUser("Error sending data: " + str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
@@ -486,10 +492,8 @@ class SpeckleQGIS:
             if self.project.crs().isGeographic() is True or self.project.crs().isValid() is False: 
                 logToUser("Data has been sent in the units 'degrees'. It is advisable to set the project CRS to Projected type (e.g. EPSG:32631) to be able to receive geometry correctly in CAD/BIM software. You can also create a custom CRS by setting geographic coordinates and using 'Set as a project center' function.", level = 1, plugin = self.dockwidget)
             
-            self.dockwidget.msgLog.removeBtnUrl("cancel") 
             logToUser("👌 Data sent to \'" + str(streamName) + "\'" + "\nClick to view commit online", level = 0, plugin=self.dockwidget, url = url, report = True)
-            self.dataStorage.sending_layers = None
-
+            
 
         except Exception as e:
             #if self.dockwidget.experimental.isChecked(): 
@@ -608,7 +612,11 @@ class SpeckleQGIS:
                 check: Callable[[Base], bool] = lambda base: (base.speckle_type) # and base.speckle_type.endswith("Base") )
             self.receive_layer_tree = {str(newGroupName): {}}
             #print(self.receive_layer_tree)
+
+            self.dataStorage.latestActionLayers = []
+            self.dataStorage.latestActionReport = []
             traverseObject(self, commitObj, callback, check, str(newGroupName), "")
+            self.dataStorage.latestActionTime = str(datetime.now().strftime("%d/%m/%Y, %H:%M:%S"))
 
             url: str = constructCommitURL(streamWrapper, branch.id, commit.id)
 

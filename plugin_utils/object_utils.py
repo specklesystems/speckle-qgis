@@ -145,7 +145,7 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids, matr
                             matrix2 = np.matrix(matrixList).reshape(4, 4)
                             matrix2 = matrix2.transpose()
                             if matrix2 is None:
-                                geometryLayerToNative([base[name]], name, streamBranch, plugin, None)
+                                geometryLayerToNative([base[name]], name, base.id, streamBranch, plugin, None)
                                 
                             else: # both not None 
                                 if matrix is not None: 
@@ -153,15 +153,15 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids, matr
                                 else: # matrix is None 
                                     matrix = matrix2
                                 #print(matrix)
-                                geometryLayerToNative([base[name]], name_pass, streamBranch, plugin, matrix)
+                                geometryLayerToNative([base[name]], name_pass, base.id, streamBranch, plugin, matrix)
 
                         except: matrix = None
                         time.sleep(0.3)
                     except Exception as e: print(f"ERROR: {e}") 
-                loopVal(base[name], name_pass, streamBranch, plugin, used_ids, matrix)     
+                loopVal(base[name], name_pass, base.id, streamBranch, plugin, used_ids, matrix)     
     except Exception as e: print(e) 
 
-def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids, matrix = None): # "name" is the parent object/property/layer name
+def loopVal(value: Any, name: str, val_id: str, streamBranch: str, plugin, used_ids, matrix = None): # "name" is the parent object/property/layer name
     
     try: 
         name = removeSpecialCharacters(name)
@@ -174,7 +174,7 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids, matrix =
                     loopObj(value, name, streamBranch, plugin, used_ids, matrix)
                 elif value.id not in used_ids: # if geometry
                     used_ids.append(value.id)
-                    loopVal([value], name, streamBranch, plugin, used_ids, matrix)
+                    loopVal([value], name, value.id, streamBranch, plugin, used_ids, matrix)
             except: 
                 loopObj(value, name, streamBranch, plugin, used_ids, matrix)
 
@@ -185,7 +185,7 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids, matrix =
             objectListConverted = 0
             for i, item in enumerate(value):
                 used_ids.append(item.id)
-                loopVal(item, name, streamBranch, plugin, used_ids, matrix)
+                loopVal(item, name, item.id, streamBranch, plugin, used_ids, matrix)
 
                 if not isinstance(item, Base): continue
                 if "View" in item.speckle_type or "RevitMaterial" in item.speckle_type: continue
@@ -194,33 +194,33 @@ def loopVal(value: Any, name: str, streamBranch: str, plugin, used_ids, matrix =
                     # keep traversing infinitely, just don't run repeated conversion for the same list of objects
                     try: 
                         if item["displayValue"] is not None and objectListConverted == 0: 
-                            geometryLayerToNative(value, name, streamBranch, plugin)
+                            geometryLayerToNative(value, name, val_id, streamBranch, plugin)
                             time.sleep(0.3)
                             objectListConverted += 1
                     except: 
                         try: 
                             if item["@displayValue"] is not None and objectListConverted == 0: 
-                                geometryLayerToNative(value, name, streamBranch, plugin)
+                                geometryLayerToNative(value, name, val_id, streamBranch, plugin)
                                 time.sleep(0.3)
                                 objectListConverted += 1
                         except: pass 
                 elif item.speckle_type and item.speckle_type.endswith(".ModelCurve"): 
                     if item["baseCurve"] is not None: 
-                        geometryLayerToNative(value, name, streamBranch, plugin)
+                        geometryLayerToNative(value, name, val_id, streamBranch, plugin)
                         time.sleep(0.3)
                         break
                 elif item.speckle_type and (item.speckle_type == "Objects.Geometry.Mesh" or item.speckle_type == "Objects.Geometry.Brep" or item.speckle_type.startswith("Objects.BuiltElements.")):
-                    geometryLayerToNative(value, name, streamBranch, plugin)
+                    geometryLayerToNative(value, name, val_id, streamBranch, plugin)
                     time.sleep(0.3)
                     break
                 elif item.speckle_type and item.speckle_type != "Objects.Geometry.Mesh" and item.speckle_type != "Objects.Geometry.Brep" and item.speckle_type.startswith("Objects.Geometry."): # or item.speckle_type == 'Objects.BuiltElements.Alignment'): 
-                    geometryLayerToNative(value, name, streamBranch, plugin)
+                    geometryLayerToNative(value, name, val_id, streamBranch, plugin)
                     time.sleep(0.3)
                     break
                 elif item.speckle_type:
                     try:
                         if item["baseLine"] is not None:
-                            geometryLayerToNative(value, name, streamBranch, plugin)
+                            geometryLayerToNative(value, name, val_id, streamBranch, plugin)
                             time.sleep(0.3)
                             break
                     except: pass 

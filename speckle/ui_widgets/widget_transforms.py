@@ -285,6 +285,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
             return
     
     def saveElevationLayer(self):
+        print("saveElevationLayer")
         from speckle.utils.project_vars import set_elevationLayer
         root = self.dataStorage.project.layerTreeRoot()
         layer = None
@@ -302,24 +303,27 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         else:
             self.dataStorage.all_layers = getAllLayers(root)
             all_l_names = [l.name() for l in self.dataStorage.all_layers]
+            print(all_l_names)
 
             for l in self.dataStorage.all_layers: 
                 if layerName == l.name():
                     layer = l
                     try:
+                        print(layerName)
                         if all_l_names.count(layer.name()) > 1:
                             displayUserMsg(f"Layer name \'{layer.name()}\' is used for more than 1 layer in the project", level=1) 
                             layer = None
                             break 
+                        else:
+                            self.dataStorage.elevationLayer = layer 
+                            set_elevationLayer(self.dataStorage)
+                            logToUser(f"Elevation layer '{layerName}' successfully set", level = 0 )
+                            break
                     except: 
                         displayUserMsg(f"Layer \'{layer.name()}\' is not found in the project", level=1) 
                         layer = None
                         break 
-            
-        self.dataStorage.elevationLayer = layer 
-        set_elevationLayer(self.dataStorage)
-        logToUser(f"Elevation layer '{layerName}' successfully set", level = 0 )
-            
+        
         try:
             metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Add transformation on Send", "Transformation": "Set Layer as Elevation", "connector_version": str(self.dataStorage.plugin_version)})
         except Exception as e:
