@@ -571,6 +571,7 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: 
                 geom_meshes.append(val)
             elif isinstance(val, List): 
                 if len(val)>0 and isinstance(val[0], Mesh) : 
+                    print("__________GET ACTUAL ELEMENT BEFORE DISPLAY VALUE")
                     geom_meshes.extend(val)
         
         if len(geom_meshes)>0: 
@@ -789,11 +790,11 @@ def addBimMainThread(obj: Tuple):
         except: pass
         
         # report
-        obj_type = geom_print + " Vector Layer"
+        obj_type = geom_print + " Vector Layer" if "Mesh" not in geom_print else "Multipolygon Vector Layer"
         if all_feature_errors_count == 0:
-            dataStorage.latestActionReport.append({"speckle_id": f"{finalName} {layer_id}", "obj_type": obj_type, "errors": ""})
+            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": ""})
         else: 
-            dataStorage.latestActionReport.append({"speckle_id": f"{finalName} {layer_id}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
+            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
         for item in report_features:
             dataStorage.latestActionReport.append(item)
         
@@ -801,7 +802,7 @@ def addBimMainThread(obj: Tuple):
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         # report 
         obj_type = geom_print + "Vector Layer"
-        dataStorage.latestActionReport.append({"speckle_id": f"{finalName} {layer_id}", "obj_type": obj_type, "errors": f"{e}"})
+        dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
 
 
 def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, geomType: str, streamBranch: str, plugin, matrix = None) -> QgsVectorLayer: 
