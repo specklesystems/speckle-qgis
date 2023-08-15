@@ -286,6 +286,8 @@ class SpeckleQGIS:
         self.dataStorage.project = self.project
         self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
 
+        self.dockwidget.reportBtn.setEnabled(True)
+
         # https://www.opengis.ch/2016/09/07/using-threads-in-qgis-python-plugins/
         
         # send 
@@ -564,6 +566,9 @@ class SpeckleQGIS:
             commitObj = operations.receive(objId, transport, None)
             
             projectCRS = self.project.crs()
+            units = str(QgsUnitTypes.encodeUnit(projectCRS.mapUnits())) 
+            self.dataStorage.latestActionUnits = units 
+            
             try:
                 metr_crs = True if self.dataStorage.custom_lat!=0 and self.dataStorage.custom_lon!=0 and str(self.dataStorage.custom_lat) in projectCRS.toWkt() and str(self.dataStorage.custom_lon) in projectCRS.toWkt() else False
             except:
@@ -622,7 +627,7 @@ class SpeckleQGIS:
 
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
             logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True, report = True)
-            #return 
+            
             
         except Exception as e:
             #if self.dockwidget.experimental.isChecked(): time.sleep(1)
