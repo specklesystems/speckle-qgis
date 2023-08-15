@@ -389,7 +389,7 @@ class SpeckleQGIS:
             if len(layers) == 0 or layers is None: #len(selectedLayerNames) == 0:
                 logToUser("No valid layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
-            self.dataStorage.latestActionLayers = layers 
+            self.dataStorage.latestActionLayers = [l.name() for l in layers]
             print(layers)
 
             root = self.dataStorage.project.layerTreeRoot()

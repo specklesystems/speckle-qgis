@@ -631,7 +631,6 @@ def addBimMainThread(obj: Tuple):
         
         dataStorage = plugin.dataStorage
         dataStorage.matrix = matrix
-        dataStorage.latestActionLayers.append(layerName)
         report_features = []
 
         project: QgsProject = dataStorage.project
@@ -645,6 +644,7 @@ def addBimMainThread(obj: Tuple):
         print(f"Final short name: {shortName}")
         layerName = layerName.split(shortName)[0] + shortName + ("_" + geom_print)
         finalName = shortName + ("_" + geom_print)
+        dataStorage.latestActionLayers.append(finalName)
         print(f"Final layer name: {finalName}")
         #newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
         newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{finalName[:30]}'
@@ -852,7 +852,6 @@ def addCadMainThread(obj: Tuple):
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
         dataStorage.matrix = matrix
-        dataStorage.latestActionLayers.append(layerName)
 
         
         geom_print = geomType
@@ -864,6 +863,7 @@ def addCadMainThread(obj: Tuple):
         
         layerName = layerName.split(shortName)[0] + shortName + ("_" + geom_print)
         finalName = shortName + ("_" + geom_print)
+        dataStorage.latestActionLayers.append(finalName)
 
         ###########################################
         dummy = None 
@@ -1067,7 +1067,6 @@ def addVectorMainThread(obj: Tuple):
         newFields = obj['newFields'] 
         fets = obj['fets']
         
-        #dataStorage.latestActionLayers.append(layer.name)
         report_features = obj['report_features']
 
         dataStorage = plugin.dataStorage
