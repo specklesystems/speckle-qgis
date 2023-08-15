@@ -700,3 +700,29 @@ def collectionsFromJson(jsonObj: dict, levels: list, layerConverted, baseCollect
                 lastLevel.elements.append(layerConverted)
 
     return baseCollection 
+
+def getDisplayValueList(geom: Any) -> List: 
+    try:
+        print("___getDisplayValueList")
+        val = [] 
+        # get list of display values for Meshes
+        if isinstance(geom, Mesh):
+            val = [geom]
+        elif isinstance(geom, List) and len(geom)>0:
+            if isinstance(geom[0], Mesh): 
+                val = geom
+            else:
+                print("not an individual geometry")
+        else:
+            try: val = geom.displayValue # list
+            except Exception as e:
+                print(e)
+                try: val = geom["@displayValue"] # list
+                except Exception as e:
+                    print(e)
+                    try: val = geom.displayMesh
+                    except: pass
+        return val 
+    except Exception as e:
+        print(e) 
+        return []

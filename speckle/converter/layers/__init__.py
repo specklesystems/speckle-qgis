@@ -30,7 +30,7 @@ from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from specklepy.objects.other import Collection
 
 from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import collectionsFromJson, colorFromSpeckle, colorFromSpeckle, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, tryCreateGroupTree, trySaveCRS, validateAttributeName
+from speckle.converter.layers.utils import collectionsFromJson, colorFromSpeckle, colorFromSpeckle, getDisplayValueList, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, tryCreateGroupTree, trySaveCRS, validateAttributeName
 from speckle.converter.geometry.mesh import writeMeshToShp
 
 from speckle.converter.layers.symbology import vectorRendererToNative, rasterRendererToNative, rendererToSpeckle
@@ -528,9 +528,9 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
 
 
 def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: str, streamBranch: str, plugin, matrix = None):
-    #print("01_____GEOMETRY layer to native")
+    print("01_____GEOMETRY layer to native")
     try:
-        #print(layerName)
+        print(layerContentList)
         geom_meshes = []
         
         geom_points = []
@@ -543,6 +543,7 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: 
         
         #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
         for geom in layerContentList:
+            print(geom)
             if isinstance(geom, Point): 
                 geom_points.append(geom)
                 continue
@@ -558,21 +559,18 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: 
                     # don't skip the rest if baseLine is found 
             except: pass # check for the Meshes
 
-            # get list of display values for Meshes
-            if isinstance(geom, Mesh) or isinstance(geom, List): val = geom
-            else:
-                try: val = geom.displayValue
-                except:
-                    try: val = geom["@displayValue"]
-                    except:
-                        try: val = geom.displayMesh
-                        except: pass
-            if val and isinstance(val, Mesh):
-                geom_meshes.append(val)
-            elif isinstance(val, List): 
-                if len(val)>0 and isinstance(val[0], Mesh) : 
-                    print("__________GET ACTUAL ELEMENT BEFORE DISPLAY VALUE")
-                    geom_meshes.extend(val)
+            # ________________get list of display values for Meshes___________________________
+            val = getDisplayValueList(geom)
+            print(val) # List of Meshes
+
+            if isinstance(val, List) and len(val)>0 and isinstance(val[0], Mesh) : 
+                print("__________GET ACTUAL ELEMENT BEFORE DISPLAY VALUE")
+                print(val[0]) # Mesh 
+                
+                if isinstance(geom, List): geom_meshes.extend(geom)
+                else: geom_meshes.append(geom)
+            print("__GEOM MESHES")
+            print(geom_meshes)
         
         if len(geom_meshes)>0: 
             bimVectorLayerToNative(geom_meshes, layerName, val_id, "Mesh", streamBranch, plugin, matrix) 
@@ -605,8 +603,8 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, val_id: str
         if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
         
         newFields = getLayerAttributes(geomList)
-        #print("___________Layer fields_____________")
-        #print(newFields.toList())
+        print("___________Layer fields_____________")
+        print(newFields.toList())
         
         plugin.dockwidget.signal_2.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         
@@ -825,8 +823,8 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, ge
 
         
         newFields = getLayerAttributes(geomList)
-        #print(newFields.toList())
-        #print(geomList)
+        print(newFields.toList())
+        print(geomList)
         
         plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         

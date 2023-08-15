@@ -10,7 +10,7 @@ from shapefile import TRIANGLE_STRIP, TRIANGLE_FAN, OUTER_RING
 from speckle.converter.geometry.point import applyTransformMatrix, pointToNative, pointToNativeWithoutTransforms, scalePointToNative, transformSpecklePt
 from speckle.converter.geometry.utils import fix_orientation, projectToPolygon, triangulatePolygon
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
-from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter
+from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to_meter, getDisplayValueList
 #from speckle.utils.panel_logging import logger
 from speckle.utils.panel_logging import logToUser
 
@@ -38,7 +38,7 @@ def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
     
-def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
+def writeMeshToShp(meshes: List, path: str, dataStorage):
     """Converts a Speckle Mesh to QgsGeometry"""
     try:
         print("06___________________writeMeshToShp")
@@ -52,8 +52,14 @@ def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
         w.field('speckle_id', 'C')
 
         shapes = []
-        for geom in meshes:
+        print(meshes)
+        for i, geom in enumerate(meshes):
 
+            meshList: List = getDisplayValueList(geom)
+            print(geom)
+            w = fill_multi_mesh_parts(w, meshList, geom.id, dataStorage)
+
+            r'''
             if geom.speckle_type =='Objects.Geometry.Mesh' and isinstance(geom, Mesh):
                 mesh = geom
                 w = fill_mesh_parts(w, mesh, geom.id, dataStorage)
@@ -63,22 +69,24 @@ def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
                         mesh = geom.displayValue
                         w = fill_mesh_parts(w, mesh, geom.id, dataStorage)
                     elif geom.displayValue and isinstance(geom.displayValue, List): 
-                        w = fill_multi_mesh_parts(w, geom.displayValue, geom.id)
+                        print("__ this should be a common case")
+                        w = fill_multi_mesh_parts(w, geom.displayValue, geom.id, dataStorage)
                 except: 
                     try: 
                         if geom["@displayValue"] and isinstance(geom["@displayValue"], Mesh): 
                             mesh = geom["@displayValue"]
                             w = fill_mesh_parts(w, mesh, geom.id, dataStorage)
                         elif geom["@displayValue"] and isinstance(geom["@displayValue"], List): 
-                            w = fill_multi_mesh_parts(w, geom["@displayValue"], geom.id)
+                            w = fill_multi_mesh_parts(w, geom["@displayValue"], geom.id, dataStorage)
                     except:
                         try: 
                             if geom.displayMesh and isinstance(geom.displayMesh, Mesh): 
                                 mesh = geom.displayMesh
                                 w = fill_mesh_parts(w, mesh, geom.id, dataStorage)
                             elif geom.displayMesh and isinstance(geom.displayMesh, List): 
-                                w = fill_multi_mesh_parts(w, geom.displayMesh, geom.id)
+                                w = fill_multi_mesh_parts(w, geom.displayMesh, geom.id, dataStorage)
                         except: pass
+            ''' 
         w.close()
         #print("06-end___________________Mesh to Native")
         return path
@@ -88,14 +96,14 @@ def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
 
 def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str, dataStorage):
     
-    #print("07___________________fill_multi_mesh_parts")
+    print("07___________________fill_multi_mesh_parts")
     try:
         parts_list = []
         types_list = []
         for mesh in meshes:
             if not isinstance(mesh, Mesh): continue
             try:
-                #print(f"Fill multi-mesh parts # {geom_id}")
+                print(f"Fill multi-mesh parts # {geom_id}")
                 parts_list_x, types_list_x = deconstructSpeckleMesh(mesh, dataStorage) 
                 for i, face in enumerate(parts_list_x):
                     for k, p in enumerate(face):
@@ -104,7 +112,7 @@ def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str,
                         parts_list_x[i][k] = [pt.x, pt.y, pt.z]
                 parts_list.extend(parts_list_x)
                 types_list.extend(types_list_x)
-            except Exception as e: pass 
+            except Exception as e: print(e) 
         
         w.multipatch(parts_list, partTypes=types_list ) # one type for each part
         w.record(geom_id)
