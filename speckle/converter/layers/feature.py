@@ -678,26 +678,30 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 def featureToNative(feature: Base, fields: QgsFields, dataStorage):
     feat = QgsFeature()
     try:
-        try: 
-            speckle_geom = feature.geometry # for QGIS / ArcGIS Layer type from 2.14
-        except:
-            try: speckle_geom = feature["geometry"] # for QGIS / ArcGIS Layer type before 2.14
-            except:  speckle_geom = feature # for created in other software
-
         qgsGeom = None 
-        if not isinstance(speckle_geom, list):
-            qgsGeom = geometry.convertToNative(speckle_geom, dataStorage)
-        
-        elif isinstance(speckle_geom, list):
-            if len(speckle_geom)==1:
-                qgsGeom = geometry.convertToNative(speckle_geom[0], dataStorage)
-            elif len(speckle_geom)>1: 
-                qgsGeom = geometry.convertToNativeMulti(speckle_geom, dataStorage)
-            else: 
-                logToUser(f"Feature '{feature.id}' does not contain geometry", level = 2, func = inspect.stack()[0][3])
 
-        if qgsGeom is not None: feat.setGeometry(qgsGeom)
-        else: return None 
+        if isinstance(feature, GisNonGeometryElement): pass
+        else: 
+            try: 
+                speckle_geom = feature.geometry # for QGIS / ArcGIS Layer type from 2.14
+            except:
+                try: speckle_geom = feature["geometry"] # for QGIS / ArcGIS Layer type before 2.14
+                except:  speckle_geom = feature # for created in other software
+
+            if not isinstance(speckle_geom, list):
+                qgsGeom = geometry.convertToNative(speckle_geom, dataStorage)
+            
+            elif isinstance(speckle_geom, list):
+                if len(speckle_geom)==1:
+                    qgsGeom = geometry.convertToNative(speckle_geom[0], dataStorage)
+                elif len(speckle_geom)>1: 
+                    qgsGeom = geometry.convertToNativeMulti(speckle_geom, dataStorage)
+                else: 
+                    logToUser(f"Feature '{feature.id}' does not contain geometry", level = 2, func = inspect.stack()[0][3])
+
+            if qgsGeom is not None: 
+                feat.setGeometry(qgsGeom)
+            else: return None 
 
         feat.setFields(fields)  
         for field in fields:

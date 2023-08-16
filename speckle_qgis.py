@@ -445,7 +445,6 @@ class SpeckleQGIS:
         try:
             # this serialises the block and sends it to the transport
             objId = operations.send(base=base_obj, transports=[transport])
-            self.dockwidget.msgLog.removeBtnUrl("cancel") 
             self.dataStorage.latestActionTime = str(datetime.now().strftime("%d/%m/%Y, %H:%M:%S"))
         except Exception as e:
             logToUser("Error sending data: " + str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
@@ -502,6 +501,7 @@ class SpeckleQGIS:
             time.sleep(1)
             logToUser("Error creating commit: "+str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
 
+        self.dockwidget.msgLog.removeBtnUrl("cancel") 
         self.dockwidget.cancelOperations()
 
     def onReceive(self):

@@ -110,9 +110,15 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
         layersInGroup = getAllLayers(root, layerGroup)
         for lyr in layersInGroup:
             if isinstance(lyr, QgsVectorLayer): 
-                if "Speckle_ID" in lyr.fields().names() and lyr.name().endswith(("_Mesh", "_Polyline", "_Point")): 
-                    print(lyr.name())
-                    plugin.project.removeMapLayer(lyr)
+                #print(lyr.fields().names())
+                try:
+                    print(lyr.getFeature(0).geometry()) # <QgsGeometry: null>
+                except: pass
+                if "Speckle_ID" in lyr.fields().names(): 
+                    if lyr.name().endswith(("_Mesh", "_Polyline", "_Point")) or plugin.dataStorage.receivingGISlayer is True: # or str(lyr.wkbType()) == "WkbType.NoGeometry": 
+                        print("Speckle_ID")
+                        print(lyr.name())
+                        plugin.project.removeMapLayer(lyr)
             
             elif isinstance(lyr, QgsRasterLayer): 
                 if "_Speckle" in lyr.name(): 
@@ -1082,8 +1088,8 @@ def addVectorMainThread(obj: Tuple):
             new_feat = featureToNative(f, newFields, plugin.dataStorage)
             if new_feat is not None and new_feat != "": fets.append(new_feat)
             else:
-                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid geometry"})
+                logToUser(f"Feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
+                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid data"})
                 all_feature_errors_count += 1
             
         if newFields is None: 
