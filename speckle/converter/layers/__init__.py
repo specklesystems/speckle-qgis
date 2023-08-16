@@ -494,9 +494,6 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
     try:
         project: QgsProject = plugin.project
         #plugin.dataStorage.currentCRS = project.crs()
-        plugin.dataStorage.currentUnits = layer.crs.units 
-        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
-            plugin.dataStorage.currentUnits = 'm'
 
         
         if isinstance(layer.collectionType, str) and layer.collectionType.endswith("VectorLayer"):
@@ -1014,34 +1011,13 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
         elif geomType =="Polyline": geomType = "MultiLineString"
         elif geomType =="Multipoint": geomType = "Point"
         elif geomType == 'MultiPatch': geomType = "Polygon"
-        
-        plugin.dataStorage.receivingGISlayer = True
-        try:
-            plugin.dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
-            plugin.dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
-            plugin.dataStorage.current_layer_crs_rotation = layer.crs.rotation
-        except Exception as e:
-            print(str(e) + "  ::vectorLayerToNative") 
 
         fets = []
         report_features = []
         all_feature_errors_count = 0
+        print("before newFields")
 
-        newFields = getLayerAttributes(layer.features)
-        for f in layer.features: 
-            # pre-fill report:
-            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
-
-            new_feat = featureToNative(f, newFields, plugin.dataStorage)
-            if new_feat is not None and new_feat != "": fets.append(new_feat)
-            else:
-                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid geometry"})
-                all_feature_errors_count += 1
-            
-        if newFields is None: 
-            newFields = QgsFields()
-        
+        newFields = QgsFields()
         objectEmit = {'plugin': plugin, 'geomType': geomType, 'newName': newName, 'report_features': report_features, 'streamBranch': streamBranch, 'wkt': layer.crs.wkt, 'layer': layer, 'newFields': newFields, 'fets': fets}
         plugin.dockwidget.signal_1.emit(objectEmit)
         
@@ -1069,6 +1045,10 @@ def addVectorMainThread(obj: Tuple):
 
         dataStorage = plugin.dataStorage
         dataStorage.receivingGISlayer = True
+        
+        plugin.dataStorage.currentUnits = layer.crs.units 
+        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
+            plugin.dataStorage.currentUnits = 'm'
         try:
             dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
             dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
@@ -1088,6 +1068,29 @@ def addVectorMainThread(obj: Tuple):
 
         dataStorage.latestActionLayers.append(finalName)
         ###########################################
+
+        # get features and attributes
+        fets = []
+        report_features = []
+        all_feature_errors_count = 0
+        print("before newFields")
+        newFields = getLayerAttributes(layer.features)
+        for f in layer.features: 
+            # pre-fill report:
+            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
+
+            new_feat = featureToNative(f, newFields, plugin.dataStorage)
+            if new_feat is not None and new_feat != "": fets.append(new_feat)
+            else:
+                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
+                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid geometry"})
+                all_feature_errors_count += 1
+            
+        if newFields is None: 
+            newFields = QgsFields()
+
+        # add dummy layer to secure correct CRS
+        print("before dummy layer")
         dummy = None 
         root = project.layerTreeRoot()
         plugin.dataStorage.all_layers = getAllLayers(root)
@@ -1106,6 +1109,7 @@ def addVectorMainThread(obj: Tuple):
         #print(authid)
         
         #################################################
+        print("03")
         if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
             # reproject all QGIS polygon geometry to EPSG 4326 until the CRS issue is found 
             for i, f in enumerate(fets):
@@ -1118,6 +1122,7 @@ def addVectorMainThread(obj: Tuple):
             authid = "EPSG:4326"
         #################################################
 
+        print("04")
         vl = None
         vl = QgsVectorLayer(geomType + "?crs=" + authid, finalName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
@@ -1136,11 +1141,13 @@ def addVectorMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
+        print("05")
         #layerGroup = tryCreateGroup(project, streamBranch)
         groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
         layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         #################################################
+        print("06")
         if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
 
             p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -1197,6 +1204,7 @@ def addVectorMainThread(obj: Tuple):
         
         #################################################
 
+        print("07")
         layerGroup.addLayer(vl)
 
         rendererNew = vectorRendererToNative(layer, newFields)
@@ -1209,6 +1217,7 @@ def addVectorMainThread(obj: Tuple):
         try: vl.setRenderer(rendererNew)
         except: pass
 
+        print("08")
         try: 
             ################################### RENDERER 3D ###########################################
             #rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
@@ -1217,6 +1226,7 @@ def addVectorMainThread(obj: Tuple):
             renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
             #print(renderer3d)
 
+            print("09")
             vl.loadNamedStyle(renderer3d)
             vl.triggerRepaint()
         except: pass 
@@ -1224,16 +1234,20 @@ def addVectorMainThread(obj: Tuple):
         try: project.removeMapLayer(dummy)
         except: pass
         
+        print("10")
         # report
         all_feature_errors_count = 0
         for item in report_features:
             if item["errors"] != "": all_feature_errors_count += 1
 
+        print("11")
         obj_type = "Vector Layer"
         if all_feature_errors_count == 0:
             dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": obj_type, "errors": ""})
         else: 
             dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
+        
+        print("12")
         for item in report_features:
             dataStorage.latestActionReport.append(item)
 
@@ -1252,13 +1266,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, pl
 
         newName = layerName #f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
-        plugin.dataStorage.receivingGISlayer = True
-        try:
-            plugin.dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
-            plugin.dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
-            plugin.dataStorage.current_layer_crs_rotation = layer.crs.rotation
-        except Exception as e:
-            print(e) 
+        #plugin.dataStorage.receivingGISlayer = True
 
         plugin.dockwidget.signal_4.emit({'plugin': plugin, 'layerName': layerName, 'newName': newName, 'streamBranch': streamBranch, 'layer': layer})
         
@@ -1281,6 +1289,16 @@ def addRasterMainThread(obj: Tuple):
         dataStorage = plugin.dataStorage
         dataStorage.receivingGISlayer = True
 
+        plugin.dataStorage.currentUnits = layer.crs.units 
+        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
+            plugin.dataStorage.currentUnits = 'm'
+
+        try:
+            plugin.dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
+            plugin.dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
+            plugin.dataStorage.current_layer_crs_rotation = layer.crs.rotation
+        except Exception as e:
+            print(e) 
 
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL))-1][:50] 
         print(f"Final short name: {shortName}")
