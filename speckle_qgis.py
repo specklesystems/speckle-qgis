@@ -40,7 +40,7 @@ import webbrowser
 # Initialize Qt resources from file resources.py
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
-from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getAllLayersWithTree, getSavedLayers, getSelectedLayers, getSelectedLayersWithStructure
+from speckle.converter.layers import addBimMainThread, addCadMainThread, addNonGeometryMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getAllLayersWithTree, getSavedLayers, getSelectedLayers, getSelectedLayersWithStructure
 from speckle.converter.layers import findAndClearLayerGroup
 
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
@@ -711,6 +711,7 @@ class SpeckleQGIS:
                 self.dockwidget.signal_2.connect(addBimMainThread)
                 self.dockwidget.signal_3.connect(addCadMainThread)
                 self.dockwidget.signal_4.connect(addRasterMainThread)
+                self.dockwidget.signal_5.connect(addNonGeometryMainThread)
 
                 #self.signal_groupCreate.connect(tryCreateGroup)
                 

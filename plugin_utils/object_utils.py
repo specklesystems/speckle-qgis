@@ -5,7 +5,7 @@ from typing import Any, Callable, List, Optional
 from plugin_utils.helpers import SYMBOL, removeSpecialCharacters 
 
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
-from speckle.converter.layers import geometryLayerToNative, layerToNative
+from speckle.converter.layers import geometryLayerToNative, layerToNative, nonGeometryLayerToNative
 
 import threading
 from specklepy.objects import Base
@@ -184,6 +184,9 @@ def loopVal(value: Any, name: str, val_id: str, streamBranch: str, plugin, used_
 
             objectListConverted = 0
             for i, item in enumerate(value):
+                if not isinstance(item, Base): 
+                    continue 
+                
                 used_ids.append(item.id)
                 loopVal(item, name, item.id, streamBranch, plugin, used_ids, matrix)
 
@@ -217,6 +220,10 @@ def loopVal(value: Any, name: str, val_id: str, streamBranch: str, plugin, used_
                     geometryLayerToNative(value, name, val_id, streamBranch, plugin)
                     time.sleep(0.3)
                     break
+                elif item.speckle_type == "Objects.Organization.DataTable":
+                    nonGeometryLayerToNative(value, name, val_id, streamBranch, plugin)
+                    time.sleep(0.3)
+                    break
                 elif item.speckle_type:
                     try:
                         if item["baseLine"] is not None:
@@ -224,4 +231,5 @@ def loopVal(value: Any, name: str, val_id: str, streamBranch: str, plugin, used_
                             time.sleep(0.3)
                             break
                     except: pass 
-    except: pass 
+    except Exception as e:
+        print(e)  

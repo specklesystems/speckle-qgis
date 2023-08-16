@@ -743,6 +743,18 @@ def featureToNative(feature: Base, fields: QgsFields, dataStorage):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return feat
 
+def nonGeomFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
+    try:
+        print("______________cadFeatureToNative")
+        exist_feat = QgsFeature()
+        exist_feat.setFields(fields)  
+        feat_updated = updateFeat(exist_feat, fields, feature)
+        return feat_updated
+    
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return 
+    
 def cadFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
     try:
         print("______________cadFeatureToNative")

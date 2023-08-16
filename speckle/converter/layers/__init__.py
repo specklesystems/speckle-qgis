@@ -29,7 +29,7 @@ from specklepy.objects.GIS.CRS import CRS
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from specklepy.objects.other import Collection
 
-from speckle.converter.layers.feature import featureToSpeckle, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
+from speckle.converter.layers.feature import featureToSpeckle, nonGeomFeatureToNative, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
 from speckle.converter.layers.utils import collectionsFromJson, colorFromSpeckle, colorFromSpeckle, getDisplayValueList, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, tryCreateGroupTree, trySaveCRS, validateAttributeName
 from speckle.converter.geometry.mesh import writeMeshToShp
 
@@ -115,7 +115,7 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
                     print(lyr.getFeature(0).geometry()) # <QgsGeometry: null>
                 except: pass
                 if "Speckle_ID" in lyr.fields().names(): 
-                    if lyr.name().endswith(("_Mesh", "_Polyline", "_Point")) or plugin.dataStorage.receivingGISlayer is True: # or str(lyr.wkbType()) == "WkbType.NoGeometry": 
+                    if lyr.name().endswith(("_Mesh", "_Polyline", "_Point", "_Table")) or plugin.dataStorage.receivingGISlayer is True: # or str(lyr.wkbType()) == "WkbType.NoGeometry": 
                         print("Speckle_ID")
                         print(lyr.name())
                         plugin.project.removeMapLayer(lyr)
@@ -528,6 +528,132 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
+
+def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, streamBranch: str, plugin):
+    print("01_____NON-GEOMETRY layer to native")
+    
+    try:
+        layerName = removeSpecialCharacters(nameBase) 
+        newFields = getLayerAttributes(geomList)
+        print(newFields.toList())
+        print(geomList)
+        
+        plugin.dockwidget.signal_5.emit({'plugin': plugin, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
+        return
+    
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        return  
+    
+def addNonGeometryMainThread(obj: Tuple):
+    print("___addCadMainThread")
+    try:
+        plugin = obj['plugin'] 
+        layerName = obj['layerName'] 
+        layer_id = obj['layer_id']
+        streamBranch = obj['streamBranch'] 
+        newFields = obj['newFields'] 
+        geomList = obj['geomList']
+
+        project: QgsProject = plugin.dataStorage.project
+        dataStorage = plugin.dataStorage
+        
+        geomType = "None"
+        geom_print = "Table"
+
+        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
+        layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
+        finalName = shortName + ("_"+geom_print)
+        dataStorage.latestActionLayers.append(finalName)
+
+        ###########################################
+        dummy = None 
+        root = project.layerTreeRoot()
+        plugin.dataStorage.all_layers = getAllLayers(root)
+        if plugin.dataStorage.all_layers is not None: 
+            if len(plugin.dataStorage.all_layers) == 0:
+                dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
+                crs = QgsCoordinateReferenceSystem(4326)
+                dummy.setCrs(crs)
+                project.addMapLayer(dummy, True)
+        #################################################
+
+        crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+        plugin.dataStorage.currentUnits = str(QgsUnitTypes.encodeUnit(crs.mapUnits())) 
+        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
+            plugin.dataStorage.currentUnits = 'm'
+        #authid = trySaveCRS(crs, streamBranch)
+
+        if crs.isGeographic is True: 
+            logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
+
+        
+        vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid() , finalName, "memory") # do something to distinguish: stream_id_latest_name
+        vl.setCrs(crs)
+        project.addMapLayer(vl, False)
+
+        pr = vl.dataProvider()
+        vl.startEditing()
+        
+        
+        # create list of Features (fets) and list of Layer fields (fields)
+        attrs = QgsFields()
+        fets = []
+        fetIds = []
+        fetColors = []
+
+        report_features = []
+        all_feature_errors_count = 0
+        for f in geomList[:]: 
+
+            # pre-fill report:
+            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
+
+            new_feat = nonGeomFeatureToNative(f, newFields, plugin.dataStorage)
+            # update attrs for the next feature (if more fields were added from previous feature)
+
+            #print("________cad feature to add") 
+            if new_feat is not None and new_feat != "": 
+                fets.append(new_feat)
+                for a in newFields.toList(): 
+                    attrs.append(a) 
+                
+                pr.addAttributes(newFields) # add new attributes from the current object
+                fetIds.append(f.id)
+                fetColors = findFeatColors(fetColors, f)
+            else:
+                logToUser(f"Feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
+                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid data"})
+                all_feature_errors_count += 1
+        
+        # add Layer attribute fields
+        pr.addAttributes(newFields)
+        vl.updateFields()
+
+        #pr = vl.dataProvider()
+        pr.addFeatures(fets)
+        vl.updateExtents()
+        vl.commitChanges()
+
+        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
+        layerGroup.addLayer(vl)
+
+        # report
+        obj_type = geom_print + " Vector Layer" if "Mesh" not in geom_print else "Multipolygon Vector Layer"
+        if all_feature_errors_count == 0:
+            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": ""})
+        else: 
+            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
+        for item in report_features:
+            dataStorage.latestActionReport.append(item)
+
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        # report
+        obj_type = geom_print + "Vector Layer"
+        dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
 
 
 def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: str, streamBranch: str, plugin, matrix = None):
@@ -1020,7 +1146,6 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
 
         fets = []
         report_features = []
-        all_feature_errors_count = 0
         print("before newFields")
 
         newFields = QgsFields()
