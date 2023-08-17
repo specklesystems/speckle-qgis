@@ -40,7 +40,7 @@ import webbrowser
 # Initialize Qt resources from file resources.py
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
-from speckle.converter.layers import addBimMainThread, addCadMainThread, addNonGeometryMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getAllLayersWithTree, getSavedLayers, getSelectedLayers, getSelectedLayersWithStructure
+from speckle.converter.layers import addBimMainThread, addCadMainThread, addExcelMainThread, addNonGeometryMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getAllLayersWithTree, getSavedLayers, getSelectedLayers, getSelectedLayersWithStructure
 from speckle.converter.layers import findAndClearLayerGroup
 
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
@@ -511,7 +511,7 @@ class SpeckleQGIS:
         try:
             if not self.dockwidget: return
 
-            self.dataStorage.receivingGISlayer = False
+            self.dataStorage.latestHostApp = ""
 
             # Check if stream id/url is empty
             if self.active_stream is None:
@@ -557,6 +557,7 @@ class SpeckleQGIS:
 
             app_full = commit.sourceApplication
             app = getAppName(commit.sourceApplication)
+            self.dataStorage.latestHostApp = app 
             client_id = client.account.userInfo.id
 
             transport = validateTransport(client, streamId)
@@ -611,7 +612,6 @@ class SpeckleQGIS:
         try:
             if app.lower() == "qgis" or app.lower() == "arcgis": 
                 print(app.lower())
-                self.dataStorage.receivingGISlayer = True
                 check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
             else: 
                 check: Callable[[Base], bool] = lambda base: (base.speckle_type) # and base.speckle_type.endswith("Base") )
@@ -712,6 +712,7 @@ class SpeckleQGIS:
                 self.dockwidget.signal_3.connect(addCadMainThread)
                 self.dockwidget.signal_4.connect(addRasterMainThread)
                 self.dockwidget.signal_5.connect(addNonGeometryMainThread)
+                self.dockwidget.signal_6.connect(addExcelMainThread)
 
                 #self.signal_groupCreate.connect(tryCreateGroup)
                 

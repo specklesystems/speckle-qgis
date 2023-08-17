@@ -212,16 +212,17 @@ def loopVal(value: Any, name: str, val_id: str, streamBranch: str, plugin, used_
                         geometryLayerToNative(value, name, val_id, streamBranch, plugin)
                         time.sleep(0.3)
                         break
+                elif plugin.dataStorage.latestHostApp.lower().endswith("excel") or item.speckle_type == "Objects.Organization.DataTable":
+                    # should be before the check for "BuiltElements"
+                    nonGeometryLayerToNative(value, name, val_id, streamBranch, plugin)
+                    time.sleep(0.3)
+                    break
                 elif item.speckle_type and (item.speckle_type == "Objects.Geometry.Mesh" or item.speckle_type == "Objects.Geometry.Brep" or item.speckle_type.startswith("Objects.BuiltElements.")):
                     geometryLayerToNative(value, name, val_id, streamBranch, plugin)
                     time.sleep(0.3)
                     break
                 elif item.speckle_type and item.speckle_type != "Objects.Geometry.Mesh" and item.speckle_type != "Objects.Geometry.Brep" and item.speckle_type.startswith("Objects.Geometry."): # or item.speckle_type == 'Objects.BuiltElements.Alignment'): 
                     geometryLayerToNative(value, name, val_id, streamBranch, plugin)
-                    time.sleep(0.3)
-                    break
-                elif item.speckle_type == "Objects.Organization.DataTable":
-                    nonGeometryLayerToNative(value, name, val_id, streamBranch, plugin)
                     time.sleep(0.3)
                     break
                 elif item.speckle_type:

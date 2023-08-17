@@ -115,7 +115,7 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
                     print(lyr.getFeature(0).geometry()) # <QgsGeometry: null>
                 except: pass
                 if "Speckle_ID" in lyr.fields().names(): 
-                    if lyr.name().endswith(("_Mesh", "_Polyline", "_Point", "_Table")) or plugin.dataStorage.receivingGISlayer is True: # or str(lyr.wkbType()) == "WkbType.NoGeometry": 
+                    if lyr.name().endswith(("_Mesh", "_Polyline", "_Point", "_Table")) or plugin.dataStorage.latestHostApp.lower().endswith("gis"): # or str(lyr.wkbType()) == "WkbType.NoGeometry": 
                         print("Speckle_ID")
                         print(lyr.name())
                         plugin.project.removeMapLayer(lyr)
@@ -535,10 +535,13 @@ def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, s
     try:
         layerName = removeSpecialCharacters(nameBase) 
         newFields = getLayerAttributes(geomList)
-        print(newFields.toList())
-        print(geomList)
-        
-        plugin.dockwidget.signal_5.emit({'plugin': plugin, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
+        #print(newFields.toList())
+        #print(geomList)
+
+        if plugin.dataStorage.latestHostApp.endswith("excel"):
+            plugin.dockwidget.signal_6.emit({'plugin': plugin, 'layerName': layerName, 'val_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
+        else:
+            plugin.dockwidget.signal_5.emit({'plugin': plugin, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         return
     
@@ -546,6 +549,97 @@ def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, s
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         return  
     
+def addExcelMainThread(obj: Tuple):
+    print("___addExcelMainThread")
+    try:
+        plugin = obj['plugin'] 
+        layerName = obj['layerName'] 
+        streamBranch = obj['streamBranch'] 
+        val_id = obj['val_id'] 
+        newFields = obj['newFields'] 
+        geomList = obj['geomList']
+
+        dataStorage = plugin.dataStorage
+        project: QgsProject = plugin.dataStorage.project
+
+        geomType = "None"
+        geom_print = "Table"
+
+        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
+        layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
+        finalName = shortName + ("_"+geom_print)
+        dataStorage.latestActionLayers.append(finalName)
+
+        ###########################################
+
+        # get features and attributes
+        fets = []
+        report_features = []
+        all_feature_errors_count = 0
+        #print("before newFields")
+        #print(newFields)
+        for f in geomList: 
+            #print(f)
+            # pre-fill report:
+            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
+
+            new_feat = nonGeomFeatureToNative(f, newFields, plugin.dataStorage)
+            if new_feat is not None and new_feat != "": fets.append(new_feat)
+            else:
+                logToUser(f"Feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
+                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid data"})
+                all_feature_errors_count += 1
+            
+        if newFields is None: 
+            newFields = QgsFields()
+
+        #print("04")
+        vl = None
+        vl = QgsVectorLayer(geomType + "?crs=" + "WGS84", finalName, "memory") # do something to distinguish: stream_id_latest_name
+        project.addMapLayer(vl, False)
+        pr = vl.dataProvider()
+        vl.startEditing()
+
+        # add Layer attribute fields
+        pr.addAttributes(newFields.toList())
+        vl.updateFields()
+
+        pr.addFeatures(fets)
+        vl.updateExtents()
+        vl.commitChanges()
+
+        #print("05")
+        #layerGroup = tryCreateGroup(project, streamBranch)
+        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
+
+        #print("07")
+        layerGroup.addLayer(vl)
+
+        # report
+        all_feature_errors_count = 0
+        for item in report_features:
+            if item["errors"] != "": all_feature_errors_count += 1
+
+        #print("11")
+        obj_type = "Vector Layer"
+        if all_feature_errors_count == 0:
+            dataStorage.latestActionReport.append({"speckle_id": f"{val_id} {finalName}", "obj_type": obj_type, "errors": ""})
+        else: 
+            dataStorage.latestActionReport.append({"speckle_id": f"{val_id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
+        
+        #print("12")
+        for item in report_features:
+            dataStorage.latestActionReport.append(item)
+
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        # report
+        obj_type = "Vector Layer"
+        dataStorage.latestActionReport.append({"speckle_id": f"{val_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+
+    
+
 def addNonGeometryMainThread(obj: Tuple):
     print("___addCadMainThread")
     try:
@@ -654,7 +748,6 @@ def addNonGeometryMainThread(obj: Tuple):
         # report
         obj_type = geom_print + "Vector Layer"
         dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
-
 
 def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: str, streamBranch: str, plugin, matrix = None):
     print("01_____GEOMETRY layer to native")
@@ -1145,11 +1238,10 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
         elif geomType == 'MultiPatch': geomType = "Polygon"
 
         fets = []
-        report_features = []
         print("before newFields")
 
         newFields = QgsFields()
-        objectEmit = {'plugin': plugin, 'geomType': geomType, 'newName': newName, 'report_features': report_features, 'streamBranch': streamBranch, 'wkt': layer.crs.wkt, 'layer': layer, 'newFields': newFields, 'fets': fets}
+        objectEmit = {'plugin': plugin, 'geomType': geomType, 'newName': newName, 'streamBranch': streamBranch, 'wkt': layer.crs.wkt, 'layer': layer, 'newFields': newFields, 'fets': fets}
         plugin.dockwidget.signal_1.emit(objectEmit)
         
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
@@ -1175,7 +1267,7 @@ def addVectorMainThread(obj: Tuple):
         report_features = obj['report_features']
 
         dataStorage = plugin.dataStorage
-        dataStorage.receivingGISlayer = True
+        dataStorage.latestHostApp = "GIS"
         
         plugin.dataStorage.currentUnits = layer.crs.units 
         if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
@@ -1397,8 +1489,6 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, pl
 
         newName = layerName #f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
-        #plugin.dataStorage.receivingGISlayer = True
-
         plugin.dockwidget.signal_4.emit({'plugin': plugin, 'layerName': layerName, 'newName': newName, 'streamBranch': streamBranch, 'layer': layer})
         
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
@@ -1418,7 +1508,7 @@ def addRasterMainThread(obj: Tuple):
         
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
-        dataStorage.receivingGISlayer = True
+        dataStorage.latestHostApp = "GIS"
 
         plugin.dataStorage.currentUnits = layer.crs.units 
         if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 

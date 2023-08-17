@@ -1,5 +1,6 @@
 import copy
 import inspect
+import time
 from plugin_utils.helpers import SYMBOL
 from typing import Any, Dict, List, Tuple, Union
 from specklepy.objects import Base
@@ -192,6 +193,7 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
         fields = QgsFields()
         all_props = []
         for feature in features: 
+            #print(feature)
             if feature is None: continue 
             #get object properties to add as attributes
             try:
@@ -204,10 +206,10 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
                 except: pass
 
             dynamicProps.sort()
+            #print(dynamicProps)
 
             # add field names and variands 
             for name in dynamicProps:
-                #if name not in all_props: all_props.append(name)
                 try:
                     value = feature.attributes[name]
                 except:
@@ -234,30 +236,17 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
                                 # replace if new one is NOT LongLong or IS String
                                 if oldVariant != QVariant.String and v == QVariant.String: 
                                     fields.append(QgsField(k, v)) # fields.update({k: v}) 
-
-                    #all_props.remove(name) # remove generic dict name
-                    #newF, newVals = traverseDict( {}, {}, name, value[0])
-                    #for i, (k,v) in enumerate(newF.items()):
-                    #    fields.append(QgsField(k, v)) 
-                    #    if k not in all_props: all_props.append(k)
-                    r'''
-                    elif variant and (name not in fields.names()): 
-                        fields.append(QgsField(name, variant)) 
-                    
-                    elif name in fields.names(): #check if the field was empty previously: 
-                        nameIndex = fields.indexFromName(name)
-                        oldType = fields[nameIndex].type()
-                        # replace if new one is NOT LongLong or IS String
-                        if oldType != QVariant.String and variant == QVariant.String: 
-                            fields.append(QgsField(name,variant)) 
-                    ''' 
                 
                 # add a field if not existing yet 
                 else: # if str, Base, etc
+                    #print(f"atrribute '{value}' is a Base/str/etc")
                     newF, newVals = traverseDict( {}, {}, name, value)
-                    
+                    #print(newF)
+                    #print(newVals)
+
                     for i, (k,v) in enumerate(newF.items()):
                         if k not in all_props: all_props.append(k)
+                        #print(all_props)
 
                         if k not in fields.names(): 
                             fields.append(QgsField(k, v)) # fields.update({k: v}) #if variant is known
@@ -284,22 +273,36 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
 
 def traverseDict(newF: dict[Any, Any], newVals: dict[Any, Any], nam: str, val: Any):
     try:
+        #print("___traverseDict")
         if isinstance(val, dict):
             for i, (k,v) in enumerate(val.items()):
                 newF, newVals = traverseDict( newF, newVals, nam+"_"+k, v)
         elif isinstance(val, Base):
+            #print(f"a Base: '{val}'")
+            #time.sleep(0.3)
             dynamicProps = val.get_dynamic_member_names()
+            if "Revit" in val.speckle_type:
+                dynamicProps = val.get_member_names()
+            #print(dynamicProps)
             for att in ATTRS_REMOVE:
                 try: dynamicProps.remove(att)
                 except: pass
             dynamicProps.sort()
+            #print(dynamicProps)
 
             item_dict = {} 
             for prop in dynamicProps:
-                item_dict.update({prop: val[prop]})
-
+                try: item_dict.update({prop: val[prop]})
+                except: 
+                    try:
+                        #if prop == "id": item_dict.update({prop: val.id})
+                        if prop == "speckle_type": item_dict.update({prop: val.speckle_type})
+                    except: pass 
+            #print(newF)
+            #print(item_dict)
             for i, (k,v) in enumerate(item_dict.items()):
                 newF, newVals = traverseDict( newF, newVals, nam+"_"+k, v)
+            #print(f"___FINAL newF: '{newF}'")
         else: 
             var = getVariantFromValue(val)
             if var is None: 

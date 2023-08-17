@@ -76,7 +76,7 @@ def transformSpecklePt(pt_original: Point, dataStorage) -> Point: # on Receive
 
     gisLayer = None
     try:
-        gisLayer = dataStorage.receivingGISlayer
+        gisLayer = dataStorage.latestHostApp.lower().endswith("gis")
         #print(gisLayer)
         applyTransforms = False if (gisLayer and gisLayer is True) else True 
     except Exception as e: 

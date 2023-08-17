@@ -3,6 +3,7 @@ from distutils.log import error
 import inspect
 import math
 import os
+import time
 from tokenize import String
 from typing import List
 from plugin_utils.helpers import findOrCreatePath
@@ -152,6 +153,7 @@ def addFeatVariant(key, variant, value, f: QgsFeature):
 
 def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, Any]:
     try:
+        #print("__updateFeat")
         for i, key in enumerate(fields.names()): 
             variant = fields.at(i).type()
             try:
@@ -677,6 +679,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 
 def featureToNative(feature: Base, fields: QgsFields, dataStorage):
     feat = QgsFeature()
+    print("___featureToNative")
     try:
         qgsGeom = None 
 
@@ -745,7 +748,8 @@ def featureToNative(feature: Base, fields: QgsFields, dataStorage):
 
 def nonGeomFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
     try:
-        print("______________cadFeatureToNative")
+        print("______________nonGeomFeatureToNative")
+        print(feature)
         exist_feat = QgsFeature()
         exist_feat.setFields(fields)  
         feat_updated = updateFeat(exist_feat, fields, feature)
