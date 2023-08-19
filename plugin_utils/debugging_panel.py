@@ -1,3 +1,21 @@
+import gql, requests, urllib3, specklepy 
+from importlib.metadata import version
+version('gql')
+version('requests')
+version('urllib3')
+version('specklepy')
+from specklepy.core.api.client import SpeckleClient
+from specklepy.core.api.credentials import get_local_accounts
+account = get_local_accounts()[0]
+print(account)
+new_client = SpeckleClient(
+    account.serverInfo.url,
+    account.serverInfo.url.startswith("https")
+)
+print(new_client)
+new_client.authenticate_with_token(token=account.token)
+print(new_client)
+
 
 r'''
 layer = QgsVectorLayer('CompoundCurve?crs=epsg:4326', 'polygon' , 'memory')

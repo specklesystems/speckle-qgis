@@ -48,7 +48,7 @@ def removeSpecialCharacters(text: str) -> str:
     new_text = new_text.replace("_____","_").replace("____","_").replace("___","_").replace("__","_")
     return new_text
 
-def splitTextIntoLines(text: str = "", number: int= 50) -> str: 
+def splitTextIntoLines(text: str = "", number: int= 40) -> str: 
     #print("__splitTextIntoLines")
     #print(text)
     msg = ""
