@@ -27,7 +27,7 @@ class RevitWall(Base, speckle_type="Objects.BuiltElements.Wall:Objects.BuiltElem
     flipped: bool = False
     baseLine: Optional[Base]
     isRevitLinkedModel: bool = False 
-    parameters: Optional[Base] = RevitParameter()
+    parameters: Optional[Base] = Base(units = "mm")
     elementId: Optional[str]
     category: str = "Walls"
     elementId:str = ""
@@ -49,6 +49,24 @@ def createCommit():
     #element.speckle_type = "Objects.BuiltElements.Wall:Objects.BuiltElements.Revit.RevitWall"
     element.baseLine = Line(start = Point(x=0,y=0,z=0), end = Point(x=200,y=0,z=0))
     element.displayValue = []
+
+    # text param 
+    name_1 = "text_param"
+    element.parameters[name_1] = RevitParameter()
+    element.parameters[name_1].isTypeParameter = False
+    element.parameters[name_1].value = "some text here"
+    #element.parameters[name_1].applicationUnit = "autodesk.unit.unit:millimeters-1.0.1"
+    element.parameters[name_1].applicationUnitType = "autodesk.spec:spec.string-2.0.0"#"autodesk.spec:spec.string-2.0.0"
+    element.parameters[name_1].applicationInternalName = "text_param"
+
+    # numeric param 
+    name_2 = "number_param"
+    element.parameters[name_2] = RevitParameter()
+    element.parameters[name_2].isTypeParameter = False
+    element.parameters[name_2].value = 1122
+    element.parameters[name_2].applicationUnit = "autodesk.unit.unit:centimeters-1.0.1"
+    element.parameters[name_2].applicationUnitType = "autodesk.spec.aec:distance-2.0.0"#"autodesk.spec:spec.string-2.0.0"
+    element.parameters[name_2].applicationInternalName = name_2
 
     base_obj.elements.append(element)
     return base_obj
