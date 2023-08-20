@@ -2,6 +2,18 @@
 from typing import Optional, Union, List 
 from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
 from specklepy.objects import Base
+
+class RevitDirectShape(Base, speckle_type = "Objects.BuiltElements.Revit.DirectShape"):
+    name: str = ""
+    type: str = ""
+    category: int = 49
+    elementId: Optional[str]
+    parameters = Base()
+    isRevitLinkedModel: bool = False 
+    revitLinkedModelPath: str = ""
+    baseGeometries: Optional[list]
+    phaseCreated: str = "New Construction"
+
 r'''
 class GisPolygonGeometry(Base, speckle_type="Objects.GIS.PolygonGeometry", detachable={"displayValue"}):
     """GIS Polygon Geometry"""
