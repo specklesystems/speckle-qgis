@@ -43,7 +43,7 @@ def traverseObject(
             name_pass = nameBase + SYMBOL + getBaseValidName(base, name)
         # check again 
         if name_pass == SYMBOL + "QGIS commit": name_pass = ""
-        print(name_pass)
+        #print(name_pass)
         traverseValue(plugin, base[name], callback, check, streamBranch, name_pass)
 
 
@@ -63,8 +63,8 @@ def traverseValue(
             traverseValue(plugin, item, callback, check, streamBranch, name)
 
 def callback(base: Base, streamBranch: str, nameBase: str, plugin) -> bool:
-    print("___CALLBACK")
-    print(nameBase)
+    #print("___CALLBACK")
+    #print(nameBase)
     try:
         if isinstance(base, VectorLayer) or isinstance(base, Layer) or isinstance(base, RasterLayer) or base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("RasterLayer"):
             layerToNative(base, streamBranch, nameBase, plugin)

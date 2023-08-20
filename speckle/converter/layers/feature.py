@@ -33,7 +33,7 @@ import scipy.ndimage
 from speckle.utils.panel_logging import logToUser
 
 def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage):
-    print("Feature to Speckle")
+    #print("Feature to Speckle")
     #print(dataStorage)
     if dataStorage is None: return 
     units = dataStorage.currentUnits
@@ -56,8 +56,6 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
             skipped_msg = "Feature skipped due to invalid geometry"
             try:
                 geom = convertToSpeckle(f, selectedLayer, dataStorage)
-                print(geom)
-                print(geom.geometry)
                 if geom is not None and geom!="None": 
                     if not isinstance(geom.geometry, List):
                         logToUser("Geometry not in list format", level = 2, func = inspect.stack()[0][3])
@@ -65,11 +63,10 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
                     
                     all_errors = ""
                     for g in geom.geometry:
-                        print(g) 
                         if g is None or g=="None": 
                             all_errors += skipped_msg + ", "
                             logToUser(skipped_msg, level = 2, func = inspect.stack()[0][3])
-                            print(g) 
+                            #print(g) 
                     if len(geom.geometry) == 0:
                         all_errors = "No geometry converted"
                     new_report.update({"obj_type": geom.speckle_type, "errors": all_errors})
@@ -77,7 +74,6 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
                 else: # geom is None
                     new_report = {"obj_type": "", "errors": skipped_msg}
                     logToUser(skipped_msg, level = 2, func = inspect.stack()[0][3])
-                    print(geom)
             except Exception as error:
                 new_report = {"obj_type": "", "errors": "Error converting geometry: " + str(error)}
                 logToUser("Error converting geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
@@ -85,15 +81,18 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
         attributes = Base()
         for name in fieldnames: 
             corrected = validateAttributeName(name, fieldnames)
-            f_name = f[name]
-            if f_name == "NULL" or f_name is None or str(f_name) == "NULL": f_name = None
+            f_val = f[name]
+            if f_val == "NULL" or f_val is None or str(f_val) == "NULL": f_val = None
             if isinstance(f[name], list): 
                 x = ""
                 for i, attr in enumerate(f[name]): 
                     if i==0: x += str(attr)
                     else: x += ", " + str(attr)
-                f_name = x 
-            attributes[corrected] = f_name
+                f_val = x 
+            attributes[corrected] = f_val
+            if isinstance(geom.baseGeometries, list) and len(geom.baseGeometries)>0:
+                print(corrected)
+                print(f_val)
 
             # get attr type for Revit parameters 
             try:
@@ -104,18 +103,21 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
                         if attribute_type in [1,2,6]: # numeric
                             geom.parameters[corrected] = RevitParameter()
                             geom.parameters[corrected].isTypeParameter = False
-                            geom.parameters[corrected].value = f_name
+                            geom.parameters[corrected].value = f_val
                             geom.parameters[corrected].applicationUnit = "autodesk.unit.unit:centimeters-1.0.1"
                             geom.parameters[corrected].applicationUnitType = "autodesk.spec.aec:distance-2.0.0" 
                             geom.parameters[corrected].applicationInternalName = corrected
+                            geom.parameters[corrected].name = corrected
                             break
                         elif attribute_type in [10]: # text 
                             geom.parameters[corrected] = RevitParameter()
                             geom.parameters[corrected].isTypeParameter = False
-                            geom.parameters[corrected].value = f_name
+                            geom.parameters[corrected].value = f_val
                             geom.parameters[corrected].applicationUnitType = "autodesk.spec:spec.string-2.0.0" 
                             geom.parameters[corrected].applicationInternalName = corrected
+                            geom.parameters[corrected].name = corrected
                             break
+                if isinstance(geom.baseGeometries, list) and len(geom.baseGeometries)>0: print(geom.parameters[corrected].value)
             except: pass # if non-meshes or polygons 
 
         #if geom is not None and geom!="None":

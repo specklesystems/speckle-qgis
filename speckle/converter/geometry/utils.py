@@ -227,7 +227,7 @@ def getPolygonFeatureHeight(feature, layer, dataStorage):
                     logToUser("Attribute for extrusion not selected", level = 1, func = inspect.stack()[0][3])
                     return None
             
-                print("Apply transform: " + transform_name)
+                #print("Apply transform: " + transform_name)
                 if "extrude" in transform_name and "polygon" in transform_name:
 
                     # additional check: 

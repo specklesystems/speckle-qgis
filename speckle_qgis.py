@@ -461,6 +461,7 @@ class SpeckleQGIS:
                 source_application="QGIS" + self.gis_version.split(".")[0],
             )
             
+            r'''
             try:
                 metr_filter = "Selected" if bySelection is True else "Saved"
                 metr_main = True if branchName=="main" else False
@@ -479,7 +480,6 @@ class SpeckleQGIS:
             except:
                 metrics.track(metrics.SEND, self.dataStorage.active_account)
             
-            
             if isinstance(commit_id, SpeckleException):
                 logToUser("Error creating commit: "+str(commit_id.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
@@ -495,13 +495,14 @@ class SpeckleQGIS:
             
             logToUser("👌 Data sent to \'" + str(streamName) + "\'" + "\nClick to view commit online", level = 0, plugin=self.dockwidget, url = url, report = True)
             
+            '''
 
         except Exception as e:
             #if self.dockwidget.experimental.isChecked(): 
             time.sleep(1)
             logToUser("Error creating commit: "+str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
 
-        self.dockwidget.msgLog.removeBtnUrl("cancel") 
+        #self.dockwidget.msgLog.removeBtnUrl("cancel") 
         self.dockwidget.cancelOperations()
 
     def onReceive(self):
@@ -849,15 +850,15 @@ class SpeckleQGIS:
             print("___handleStreamAdd")
             from speckle.utils.project_vars import set_project_streams
             sw, branch, commit = objectPacked
-            print(sw)
-            print(branch)
-            print(commit)
+            #print(sw)
+            #print(branch)
+            #print(commit)
             streamExists = 0
             index = 0
 
             self.dataStorage.check_for_accounts()
             stream = tryGetStream(sw, self.dataStorage, False, self.dockwidget)
-            print(stream)
+            #print(stream)
 
             if stream is not None and branch in stream.branches.items:
                 self.active_branch = branch
@@ -866,8 +867,8 @@ class SpeckleQGIS:
                 self.active_branch = None 
                 self.active_commit = None 
             
-            try: print(f"ACTIVE BRANCH NAME: {self.active_branch.name}")
-            except: print("ACTIVE BRANCH IS NONE")
+            #try: print(f"ACTIVE BRANCH NAME: {self.active_branch.name}")
+            #except: print("ACTIVE BRANCH IS NONE")
             for st in self.current_streams: 
                 #if isinstance(st[1], SpeckleException) or isinstance(stream, SpeckleException): pass 
                 if isinstance(stream, Stream) and st[0].stream_id == stream.id: 

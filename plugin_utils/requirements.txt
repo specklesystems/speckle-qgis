@@ -1,4 +1,4 @@
-specklepy==2.15.2
+specklepy==2.16.0
 pyshp==2.3.1
 scipy==1.10.1
 requests==2.31.0

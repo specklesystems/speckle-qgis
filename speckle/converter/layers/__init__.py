@@ -148,9 +148,9 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
 
 def getAllLayersWithTree(tree: QgsLayerTree, parent: QgsLayerTreeNode = None, existingStructure: str = ""):
     try:
-        print("Root tree with structure: ")
-        print(tree)
-        print(parent)
+        #print("Root tree with structure: ")
+        #print(tree)
+        #print(parent)
         layers = []
         tree_structure = [] 
         existingStructure = existingStructure.replace(SYMBOL+SYMBOL, SYMBOL)
@@ -159,14 +159,14 @@ def getAllLayersWithTree(tree: QgsLayerTree, parent: QgsLayerTreeNode = None, ex
             parent = tree 
         
         if isinstance(parent, QgsLayerTreeLayer): 
-            print("QgsLayerTreeLayer")
-            print(parent)
+            #print("QgsLayerTreeLayer")
+            #print(parent)
             newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
             tree_structure.append(newStructure)
             
-            print("Final layers: ")        
-            print([parent.layer()])
-            print(newStructure)
+            #print("Final layers: ")        
+            #print([parent.layer()])
+            #print(newStructure)
             return ([parent.layer()], tree_structure) 
         
         elif isinstance(parent, QgsLayerTreeGroup): 
@@ -174,7 +174,7 @@ def getAllLayersWithTree(tree: QgsLayerTree, parent: QgsLayerTreeNode = None, ex
             
             for node in children: 
                 if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
-                    print("QgsLayerTreeLayer")
+                    #print("QgsLayerTreeLayer")
 
                     if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
                         layers.append(node.layer())
@@ -182,28 +182,28 @@ def getAllLayersWithTree(tree: QgsLayerTree, parent: QgsLayerTreeNode = None, ex
                         tree_structure.append(newStructure + parent.name())
                     continue
                 elif tree.isGroup(node):
-                    print("is Group")
-                    print(existingStructure)
+                    #print("is Group")
+                    #print(existingStructure)
                     newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
                     result = getAllLayersWithTree(tree, node, newStructure + parent.name())
-                    print(result)
+                    #print(result)
                     for i, lyr in enumerate(result[0]):
                         if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
-                            print(i)
-                            print(lyr)
-                            print(result[1][i])
+                            #print(i)
+                            #print(lyr)
+                            #print(result[1][i])
                             layers.append(lyr) 
                             newStructureGroup = (existingStructure + result[1][i]).replace(SYMBOL+SYMBOL, SYMBOL)
                             tree_structure.append(newStructureGroup)
-                            print(layers)
-                            print(tree_structure)
+                            #print(layers)
+                            #print(tree_structure)
                 elif isinstance(node, QgsLayerTreeNode):
                     try:
                         visible = node.itemVisibilityChecked()
                         node.setItemVisibilityChecked(True)
                         for lyr in node.checkedLayers():
-                            print("layer in a node")
-                            print(lyr)
+                            #print("layer in a node")
+                            #print(lyr)
                             if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
                                 layers.append(lyr) 
                                 newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
@@ -217,8 +217,8 @@ def getAllLayersWithTree(tree: QgsLayerTree, parent: QgsLayerTreeNode = None, ex
                 visible = parent.itemVisibilityChecked()
                 parent.setItemVisibilityChecked(True)
                 for lyr in parent.checkedLayers():
-                    print("layer in a node")
-                    print(lyr)
+                    #print("layer in a node")
+                    #print(lyr)
                     if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
                         layers.append(lyr) 
                         newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
@@ -228,9 +228,9 @@ def getAllLayersWithTree(tree: QgsLayerTree, parent: QgsLayerTreeNode = None, ex
                 logToUser(e, level = 2, func = inspect.stack()[0][3]) 
 
 
-        print("Final layers: ")        
-        print(layers)
-        print(tree_structure)
+        #print("Final layers: ")        
+        #print(layers)
+        #print(tree_structure)
         return (layers, tree_structure)
     
     except Exception as e:
@@ -270,13 +270,13 @@ def getSelectedLayers(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode
 
 def getSelectedLayersWithStructure(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
-    print("__getSelectedLayersWithStructure")
+    #print("__getSelectedLayersWithStructure")
     layers = [] 
     tree_structure = [] 
     try:
         self = plugin.dockwidget
         selected_layers = plugin.iface.layerTreeView().selectedNodes()
-        print(selected_layers)
+        #print(selected_layers)
         
         for item in selected_layers:
             root = self.dataStorage.project.layerTreeRoot()
@@ -284,8 +284,8 @@ def getSelectedLayersWithStructure(plugin) -> List[ Union[QgsLayerTreeLayer, Qgs
             results = getAllLayersWithTree(root, item)
             layers.extend(results[0])
             tree_structure.extend(results[1])
-            print(results[0])
-            print(results[1])
+            #print(results[0])
+            #print(results[1])
         return layers, tree_structure
     
     except Exception as e:
@@ -294,7 +294,7 @@ def getSelectedLayersWithStructure(plugin) -> List[ Union[QgsLayerTreeLayer, Qgs
 
 def convertSelectedLayers(baseCollection: Collection, layers: List[Union[QgsVectorLayer, QgsRasterLayer]], tree_structure: List[str], projectCRS: QgsCoordinateReferenceSystem, plugin) -> List[Union[VectorLayer, RasterLayer]]:
     """Converts the current selected layers to Speckle"""
-    print("____convertSelectedLayers")
+    #print("____convertSelectedLayers")
     dataStorage = plugin.dataStorage
     result = []
     try:
@@ -304,13 +304,13 @@ def convertSelectedLayers(baseCollection: Collection, layers: List[Union[QgsVect
         jsonTree = {}
         for i, layer in enumerate(layers):
             structure = tree_structure[i]
-            print(structure)
+            #print(structure)
             if structure.startswith(SYMBOL): structure = structure[len(SYMBOL):]
-            print(structure)
+            #print(structure)
             levels = structure.split(SYMBOL)
             while '' in levels: levels.remove('')
 
-            print(levels)
+            #print(levels)
             jsonTree = jsonFromList(jsonTree, levels)
 
         for i, layer in enumerate(layers):
@@ -403,7 +403,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             fieldnames = [] #[str(field.name()) for field in selectedLayer.fields()]
             attributes = Base()
             for field in selectedLayer.fields():
-                print(str(field.name()))
+                #print(str(field.name()))
                 fieldnames.append(str(field.name()))
                 corrected = validateAttributeName(str(field.name()), [])
                 attribute_type = field.type()
@@ -434,7 +434,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 attributes["Speckle_ID"] = 10 # string type 
 
             geomType = getLayerGeomType(selectedLayer)
-            print(geomType)
+            #print(geomType)
             features = selectedLayer.getFeatures()
 
             elevationLayer = getElevationLayer(plugin.dataStorage) 
@@ -542,7 +542,7 @@ def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, s
             plugin.dockwidget.signal_6.emit({'plugin': plugin, 'layerName': layerName, 'val_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
         else:
             plugin.dockwidget.signal_5.emit({'plugin': plugin, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
+        
         return
     
     except Exception as e:
@@ -552,6 +552,7 @@ def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, s
 def addExcelMainThread(obj: Tuple):
     print("___addExcelMainThread")
     try:
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
         streamBranch = obj['streamBranch'] 
@@ -830,7 +831,6 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, val_id: str
         
         plugin.dockwidget.signal_2.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
 
         return 
     except Exception as e:
@@ -840,6 +840,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, val_id: str
 
 def addBimMainThread(obj: Tuple):
     try: 
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         layerName = obj['layerName'] 
@@ -1050,7 +1051,6 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, ge
         
         plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
 
         return 
     except Exception as e:
@@ -1060,6 +1060,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, ge
 def addCadMainThread(obj: Tuple):
     print("___addCadMainThread")
     try:
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         layerName = obj['layerName'] 
@@ -1244,7 +1245,6 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
         objectEmit = {'plugin': plugin, 'geomType': geomType, 'newName': newName, 'streamBranch': streamBranch, 'wkt': layer.crs.wkt, 'layer': layer, 'newFields': newFields, 'fets': fets}
         plugin.dockwidget.signal_1.emit(objectEmit)
         
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
 
         return 
     
@@ -1255,6 +1255,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
 def addVectorMainThread(obj: Tuple):
     print("___addVectorMainThread")
     try:
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         newName = obj['newName'] 
@@ -1491,7 +1492,6 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, pl
 
         plugin.dockwidget.signal_4.emit({'plugin': plugin, 'layerName': layerName, 'newName': newName, 'streamBranch': streamBranch, 'layer': layer})
         
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
 
         return 
     except Exception as e:
@@ -1500,6 +1500,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, pl
 
 def addRasterMainThread(obj: Tuple):
     try: 
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
         newName = obj['newName'] 
