@@ -9,6 +9,8 @@ from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint,
     QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon,
     QgsCircularString, QgsLineString, QgsRasterLayer,QgsVectorLayer, QgsFeature,
     QgsUnitTypes)
+from speckle.converter.geometry.GisGeometryClasses import RevitDirectShape
+
 from speckle.converter.geometry.utils import getPolygonFeatureHeight
 from speckle.converter.geometry.mesh import meshToNative
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
@@ -146,7 +148,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 if not isinstance(result, List):
                     result = [result]
                 element = GisPolygonElement(units = units, geometry = result)
-                return element
+                
             
             else: 
                 result = []
@@ -180,7 +182,12 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                             v.units = units
                 
                 element = GisPolygonElement(units = units, geometry = result)
-                return element
+
+            base_geoms = [] 
+            for r in result:
+                base_geoms.extend(r.displayValue)
+            element = RevitDirectShape(units = units, baseGeometries = base_geoms)
+            return element
         else:
             logToUser("Unsupported or invalid geometry", level = 1, func = inspect.stack()[0][3])
         return None

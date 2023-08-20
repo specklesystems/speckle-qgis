@@ -11,6 +11,7 @@ from qgis._core import (QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, Q
     QgsField, QgsVectorLayer, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsProject,
     QgsUnitTypes )
 from specklepy.objects import Base
+from specklepy.objects.other import RevitParameter
 
 from typing import Dict, Any
 
@@ -93,6 +94,30 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
                     else: x += ", " + str(attr)
                 f_name = x 
             attributes[corrected] = f_name
+
+            # get attr type for Revit parameters 
+            try:
+                for field in selectedLayer.fields(): 
+                    if corrected == field.name():
+
+                        attribute_type = field.type()
+                        if attribute_type in [1,2,6]: # numeric
+                            geom.parameters[corrected] = RevitParameter()
+                            geom.parameters[corrected].isTypeParameter = False
+                            geom.parameters[corrected].value = f_name
+                            geom.parameters[corrected].applicationUnit = "autodesk.unit.unit:centimeters-1.0.1"
+                            geom.parameters[corrected].applicationUnitType = "autodesk.spec.aec:distance-2.0.0" 
+                            geom.parameters[corrected].applicationInternalName = corrected
+                            break
+                        elif attribute_type in [10]: # text 
+                            geom.parameters[corrected] = RevitParameter()
+                            geom.parameters[corrected].isTypeParameter = False
+                            geom.parameters[corrected].value = f_name
+                            geom.parameters[corrected].applicationUnitType = "autodesk.spec:spec.string-2.0.0" 
+                            geom.parameters[corrected].applicationInternalName = corrected
+                            break
+            except: pass # if non-meshes or polygons 
+
         #if geom is not None and geom!="None":
         geom.attributes = attributes
         
