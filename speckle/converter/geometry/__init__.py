@@ -187,6 +187,8 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
             for r in result:
                 base_geoms.extend(r.displayValue)
             element = RevitDirectShape(units = units, baseGeometries = base_geoms)
+            element.parameters = Base()
+            element.geometry = base_geoms
             return element
         else:
             logToUser("Unsupported or invalid geometry", level = 1, func = inspect.stack()[0][3])

@@ -1,5 +1,5 @@
 
-from typing import Optional, Union, List 
+from typing import Any, Optional, Union, List 
 from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
 from specklepy.objects import Base
 
@@ -8,7 +8,7 @@ class RevitDirectShape(Base, speckle_type = "Objects.BuiltElements.Revit.DirectS
     type: str = ""
     category: int = 49
     elementId: Optional[str]
-    parameters = Base()
+    parameters: Base
     isRevitLinkedModel: bool = False 
     revitLinkedModelPath: str = ""
     baseGeometries: Optional[list]
