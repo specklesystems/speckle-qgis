@@ -1265,8 +1265,6 @@ def addVectorMainThread(obj: Tuple):
         fets = obj['fets']
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         
-        report_features = obj['report_features']
-
         dataStorage = plugin.dataStorage
         dataStorage.latestHostApp = "GIS"
         
