@@ -2,7 +2,7 @@
 
 from typing import Optional
 from specklepy.objects import Base
-from specklepy.objects.geometry import Point, Line
+from specklepy.objects.geometry import Point, Line, Mesh
 from specklepy.objects.other import RevitParameter
 
 class RevitLevel(Base, speckle_type = "Objects.BuiltElements.Level:Objects.BuiltElements.Revit.RevitLevel"):
@@ -20,7 +20,7 @@ class RevitLevel(Base, speckle_type = "Objects.BuiltElements.Level:Objects.Built
 
 class RevitWall(Base, speckle_type="Objects.BuiltElements.Wall:Objects.BuiltElements.Revit.RevitWall"):
     
-    type: Optional[str] = "G25-A-INT-WA-GZB-20cm"
+    type: Optional[str] = ""
     family: str = "Basic Wall"
     height: float = 4800
     units = "mm"
@@ -40,15 +40,28 @@ class RevitWall(Base, speckle_type="Objects.BuiltElements.Wall:Objects.BuiltElem
     displayValue: Optional[list]
     level: RevitLevel = RevitLevel()
     
+class RevitDirectShape(Base, speckle_type = "Objects.BuiltElements.Revit.DirectShape"):
+    name: str = ""
+    type: str = ""
+    category: int = 49
+    elementId: Optional[str]
+    parameters = Base()
+    isRevitLinkedModel: bool = False 
+    revitLinkedModelPath: str = ""
+    baseGeometries: Optional[list]
+    phaseCreated: str = "New Construction"
+
 def createCommit():
     from specklepy.objects.other import Collection
      
     base_obj = Collection(units = "m", collectionType = "Python commit", name = "Python commit", elements = [])
     
-    element = RevitWall()
+    element = RevitDirectShape()
+    mesh = Mesh().create(vertices = [0,0,0,100,0,0,0,100,0], faces = [3,0,1,2])
     #element.speckle_type = "Objects.BuiltElements.Wall:Objects.BuiltElements.Revit.RevitWall"
-    element.baseLine = Line(start = Point(x=0,y=0,z=0), end = Point(x=200,y=0,z=0))
-    element.displayValue = []
+    #element.baseLine = Line(start = Point(x=0,y=0,z=0), end = Point(x=200,y=0,z=0))
+    #element.baseGeometries = []
+    element.baseGeometries = [mesh]
 
     # text param 
     name_1 = "text_param"
