@@ -5,41 +5,6 @@ from specklepy.objects import Base
 from specklepy.objects.geometry import Point, Line, Mesh
 from specklepy.objects.other import RevitParameter
 
-class RevitLevel(Base, speckle_type = "Objects.BuiltElements.Level:Objects.BuiltElements.Revit.RevitLevel"):
-    name: str = "Level 111"
-    units: str = "mm"
-    category: str = "Levels"
-    elementId: str = ""
-    elevation: float = 0
-    createView: bool = True
-    parameters: Optional[Base] = RevitParameter()
-    applicationId: str = ""
-    referenceOnly: bool = False
-    isRevitLinkedModel: bool = False
-    revitLinkedModelPath: str = ""
-
-class RevitWall(Base, speckle_type="Objects.BuiltElements.Wall:Objects.BuiltElements.Revit.RevitWall"):
-    
-    type: Optional[str] = ""
-    family: str = "Basic Wall"
-    height: float = 4800
-    units = "mm"
-    flipped: bool = False
-    baseLine: Optional[Base]
-    isRevitLinkedModel: bool = False 
-    parameters: Optional[Base] = Base(units = "mm")
-    elementId: Optional[str]
-    category: str = "Walls"
-    elementId:str = ""
-    topOffset: float = 100
-    baseOffset: float = 0
-    structural: bool = False
-    phaseCreated: str = "New Construction"
-    applicationId: str = ""
-    revitLinkedModelPath: str = ""
-    displayValue: Optional[list]
-    level: RevitLevel = RevitLevel()
-    
 class RevitDirectShape(Base, speckle_type = "Objects.BuiltElements.Revit.DirectShape"):
     name: str = ""
     type: str = ""
@@ -58,9 +23,6 @@ def createCommit():
     
     element = RevitDirectShape()
     mesh = Mesh().create(vertices = [0,0,0,100,0,0,0,100,0], faces = [3,0,1,2])
-    #element.speckle_type = "Objects.BuiltElements.Wall:Objects.BuiltElements.Revit.RevitWall"
-    #element.baseLine = Line(start = Point(x=0,y=0,z=0), end = Point(x=200,y=0,z=0))
-    #element.baseGeometries = []
     element.baseGeometries = [mesh]
 
     # text param 
@@ -68,7 +30,6 @@ def createCommit():
     element.parameters[name_1] = RevitParameter()
     element.parameters[name_1].isTypeParameter = False
     element.parameters[name_1].value = "some text here"
-    #element.parameters[name_1].applicationUnit = "autodesk.unit.unit:millimeters-1.0.1"
     element.parameters[name_1].applicationUnitType = "autodesk.spec:spec.string-2.0.0"#"autodesk.spec:spec.string-2.0.0"
     element.parameters[name_1].applicationInternalName = "text_param"
 
@@ -85,10 +46,6 @@ def createCommit():
     return base_obj
 
 def sendCommit(stream_id = ""):
-    #import sys
-    #dependencies_path = r"C:\Users\katri\AppData\Local\Programs\Python\Python39"
-    #sys.path.insert(0, str(dependencies_path))
-
     import specklepy
     print(specklepy.__file__)
     from specklepy.core.api.client import SpeckleClient
