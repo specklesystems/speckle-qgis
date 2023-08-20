@@ -1,20 +1,120 @@
-import gql, requests, urllib3, specklepy 
-from importlib.metadata import version
-version('gql')
-version('requests')
-version('urllib3')
-version('specklepy')
-from specklepy.core.api.client import SpeckleClient
-from specklepy.core.api.credentials import get_local_accounts
-account = get_local_accounts()[0]
-print(account)
-new_client = SpeckleClient(
-    account.serverInfo.url,
-    account.serverInfo.url.startswith("https")
-)
-print(new_client)
-new_client.authenticate_with_token(token=account.token)
-print(new_client)
+
+
+from typing import Optional
+from specklepy.objects import Base
+from specklepy.objects.geometry import Point, Line
+from specklepy.objects.other import RevitParameter
+
+class RevitLevel(Base, speckle_type = "Objects.BuiltElements.Level:Objects.BuiltElements.Revit.RevitLevel"):
+    name: str = "Level 1"
+    units: str = "mm"
+    category: str = "Levels"
+    elementId: str = "311"
+    elevation: float = 0
+    createView: bool = True
+    parameters: Optional[Base] = RevitParameter()
+    applicationId: str = ""
+    referenceOnly: bool = False
+    isRevitLinkedModel: bool = False
+    revitLinkedModelPath: str = ""
+
+class RevitWall(Base, speckle_type="Objects.BuiltElements.Wall:Objects.BuiltElements.Revit.RevitWall"):
+    
+    type: Optional[str] = "G25-A-INT-WA-GZB-20cm"
+    family: str = "Basic Wall"
+    height: float = 4100
+    units = "mm"
+    flipped: bool = False
+    baseLine: Optional[Base]
+    isRevitLinkedModel: bool = False 
+    parameters: Optional[Base] = RevitParameter()
+    elementId: Optional[str]
+    category: str = "Walls"
+    elementId:str = "348709"
+    topOffset: float = 100
+    baseOffset: float = 0
+    structural: bool = False
+    phaseCreated: str = "New Construction"
+    applicationId: str = ""
+    revitLinkedModelPath: str = ""
+    displayValue: Optional[list]
+    level: RevitLevel = RevitLevel()
+    
+def createCommit():
+    from specklepy.objects.other import Collection
+     
+    base_obj = Collection(units = "m", collectionType = "Python commit", name = "Python commit", elements = [])
+    
+    element = RevitWall()
+    #element.speckle_type = "Objects.BuiltElements.Wall:Objects.BuiltElements.Revit.RevitWall"
+    element.baseLine = Line(start = Point(x=0,y=0,z=0), end = Point(x=200,y=0,z=0))
+    element.displayValue = []
+
+    base_obj.elements.append(element)
+    return base_obj
+
+def sendCommit(stream_id = ""):
+    #import sys
+    #dependencies_path = r"C:\Users\katri\AppData\Local\Programs\Python\Python39"
+    #sys.path.insert(0, str(dependencies_path))
+
+    import specklepy
+    print(specklepy.__file__)
+    from specklepy.core.api.client import SpeckleClient
+    from specklepy.transports.server import ServerTransport
+    from specklepy.core.api import operations
+    from specklepy.core.api.credentials import get_local_accounts
+
+    account = get_local_accounts()[2]
+    client = SpeckleClient( account.serverInfo.url, account.serverInfo.url.startswith("https") )
+
+    client.authenticate_with_account(account)
+    if client.account.token is not None:
+        stream = client.stream.get(id = stream_id, branch_limit = 100, commit_limit = 100)
+    else: print("fail")
+    transport = ServerTransport(client=client, stream_id=stream_id)
+
+    base_obj = createCommit()
+    print(base_obj)
+    print(account)
+    print(client)
+    print(stream_id)
+    print(transport)
+
+    objId = operations.send(base=base_obj, transports=[transport])
+    commit_id = client.commit.create(
+        stream_id=stream_id,
+        object_id=objId,
+        branch_name="main",
+        message="Sent objects from Python", 
+        source_application="Python",
+    )
+    print(commit_id)
+    return
+
+sendCommit(stream_id = "17b0b76d13")
+
+exit()
+
+
+def checkGQLerror():
+    import gql, requests, urllib3, specklepy 
+    from importlib.metadata import version
+    version('gql')
+    version('requests')
+    version('urllib3')
+    version('specklepy')
+    from specklepy.core.api.client import SpeckleClient
+    from specklepy.core.api.credentials import get_local_accounts
+    account = get_local_accounts()[0]
+    print(account)
+    new_client = SpeckleClient(
+        account.serverInfo.url,
+        account.serverInfo.url.startswith("https")
+    )
+    print(new_client)
+    new_client.authenticate_with_token(token=account.token)
+    print(new_client)
 
 
 r'''
