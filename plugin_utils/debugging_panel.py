@@ -6,10 +6,10 @@ from specklepy.objects.geometry import Point, Line
 from specklepy.objects.other import RevitParameter
 
 class RevitLevel(Base, speckle_type = "Objects.BuiltElements.Level:Objects.BuiltElements.Revit.RevitLevel"):
-    name: str = "Level 1"
+    name: str = "Level 111"
     units: str = "mm"
     category: str = "Levels"
-    elementId: str = "311"
+    elementId: str = ""
     elevation: float = 0
     createView: bool = True
     parameters: Optional[Base] = RevitParameter()
@@ -22,7 +22,7 @@ class RevitWall(Base, speckle_type="Objects.BuiltElements.Wall:Objects.BuiltElem
     
     type: Optional[str] = "G25-A-INT-WA-GZB-20cm"
     family: str = "Basic Wall"
-    height: float = 4100
+    height: float = 4800
     units = "mm"
     flipped: bool = False
     baseLine: Optional[Base]
@@ -30,7 +30,7 @@ class RevitWall(Base, speckle_type="Objects.BuiltElements.Wall:Objects.BuiltElem
     parameters: Optional[Base] = RevitParameter()
     elementId: Optional[str]
     category: str = "Walls"
-    elementId:str = "348709"
+    elementId:str = ""
     topOffset: float = 100
     baseOffset: float = 0
     structural: bool = False
