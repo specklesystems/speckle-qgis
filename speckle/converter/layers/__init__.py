@@ -552,13 +552,13 @@ def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, s
 def addExcelMainThread(obj: Tuple):
     print("___addExcelMainThread")
     try:
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
         streamBranch = obj['streamBranch'] 
         val_id = obj['val_id'] 
         newFields = obj['newFields'] 
         geomList = obj['geomList']
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
 
         dataStorage = plugin.dataStorage
         project: QgsProject = plugin.dataStorage.project
@@ -840,7 +840,6 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, val_id: str
 
 def addBimMainThread(obj: Tuple):
     try: 
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         layerName = obj['layerName'] 
@@ -849,6 +848,7 @@ def addBimMainThread(obj: Tuple):
         newFields = obj['newFields'] 
         geomList = obj['geomList']
         matrix = obj['matrix']
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         
         dataStorage = plugin.dataStorage
         dataStorage.matrix = matrix
@@ -1060,7 +1060,6 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, ge
 def addCadMainThread(obj: Tuple):
     print("___addCadMainThread")
     try:
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         layerName = obj['layerName'] 
@@ -1069,6 +1068,7 @@ def addCadMainThread(obj: Tuple):
         newFields = obj['newFields'] 
         geomList = obj['geomList']
         matrix = obj['matrix']
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
 
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
@@ -1255,7 +1255,6 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
 def addVectorMainThread(obj: Tuple):
     print("___addVectorMainThread")
     try:
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         newName = obj['newName'] 
@@ -1264,6 +1263,7 @@ def addVectorMainThread(obj: Tuple):
         layer = obj['layer'] 
         newFields = obj['newFields'] 
         fets = obj['fets']
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         
         report_features = obj['report_features']
 
@@ -1500,12 +1500,12 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, pl
 
 def addRasterMainThread(obj: Tuple):
     try: 
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
         newName = obj['newName'] 
         streamBranch = obj['streamBranch'] 
         layer = obj['layer'] 
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
