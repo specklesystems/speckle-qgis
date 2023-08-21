@@ -90,11 +90,14 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
                     else: x += ", " + str(attr)
                 f_val = x 
             attributes[corrected] = f_val
-            if isinstance(geom.baseGeometries, list) and len(geom.baseGeometries)>0:
-                print(corrected)
-                print(f_val)
+
 
             # get attr type for Revit parameters 
+            try:
+                if isinstance(geom.baseGeometries, list) and len(geom.baseGeometries)>0:
+                    print(corrected)
+                    print(f_val)
+            except: pass
             try:
                 for field in selectedLayer.fields(): 
                     if corrected == field.name():
