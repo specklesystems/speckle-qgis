@@ -535,8 +535,6 @@ def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, s
     try:
         layerName = removeSpecialCharacters(nameBase) 
         newFields = getLayerAttributes(geomList)
-        #print(newFields.toList())
-        #print(geomList)
 
         if plugin.dataStorage.latestHostApp.endswith("excel"):
             plugin.dockwidget.signal_6.emit({'plugin': plugin, 'layerName': layerName, 'val_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
@@ -1266,7 +1264,6 @@ def addVectorMainThread(obj: Tuple):
         plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
         
         dataStorage = plugin.dataStorage
-        dataStorage.latestHostApp = "GIS"
         
         plugin.dataStorage.currentUnits = layer.crs.units 
         if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
@@ -1507,7 +1504,6 @@ def addRasterMainThread(obj: Tuple):
         
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
-        dataStorage.latestHostApp = "GIS"
 
         plugin.dataStorage.currentUnits = layer.crs.units 
         if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
