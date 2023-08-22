@@ -307,6 +307,7 @@ class SpeckleQGIS:
                 t = KThread(target=self.onSend, name="speckle_send", args=(message,))
                 t.start()
             except: self.onSend(message)
+        
         # receive 
         elif self.btnAction == 1: 
             ################### repeated 
@@ -362,6 +363,7 @@ class SpeckleQGIS:
                 t = KThread(target=self.onReceive, name="speckle_receive", args=())
                 t.start()
             except: self.onReceive()
+        
 
     def onSend(self, message: str):
         """Handles action when Send button is pressed."""
@@ -449,8 +451,9 @@ class SpeckleQGIS:
         except Exception as e:
             logToUser("Error sending data: " + str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
-
-        #logToUser("long errror something something msg1", level=2, plugin= self.dockwidget)
+        
+        self.dockwidget.signal_cancel_operation.emit("cancel")
+        
         try:
             # you can now create a commit on your stream with this object
             commit_id = client.commit.create(
@@ -461,7 +464,6 @@ class SpeckleQGIS:
                 source_application="QGIS" + self.gis_version.split(".")[0],
             )
             
-            r'''
             try:
                 metr_filter = "Selected" if bySelection is True else "Saved"
                 metr_main = True if branchName=="main" else False
@@ -493,16 +495,15 @@ class SpeckleQGIS:
             if self.project.crs().isGeographic() is True or self.project.crs().isValid() is False: 
                 logToUser("Data has been sent in the units 'degrees'. It is advisable to set the project CRS to Projected type (e.g. EPSG:32631) to be able to receive geometry correctly in CAD/BIM software. You can also create a custom CRS by setting geographic coordinates and using 'Set as a project center' function.", level = 1, plugin = self.dockwidget)
             
+            #time.sleep(0.3)
             logToUser("👌 Data sent to \'" + str(streamName) + "\'" + "\nClick to view commit online", level = 0, plugin=self.dockwidget, url = url, report = True)
             
-            '''
 
         except Exception as e:
             #if self.dockwidget.experimental.isChecked(): 
             time.sleep(1)
             logToUser("Error creating commit: "+str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
 
-        #self.dockwidget.msgLog.removeBtnUrl("cancel") 
         self.dockwidget.cancelOperations()
 
     def onReceive(self):
@@ -714,6 +715,7 @@ class SpeckleQGIS:
                 self.dockwidget.signal_4.connect(addRasterMainThread)
                 self.dockwidget.signal_5.connect(addNonGeometryMainThread)
                 self.dockwidget.signal_6.connect(addExcelMainThread)
+                self.dockwidget.signal_cancel_operation.connect(self.dockwidget.msgLog.removeBtnUrl)
 
                 #self.signal_groupCreate.connect(tryCreateGroup)
                 
