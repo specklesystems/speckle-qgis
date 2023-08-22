@@ -183,25 +183,6 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 
                 element = GisPolygonElement(units = units, geometry = result)
 
-            base_geoms = [] 
-            for r in result:
-                base_geoms.extend(r.displayValue)
-            #element = RevitDirectShape(units = units, baseGeometries = base_geoms)
-            #element.parameters = Base()
-            #element.geometry = base_geoms
-            r'''
-            element.baseGeometries = base_geoms
-            element.parameters = Base()
-
-            element.name = ""
-            element.type = ""
-            element.category: int = 49
-            element.elementId = ""
-            element.isRevitLinkedModel = False 
-            element.revitLinkedModelPath = ""
-            element.phaseCreated = "New Construction"
-            '''
-
             return element
         else:
             logToUser("Unsupported or invalid geometry", level = 1, func = inspect.stack()[0][3])
