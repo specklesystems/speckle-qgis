@@ -103,15 +103,16 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
                     if corrected == field.name():
 
                         attribute_type = field.type()
-                        if attribute_type in [1,2,6]: # numeric
+                        if attribute_type in [1,2,6,10]: # numeric or text
                             geom.parameters[corrected] = RevitParameter()
                             geom.parameters[corrected].isTypeParameter = False
                             geom.parameters[corrected].value = f_val
-                            geom.parameters[corrected].applicationUnit = "autodesk.unit.unit:centimeters-1.0.1"
-                            geom.parameters[corrected].applicationUnitType = "autodesk.spec.aec:distance-2.0.0" 
+                            #geom.parameters[corrected].applicationUnit = "autodesk.unit.unit:centimeters-1.0.1"
+                            geom.parameters[corrected].applicationUnitType = "autodesk.spec:spec.string-2.0.0" # "autodesk.spec.aec:distance-2.0.0" 
                             geom.parameters[corrected].applicationInternalName = corrected
                             geom.parameters[corrected].name = corrected
                             break
+                        r'''
                         elif attribute_type in [10]: # text 
                             geom.parameters[corrected] = RevitParameter()
                             geom.parameters[corrected].isTypeParameter = False
@@ -120,6 +121,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
                             geom.parameters[corrected].applicationInternalName = corrected
                             geom.parameters[corrected].name = corrected
                             break
+                        '''
                 if isinstance(geom.baseGeometries, list) and len(geom.baseGeometries)>0: print(geom.parameters[corrected].value)
             except: pass # if non-meshes or polygons 
 
