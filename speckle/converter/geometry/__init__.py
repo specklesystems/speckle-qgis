@@ -9,7 +9,6 @@ from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint,
     QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon,
     QgsCircularString, QgsLineString, QgsRasterLayer,QgsVectorLayer, QgsFeature,
     QgsUnitTypes)
-from speckle.converter.geometry.GisGeometryClasses import RevitDirectShape
 
 from speckle.converter.geometry.utils import getPolygonFeatureHeight
 from speckle.converter.geometry.mesh import meshToNative

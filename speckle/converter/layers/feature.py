@@ -18,9 +18,10 @@ from typing import Dict, Any
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
-from specklepy.objects.GIS.geometry import GisRasterElement, GisNonGeometryElement 
+from specklepy.objects.GIS.geometry import GisRasterElement, GisNonGeometryElement, GisTopography 
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from specklepy.objects.GIS.layers import RasterLayer
+from specklepy.objects.geometry import Mesh
 from speckle.converter.geometry.point import applyOffsetsRotation
 #from speckle.utils.panel_logging import logger
 from speckle.converter.layers.utils import get_raster_stats, get_scale_factor_to_meter, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
@@ -208,6 +209,15 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 
     b = GisRasterElement(units = dataStorage.currentUnits)
     try:
+        terrain_transform = False
+        texture_transform = False
+        #height_list = rasterBandVals[0]          
+        terrain_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["elevation", "mesh"], ["texture"], dataStorage)
+        texture_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["texture"], [], dataStorage)
+        if terrain_transform is True or texture_transform is True:
+            b = GisTopography(units = dataStorage.currentUnits)
+
+
         rasterBandCount = selectedLayer.bandCount()
         rasterBandNames = []
         rasterDimensions = [selectedLayer.width(), selectedLayer.height()]
@@ -307,12 +317,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         # identify symbology type and if Multiband, which band is which color
 
         ############################################################# 
-        terrain_transform = False
-        texture_transform = False
-        #height_list = rasterBandVals[0]          
-        terrain_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["elevation", "mesh"], ["texture"], dataStorage)
-        texture_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["texture"], [], dataStorage)
-
+        
         elevationLayer = None 
         elevationProj = None 
         if texture_transform is True:
@@ -673,11 +678,67 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None 
         
+def trianglateQuadMesh(mesh: Mesh) -> Mesh:
+    new_mesh = None
+    try:
+        new_v: List[float] = []
+        new_f: List[int] = []
+        new_c: List[int] = []
 
+        # new list with face indices 
+        r'''
+        temp_f = []
+        used_ind = []
+        for i, f in enumerate(mesh.faces):
+            try:
+                if i%5 != 0 and i not in used_ind: #ignore indices and used pts
+                    temp_f.extend([mesh.faces[i], mesh.faces[i+1], mesh.faces[i+2], mesh.faces[i+2], mesh.faces[i+3], mesh.faces[i]])
+                    used_ind.extend([i,i+1,i+2,i+3])
+            except Exception as e: print(e) 
+        for i, f in enumerate(temp_f):
+            if i%3 == 0: new_f.append(int(3))
+            new_f.append(int(f))
+        '''
+        
+        # fill new color and vertices lists 
+        used_ind = []
+        for i, c in enumerate(mesh.colors):
+            try:
+                #new_c.append(c)
+                #continue
+                if i not in used_ind:
+                    new_c.extend([mesh.colors[i],mesh.colors[i+1],mesh.colors[i+2],mesh.colors[i+2],mesh.colors[i+3],mesh.colors[i]])
+                    used_ind.extend([i,i+1,i+2,i+3])
+            except Exception as e: print(e) 
+                
+        used_ind = []
+        for i, v in enumerate(mesh.vertices):
+            try:
+                #new_v.append(v)
+                #continue
+                if i not in used_ind:
+                    v0 = [mesh.vertices[i],mesh.vertices[i+1],mesh.vertices[i+2]]
+                    v1 = [mesh.vertices[i+3],mesh.vertices[i+4],mesh.vertices[i+5]]
+                    v2 = [mesh.vertices[i+6],mesh.vertices[i+7],mesh.vertices[i+8]]
+                    v3 = [mesh.vertices[i+9],mesh.vertices[i+10],mesh.vertices[i+11]]
+                    
+                    new_v.extend( v0+v1+v2+v2+v3+v0 )
+                    new_f.extend([int(3), int(i/12), int(i/12)+1, int(i/12)+2, int(3), int(i/12)+3, int(i/12)+4, int(i/12)+5 ])
+                    used_ind.extend(list(range(i, i+12)))
+            except Exception as e: print(e) 
+        print(len(new_v))
+        print(len(new_f))
+        print(len(new_c))
+        new_mesh = Mesh.create(new_v, new_f, new_c)
+        new_mesh.units = mesh.units
+    except Exception as e:
+        print(e)
+        pass
+    return new_mesh
 
 def featureToNative(feature: Base, fields: QgsFields, dataStorage):
     feat = QgsFeature()
-    print("___featureToNative")
+    #print("___featureToNative")
     try:
         qgsGeom = None 
 
