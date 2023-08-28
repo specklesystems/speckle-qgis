@@ -11,7 +11,7 @@ import pkg_resources
 from speckle.utils.utils import get_qgis_python_path
 
 _user_data_env_var = "SPECKLE_USERDATA_PATH"
-
+_debug = True
 
 def _path() -> Optional[Path]:
     """Read the user data path override setting."""
@@ -257,6 +257,21 @@ def ensure_dependencies(host_application: str) -> None:
         print("Successfully found dependencies")
     except ImportError:
         raise Exception(f"Cannot automatically ensure Speckle dependencies. Please try restarting the host application {host_application}!")
+
+def startDegugger() -> None:
+    try:
+        # debugger: https://gist.github.com/giohappy/8a30f14678aa7e446f9b694c632d7089
+        if _debug is True: 
+            import debugpy
+            import shutil
+
+            directory = os.path.expanduser( '~\.vscode\extensions\ms-python.python-2023.14.0\pythonFiles\lib\python' )
+            sys.path.append(directory)
+            debugpy.configure(python=shutil.which("python"))
+
+            try: debugpy.listen(("localhost", 5678))
+            except: debugpy.connect(("localhost", 5678))
+    except: pass 
 
 #path = str(connector_installation_path("QGIS")) 
 #print(path)
