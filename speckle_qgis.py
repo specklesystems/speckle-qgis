@@ -55,6 +55,8 @@ from speckle.utils.panel_logging import logToUser
 from speckle.utils.validation import tryGetClient, tryGetStream, validateBranch, validateCommit, validateStream, validateTransport
 from specklepy_qt_ui.qt_ui.widget_custom_crs import CustomCRSDialog 
 
+from plugin_utils.installer import _debug
+
 SPECKLE_COLOR = (59,130,246)
 SPECKLE_COLOR_LIGHT = (69,140,255)
 
@@ -304,6 +306,7 @@ class SpeckleQGIS:
                 self.dataStorage.active_account = client.account
                 logToUser(f"Sending data... \nClick here to cancel", level = 0, url = "cancel", plugin = self.dockwidget)
 
+                if _debug is True: raise Exception
                 t = KThread(target=self.onSend, name="speckle_send", args=(message,))
                 t.start()
             except: self.onSend(message)
@@ -359,7 +362,8 @@ class SpeckleQGIS:
                 client = streamWrapper.get_client()
                 self.dataStorage.active_account = client.account
                 logToUser("Receiving data... \nClick here to cancel", level = 0, url = "cancel", plugin=self.dockwidget)
-
+                
+                if _debug is True: raise Exception
                 t = KThread(target=self.onReceive, name="speckle_receive", args=())
                 t.start()
             except: self.onReceive()
@@ -486,7 +490,11 @@ class SpeckleQGIS:
                 logToUser("Error creating commit: "+str(commit_id.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
             url: str = constructCommitURL(streamWrapper, branchId, commit_id)
-            
+
+            if str(self.dockwidget.commitDropdown.currentText()).startswith("Latest"):
+                stream = client.stream.get(id = streamId, branch_limit = 100, commit_limit = 100)
+                branch = validateBranch(stream, branchName, False, self.dockwidget)
+                self.active_commit = branch.commits.items[0]
             
             #self.dockwidget.hideWait()
             #self.dockwidget.showLink(url, streamName)
@@ -540,6 +548,10 @@ class SpeckleQGIS:
         try:
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
+            
+            if str(self.dockwidget.commitDropdown.currentText()).startswith("Latest"):
+                stream = client.stream.get(id = stream.id, branch_limit = 100, commit_limit = 100)
+                
             branch = validateBranch(stream, branchName, True, self.dockwidget)
             if branch == None: 
                 return
@@ -548,6 +560,7 @@ class SpeckleQGIS:
             commit = validateCommit(branch, commitId, self.dockwidget)
             if commit == None: 
                 return
+            self.active_commit = commit
 
         except Exception as e:
             logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)

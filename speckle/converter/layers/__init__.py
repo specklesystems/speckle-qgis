@@ -457,7 +457,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                                 g.boundary = None
                                 g.voids = None
                 layerObjs.append(b)
-                if dataStorage.latestActionFeaturesReport[len(dataStorage.latestActionReport)-1]["errors"] != "":
+                if dataStorage.latestActionFeaturesReport[len(dataStorage.latestActionFeaturesReport)-1]["errors"] != "":
                     all_errors_count +=1
 
             # Convert layer to speckle
