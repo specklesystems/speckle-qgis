@@ -27,13 +27,13 @@ def applyOffsetsRotation(x, y, dataStorage): # on Send
             x2 = x
             y2 = y
 
-            if a < 0: # turn counterclockwise on send
-                x2 = x*math.cos(a) - y*math.sin(a)
-                y2 = x*math.sin(a) + y*math.cos(a)         
+            #if a < 0: # turn counterclockwise on send
+            #    x2 = x*math.cos(a) - y*math.sin(a)
+            #    y2 = x*math.sin(a) + y*math.cos(a)         
 
-            elif a > 0: # turn clockwise on send
-                x2 =  x*math.cos(a) + y*math.sin(a)
-                y2 = -1*x*math.sin(a) + y*math.cos(a)
+            #elif a > 0: # turn clockwise on send
+            x2 =  x*math.cos(a) + y*math.sin(a)
+            y2 = -x*math.sin(a) + y*math.cos(a)
             x = x2
             y = y2
         return x, y
@@ -91,12 +91,12 @@ def transformSpecklePt(pt_original: Point, dataStorage) -> Point: # on Receive
             x2 = pt.x
             y2 = pt.y
 
-            if a > 0: # turn counterclockwise on receive
-                x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
-                y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
-            elif a < 0: # turn clockwise on receive
-                x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
-                y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
+            #if a > 0: # turn counterclockwise on receive
+            x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
+            y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
+            #elif a < 0: # turn clockwise on receive
+            #    x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
+            #    y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
 
             pt.x = x2
             pt.y = y2
@@ -117,12 +117,12 @@ def transformSpecklePt(pt_original: Point, dataStorage) -> Point: # on Receive
                 x2 = pt.x
                 y2 = pt.y
 
-                if a > 0: # turn counterclockwise on receive
-                    x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
-                    y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
-                elif a < 0: # turn clockwise on receive
-                    x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
-                    y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
+                #if a > 0: # turn counterclockwise on receive
+                x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
+                y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
+                #elif a < 0: # turn clockwise on receive
+                #    x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
+                #    y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
 
                 pt.x = x2
                 pt.y = y2
