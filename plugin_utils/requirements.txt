@@ -4,3 +4,6 @@ scipy==1.10.1
 requests==2.31.0
 requests-toolbelt==0.10.1
 urllib3==1.26.16
+shapely==2.0.1
+geopandas==0.13.2
+geovoronoi==0.4.0

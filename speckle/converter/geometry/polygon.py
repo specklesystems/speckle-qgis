@@ -40,6 +40,7 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
         faces = [] 
         colors = []
         existing_vert = 0
+        boundary = None
         for p in geom.parts():
             boundary, voidsNative = getPolyBoundaryVoids(p, feature, layer, dataStorage)
             polyBorder = speckleBoundaryToSpecklePts(boundary, dataStorage)
