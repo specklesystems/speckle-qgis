@@ -75,6 +75,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
                 else: # geom is None
                     new_report = {"obj_type": "", "errors": skipped_msg}
                     logToUser(skipped_msg, level = 2, func = inspect.stack()[0][3])
+                    geom = GisNonGeometryElement()
             except Exception as error:
                 new_report = {"obj_type": "", "errors": "Error converting geometry: " + str(error)}
                 logToUser("Error converting geometry: " + str(error), level = 2, func = inspect.stack()[0][3])

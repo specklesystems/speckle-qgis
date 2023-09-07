@@ -23,7 +23,7 @@ from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint,
                        QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
                        QgsRendererCategory,
                        QgsSymbol, QgsUnitTypes, QgsVectorFileWriter)
-from specklepy.objects.GIS.geometry import GisPolygonElement
+from specklepy.objects.GIS.geometry import GisPolygonElement, GisNonGeometryElement
 from speckle.converter.geometry.point import pointToNative, pointToNativeWithoutTransforms
 from specklepy.objects.GIS.CRS import CRS
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
@@ -1299,7 +1299,13 @@ def addVectorMainThread(obj: Tuple):
             report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
 
             new_feat = featureToNative(f, newFields, plugin.dataStorage)
-            if new_feat is not None and new_feat != "": fets.append(new_feat)
+            if new_feat is not None and new_feat != "": 
+                fets.append(new_feat)
+            
+                if isinstance(f, GisNonGeometryElement):
+                    logToUser(f"Feature does not contain geometry", level = 2, func = inspect.stack()[0][3])
+                    report_features[len(report_features)-1].update({"errors": "Feature does not contain geometry"})
+                    all_feature_errors_count += 1
             else:
                 logToUser(f"Feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
                 report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid data"})
