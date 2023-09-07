@@ -5,16 +5,16 @@ from textwrap import wrap
 SYMBOL = "_x_x_"
 
 def jsonFromList(jsonObj: dict, levels: list):
-    print("jsonFromList")
+    #print("jsonFromList")
     if len(levels) == 0: return jsonObj
     lastLevel = jsonObj
     for l in levels:
-        print(lastLevel)
+        #print(lastLevel)
         try: 
             lastLevel = lastLevel[l]
         except: 
             lastLevel.update({l: {}})
-    print(jsonObj)
+    #print(jsonObj)
     return jsonObj 
 
 def constructCommitURL(streamWrapper, branch_id: str = None, commit_id: str = None) -> str:

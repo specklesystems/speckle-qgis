@@ -332,9 +332,9 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             # reproject the elevation layer 
             if elevationProj is not None and rasterProj is not None and elevationProj != rasterProj:
                 try: 
-                    print("reproject elevation layer")
-                    print(elevationLayer.source())
-                    print(elevationLayer.crs().authid())
+                    #print("reproject elevation layer")
+                    #print(elevationLayer.source())
+                    #print(elevationLayer.crs().authid())
                     p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M")
                     findOrCreatePath(p)
                     path = p
@@ -726,9 +726,9 @@ def trianglateQuadMesh(mesh: Mesh) -> Mesh:
                     new_f.extend([int(3), int(i/12), int(i/12)+1, int(i/12)+2, int(3), int(i/12)+3, int(i/12)+4, int(i/12)+5 ])
                     used_ind.extend(list(range(i, i+12)))
             except Exception as e: print(e) 
-        print(len(new_v))
-        print(len(new_f))
-        print(len(new_c))
+        #print(len(new_v))
+        #print(len(new_f))
+        #print(len(new_c))
         new_mesh = Mesh.create(new_v, new_f, new_c)
         new_mesh.units = mesh.units
     except Exception as e:
@@ -807,8 +807,8 @@ def featureToNative(feature: Base, fields: QgsFields, dataStorage):
 
 def nonGeomFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
     try:
-        print("______________nonGeomFeatureToNative")
-        print(feature)
+        #print("______________nonGeomFeatureToNative")
+        #print(feature)
         exist_feat = QgsFeature()
         exist_feat.setFields(fields)  
         feat_updated = updateFeat(exist_feat, fields, feature)
@@ -820,7 +820,7 @@ def nonGeomFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
     
 def cadFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
     try:
-        print("______________cadFeatureToNative")
+        #print("______________cadFeatureToNative")
         exist_feat = QgsFeature()
         try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
         except:  speckle_geom = feature # for created in other software

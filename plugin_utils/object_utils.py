@@ -23,14 +23,14 @@ def traverseObject(
     streamBranch: str,
     nameBase: str = ""
 ):
-    print("___traverseObject")
+    #print("___traverseObject")
     if check and check(base):
         res = callback(base, streamBranch, nameBase, plugin) if callback else False
         if res:
             return
     memberNames = base.get_member_names()
     for name in memberNames:
-        print("for name in memberNames:")
+        #print("for name in memberNames:")
         try:
             if ["id", "applicationId", "units", "speckle_type"].index(name):
                 continue
@@ -55,7 +55,7 @@ def traverseValue(
     streamBranch: str,
     name: str,
 ):
-    print("________traverseValue")
+    #print("________traverseValue")
     if isinstance(value, Base):
         traverseObject(plugin, value, callback, check, streamBranch, name)
     if isinstance(value, List):
@@ -138,7 +138,7 @@ def loopObj(base: Base, baseName: str, streamBranch: str, plugin, used_ids, matr
             
             if base[name] is not None:
                 if name.endswith("definition"):
-                    print("___Definition object: " + name)
+                    #print("___Definition object: " + name)
                     try:
                         matrixList = base["transform"].matrix
                         try:

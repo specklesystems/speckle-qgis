@@ -91,14 +91,14 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
             return
         
     def cancelOperations(self):
-        print("____cancelOperations______")
+        #print("____cancelOperations______")
         for t in threading.enumerate():
-            print(t.name)
+            #print(t.name)
             if 'speckle_' in t.name:
-                print(f"thread to kill: {t}")
+                #print(f"thread to kill: {t}")
                 t.kill() 
                 t.join()
         # not printed if same thread 
-        print("Remaining threads: ")
-        print(threading.enumerate()) 
+        #print("Remaining threads: ")
+        #print(threading.enumerate()) 
     

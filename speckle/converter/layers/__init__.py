@@ -103,7 +103,7 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
     try:
         #root = project_gis.layerTreeRoot()
         
-        print("clearGroup: " + str(newGroupName))
+        #print("clearGroup: " + str(newGroupName))
         layerGroup = root.findGroup(newGroupName)
         if layerGroup is None: return
 
@@ -112,17 +112,17 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
             if isinstance(lyr, QgsVectorLayer): 
                 #print(lyr.fields().names())
                 try:
-                    print(lyr.getFeature(0).geometry()) # <QgsGeometry: null>
+                    lyr.getFeature(0).geometry() # <QgsGeometry: null>
                 except: pass
                 if "Speckle_ID" in lyr.fields().names(): 
                     if lyr.name().endswith(("_Mesh", "_Polyline", "_Point", "_Table")) or plugin.dataStorage.latestHostApp.lower().endswith("gis"): # or str(lyr.wkbType()) == "WkbType.NoGeometry": 
-                        print("Speckle_ID")
-                        print(lyr.name())
+                        #print("Speckle_ID")
+                        #print(lyr.name())
                         plugin.project.removeMapLayer(lyr)
             
             elif isinstance(lyr, QgsRasterLayer): 
                 if "_Speckle" in lyr.name(): 
-                    print(lyr.name())
+                    #print(lyr.name())
                     plugin.project.removeMapLayer(lyr)
 
         r'''
@@ -367,7 +367,7 @@ def convertSelectedLayers(baseCollection: Collection, layers: List[Union[QgsVect
 def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], projectCRS: QgsCoordinateReferenceSystem, plugin) -> VectorLayer or RasterLayer: #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     """Converts a given QGIS Layer to Speckle"""
     try:
-        print("___layerToSpeckle")
+        #print("___layerToSpeckle")
         dataStorage = plugin.dataStorage
         project: QgsProject = plugin.project
         layerName = selectedLayer.name()
@@ -398,7 +398,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         layerRenderer = rendererToSpeckle(renderer) 
         
         if isinstance(selectedLayer, QgsVectorLayer):
-            print("_____isinstance(selectedLayer, QgsVectorLayer)____")
+            #print("_____isinstance(selectedLayer, QgsVectorLayer)____")
 
             fieldnames = [] #[str(field.name()) for field in selectedLayer.fields()]
             attributes = Base()
@@ -431,7 +431,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             
             if extrusionApplied is True:
                 if not layerName.endswith("_Mesh"): layerName += "_Mesh" 
-                attributes["Speckle_ID"] = 10 # string type 
+                #attributes["Speckle_ID"] = 10 # string type  # not needed
 
             geomType = getLayerGeomType(selectedLayer)
             #print(geomType)
@@ -450,7 +450,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 #if b is None: continue 
 
                 if extrusionApplied is True and isinstance(b, GisPolygonElement):
-                    b.attributes["Speckle_ID"] = str(i+1)
+                    #b.attributes["Speckle_ID"] = str(i+1) # not needed
                     for g in b.geometry:
                         if g is not None and g!="None": 
                             # remove native polygon props, if extruded:
@@ -530,7 +530,7 @@ def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: s
         return  
 
 def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, streamBranch: str, plugin):
-    print("01_____NON-GEOMETRY layer to native")
+    #print("01_____NON-GEOMETRY layer to native")
     
     try:
         layerName = removeSpecialCharacters(nameBase) 
@@ -548,7 +548,7 @@ def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, s
         return  
     
 def addExcelMainThread(obj: Tuple):
-    print("___addExcelMainThread")
+    #print("___addExcelMainThread")
     try:
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
@@ -640,7 +640,7 @@ def addExcelMainThread(obj: Tuple):
     
 
 def addNonGeometryMainThread(obj: Tuple):
-    print("___addCadMainThread")
+    #print("___addCadMainThread")
     try:
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
@@ -749,9 +749,9 @@ def addNonGeometryMainThread(obj: Tuple):
         dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
 
 def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: str, streamBranch: str, plugin, matrix = None):
-    print("01_____GEOMETRY layer to native")
+    #print("01_____GEOMETRY layer to native")
     try:
-        print(layerContentList)
+        #print(layerContentList)
         geom_meshes = []
         
         geom_points = []
@@ -764,7 +764,7 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: 
         
         #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
         for geom in layerContentList:
-            print(geom)
+            #print(geom)
             if isinstance(geom, Point): 
                 geom_points.append(geom)
                 continue
@@ -782,16 +782,16 @@ def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: 
 
             # ________________get list of display values for Meshes___________________________
             val = getDisplayValueList(geom)
-            print(val) # List of Meshes
+            #print(val) # List of Meshes
 
             if isinstance(val, List) and len(val)>0 and isinstance(val[0], Mesh) : 
-                print("__________GET ACTUAL ELEMENT BEFORE DISPLAY VALUE")
-                print(val[0]) # Mesh 
+                #print("__________GET ACTUAL ELEMENT BEFORE DISPLAY VALUE")
+                #print(val[0]) # Mesh 
                 
                 if isinstance(geom, List): geom_meshes.extend(geom)
                 else: geom_meshes.append(geom)
-            print("__GEOM MESHES")
-            print(geom_meshes)
+            #print("__GEOM MESHES")
+            #print(geom_meshes)
         
         if len(geom_meshes)>0: 
             bimVectorLayerToNative(geom_meshes, layerName, val_id, "Mesh", streamBranch, plugin, matrix) 
@@ -824,8 +824,8 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, val_id: str
         if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
         
         newFields = getLayerAttributes(geomList)
-        print("___________Layer fields_____________")
-        print(newFields.toList())
+        #print("___________Layer fields_____________")
+        #print(newFields.toList())
         
         plugin.dockwidget.signal_2.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         
@@ -860,11 +860,11 @@ def addBimMainThread(obj: Tuple):
         elif "PointZ" in geom_print:  geom_print = "Point"
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
-        print(f"Final short name: {shortName}")
+        #print(f"Final short name: {shortName}")
         layerName = layerName.split(shortName)[0] + shortName + ("_" + geom_print)
         finalName = shortName + ("_" + geom_print)
         dataStorage.latestActionLayers.append(finalName)
-        print(f"Final layer name: {finalName}")
+        #print(f"Final layer name: {finalName}")
         #newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
         newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{finalName[:30]}'
 
@@ -903,8 +903,8 @@ def addBimMainThread(obj: Tuple):
         shp = writeMeshToShp(geomList, path_bim + newName_shp, dataStorage)
         dataStorage.matrix = None
         if shp is None: return 
-        print("____ meshes saved___")
-        print(shp)
+        #print("____ meshes saved___")
+        #print(shp)
 
 
         vl_shp = QgsVectorLayer( shp + ".shp", finalName, "ogr") # do something to distinguish: stream_id_latest_name
@@ -961,7 +961,7 @@ def addBimMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
-        print(layerName) 
+        #print(layerName) 
         groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
         layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
@@ -1044,8 +1044,8 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, ge
 
         
         newFields = getLayerAttributes(geomList)
-        print(newFields.toList())
-        print(geomList)
+        #print(newFields.toList())
+        #print(geomList)
         
         plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
         
@@ -1056,7 +1056,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, ge
         return  
     
 def addCadMainThread(obj: Tuple):
-    print("___addCadMainThread")
+    #print("___addCadMainThread")
     try:
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
@@ -1220,13 +1220,13 @@ def addCadMainThread(obj: Tuple):
 
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase: str, plugin):
     try:
-        print("vectorLayerToNative")
+        #print("vectorLayerToNative")
         project: QgsProject = plugin.project
         layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name) 
-        print(layerName)
+        #print(layerName)
 
         newName = layerName #f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
-        print(newName)
+        #print(newName)
 
         # particularly if the layer comes from ArcGIS
         geomType = layer.geomType # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
@@ -1237,7 +1237,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
         elif geomType == 'MultiPatch': geomType = "Polygon"
 
         fets = []
-        print("before newFields")
+        #print("before newFields")
 
         newFields = QgsFields()
         objectEmit = {'plugin': plugin, 'geomType': geomType, 'newName': newName, 'streamBranch': streamBranch, 'wkt': layer.crs.wkt, 'layer': layer, 'newFields': newFields, 'fets': fets}
@@ -1251,7 +1251,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
         return  
     
 def addVectorMainThread(obj: Tuple):
-    print("___addVectorMainThread")
+    #print("___addVectorMainThread")
     try:
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
@@ -1280,10 +1280,10 @@ def addVectorMainThread(obj: Tuple):
         #print(layer.name)
         
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL))-1][:50] 
-        print(f"Final short name: {shortName}")
+        #print(f"Final short name: {shortName}")
         layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
         finalName = shortName #+ ("_" + geom_print)
-        print(f"Final layer name: {finalName}")
+        #print(f"Final layer name: {finalName}")
 
         dataStorage.latestActionLayers.append(finalName)
         ###########################################
@@ -1292,7 +1292,7 @@ def addVectorMainThread(obj: Tuple):
         fets = []
         report_features = []
         all_feature_errors_count = 0
-        print("before newFields")
+        #print("before newFields")
         newFields = getLayerAttributes(layer.features)
         for f in layer.features: 
             # pre-fill report:
@@ -1309,7 +1309,7 @@ def addVectorMainThread(obj: Tuple):
             newFields = QgsFields()
 
         # add dummy layer to secure correct CRS
-        print("before dummy layer")
+        #print("before dummy layer")
         dummy = None 
         root = project.layerTreeRoot()
         plugin.dataStorage.all_layers = getAllLayers(root)
@@ -1328,7 +1328,7 @@ def addVectorMainThread(obj: Tuple):
         #print(authid)
         
         #################################################
-        print("03")
+        #print("03")
         if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
             # reproject all QGIS polygon geometry to EPSG 4326 until the CRS issue is found 
             for i, f in enumerate(fets):
@@ -1341,7 +1341,7 @@ def addVectorMainThread(obj: Tuple):
             authid = "EPSG:4326"
         #################################################
 
-        print("04")
+        #print("04")
         vl = None
         vl = QgsVectorLayer(geomType + "?crs=" + authid, finalName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
@@ -1360,14 +1360,14 @@ def addVectorMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
-        print("05")
+        #print("05")
         #layerGroup = tryCreateGroup(project, streamBranch)
         groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
         layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         #################################################
-        print("06")
-        if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
+        #print("06")
+        if "polygon" in geomType.lower() and "Speckle_ID" in newFields.names(): #not newName.endswith("_Mesh") and 
 
             p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             findOrCreatePath(p)
@@ -1414,7 +1414,7 @@ def addVectorMainThread(obj: Tuple):
                 logToUser(e, level = 2, func = inspect.stack()[0][3])
                 return 
 
-            finalName += "_Mesh"
+            if not newName.endswith("_Mesh"): finalName += "_Mesh"
             
             vl = None 
             vl = QgsVectorLayer(file_name + ".geojson", finalName, "ogr")
@@ -1423,7 +1423,7 @@ def addVectorMainThread(obj: Tuple):
         
         #################################################
 
-        print("07")
+        #print("07")
         layerGroup.addLayer(vl)
 
         rendererNew = vectorRendererToNative(layer, newFields)
@@ -1436,16 +1436,14 @@ def addVectorMainThread(obj: Tuple):
         try: vl.setRenderer(rendererNew)
         except: pass
 
-        print("08")
+        #print("08")
         try: 
             ################################### RENDERER 3D ###########################################
             #rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
 
             plugin_dir = os.path.dirname(__file__)
             renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
-            #print(renderer3d)
 
-            print("09")
             vl.loadNamedStyle(renderer3d)
             vl.triggerRepaint()
         except: pass 
@@ -1453,20 +1451,17 @@ def addVectorMainThread(obj: Tuple):
         try: project.removeMapLayer(dummy)
         except: pass
         
-        print("10")
         # report
         all_feature_errors_count = 0
         for item in report_features:
             if item["errors"] != "": all_feature_errors_count += 1
 
-        print("11")
         obj_type = "Vector Layer"
         if all_feature_errors_count == 0:
             dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": obj_type, "errors": ""})
         else: 
             dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
         
-        print("12")
         for item in report_features:
             dataStorage.latestActionReport.append(item)
 
@@ -1517,7 +1512,7 @@ def addRasterMainThread(obj: Tuple):
             print(e) 
 
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL))-1][:50] 
-        print(f"Final short name: {shortName}")
+        #print(f"Final short name: {shortName}")
         layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
         finalName = shortName #+ ("_" + geom_print)
 

@@ -11,7 +11,7 @@ import pkg_resources
 from speckle.utils.utils import get_qgis_python_path
 
 _user_data_env_var = "SPECKLE_USERDATA_PATH"
-_debug = True
+_debug = True  
 
 def _path() -> Optional[Path]:
     """Read the user data path override setting."""

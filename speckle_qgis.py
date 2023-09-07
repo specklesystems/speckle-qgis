@@ -396,7 +396,7 @@ class SpeckleQGIS:
                 logToUser("No valid layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
             self.dataStorage.latestActionLayers = [l.name() for l in layers]
-            print(layers)
+            #print(layers)
 
             root = self.dataStorage.project.layerTreeRoot()
             self.dataStorage.all_layers = getAllLayers(root)
@@ -626,7 +626,7 @@ class SpeckleQGIS:
 
         try:
             if app.lower() == "qgis" or app.lower() == "arcgis": 
-                print(app.lower())
+                #print(app.lower())
                 check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
             else: 
                 check: Callable[[Base], bool] = lambda base: (base.speckle_type) # and base.speckle_type.endswith("Base") )
@@ -753,7 +753,7 @@ class SpeckleQGIS:
             self.dockwidget.enableElements(self)
     
     def populateSelectedLayerDropdown(self):
-        print("populateSelectedLayerDropdown")
+        #print("populateSelectedLayerDropdown")
         from speckle.utils.project_vars import set_project_layer_selection
         layers = getSelectedLayers(self)
         current_layers = []
@@ -862,7 +862,7 @@ class SpeckleQGIS:
 
     def handleStreamAdd(self, objectPacked: Tuple):
         try: 
-            print("___handleStreamAdd")
+            #print("___handleStreamAdd")
             from speckle.utils.project_vars import set_project_streams
             sw, branch, commit = objectPacked
             #print(sw)

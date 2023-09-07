@@ -612,7 +612,7 @@ def tryCreateGroupTree(root, fullGroupName, plugin = None):
 
 def tryCreateGroup(project, groupName, plugin = None):
     #CREATE A GROUP "received blabla" with sublayers
-    print("_________CREATE GROUP: " + groupName)
+    #print("_________CREATE GROUP: " + groupName)
     newGroupName = f'{groupName}'
     root = project.layerTreeRoot()
     layerGroup = QgsLayerTreeGroup(newGroupName)
@@ -668,15 +668,15 @@ def findUpdateJsonItemPath(tree: Dict, full_path_str: str):
              
 
 def collectionsFromJson(jsonObj: dict, levels: list, layerConverted, baseCollection: Collection):
-    print("collectionsFromJson")
-    print(jsonObj)
-    print(levels)
-    print(layerConverted)
-    print(baseCollection)
-    print(baseCollection.name)
-    print(baseCollection.elements)
+    #print("collectionsFromJson")
+    #print(jsonObj)
+    #print(levels)
+    #print(layerConverted)
+    #print(baseCollection)
+    #print(baseCollection.name)
+    #print(baseCollection.elements)
     if jsonObj == {} or len(levels)==0: 
-        print("RETURN")
+        #print("RETURN")
         baseCollection.elements.append(layerConverted)
         return baseCollection
     
@@ -685,16 +685,16 @@ def collectionsFromJson(jsonObj: dict, levels: list, layerConverted, baseCollect
 
             sub_collection_found = 0
             for item in lastLevel.elements:
-                print("___ITEM")
-                print(l)
+                #print("___ITEM")
+                #print(l)
                 if item.name == l: 
-                    print("___ITEM FOUND")
-                    print(l)
+                    #print("___ITEM FOUND")
+                    #print(l)
                     lastLevel = item
                     sub_collection_found = 1
                     break 
             if sub_collection_found == 0:
-                print("___ SUB COLLECTION NOT FOUND")
+                #print("___ SUB COLLECTION NOT FOUND")
                 subCollection = Collection(units = "m", collectionType = "QGIS Layer Group", name = l, elements = []) 
                 lastLevel.elements.append(subCollection)
                 lastLevel = lastLevel.elements[len(lastLevel.elements)-1] # reassign last element 
@@ -706,7 +706,7 @@ def collectionsFromJson(jsonObj: dict, levels: list, layerConverted, baseCollect
 
 def getDisplayValueList(geom: Any) -> List: 
     try:
-        print("___getDisplayValueList")
+        #print("___getDisplayValueList")
         val = [] 
         # get list of display values for Meshes
         if isinstance(geom, Mesh):

@@ -285,7 +285,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
             return
     
     def saveElevationLayer(self):
-        print("saveElevationLayer")
+        #print("saveElevationLayer")
         from speckle.utils.project_vars import set_elevationLayer
         root = self.dataStorage.project.layerTreeRoot()
         layer = None
@@ -303,13 +303,13 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         else:
             self.dataStorage.all_layers = getAllLayers(root)
             all_l_names = [l.name() for l in self.dataStorage.all_layers]
-            print(all_l_names)
+            #print(all_l_names)
 
             for l in self.dataStorage.all_layers: 
                 if layerName == l.name():
                     layer = l
                     try:
-                        print(layerName)
+                        #print(layerName)
                         if all_l_names.count(layer.name()) > 1:
                             displayUserMsg(f"Layer name \'{layer.name()}\' is used for more than 1 layer in the project", level=1) 
                             layer = None

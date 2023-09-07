@@ -3,7 +3,8 @@
 from numpy import isin
 from specklepy.objects.GIS.geometry import GisLineElement, GisPointElement, GisPolygonElement
 #from speckle.utils.panel_logging import logger
-from typing import List, Union
+from typing import List, Sequence, Union
+import inspect
 
 from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint, 
     QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon,
@@ -13,11 +14,22 @@ from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint,
 from speckle.converter.geometry.utils import getPolygonFeatureHeight
 from speckle.converter.geometry.mesh import meshToNative
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
-from speckle.converter.geometry.polygon import *
-from speckle.converter.geometry.polyline import *
+from speckle.converter.geometry.polygon import (polygonToSpeckleMesh, getZaxisTranslation, 
+                                                isFlat, polygonToSpeckle, 
+                                                polygonToNative, getPolyBoundaryVoids)
+from speckle.converter.geometry.polyline import (polylineFromVerticesToSpeckle, unknownLineToSpeckle,
+                                                 compoudCurveToSpeckle, anyLineToSpeckle, polylineToSpeckle,
+                                                 arcToSpeckle, getArcCenter, lineToNative, polylineToNative,
+                                                 ellipseToNative, curveToNative, arcToNative, circleToNative, 
+                                                 polycurveToNative, speckleEllipseToPoints) 
+from speckle.converter.geometry.utils import addCorrectUnits 
+
 from specklepy.objects import Base
 from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Ellipse, Polycurve
+from specklepy.objects.GIS.geometry import GisPolygonGeometry
 
+from speckle.utils.panel_logging import logToUser
+from speckle.converter.layers.utils import getElevationLayer, isAppliedLayerTransformByKeywords
 
 def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLayer, dataStorage) -> Union[Base, Sequence[Base], None]:
     """Converts the provided layer feature to Speckle objects"""

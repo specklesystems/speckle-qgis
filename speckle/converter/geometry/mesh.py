@@ -41,7 +41,7 @@ def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
 def writeMeshToShp(meshes: List, path: str, dataStorage):
     """Converts a Speckle Mesh to QgsGeometry"""
     try:
-        print("06___________________writeMeshToShp")
+        #print("06___________________writeMeshToShp")
 
         try:
             w = shapefile.Writer(path) 
@@ -52,11 +52,11 @@ def writeMeshToShp(meshes: List, path: str, dataStorage):
         w.field('speckle_id', 'C')
 
         shapes = []
-        print(meshes)
+        #print(meshes)
         for i, geom in enumerate(meshes):
 
             meshList: List = getDisplayValueList(geom)
-            print(geom)
+            #print(geom)
             w = fill_multi_mesh_parts(w, meshList, geom.id, dataStorage)
 
             r'''
@@ -96,14 +96,14 @@ def writeMeshToShp(meshes: List, path: str, dataStorage):
 
 def fill_multi_mesh_parts(w: shapefile.Writer, meshes: List[Mesh], geom_id: str, dataStorage):
     
-    print("07___________________fill_multi_mesh_parts")
+    #print("07___________________fill_multi_mesh_parts")
     try:
         parts_list = []
         types_list = []
         for mesh in meshes:
             if not isinstance(mesh, Mesh): continue
             try:
-                print(f"Fill multi-mesh parts # {geom_id}")
+                #print(f"Fill multi-mesh parts # {geom_id}")
                 parts_list_x, types_list_x = deconstructSpeckleMesh(mesh, dataStorage) 
                 for i, face in enumerate(parts_list_x):
                     for k, p in enumerate(face):
