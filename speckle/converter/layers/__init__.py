@@ -1293,8 +1293,8 @@ def addVectorMainThread(obj: Tuple):
         report_features = []
         all_feature_errors_count = 0
         #print("before newFields")
-        newFields = getLayerAttributes(layer.features)
-        for f in layer.features: 
+        newFields = getLayerAttributes(layer.elements)
+        for f in layer.elements: 
             # pre-fill report:
             report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
 
@@ -1329,7 +1329,7 @@ def addVectorMainThread(obj: Tuple):
         
         #################################################
         #print("03")
-        if not newName.endswith("_Mesh") and "polygon" in geomType.lower() and "Speckle_ID" in newFields.names():
+        if "polygon" in geomType.lower(): # not newName.endswith("_Mesh") and  and "Speckle_ID" in newFields.names():
             # reproject all QGIS polygon geometry to EPSG 4326 until the CRS issue is found 
             for i, f in enumerate(fets):
                 #reproject
@@ -1341,16 +1341,17 @@ def addVectorMainThread(obj: Tuple):
             authid = "EPSG:4326"
         #################################################
 
-        #print("04")
-        vl = None
+        #print("05")
+        #layerGroup = tryCreateGroup(project, streamBranch)
+        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
+        
         vl = QgsVectorLayer(geomType + "?crs=" + authid, finalName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
 
         pr = vl.dataProvider()
-        #vl.setCrs(crs)
         vl.startEditing()
-        #print(vl.crs())
 
         # add Layer attribute fields
         pr.addAttributes(newFields.toList())
@@ -1360,24 +1361,17 @@ def addVectorMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
-        #print("05")
-        #layerGroup = tryCreateGroup(project, streamBranch)
-        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
-
         #################################################
-        #print("06")
-        if "polygon" in geomType.lower() and "Speckle_ID" in newFields.names(): #not newName.endswith("_Mesh") and 
+
+        if "polygon" in geomType.lower(): # and "Speckle_ID" in newFields.names(): #not newName.endswith("_Mesh") and 
 
             p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             findOrCreatePath(p)
             file_name = os.path.join(p, newName )
-            #print(file_name)
-            #print(vl)
-            #print(fets)
+
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.fileEncoding = "utf-8" 
-            #options.destCRS = QgsCoordinateReferenceSystem(4326)
+
             options.driverName = "GeoJSON"
             options.overrideGeometryType = QgsWkbTypes.parseType('MultiPolygonZ')
             options.forceMulti = True
@@ -1386,7 +1380,6 @@ def addVectorMainThread(obj: Tuple):
             del writer 
 
             # geojson writer fix 
-            #if "polygon" in geomType.lower():
             try:
                 with open(file_name + ".geojson", "r") as file:
                     lines = file.readlines()
@@ -1416,14 +1409,13 @@ def addVectorMainThread(obj: Tuple):
 
             if not newName.endswith("_Mesh"): finalName += "_Mesh"
             
-            vl = None 
+            project.removeMapLayer(vl)
             vl = QgsVectorLayer(file_name + ".geojson", finalName, "ogr")
-            #vl.setCrs(QgsCoordinateReferenceSystem(4326))
+            vl.setCrs(crs)
             project.addMapLayer(vl, False)
         
         #################################################
 
-        #print("07")
         layerGroup.addLayer(vl)
 
         rendererNew = vectorRendererToNative(layer, newFields)
@@ -1533,7 +1525,7 @@ def addRasterMainThread(obj: Tuple):
         ######################## testing, only for receiving layers #################
         source_folder = project.absolutePath()
 
-        feat = layer.features[0]
+        feat = layer.elements[0]
         
         vl = None
         crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
