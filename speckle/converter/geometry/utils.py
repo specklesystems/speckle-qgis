@@ -9,6 +9,12 @@ from specklepy.objects import Base
 from typing import List, Tuple, Union, Dict
 from speckle.converter.geometry.point import applyOffsetsRotation 
 
+from shapely.geometry import Polygon
+from shapely.ops import triangulate
+import shapely.wkt
+import geopandas as gpd
+from geovoronoi import voronoi_regions_from_coords
+
 #from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
 from speckle.utils.panel_logging import logToUser
 #import time
@@ -67,26 +73,20 @@ def triangulatePolygon(geom, dataStorage):
     try:
 
         #import triangle as tr
-        vertices = []
-        segments = []
+        vertices = [] # only outer
+        segments = [] # including holes
         holes = []
         pack = getPolyPtsSegments(geom, dataStorage)
-        logToUser(pack)
-        vertices, vertices3d, segments, holes = pack
-        logToUser(vertices)
-        logToUser(holes)
-        
-        if len(vertices)>0: vertices.append(vertices[0])
-        for i, h in holes:
-            if len(holes[i])>0: holes[i].append(holes[i][0])
 
-        dict_shape= {'vertices': vertices, 'segments': segments, 'holes': holes}
+        vertices, vertices3d, segments, holes = pack
+
+        if len(vertices)>0: vertices.append(vertices[0])
+        for i, h in enumerate(holes):
+            if len(holes[i])>0: holes[i].append(holes[i][0])
+        dict_shape= {'vertices': vertices, 'holes': holes}
 
         try:
-
             t = to_triangles(dict_shape) #tr.triangulate(dict_shape, 'p')
-            #t = {'vertices': vertices, 'triangles': [[0,1,2]]}
-            #print(t)
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3])
             return None, None
@@ -99,18 +99,11 @@ def triangulatePolygon(geom, dataStorage):
 def to_triangles(data):
     # https://gis.stackexchange.com/questions/316697/delaunay-triangulation-algorithm-in-shapely-producing-erratic-result
     try:
-        from shapely.geometry import Polygon
-        from shapely.ops import triangulate
-        import shapely.wkt
-        import geopandas as gpd
-        from geovoronoi import voronoi_regions_from_coords
 
         vert = data['vertices']
-        segments = data['segments']
         holes = data['holes']
 
-        return
-        polygon = Polygon([ ( v[0], v[1] ) for v in vert ], [ [h] for h in holes ])
+        polygon = Polygon([ ( v[0], v[1] ) for v in vert ], holes )
 
         #polygon = Polygon([(3.0, 0.0), (2.0, 0.0), (2.0, 0.75), (2.5, 0.75), (2.5, 0.6), (2.25, 0.6), (2.25, 0.2), (3.0, 0.2), (3.0, 0.0)])
 
@@ -118,34 +111,57 @@ def to_triangles(data):
         gdf_poly_exterior = gpd.GeoDataFrame({'geometry': [polygon.buffer(-0.0000001).exterior]}).explode().reset_index()
         for geom in gdf_poly_exterior.geometry:
             poly_points += np.array(geom.coords).tolist()
-
+        for hl in holes:
+            for h in hl:
+                poly_points.append(list(h))
+        r'''
         try: polygon.interiors[0]
         except: poly_points = poly_points
         else:
             gdf_poly_interior = gpd.GeoDataFrame({'geometry': [polygon.interiors]}).explode().reset_index()
+            #'You are calling a geospatial method on the GeoDataFrame, but the active geometry column to use has not been set. \nThere are no existing columns with geometry data type. You can add a geometry column as the active geometry column with df.set_geometry. '
+            gdf_poly_interior.set_geometry('geometry')
             for geom in gdf_poly_interior.geometry:
                 poly_points += np.array(geom.coords).tolist()
-
+        '''
         poly_points = np.array([item for sublist in poly_points for item in sublist]).reshape(-1,2)
 
         poly_shapes, pts = voronoi_regions_from_coords(poly_points, polygon)
         gdf_poly_voronoi = gpd.GeoDataFrame({'geometry': poly_shapes}).explode().reset_index()
-        gdf_poly_voronoi.plot()
+        #gdf_poly_voronoi.plot()
 
         tri_geom = []
         for geom in gdf_poly_voronoi.geometry:
             inside_triangles = [tri for tri in triangulate(geom) if tri.centroid.within(polygon)]
             tri_geom += inside_triangles
 
+        r'''
         gdf_poly_triangles = gpd.GeoDataFrame({'geometry': tri_geom})
-
         gdf_poly_exterior.plot()
         if 'gdf_poly_interior' in locals():
             gdf_poly_interior.plot()
         gdf_poly_triangles.plot()
+        '''
 
         vertices = []
         triangles = []
+        for tri in tri_geom:
+            xx, yy = tri.exterior.coords.xy
+            v_list = zip(xx.tolist(), yy.tolist())
+
+            tr_indices = []
+            count = 0
+            for vt in v_list:
+                v = list(vt)
+                if count ==3: continue
+                if v not in vertices: 
+                    vertices.append(v)
+                    tr_indices.append(len(vertices)-1)
+                else:
+                    tr_indices.append(vertices.index(v))
+                count += 1
+            triangles.append(tr_indices)
+
         shape = {'vertices': vertices, 'triangles': triangles }
         return shape
     except Exception as e:
@@ -186,8 +202,8 @@ def getPolyPtsSegments(geom, dataStorage):
         #except: vertices3d.append([pt.x(),pt.y(), 0]) # project boundary to 0
         if i>0: 
             segmList.append([startLen+i-1, startLen+i])
-        if i == len(pointListLocal)-1: #also add a cap
-            segmList.append([startLen+i, startLen])
+        #if i == len(pointListLocal)-1: #also add a cap
+        #    segmList.append([startLen+i, startLen])
     
     ########### get voids 
     try:
@@ -222,14 +238,11 @@ def getPolyPtsSegments(geom, dataStorage):
 
             #hole = getHolePt(pointListLocal)
             #x, y = applyOffsetsRotation(hole[0], hole[1], dataStorage)
-            logToUser("pointListLocal:")
-            logToUser(pointListLocal)
             holes.append([ applyOffsetsRotation(p.x(), p.y(), dataStorage) for p in pointListLocal ])
-            logToUser(holes)
             for i,pt in enumerate(pointListLocal):
                 
                 x, y = applyOffsetsRotation(pt.x(), pt.y(), dataStorage)
-                vertices.append([x, y])
+                #vertices.append([x, y])
                 try: 
                     vertices3d.append([x, y, pt.z()])
                 except: 
@@ -237,8 +250,8 @@ def getPolyPtsSegments(geom, dataStorage):
 
                 if i>0: 
                     segmList.append([startLen+i-1, startLen+i])
-                if i == len(pointListLocal)-1: #also add a cap
-                    segmList.append([startLen+i, startLen])
+                #if i == len(pointListLocal)-1: #also add a cap
+                #    segmList.append([startLen+i, startLen])
     except Exception as e: 
         logToUser(e, level = 1, func = inspect.stack()[0][3])
     return vertices, vertices3d, segmList, holes

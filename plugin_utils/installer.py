@@ -11,7 +11,7 @@ import pkg_resources
 from speckle.utils.utils import get_qgis_python_path
 
 _user_data_env_var = "SPECKLE_USERDATA_PATH"
-_debug = False  
+_debug = True  
 
 def _path() -> Optional[Path]:
     """Read the user data path override setting."""
@@ -270,7 +270,8 @@ def startDegugger() -> None:
             debugpy.configure(python=shutil.which("python"))
 
             try: debugpy.listen(("localhost", 5678))
-            except: debugpy.connect(("localhost", 5678))
+            except: 
+                debugpy.connect(("localhost", 5678))
     except: pass 
 
 #path = str(connector_installation_path("QGIS")) 

@@ -287,7 +287,12 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             universal_z_value = polyBorder[0].z 
             
             # get points from original geometry #################################
-            triangulated_geom, vertices3d = triangulatePolygon(feature_geom, dataStorage)
+            triangulated_geom, vertices3d_original = triangulatePolygon(feature_geom, dataStorage)
+            
+            # temporary solution, as the list of points is not the same anymore:
+            vertices3d = []
+            for v in triangulated_geom['vertices']:
+                vertices3d.append(v+[0.0])
             # get substitute value for missing z-val
             existing_3d_pts = []
             for i, p in enumerate(vertices3d): 
