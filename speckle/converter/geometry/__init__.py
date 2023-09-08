@@ -36,6 +36,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
     try: 
         #print("convertToSpeckle")
         #print(dataStorage)
+        iterations = 0 
         try:
             geom: QgsGeometry = feature.geometry()
         except:
@@ -58,7 +59,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 #return result
             
             element = GisPointElement(units = units, geometry = result)
-            return element
+            return element, iterations
         
         elif geomType == QgsWkbTypes.LineGeometry: # 1
             if geomSingleType:
@@ -73,7 +74,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 #return result
             
             element = GisLineElement(units = units, geometry = result)
-            return element
+            return element, iterations
 
             if type == QgsWkbTypes.CircularString or type == QgsWkbTypes.CircularStringZ or type == QgsWkbTypes.CircularStringM or type == QgsWkbTypes.CircularStringZM: #Type (not GeometryType)
                 if geomSingleType:
@@ -109,7 +110,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
         
         elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_as_Mesh") and "Speckle_ID" in layer.fields().names():
             result = polygonToSpeckleMesh(geom, feature, layer, dataStorage)
-            if result is None: return 
+            if result is None: return  None, None
             result.units = units
             for v in result.displayValue: 
                 if v is not None: 
@@ -118,7 +119,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
             if not isinstance(result, List):
                 result = [result]
             element = GisPolygonElement(units = units, geometry = result)
-            return element
+            return element, iterations
         elif geomType == QgsWkbTypes.PolygonGeometry: # 2
 
             height = getPolygonFeatureHeight(feature, layer, dataStorage)
@@ -140,10 +141,10 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                         translationZaxis = getZaxisTranslation(layer, boundaryPts, dataStorage)
                         if translationZaxis is None: 
                             logToUser("Some polygons are outside the elevation layer extent or extrusion value is Null", level = 1, func = inspect.stack()[0][3])
-                            return 
+                            return None, None
 
-                result = polygonToSpeckle(geom, feature, layer, height, translationZaxis, dataStorage)
-                if result is None: return 
+                result, iterations = polygonToSpeckle(geom, feature, layer, height, translationZaxis, dataStorage)
+                if result is None: return  None, None
                 result.units = units
                 if result.boundary is not None:
                     result.boundary.units = units
@@ -179,8 +180,9 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                             if translationZaxis is None: 
                                 logToUser("Some polygons are outside the elevation layer extent or extrusion value is Null", level = 1, func = inspect.stack()[0][3])
                                 continue 
-                            
-                    result.append(polygonToSpeckle(poly, feature, layer, height, translationZaxis, dataStorage) )
+                    
+                    polygon, iterations = polygonToSpeckle(poly, feature, layer, height, translationZaxis, dataStorage)
+                    result.append( polygon )
                 for r in result: 
                     if r is None: continue 
                     r.units = units 
@@ -194,13 +196,13 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 
                 element = GisPolygonElement(units = units, geometry = result)
 
-            return element
+            return element, iterations
         else:
             logToUser("Unsupported or invalid geometry", level = 1, func = inspect.stack()[0][3])
-        return None
+        return None, None 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return None
+        return None, None 
 
 
 def convertToNative(base: Base, dataStorage) -> Union[QgsGeometry, None]:

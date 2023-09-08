@@ -39,6 +39,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
     if dataStorage is None: return 
     units = dataStorage.currentUnits
     new_report = {"obj_type": "", "errors": ""}
+    iterations = 0
     try:
         geom = None
         
@@ -56,7 +57,7 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
             # Try to extract geometry
             skipped_msg = "Feature skipped due to invalid geometry"
             try:
-                geom = convertToSpeckle(f, selectedLayer, dataStorage)
+                geom, iterations = convertToSpeckle(f, selectedLayer, dataStorage)
                 if geom is not None and geom!="None": 
                     if not isinstance(geom.geometry, List):
                         logToUser("Geometry not in list format", level = 2, func = inspect.stack()[0][3])
@@ -67,9 +68,13 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
                         if g is None or g=="None": 
                             all_errors += skipped_msg + ", "
                             logToUser(skipped_msg, level = 2, func = inspect.stack()[0][3])
-                        elif isinstance(g, GisPolygonGeometry) and len(g.displayValue) == 0:
-                            new_report = {"obj_type": "", "errors": "Polygon sent, but display mesh not generated"}
-                            logToUser("Polygon sent, but display mesh not generated", level = 1, func = inspect.stack()[0][3])
+                        elif isinstance(g, GisPolygonGeometry): 
+                            if len(g.displayValue) == 0:
+                                all_errors += "Polygon sent, but display mesh not generated" + ", "
+                                logToUser("Polygon sent, but display mesh not generated", level = 1, func = inspect.stack()[0][3])
+                            elif iterations is not None and iterations > 0:
+                                all_errors += "Polygon display mesh is simplified" + ", "
+                                logToUser("Polygon display mesh is simplified", level = 1, func = inspect.stack()[0][3])
 
                     if len(geom.geometry) == 0:
                         all_errors = "No geometry converted"

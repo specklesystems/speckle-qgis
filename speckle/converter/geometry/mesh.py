@@ -209,6 +209,7 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
         vertices_side = []
 
         total_vertices = 0
+        iterations = 0
 
         coef = 1
         maxPoints = 5000
@@ -275,11 +276,11 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
                 
                 ran = range(0, total_vertices)
                 colors = [col for i in ran] # apply same color for all vertices
-                return total_vertices, vertices + vertices_side, faces + faces_side, colors
+                return total_vertices, vertices + vertices_side, faces + faces_side, colors, iterations
                 ######################################
             else:
                 colors = [col for i in ran] # apply same color for all vertices
-                return total_vertices, vertices, faces, colors
+                return total_vertices, vertices, faces, colors, iterations
 
         else: # if there are voids: face should be clockwise 
             # if its a large polygon with voids to be triangualted, lower the coef even more:
@@ -289,11 +290,11 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             universal_z_value = polyBorder[0].z 
             
             # get points from original geometry #################################
-            triangulated_geom, vertices3d_original = triangulatePolygon(feature_geom, dataStorage)
+            triangulated_geom, vertices3d_original, iterations = triangulatePolygon(feature_geom, dataStorage)
             
             # temporary solution, as the list of points is not the same anymore:
             if triangulated_geom is None or vertices3d_original is None:
-                return None, None, None, None 
+                return None, None, None, None, None  
             
             vertices3d = []
             for v in triangulated_geom['vertices']:
@@ -397,16 +398,16 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
 
                 ran = range(0, total_vertices)
                 colors = [col for i in ran] # apply same color for all vertices
-                return total_vertices, vertices + vertices_cap + vertices_side, faces + faces_cap + faces_side, colors
+                return total_vertices, vertices + vertices_cap + vertices_side, faces + faces_cap + faces_side, colors, iterations
                 
             else: 
                 ran = range(0, total_vertices)
                 colors = [col for i in ran] # apply same color for all vertices
                 
-                return total_vertices, vertices, faces, colors
+                return total_vertices, vertices, faces, colors, iterations
 
             
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return None, None, None, None 
+        return None, None, None, None, None

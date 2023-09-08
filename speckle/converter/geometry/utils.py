@@ -78,15 +78,7 @@ def triangulatePolygon(geom, dataStorage):
         holes = []
         pack = getPolyPtsSegments(geom, dataStorage)
 
-        vertices_old, vertices3d, segments, holes = pack
-
-        vertices = []
-        vertices_rounded = []
-        for i,v in enumerate(vertices_old):
-            rounded = [ round(v[0],3), round(v[1],3) ]
-            if v not in vertices and rounded not in vertices_rounded: 
-                vertices.append(v)
-                vertices_rounded.append(rounded)
+        vertices, vertices3d, segments, holes = pack
 
         if len(vertices)>0: vertices.append(vertices[0])
         for i, h in enumerate(holes):
@@ -94,28 +86,58 @@ def triangulatePolygon(geom, dataStorage):
         dict_shape= {'vertices': vertices, 'holes': holes}
 
         try:
-            t = to_triangles(dict_shape) #tr.triangulate(dict_shape, 'p')
+            t, iterations = to_triangles(dict_shape, 0) #tr.triangulate(dict_shape, 'p')
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3])
             return None, None
-        return t, vertices3d 
+        return t, vertices3d, iterations 
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None, None
 
-def to_triangles(data):
+def to_triangles(data, attempt = 0):
     # https://gis.stackexchange.com/questions/316697/delaunay-triangulation-algorithm-in-shapely-producing-erratic-result
     try:
 
-        vert = data['vertices']
-        holes = data['holes']
+        vert_old = data['vertices']
+        holes_old = data['holes']
+
+        # round vertices:
+        digits = 3-attempt
+
+        vert = []
+        vert_rounded = []
+        for i,v in enumerate(vert_old):
+            if i == len(vert_old)-1: 
+                vert.append(v)
+                break # don't test last point 
+            rounded = [ round(v[0],digits), round(v[1],digits) ]
+            if v not in vert and rounded not in vert_rounded: 
+                vert.append(v)
+                vert_rounded.append(rounded)
+
+        # round holes:
+        holes = []
+        holes_rounded = []
+        for k,h in enumerate(holes_old):
+            hole = []
+            for i,v in enumerate(h):
+                if i == len(h)-1: 
+                    hole.append(v)
+                    break # don't test last point 
+                rounded = [ round(v[0],digits), round(v[1],digits) ]
+                if v not in holes and rounded not in holes_rounded: 
+                    hole.append(v)
+                    holes_rounded.append(rounded)
+            holes.append(hole)
+
 
         if len(holes)==1 and len(holes[0])==0: 
             polygon = Polygon([ ( v[0], v[1] ) for v in vert ] )
         else:
             polygon = Polygon([ ( v[0], v[1] ) for v in vert ], holes )
-        polygon = Polygon([ ( v[0], v[1] ) for v in vert ] )
+        #polygon = Polygon([ ( v[0], v[1] ) for v in vert ] )
         #polygon = Polygon([(3.0, 0.0), (2.0, 0.0), (2.0, 0.75), (2.5, 0.75), (2.5, 0.6), (2.25, 0.6), (2.25, 0.2), (3.0, 0.2), (3.0, 0.0)])
 
         poly_points = []
@@ -159,9 +181,13 @@ def to_triangles(data):
             triangles.append(tr_indices)
 
         shape = {'vertices': vertices, 'triangles': triangles }
-        return shape
+        return shape, attempt
     except Exception as e:
         print(e)
+        attempt += 1
+        if attempt<=3: 
+            return to_triangles(data, attempt) 
+        else: return None, None 
 
 def getPolyPtsSegments(geom, dataStorage):
     vertices = []
