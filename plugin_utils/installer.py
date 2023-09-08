@@ -11,7 +11,7 @@ import pkg_resources
 from speckle.utils.utils import get_qgis_python_path
 
 _user_data_env_var = "SPECKLE_USERDATA_PATH"
-_debug = True  
+_debug = False  
 
 def _path() -> Optional[Path]:
     """Read the user data path override setting."""
@@ -203,6 +203,7 @@ def install_optional_requirements(host_application: str) -> None:
     # set up addons/modules under the user
     # script path. Here we'll install the
     # dependencies
+    return
     requirements = "triangle==20220202"
     path = str(connector_installation_path(host_application)) 
     if _dependencies_installed(requirements, path): 

@@ -7,4 +7,3 @@ urllib3==1.26.16
 shapely==2.0.1
 geopandas==0.13.2
 geovoronoi==0.4.0
-debugpy==1.6.7

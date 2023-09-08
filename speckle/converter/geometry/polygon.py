@@ -66,7 +66,7 @@ def polygonToSpeckleMesh(geom: QgsGeometry, feature: QgsFeature, layer: QgsVecto
                 voids.append(polylineFromVerticesToSpeckle(pts_fixed, True, feature, layer, dataStorage))
                 voidsAsPts.append(pts_fixed) 
 
-            total_vert, vertices_x, faces_x, colors_x = meshPartsFromPolygon(polyBorder, voidsAsPts, existing_vert, feature, geom, layer, None, dataStorage)
+            total_vert, vertices_x, faces_x, colors_x = meshPartsFromPolygon(polyBorder, voidsAsPts, existing_vert, feature, p, layer, None, dataStorage)
             
             if total_vert is None:
                 return None 

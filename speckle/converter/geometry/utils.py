@@ -103,7 +103,10 @@ def to_triangles(data):
         vert = data['vertices']
         holes = data['holes']
 
-        polygon = Polygon([ ( v[0], v[1] ) for v in vert ], holes )
+        if len(holes)==1 and len(holes[0])==0: 
+            polygon = Polygon([ ( v[0], v[1] ) for v in vert ] )
+        else:
+            polygon = Polygon([ ( v[0], v[1] ) for v in vert ], holes )
 
         #polygon = Polygon([(3.0, 0.0), (2.0, 0.0), (2.0, 0.75), (2.5, 0.75), (2.5, 0.6), (2.25, 0.6), (2.25, 0.2), (3.0, 0.2), (3.0, 0.0)])
 
@@ -172,15 +175,15 @@ def getPolyPtsSegments(geom, dataStorage):
     vertices3d = []
     segmList = []
     holes = []
+    gv = list(geom.vertices())
     try: 
         extRing = geom.exteriorRing()
         pt_iterator = extRing.vertices()
     except: 
         try:  
             extRing = geom.constGet().exteriorRing()
-            pt_iterator = geom.vertices()
+            pt_iterator = extRing.vertices()
         except: 
-            extRing = geom
             pt_iterator = geom.vertices()
     
     pointListLocal = []
@@ -211,25 +214,25 @@ def getPolyPtsSegments(geom, dataStorage):
     except: pass
     try:
         #logToUser(geom)
-        try: intRingsNum = geom.numInteriorRings()
-        except: 
-            try: intRingsNum = len(geom.constParts())
-            except: intRingsNum = geom.childCount()
+        intRingsNum = geom.numInteriorRings()
+        #except: 
+        #    intRingsNum = len(geom.constParts())
 
-        for i in range(intRingsNum):
-            try: intRing = geom.interiorRing(i)
-            except: 
-                try: intRing = geom.constParts(i)
-                except: intRing = geom.childGeometry(i)
-            #logToUser(intRing)
+        for k in range(intRingsNum):
+            intRing = geom.interiorRing(k)
             pt_iterator = intRing.vertices()
-
+            #pt_iterator = intRing.vertices()
+            #intRing = geom.constParts(k)
+            #intRing = geom.childGeometry(k)
+            #pt_iterator = intRing.vertices()
+            
+            pt_list = list(pt_iterator)
             pointListLocal = []
             startLen = len(vertices)
-            for i, pt in enumerate(pt_iterator): 
+            for i, pt in enumerate(pt_list): 
                 if len(pointListLocal)>0 and pt.x()==pointListLocal[0].x() and pt.y()==pointListLocal[0].y(): #don't repeat 1st point
-                    pass
-                else: 
+                    continue
+                elif [pt.x(), pt.y()] not in vertices: # in case it's not the inner part of geometry
                     pointListLocal.append(pt) 
                     #try: 
                     #    pointListLocal.append([pt.x(), pt.y(), pt.z()])
@@ -238,7 +241,9 @@ def getPolyPtsSegments(geom, dataStorage):
 
             #hole = getHolePt(pointListLocal)
             #x, y = applyOffsetsRotation(hole[0], hole[1], dataStorage)
-            holes.append([ applyOffsetsRotation(p.x(), p.y(), dataStorage) for p in pointListLocal ])
+            
+            if len(pointListLocal)>2: 
+                holes.append([ applyOffsetsRotation(p.x(), p.y(), dataStorage) for p in pointListLocal ])
             for i,pt in enumerate(pointListLocal):
                 
                 x, y = applyOffsetsRotation(pt.x(), pt.y(), dataStorage)
