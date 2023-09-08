@@ -653,6 +653,7 @@ class SpeckleQGIS:
     def reloadUI(self):
         print("___RELOAD UI")
         try:
+            self.dockwidget.cancelOperations()
             from speckle.utils.project_vars import get_project_streams, get_survey_point, get_rotation, get_crs_offsets, get_project_saved_layers, get_transformations 
 
             self.project = QgsProject.instance()
