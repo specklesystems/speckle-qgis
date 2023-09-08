@@ -108,6 +108,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 for r in result: r.units = units 
                 return result
         
+        # check if the layer was received from Mesh originally 
         elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_as_Mesh") and "Speckle_ID" in layer.fields().names():
             result = polygonToSpeckleMesh(geom, feature, layer, dataStorage)
             if result is None: return  None, None

@@ -430,7 +430,7 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
             extrusionApplied = isAppliedLayerTransformByKeywords(selectedLayer, ["extrude", "polygon"], [], plugin.dataStorage)
             
             if extrusionApplied is True:
-                if not layerName.endswith("_Mesh"): layerName += "_Mesh" 
+                if not layerName.endswith("_as_Mesh"): layerName += "_as_Mesh" 
                 #attributes["Speckle_ID"] = 10 # string type  # not needed
 
             geomType = getLayerGeomType(selectedLayer)
