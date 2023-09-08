@@ -78,7 +78,11 @@ def triangulatePolygon(geom, dataStorage):
         holes = []
         pack = getPolyPtsSegments(geom, dataStorage)
 
-        vertices, vertices3d, segments, holes = pack
+        vertices_old, vertices3d, segments, holes = pack
+
+        vertices = []
+        for i,v in enumerate(vertices_old):
+            if v not in vertices: vertices.append(v)
 
         if len(vertices)>0: vertices.append(vertices[0])
         for i, h in enumerate(holes):
@@ -107,44 +111,29 @@ def to_triangles(data):
             polygon = Polygon([ ( v[0], v[1] ) for v in vert ] )
         else:
             polygon = Polygon([ ( v[0], v[1] ) for v in vert ], holes )
-
+        #polygon = Polygon([ ( v[0], v[1] ) for v in vert ] )
         #polygon = Polygon([(3.0, 0.0), (2.0, 0.0), (2.0, 0.75), (2.5, 0.75), (2.5, 0.6), (2.25, 0.6), (2.25, 0.2), (3.0, 0.2), (3.0, 0.0)])
 
         poly_points = []
-        gdf_poly_exterior = gpd.GeoDataFrame({'geometry': [polygon.buffer(-0.0000001).exterior]}).explode().reset_index()
-        for geom in gdf_poly_exterior.geometry:
-            poly_points += np.array(geom.coords).tolist()
-        for hl in holes:
-            for h in hl:
-                poly_points.append(list(h))
-        r'''
+        exterior_linearring = polygon.buffer(-0.0000001).exterior
+        poly_points += np.array(exterior_linearring.coords).tolist()
+        
         try: polygon.interiors[0]
         except: poly_points = poly_points
         else:
-            gdf_poly_interior = gpd.GeoDataFrame({'geometry': [polygon.interiors]}).explode().reset_index()
-            #'You are calling a geospatial method on the GeoDataFrame, but the active geometry column to use has not been set. \nThere are no existing columns with geometry data type. You can add a geometry column as the active geometry column with df.set_geometry. '
-            gdf_poly_interior.set_geometry('geometry')
-            for geom in gdf_poly_interior.geometry:
-                poly_points += np.array(geom.coords).tolist()
-        '''
+            for i, interior_linearring in enumerate(polygon.interiors):
+                a = interior_linearring.coords
+                poly_points += np.array(a).tolist()
+        
         poly_points = np.array([item for sublist in poly_points for item in sublist]).reshape(-1,2)
 
         poly_shapes, pts = voronoi_regions_from_coords(poly_points, polygon)
         gdf_poly_voronoi = gpd.GeoDataFrame({'geometry': poly_shapes}).explode().reset_index()
-        #gdf_poly_voronoi.plot()
 
         tri_geom = []
         for geom in gdf_poly_voronoi.geometry:
             inside_triangles = [tri for tri in triangulate(geom) if tri.centroid.within(polygon)]
             tri_geom += inside_triangles
-
-        r'''
-        gdf_poly_triangles = gpd.GeoDataFrame({'geometry': tri_geom})
-        gdf_poly_exterior.plot()
-        if 'gdf_poly_interior' in locals():
-            gdf_poly_interior.plot()
-        gdf_poly_triangles.plot()
-        '''
 
         vertices = []
         triangles = []

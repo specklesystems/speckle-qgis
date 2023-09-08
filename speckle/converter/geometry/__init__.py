@@ -107,7 +107,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 for r in result: r.units = units 
                 return result
         
-        elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_Mesh") and "Speckle_ID" in layer.fields().names():
+        elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_as_Mesh") and "Speckle_ID" in layer.fields().names():
             result = polygonToSpeckleMesh(geom, feature, layer, dataStorage)
             if result is None: return 
             result.units = units
@@ -218,6 +218,7 @@ def convertToNative(base: Base, dataStorage) -> Union[QgsGeometry, None]:
             (Circle, circleToNative),
             (Mesh, meshToNative),
             (Polycurve, polycurveToNative),
+            (GisPolygonGeometry, polygonToNative),
             (Base, polygonToNative), # temporary solution for polygons (Speckle has no type Polygon yet)
         ]
 

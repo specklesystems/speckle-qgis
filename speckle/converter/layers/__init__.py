@@ -861,8 +861,8 @@ def addBimMainThread(obj: Tuple):
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
         #print(f"Final short name: {shortName}")
-        layerName = layerName.split(shortName)[0] + shortName + ("_" + geom_print)
-        finalName = shortName + ("_" + geom_print)
+        layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+        finalName = shortName + ("_as_" + geom_print)
         dataStorage.latestActionLayers.append(finalName)
         #print(f"Final layer name: {finalName}")
         #newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
@@ -1080,8 +1080,8 @@ def addCadMainThread(obj: Tuple):
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
         
-        layerName = layerName.split(shortName)[0] + shortName + ("_" + geom_print)
-        finalName = shortName + ("_" + geom_print)
+        layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+        finalName = shortName + ("_as_" + geom_print)
         dataStorage.latestActionLayers.append(finalName)
 
         ###########################################
