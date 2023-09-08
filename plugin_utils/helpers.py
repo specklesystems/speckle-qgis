@@ -2,11 +2,27 @@ import os
 from typing import List
 from textwrap import wrap
 
-def constructCommitURL(streamWrapper, branch_id, commit_id: str) -> str:
+SYMBOL = "_x_x_"
+
+def jsonFromList(jsonObj: dict, levels: list):
+    #print("jsonFromList")
+    if len(levels) == 0: return jsonObj
+    lastLevel = jsonObj
+    for l in levels:
+        #print(lastLevel)
+        try: 
+            lastLevel = lastLevel[l]
+        except: 
+            lastLevel.update({l: {}})
+    #print(jsonObj)
+    return jsonObj 
+
+def constructCommitURL(streamWrapper, branch_id: str = None, commit_id: str = None) -> str:
     import requests 
     streamUrl = streamWrapper.stream_url.split("?")[0].split("&")[0].split("@")[0]
     r = requests.get(streamUrl)
     
+    url = streamUrl 
     # check for frontend2 
     try: 
         header = r.headers['x-speckle-frontend-2']
@@ -28,10 +44,11 @@ def findOrCreatePath(path: str):
         os.makedirs(path)
 
 def removeSpecialCharacters(text: str) -> str:
-    new_text = text.replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("\"","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_")
+    new_text = text.replace("<","_").replace(">","_").replace("[","_").replace("]","_").replace(" ","_").replace("-","_").replace("(","_").replace(")","_").replace(":","_").replace("\\","_").replace("/","_").replace("|","_").replace("\"","_").replace("\'","_").replace("&","_").replace("@","_").replace("$","_").replace("%","_").replace("^","_").replace(",","_").replace(".","_")
+    new_text = new_text.replace("_____","_").replace("____","_").replace("___","_").replace("__","_")
     return new_text
 
-def splitTextIntoLines(text: str = "", number: int= 70) -> str: 
+def splitTextIntoLines(text: str = "", number: int= 40) -> str: 
     #print("__splitTextIntoLines")
     #print(text)
     msg = ""

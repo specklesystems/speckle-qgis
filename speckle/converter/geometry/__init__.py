@@ -2,27 +2,41 @@
 
 from numpy import isin
 from specklepy.objects.GIS.geometry import GisLineElement, GisPointElement, GisPolygonElement
-from speckle.utils.panel_logging import logger
-from typing import List, Union
+#from speckle.utils.panel_logging import logger
+from typing import List, Sequence, Union
+import inspect
 
 from qgis.core import (QgsGeometry, QgsWkbTypes, QgsMultiPoint, 
     QgsAbstractGeometry, QgsMultiLineString, QgsMultiPolygon,
     QgsCircularString, QgsLineString, QgsRasterLayer,QgsVectorLayer, QgsFeature,
     QgsUnitTypes)
+
 from speckle.converter.geometry.utils import getPolygonFeatureHeight
 from speckle.converter.geometry.mesh import meshToNative
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
-from speckle.converter.geometry.polygon import *
-from speckle.converter.geometry.polyline import *
+from speckle.converter.geometry.polygon import (polygonToSpeckleMesh, getZaxisTranslation, 
+                                                isFlat, polygonToSpeckle, 
+                                                polygonToNative, getPolyBoundaryVoids)
+from speckle.converter.geometry.polyline import (polylineFromVerticesToSpeckle, unknownLineToSpeckle,
+                                                 compoudCurveToSpeckle, anyLineToSpeckle, polylineToSpeckle,
+                                                 arcToSpeckle, getArcCenter, lineToNative, polylineToNative,
+                                                 ellipseToNative, curveToNative, arcToNative, circleToNative, 
+                                                 polycurveToNative, speckleEllipseToPoints) 
+from speckle.converter.geometry.utils import addCorrectUnits 
+
 from specklepy.objects import Base
 from specklepy.objects.geometry import Line, Mesh, Point, Polyline, Curve, Arc, Circle, Ellipse, Polycurve
+from specklepy.objects.GIS.geometry import GisPolygonGeometry
 
+from speckle.utils.panel_logging import logToUser
+from speckle.converter.layers.utils import getElevationLayer, isAppliedLayerTransformByKeywords
 
 def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLayer, dataStorage) -> Union[Base, Sequence[Base], None]:
     """Converts the provided layer feature to Speckle objects"""
     try: 
         #print("convertToSpeckle")
         #print(dataStorage)
+        iterations = 0 
         try:
             geom: QgsGeometry = feature.geometry()
         except:
@@ -45,7 +59,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 #return result
             
             element = GisPointElement(units = units, geometry = result)
-            return element
+            return element, iterations
         
         elif geomType == QgsWkbTypes.LineGeometry: # 1
             if geomSingleType:
@@ -60,7 +74,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 #return result
             
             element = GisLineElement(units = units, geometry = result)
-            return element
+            return element, iterations
 
             if type == QgsWkbTypes.CircularString or type == QgsWkbTypes.CircularStringZ or type == QgsWkbTypes.CircularStringM or type == QgsWkbTypes.CircularStringZM: #Type (not GeometryType)
                 if geomSingleType:
@@ -94,9 +108,10 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 for r in result: r.units = units 
                 return result
         
-        elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_Mesh") and "Speckle_ID" in layer.fields().names():
+        # check if the layer was received from Mesh originally 
+        elif geomType == QgsWkbTypes.PolygonGeometry and not geomSingleType and layer.name().endswith("_as_Mesh") and "Speckle_ID" in layer.fields().names():
             result = polygonToSpeckleMesh(geom, feature, layer, dataStorage)
-            if result is None: return 
+            if result is None: return  None, None
             result.units = units
             for v in result.displayValue: 
                 if v is not None: 
@@ -105,7 +120,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
             if not isinstance(result, List):
                 result = [result]
             element = GisPolygonElement(units = units, geometry = result)
-            return element
+            return element, iterations
         elif geomType == QgsWkbTypes.PolygonGeometry: # 2
 
             height = getPolygonFeatureHeight(feature, layer, dataStorage)
@@ -127,10 +142,10 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                         translationZaxis = getZaxisTranslation(layer, boundaryPts, dataStorage)
                         if translationZaxis is None: 
                             logToUser("Some polygons are outside the elevation layer extent or extrusion value is Null", level = 1, func = inspect.stack()[0][3])
-                            return 
+                            return None, None
 
-                result = polygonToSpeckle(geom, feature, layer, height, translationZaxis, dataStorage)
-                if result is None: return 
+                result, iterations = polygonToSpeckle(geom, feature, layer, height, translationZaxis, dataStorage)
+                if result is None: return  None, None
                 result.units = units
                 if result.boundary is not None:
                     result.boundary.units = units
@@ -146,7 +161,7 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                 if not isinstance(result, List):
                     result = [result]
                 element = GisPolygonElement(units = units, geometry = result)
-                return element
+                
             
             else: 
                 result = []
@@ -166,8 +181,9 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                             if translationZaxis is None: 
                                 logToUser("Some polygons are outside the elevation layer extent or extrusion value is Null", level = 1, func = inspect.stack()[0][3])
                                 continue 
-                            
-                    result.append(polygonToSpeckle(poly, feature, layer, height, translationZaxis, dataStorage) )
+                    
+                    polygon, iterations = polygonToSpeckle(poly, feature, layer, height, translationZaxis, dataStorage)
+                    result.append( polygon )
                 for r in result: 
                     if r is None: continue 
                     r.units = units 
@@ -180,13 +196,14 @@ def convertToSpeckle(feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLaye
                             v.units = units
                 
                 element = GisPolygonElement(units = units, geometry = result)
-                return element
+
+            return element, iterations
         else:
             logToUser("Unsupported or invalid geometry", level = 1, func = inspect.stack()[0][3])
-        return None
+        return None, None 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return None
+        return None, None 
 
 
 def convertToNative(base: Base, dataStorage) -> Union[QgsGeometry, None]:
@@ -204,6 +221,7 @@ def convertToNative(base: Base, dataStorage) -> Union[QgsGeometry, None]:
             (Circle, circleToNative),
             (Mesh, meshToNative),
             (Polycurve, polycurveToNative),
+            (GisPolygonGeometry, polygonToNative),
             (Base, polygonToNative), # temporary solution for polygons (Speckle has no type Polygon yet)
         ]
 

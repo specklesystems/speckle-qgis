@@ -3,6 +3,7 @@ from distutils.log import error
 import inspect
 import math
 import os
+import time
 from tokenize import String
 from typing import List
 from plugin_utils.helpers import findOrCreatePath
@@ -10,18 +11,20 @@ from qgis._core import (QgsCoordinateTransform, Qgis, QgsPointXY, QgsGeometry, Q
     QgsField, QgsVectorLayer, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsProject,
     QgsUnitTypes )
 from specklepy.objects import Base
+from specklepy.objects.other import RevitParameter
 
 from typing import Dict, Any
 
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
-from specklepy.objects.GIS.geometry import GisRasterElement
+from specklepy.objects.GIS.geometry import GisRasterElement, GisPolygonGeometry, GisNonGeometryElement, GisTopography 
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from specklepy.objects.GIS.layers import RasterLayer
+from specklepy.objects.geometry import Mesh
 from speckle.converter.geometry.point import applyOffsetsRotation
-from speckle.utils.panel_logging import logger
-from speckle.converter.layers.utils import get_raster_stats, get_scale_factor_to_meter, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, tryCreateGroup, validateAttributeName 
+#from speckle.utils.panel_logging import logger
+from speckle.converter.layers.utils import get_raster_stats, get_scale_factor_to_meter, getArrayIndicesFromXY, getElevationLayer, getHeightWithRemainderFromArray, getRasterArrays, getVariantFromValue, getXYofArrayPoint, isAppliedLayerTransformByKeywords, traverseDict, validateAttributeName 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
     gdal, osr)
 import numpy as np 
@@ -30,62 +33,88 @@ import scipy.ndimage
 
 from speckle.utils.panel_logging import logToUser
 
-def featureToSpeckle(fieldnames: List[str], f: QgsFeature, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage):
+def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: QgsCoordinateReferenceSystem, targetCRS: QgsCoordinateReferenceSystem, project: QgsProject, selectedLayer: QgsVectorLayer or QgsRasterLayer, dataStorage):
     #print("Feature to Speckle")
     #print(dataStorage)
     if dataStorage is None: return 
     units = dataStorage.currentUnits
+    new_report = {"obj_type": "", "errors": ""}
+    iterations = 0
     try:
         geom = None
-        #apply transformation if needed
-        if sourceCRS != targetCRS:
-            xform = QgsCoordinateTransform(sourceCRS, targetCRS, project)
-            geometry = f.geometry()
-            geometry.transform(xform)
-            f.setGeometry(geometry)
-
-        # Try to extract geometry
-        try:
-            geom = convertToSpeckle(f, selectedLayer, dataStorage)
-            
-            #b.geometry = [] 
-            attributes = Base()
-            if geom is not None and geom!="None": 
-                if isinstance(geom.geometry, List):
-
-                    for g in geom.geometry:
-                        if g is not None and g!="None": 
-                            pass
-                        else:
-                            logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-                            print(g)
-            else: 
-                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-                print(geom)
         
-        except Exception as error:
-            logToUser("Error converting geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
+        if geomType == "None":
+            geom = GisNonGeometryElement()
+            new_report = {"obj_type": geom.speckle_type, "errors": ""}
+        else: 
+            #apply transformation if needed
+            if sourceCRS != targetCRS:
+                xform = QgsCoordinateTransform(sourceCRS, targetCRS, project)
+                geometry = f.geometry()
+                geometry.transform(xform)
+                f.setGeometry(geometry)
+            
+            # Try to extract geometry
+            skipped_msg = "Feature skipped due to invalid geometry"
+            try:
+                geom, iterations = convertToSpeckle(f, selectedLayer, dataStorage)
+                if geom is not None and geom!="None": 
+                    if not isinstance(geom.geometry, List):
+                        logToUser("Geometry not in list format", level = 2, func = inspect.stack()[0][3])
+                        return None 
 
+                    all_errors = ""
+                    for g in geom.geometry:
+                        if g is None or g=="None": 
+                            all_errors += skipped_msg + ", "
+                            logToUser(skipped_msg, level = 2, func = inspect.stack()[0][3])
+                        elif isinstance(g, GisPolygonGeometry): 
+                            if len(g.displayValue) == 0:
+                                all_errors += "Polygon sent, but display mesh not generated" + ", "
+                                logToUser("Polygon sent, but display mesh not generated", level = 1, func = inspect.stack()[0][3])
+                            elif iterations is not None and iterations > 0:
+                                all_errors += "Polygon display mesh is simplified" + ", "
+                                logToUser("Polygon display mesh is simplified", level = 1, func = inspect.stack()[0][3])
+
+                    if len(geom.geometry) == 0:
+                        all_errors = "No geometry converted"
+                    new_report.update({"obj_type": geom.speckle_type, "errors": all_errors})
+                                
+                else: # geom is None
+                    new_report = {"obj_type": "", "errors": skipped_msg}
+                    logToUser(skipped_msg, level = 2, func = inspect.stack()[0][3])
+                    geom = GisNonGeometryElement()
+            except Exception as error:
+                new_report = {"obj_type": "", "errors": "Error converting geometry: " + str(error)}
+                logToUser("Error converting geometry: " + str(error), level = 2, func = inspect.stack()[0][3])
+
+        attributes = Base()
         for name in fieldnames: 
             corrected = validateAttributeName(name, fieldnames)
-            f_name = f[name]
-            if f_name == "NULL" or f_name is None or str(f_name) == "NULL": f_name = None
+            f_val = f[name]
+            if f_val == "NULL" or f_val is None or str(f_val) == "NULL": f_val = None
             if isinstance(f[name], list): 
                 x = ""
                 for i, attr in enumerate(f[name]): 
                     if i==0: x += str(attr)
                     else: x += ", " + str(attr)
-                f_name = x 
-            attributes[corrected] = f_name
-        if geom is not None and geom!="None":
-            geom.attributes = attributes
+                f_val = x 
+            attributes[corrected] = f_val
+
+        #if geom is not None and geom!="None":
+        geom.attributes = attributes
+        
+        dataStorage.latestActionFeaturesReport[len(dataStorage.latestActionFeaturesReport)-1].update(new_report)
         return geom
+    
     except Exception as e:
+        new_report.update({"errors": e})
+        dataStorage.latestActionFeaturesReport[len(dataStorage.latestActionFeaturesReport)-1].update(new_report)
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return geom
           
 def bimFeatureToNative(exist_feat: QgsFeature, feature: Base, fields: QgsFields, crs, path: str, dataStorage):
-    print("04_________BIM Feature To Native____________")
+    #print("04_________BIM Feature To Native____________")
     try:
         exist_feat.setFields(fields)  
 
@@ -132,6 +161,7 @@ def addFeatVariant(key, variant, value, f: QgsFeature):
 
 def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, Any]:
     try:
+        #print("__updateFeat")
         for i, key in enumerate(fields.names()): 
             variant = fields.at(i).type()
             try:
@@ -188,6 +218,15 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
 
     b = GisRasterElement(units = dataStorage.currentUnits)
     try:
+        terrain_transform = False
+        texture_transform = False
+        #height_list = rasterBandVals[0]          
+        terrain_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["elevation", "mesh"], ["texture"], dataStorage)
+        texture_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["texture"], [], dataStorage)
+        if terrain_transform is True or texture_transform is True:
+            b = GisTopography(units = dataStorage.currentUnits)
+
+
         rasterBandCount = selectedLayer.bandCount()
         rasterBandNames = []
         rasterDimensions = [selectedLayer.width(), selectedLayer.height()]
@@ -287,12 +326,7 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         # identify symbology type and if Multiband, which band is which color
 
         ############################################################# 
-        terrain_transform = False
-        texture_transform = False
-        #height_list = rasterBandVals[0]          
-        terrain_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["elevation", "mesh"], ["texture"], dataStorage)
-        texture_transform = isAppliedLayerTransformByKeywords(selectedLayer, ["texture"], [], dataStorage)
-
+        
         elevationLayer = None 
         elevationProj = None 
         if texture_transform is True:
@@ -307,9 +341,9 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
             # reproject the elevation layer 
             if elevationProj is not None and rasterProj is not None and elevationProj != rasterProj:
                 try: 
-                    print("reproject elevation layer")
-                    print(elevationLayer.source())
-                    print(elevationLayer.crs().authid())
+                    #print("reproject elevation layer")
+                    #print(elevationLayer.source())
+                    #print(elevationLayer.crs().authid())
                     p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M")
                     findOrCreatePath(p)
                     path = p
@@ -653,31 +687,92 @@ def rasterFeatureToSpeckle(selectedLayer: QgsRasterLayer, projectCRS:QgsCoordina
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None 
         
+def trianglateQuadMesh(mesh: Mesh) -> Mesh:
+    new_mesh = None
+    try:
+        new_v: List[float] = []
+        new_f: List[int] = []
+        new_c: List[int] = []
 
+        # new list with face indices 
+        r'''
+        temp_f = []
+        used_ind = []
+        for i, f in enumerate(mesh.faces):
+            try:
+                if i%5 != 0 and i not in used_ind: #ignore indices and used pts
+                    temp_f.extend([mesh.faces[i], mesh.faces[i+1], mesh.faces[i+2], mesh.faces[i+2], mesh.faces[i+3], mesh.faces[i]])
+                    used_ind.extend([i,i+1,i+2,i+3])
+            except Exception as e: print(e) 
+        for i, f in enumerate(temp_f):
+            if i%3 == 0: new_f.append(int(3))
+            new_f.append(int(f))
+        '''
+        
+        # fill new color and vertices lists 
+        used_ind = []
+        for i, c in enumerate(mesh.colors):
+            try:
+                #new_c.append(c)
+                #continue
+                if i not in used_ind:
+                    new_c.extend([mesh.colors[i],mesh.colors[i+1],mesh.colors[i+2],mesh.colors[i+2],mesh.colors[i+3],mesh.colors[i]])
+                    used_ind.extend([i,i+1,i+2,i+3])
+            except Exception as e: print(e) 
+                
+        used_ind = []
+        for i, v in enumerate(mesh.vertices):
+            try:
+                #new_v.append(v)
+                #continue
+                if i not in used_ind:
+                    v0 = [mesh.vertices[i],mesh.vertices[i+1],mesh.vertices[i+2]]
+                    v1 = [mesh.vertices[i+3],mesh.vertices[i+4],mesh.vertices[i+5]]
+                    v2 = [mesh.vertices[i+6],mesh.vertices[i+7],mesh.vertices[i+8]]
+                    v3 = [mesh.vertices[i+9],mesh.vertices[i+10],mesh.vertices[i+11]]
+                    
+                    new_v.extend( v0+v1+v2+v2+v3+v0 )
+                    new_f.extend([int(3), int(i/12), int(i/12)+1, int(i/12)+2, int(3), int(i/12)+3, int(i/12)+4, int(i/12)+5 ])
+                    used_ind.extend(list(range(i, i+12)))
+            except Exception as e: print(e) 
+        #print(len(new_v))
+        #print(len(new_f))
+        #print(len(new_c))
+        new_mesh = Mesh.create(new_v, new_f, new_c)
+        new_mesh.units = mesh.units
+    except Exception as e:
+        print(e)
+        pass
+    return new_mesh
 
 def featureToNative(feature: Base, fields: QgsFields, dataStorage):
     feat = QgsFeature()
+    #print("___featureToNative")
     try:
-        try: 
-            speckle_geom = feature.geometry # for QGIS / ArcGIS Layer type from 2.14
-        except:
-            try: speckle_geom = feature["geometry"] # for QGIS / ArcGIS Layer type before 2.14
-            except:  speckle_geom = feature # for created in other software
-
         qgsGeom = None 
-        if not isinstance(speckle_geom, list):
-            qgsGeom = geometry.convertToNative(speckle_geom, dataStorage)
-        
-        elif isinstance(speckle_geom, list):
-            if len(speckle_geom)==1:
-                qgsGeom = geometry.convertToNative(speckle_geom[0], dataStorage)
-            elif len(speckle_geom)>1: 
-                qgsGeom = geometry.convertToNativeMulti(speckle_geom, dataStorage)
-            else: 
-                logToUser(f"Feature '{feature.id}' does not contain geometry", level = 2, func = inspect.stack()[0][3])
 
-        if qgsGeom is not None: feat.setGeometry(qgsGeom)
-        else: return None 
+        if isinstance(feature, GisNonGeometryElement): pass
+        else: 
+            try: 
+                speckle_geom = feature.geometry # for QGIS / ArcGIS Layer type from 2.14
+            except:
+                try: speckle_geom = feature["geometry"] # for QGIS / ArcGIS Layer type before 2.14
+                except:  speckle_geom = feature # for created in other software
+
+            if not isinstance(speckle_geom, list):
+                qgsGeom = geometry.convertToNative(speckle_geom, dataStorage)
+            
+            elif isinstance(speckle_geom, list):
+                if len(speckle_geom)==1:
+                    qgsGeom = geometry.convertToNative(speckle_geom[0], dataStorage)
+                elif len(speckle_geom)>1: 
+                    qgsGeom = geometry.convertToNativeMulti(speckle_geom, dataStorage)
+                else: 
+                    logToUser(f"Feature '{feature.id}' does not contain geometry", level = 2, func = inspect.stack()[0][3])
+
+            if qgsGeom is not None: 
+                feat.setGeometry(qgsGeom)
+            else: return None 
 
         feat.setFields(fields)  
         for field in fields:
@@ -719,9 +814,22 @@ def featureToNative(feature: Base, fields: QgsFields, dataStorage):
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return feat
 
+def nonGeomFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
+    try:
+        #print("______________nonGeomFeatureToNative")
+        #print(feature)
+        exist_feat = QgsFeature()
+        exist_feat.setFields(fields)  
+        feat_updated = updateFeat(exist_feat, fields, feature)
+        return feat_updated
+    
+    except Exception as e:
+        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        return 
+    
 def cadFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
     try:
-        print("______________cadFeatureToNative")
+        #print("______________cadFeatureToNative")
         exist_feat = QgsFeature()
         try: speckle_geom = feature["geometry"] # for created in QGIS Layer type
         except:  speckle_geom = feature # for created in other software

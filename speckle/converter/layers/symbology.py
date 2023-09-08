@@ -327,6 +327,7 @@ def rasterRendererToNative(layer: RasterLayer, rInterface: QgsRasterDataProvider
 def rendererToSpeckle(renderer: QgsFeatureRenderer or QgsRasterRenderer) -> dict[str, Any]:
 
     layerRenderer: dict[str, Any] = {}
+    if renderer is None: return layerRenderer # e.g. for no-geom layers 
     try:
         #print("___RENDERER TO SPECKLE___")
         rType = renderer.type() # 'singleSymbol','categorizedSymbol','graduatedSymbol',

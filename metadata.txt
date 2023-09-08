@@ -14,6 +14,7 @@ about=
     The Speckle QGIS plugin allows you send and receive data from multiple sources to/from several layers in your project, and store their geometry (as well as their contained metadata), in a Speckle server. 
     
     Don't know what Speckle is? You're not alone! Find out more at https://speckle.systems
+    You can start exploring by checking out this commit generated in QGIS from open web data sources (OSM, Google Satellite Tiles and Mapzen Terrain Tiles): https://speckle.xyz/streams/5feae56049/commits/b5f4cc5f3b 
     
     Requirements:
     - Speckle Manager: You can download the installer here -> https://speckle.guide/user/manager

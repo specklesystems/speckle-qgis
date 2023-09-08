@@ -1,4 +1,110 @@
 
+
+from typing import Optional
+from specklepy.objects import Base
+from specklepy.objects.geometry import Point, Line, Mesh
+from specklepy.objects.other import RevitParameter
+
+class RevitDirectShape(Base, speckle_type = "Objects.BuiltElements.Revit.DirectShape"):
+    name: str = ""
+    type: str = ""
+    category: int = 49
+    elementId: Optional[str]
+    parameters = Base()
+    isRevitLinkedModel: bool = False 
+    revitLinkedModelPath: str = ""
+    baseGeometries: Optional[list]
+    phaseCreated: str = "New Construction"
+
+def createCommit():
+    from specklepy.objects.other import Collection
+     
+    base_obj = Collection(units = "m", collectionType = "Python commit", name = "Python commit", elements = [])
+    
+    element = RevitDirectShape()
+    mesh = Mesh().create(vertices = [0,0,0,100,0,0,0,100,0], faces = [3,0,1,2])
+    element.baseGeometries = [mesh]
+
+    # text param 
+    name_1 = "text_param"
+    element.parameters[name_1] = RevitParameter()
+    element.parameters[name_1].isTypeParameter = False
+    element.parameters[name_1].value = "some text here"
+    element.parameters[name_1].applicationUnitType = "autodesk.spec:spec.string-2.0.0"#"autodesk.spec:spec.string-2.0.0"
+    element.parameters[name_1].applicationInternalName = "text_param"
+
+    # numeric param 
+    name_2 = "number_param"
+    element.parameters[name_2] = RevitParameter()
+    element.parameters[name_2].isTypeParameter = False
+    element.parameters[name_2].value = 1122
+    element.parameters[name_2].applicationUnit = "autodesk.unit.unit:centimeters-1.0.1"
+    element.parameters[name_2].applicationUnitType = "autodesk.spec.aec:distance-2.0.0"#"autodesk.spec:spec.string-2.0.0"
+    element.parameters[name_2].applicationInternalName = name_2
+
+    base_obj.elements.append(element)
+    return base_obj
+
+def sendCommit(stream_id = ""):
+    import specklepy
+    print(specklepy.__file__)
+    from specklepy.core.api.client import SpeckleClient
+    from specklepy.transports.server import ServerTransport
+    from specklepy.core.api import operations
+    from specklepy.core.api.credentials import get_local_accounts
+
+    account = get_local_accounts()[2]
+    client = SpeckleClient( account.serverInfo.url, account.serverInfo.url.startswith("https") )
+
+    client.authenticate_with_account(account)
+    if client.account.token is not None:
+        stream = client.stream.get(id = stream_id, branch_limit = 100, commit_limit = 100)
+    else: print("fail")
+    transport = ServerTransport(client=client, stream_id=stream_id)
+
+    base_obj = createCommit()
+    print(base_obj)
+    print(account)
+    print(client)
+    print(stream_id)
+    print(transport)
+
+    objId = operations.send(base=base_obj, transports=[transport])
+    commit_id = client.commit.create(
+        stream_id=stream_id,
+        object_id=objId,
+        branch_name="main",
+        message="Sent objects from Python", 
+        source_application="Python",
+    )
+    print(commit_id)
+    return
+
+sendCommit(stream_id = "17b0b76d13")
+
+exit()
+
+
+def checkGQLerror():
+    import gql, requests, urllib3, specklepy 
+    from importlib.metadata import version
+    version('gql')
+    version('requests')
+    version('urllib3')
+    version('specklepy')
+    from specklepy.core.api.client import SpeckleClient
+    from specklepy.core.api.credentials import get_local_accounts
+    account = get_local_accounts()[0]
+    print(account)
+    new_client = SpeckleClient(
+        account.serverInfo.url,
+        account.serverInfo.url.startswith("https")
+    )
+    print(new_client)
+    new_client.authenticate_with_token(token=account.token)
+    print(new_client)
+
+
 r'''
 layer = QgsVectorLayer('CompoundCurve?crs=epsg:4326', 'polygon' , 'memory')
 prov = layer.dataProvider()

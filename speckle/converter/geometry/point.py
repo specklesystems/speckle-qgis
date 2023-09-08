@@ -1,5 +1,6 @@
 import inspect
 import math
+import numpy as np
 
 from qgis.core import (
     QgsPoint,
@@ -26,13 +27,13 @@ def applyOffsetsRotation(x, y, dataStorage): # on Send
             x2 = x
             y2 = y
 
-            if a < 0: # turn counterclockwise on send
-                x2 = x*math.cos(a) - y*math.sin(a)
-                y2 = x*math.sin(a) + y*math.cos(a)         
+            #if a < 0: # turn counterclockwise on send
+            #    x2 = x*math.cos(a) - y*math.sin(a)
+            #    y2 = x*math.sin(a) + y*math.cos(a)         
 
-            elif a > 0: # turn clockwise on send
-                x2 =  x*math.cos(a) + y*math.sin(a)
-                y2 = -1*x*math.sin(a) + y*math.cos(a)
+            #elif a > 0: # turn clockwise on send
+            x2 =  x*math.cos(a) + y*math.sin(a)
+            y2 = -x*math.sin(a) + y*math.cos(a)
             x = x2
             y = y2
         return x, y
@@ -75,7 +76,7 @@ def transformSpecklePt(pt_original: Point, dataStorage) -> Point: # on Receive
 
     gisLayer = None
     try:
-        gisLayer = dataStorage.receivingGISlayer
+        gisLayer = dataStorage.latestHostApp.lower().endswith("gis")
         #print(gisLayer)
         applyTransforms = False if (gisLayer and gisLayer is True) else True 
     except Exception as e: 
@@ -90,12 +91,12 @@ def transformSpecklePt(pt_original: Point, dataStorage) -> Point: # on Receive
             x2 = pt.x
             y2 = pt.y
 
-            if a > 0: # turn counterclockwise on receive
-                x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
-                y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
-            elif a < 0: # turn clockwise on receive
-                x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
-                y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
+            #if a > 0: # turn counterclockwise on receive
+            x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
+            y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
+            #elif a < 0: # turn clockwise on receive
+            #    x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
+            #    y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
 
             pt.x = x2
             pt.y = y2
@@ -116,12 +117,12 @@ def transformSpecklePt(pt_original: Point, dataStorage) -> Point: # on Receive
                 x2 = pt.x
                 y2 = pt.y
 
-                if a > 0: # turn counterclockwise on receive
-                    x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
-                    y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
-                elif a < 0: # turn clockwise on receive
-                    x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
-                    y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
+                #if a > 0: # turn counterclockwise on receive
+                x2 = pt.x*math.cos(a) - pt.y*math.sin(a)
+                y2 = pt.x*math.sin(a) + pt.y*math.cos(a)  
+                #elif a < 0: # turn clockwise on receive
+                #    x2 =  pt.x*math.cos(a) + pt.y*math.sin(a)
+                #    y2 = -1*pt.x*math.sin(a) + pt.y*math.cos(a)       
 
                 pt.x = x2
                 pt.y = y2
@@ -138,6 +139,7 @@ def pointToNativeWithoutTransforms(pt: Point, dataStorage) -> QgsPoint:
     """Converts a Speckle Point to QgsPoint"""
     try:
         pt = scalePointToNative(pt, pt.units, dataStorage)
+        pt = applyTransformMatrix(pt, dataStorage)
         newPt = pt #transformSpecklePt(pt, dataStorage)
 
         return QgsPoint(newPt.x, newPt.y, newPt.z)
@@ -149,12 +151,27 @@ def pointToNative(pt: Point, dataStorage) -> QgsPoint:
     """Converts a Speckle Point to QgsPoint"""
     try:
         pt = scalePointToNative(pt, pt.units, dataStorage)
+        pt = applyTransformMatrix(pt, dataStorage)
         newPt = transformSpecklePt(pt, dataStorage)
 
         return QgsPoint(newPt.x, newPt.y, newPt.z)
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None
+
+def applyTransformMatrix(pt: Point, dataStorage):
+    try:
+        if dataStorage.matrix is not None:
+            #print(f"__PT: {(pt.x, pt.y, pt.z)}")
+            #print(dataStorage.matrix)
+            b = np.matrix([pt.x, pt.y, pt.z, 1]) 
+            res = b* dataStorage.matrix 
+            #print(res)
+            x,y,z = res.item(0), res.item(1), res.item(2)
+            #print(f"__PT: {(x, y, z)}")
+            return Point(x=x, y=y, z=z, units = pt.units)
+    except Exception as e: print(e)
+    return pt 
 
 def scalePointToNative(point: Point, units: str, dataStorage) -> Point:
     """Scale point coordinates to meters"""

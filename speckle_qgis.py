@@ -4,11 +4,12 @@ import inspect
 import os.path
 import sys
 import time 
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from datetime import datetime
 
 import threading
+from plugin_utils.threads import KThread 
 from plugin_utils.helpers import constructCommitURL, getAppName, removeSpecialCharacters
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer,
                        QgsLayerTreeGroup, QgsCoordinateReferenceSystem,
@@ -20,11 +21,13 @@ from qgis.PyQt.QtWidgets import QApplication, QAction, QMenu, QDockWidget, QVBox
 from qgis.PyQt import QtWidgets
 from qgis import PyQt
 
+#from PyQt5.QtCore import pyqtSignal
+
 import sip
 
 from specklepy.core.api import operations
 from specklepy.logging.exceptions import SpeckleException, GraphQLException
-from specklepy.core.api.models import Stream
+from specklepy.core.api.models import Stream, Branch, Commit 
 from specklepy.core.api.wrapper import StreamWrapper
 from specklepy.objects import Base
 from specklepy.objects.other import Collection
@@ -37,12 +40,12 @@ import webbrowser
 # Initialize Qt resources from file resources.py
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
-from speckle.converter.layers import addBimMainThread, addCadMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getSavedLayers, getSelectedLayers
-from speckle.converter.layers.utils import findAndClearLayerGroup
+from speckle.converter.layers import addBimMainThread, addCadMainThread, addExcelMainThread, addNonGeometryMainThread, addRasterMainThread, addVectorMainThread, convertSelectedLayers, getAllLayers, getAllLayersWithTree, getSavedLayers, getSelectedLayers, getSelectedLayersWithStructure
+from speckle.converter.layers import findAndClearLayerGroup
 
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
-from speckle.utils.panel_logging import logger
+#from speckle.utils.panel_logging import logger
 from specklepy_qt_ui.qt_ui.widget_add_stream import AddStreamModalDialog
 from specklepy_qt_ui.qt_ui.widget_create_stream import CreateStreamModalDialog
 from specklepy_qt_ui.qt_ui.widget_create_branch import CreateBranchModalDialog
@@ -51,6 +54,8 @@ from speckle.utils.panel_logging import logToUser
 # Import the code for the dialog
 from speckle.utils.validation import tryGetClient, tryGetStream, validateBranch, validateCommit, validateStream, validateTransport
 from specklepy_qt_ui.qt_ui.widget_custom_crs import CustomCRSDialog 
+
+from plugin_utils.installer import _debug
 
 SPECKLE_COLOR = (59,130,246)
 SPECKLE_COLOR_LIGHT = (69,140,255)
@@ -65,10 +70,14 @@ class SpeckleQGIS:
     create_stream_modal: CreateStreamModalDialog
     current_streams: List[Tuple[StreamWrapper, Stream]]  #{id:(sw,st),id2:()}
     current_layers: List[Tuple[Union[QgsVectorLayer, QgsRasterLayer], str, str]] = []
+    #current_layer_group: Any
+    receive_layer_tree: Dict  
 
     active_stream: Optional[Tuple[StreamWrapper, Stream]] 
+    active_branch: Optional[Branch] = None
+    active_commit: Optional[Commit] = None
 
-    qgis_project: QgsProject
+    project: QgsProject
 
     #lat: float
     #lon: float
@@ -77,6 +86,7 @@ class SpeckleQGIS:
 
     theads_total: int
     dataStorage: DataStorage
+    #signal_groupCreate = pyqtSignal(object)
 
     def __init__(self, iface):
         """Constructor.
@@ -93,9 +103,12 @@ class SpeckleQGIS:
         self.version = "0.0.99"
         self.gis_version = Qgis.QGIS_VERSION.encode('iso-8859-1', errors='ignore').decode('utf-8')
         self.iface = iface
-        self.qgis_project = QgsProject.instance()
+        self.project = QgsProject.instance()
         self.current_streams = []
         self.active_stream = None
+        self.active_branch = None 
+        self.active_commit = None 
+        self.receive_layer_tree = None 
         #self.default_account = None 
         #self.accounts = [] 
         #self.active_account = None 
@@ -258,13 +271,24 @@ class SpeckleQGIS:
     def onRunButtonClicked(self):
         #print("onRUN")
         # set QGIS threads number only the first time: 
-        if self.theads_total==0: self.theads_total = threading.active_count()
-        #print(threading.active_count())
+        #if self.theads_total==0: self.theads_total = threading.active_count()
+
+        all_threads = threading.enumerate()
+
+        for t in all_threads:
+            if t.name.startswith('speckle'):
+                name = "" 
+                if "receive" in t.name: name = "Receive"
+                if "send" in t.name: name = "Send"
+                logToUser(f"Previous {name} operation is still running", level = 2, plugin=self.dockwidget)
+                return
 
         # set the project instance 
-        self.qgis_project = QgsProject.instance()
-        self.dataStorage.project = self.qgis_project
+        self.project = QgsProject.instance()
+        self.dataStorage.project = self.project
         self.dockwidget.msgLog.setGeometry(0, 0, self.dockwidget.frameSize().width(), self.dockwidget.frameSize().height())
+
+        self.dockwidget.reportBtn.setEnabled(True)
 
         # https://www.opengis.ch/2016/09/07/using-threads-in-qgis-python-plugins/
         
@@ -280,15 +304,13 @@ class SpeckleQGIS:
                 streamWrapper = self.active_stream[0]
                 client = streamWrapper.get_client()
                 self.dataStorage.active_account = client.account
-                
-                #try:
-                #    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Send", "is": True, "connector_version": str(self.version)})
-                #except Exception as e:
-                #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
+                logToUser(f"Sending data... \nClick here to cancel", level = 0, url = "cancel", plugin = self.dockwidget)
 
-                t = threading.Thread(target=self.onSend, args=(message,))
+                if _debug is True: raise Exception
+                t = KThread(target=self.onSend, name="speckle_send", args=(message,))
                 t.start()
             except: self.onSend(message)
+        
         # receive 
         elif self.btnAction == 1: 
             ################### repeated 
@@ -328,34 +350,24 @@ class SpeckleQGIS:
                 # If group exists, remove layers inside  
                 newGroupName = streamId + "_" + branch.name + "_" + commit.id
                 newGroupName = removeSpecialCharacters(newGroupName)
-                findAndClearLayerGroup(self.qgis_project, newGroupName, commit.id)
+                findAndClearLayerGroup(self.project.layerTreeRoot(), newGroupName, self)
 
             except Exception as e:
                 logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
                 return
             ########################################### end of repeated 
-            r'''
-            if not self.dockwidget.experimental.isChecked(): 
-                
-                try:
-                    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": False, "connector_version": str(self.version)})
-                except Exception as e:
-                    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
-                self.onReceive()
-            else:
-            '''
+
             try:
                 streamWrapper = self.active_stream[0]
                 client = streamWrapper.get_client()
                 self.dataStorage.active_account = client.account
-                #try:
-                #    metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Toggle Multi-threading Receive", "is": True, "connector_version": str(self.version)})
-                #except Exception as e:
-                #    logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget )
-
-                t = threading.Thread(target=self.onReceive, args=())
+                logToUser("Receiving data... \nClick here to cancel", level = 0, url = "cancel", plugin=self.dockwidget)
+                
+                if _debug is True: raise Exception
+                t = KThread(target=self.onReceive, name="speckle_receive", args=())
                 t.start()
             except: self.onReceive()
+        
 
     def onSend(self, message: str):
         """Handles action when Send button is pressed."""
@@ -364,14 +376,15 @@ class SpeckleQGIS:
             if not self.dockwidget: return
             #self.dockwidget.showWait()
             
-            projectCRS = self.qgis_project.crs()
+            projectCRS = self.project.crs()
 
             bySelection = True
             if self.dockwidget.layerSendModeDropdown.currentIndex() == 1: 
                 bySelection = False 
                 layers = getSavedLayers(self)
             else: 
-                layers = getSelectedLayers(self) # List[QgsLayerTreeNode]
+                #layers = getSelectedLayers(self) # List[QgsLayerTreeNode]
+                layers, tree_structure = getSelectedLayersWithStructure(self)
 
             # Check if stream id/url is empty
             if self.active_stream is None:
@@ -379,16 +392,18 @@ class SpeckleQGIS:
                 return
             
             # Check if no layers are selected
-            if len(layers) == 0: #len(selectedLayerNames) == 0:
-                logToUser("No layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
+            if len(layers) == 0 or layers is None: #len(selectedLayerNames) == 0:
+                logToUser("No valid layers selected", level = 1, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
-            self.dataStorage.sending_layers = layers
+            self.dataStorage.latestActionLayers = [l.name() for l in layers]
+            #print(layers)
 
             root = self.dataStorage.project.layerTreeRoot()
             self.dataStorage.all_layers = getAllLayers(root)
             self.dockwidget.mappingSendDialog.populateSavedTransforms(self.dataStorage)
             
             units = str(QgsUnitTypes.encodeUnit(projectCRS.mapUnits())) 
+            self.dataStorage.latestActionUnits = units 
             if units is None or units == 'degrees': units = 'm'
             self.dataStorage.currentUnits = units 
 
@@ -397,9 +412,11 @@ class SpeckleQGIS:
             if (self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation) != 0 :
                 logToUser(f"Applying CRS rotation: {self.dataStorage.crs_rotation}°", level = 0, plugin = self.dockwidget)
 
-            base_obj = Collection(units = units, collectionType = "QGIS commit", name = "QGIS commit")
-            base_obj.elements = convertSelectedLayers(layers, [],[], projectCRS, self)
-            if base_obj.elements is None or (isinstance(base_obj.elements, List) and len(base_obj.elements) == 0):
+            self.dataStorage.latestActionReport = []
+            self.dataStorage.latestActionFeaturesReport = []
+            base_obj = Collection(units = units, collectionType = "QGIS commit", name = "QGIS commit", elements = [])
+            base_obj = convertSelectedLayers(base_obj, layers, tree_structure, projectCRS, self)
+            if base_obj is None or base_obj.elements is None or (isinstance(base_obj.elements, List) and len(base_obj.elements) == 0):
                 logToUser(f"No data to send", level = 2, plugin = self.dockwidget)
                 return 
 
@@ -434,11 +451,13 @@ class SpeckleQGIS:
         try:
             # this serialises the block and sends it to the transport
             objId = operations.send(base=base_obj, transports=[transport])
+            self.dataStorage.latestActionTime = str(datetime.now().strftime("%d/%m/%Y, %H:%M:%S"))
         except Exception as e:
             logToUser("Error sending data: " + str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
-
-        #logToUser("long errror something something msg1", level=2, plugin= self.dockwidget)
+        
+        self.dockwidget.signal_cancel_operation.emit("cancel")
+        
         try:
             # you can now create a commit on your stream with this object
             commit_id = client.commit.create(
@@ -456,7 +475,7 @@ class SpeckleQGIS:
                 metr_branches = len(self.active_stream[1].branches.items)
                 metr_collab = len(self.active_stream[1].collaborators)
                 metr_projected = True if not projectCRS.isGeographic() else False
-                if self.qgis_project.crs().isValid() is False: metr_projected = None
+                if self.project.crs().isValid() is False: metr_projected = None
                 
                 try:
                     metr_crs = True if self.dataStorage.custom_lat!=0 and self.dataStorage.custom_lon!=0 and str(self.dataStorage.custom_lat) in projectCRS.toWkt() and str(self.dataStorage.custom_lon) in projectCRS.toWkt() else False
@@ -467,29 +486,33 @@ class SpeckleQGIS:
             except:
                 metrics.track(metrics.SEND, self.dataStorage.active_account)
             
-            
             if isinstance(commit_id, SpeckleException):
                 logToUser("Error creating commit: "+str(commit_id.message), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
                 return
             url: str = constructCommitURL(streamWrapper, branchId, commit_id)
-            
+
+            if str(self.dockwidget.commitDropdown.currentText()).startswith("Latest"):
+                stream = client.stream.get(id = streamId, branch_limit = 100, commit_limit = 100)
+                branch = validateBranch(stream, branchName, False, self.dockwidget)
+                self.active_commit = branch.commits.items[0]
             
             #self.dockwidget.hideWait()
             #self.dockwidget.showLink(url, streamName)
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
 
-            if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
+            if self.project.crs().isGeographic() is True or self.project.crs().isValid() is False: 
                 logToUser("Data has been sent in the units 'degrees'. It is advisable to set the project CRS to Projected type (e.g. EPSG:32631) to be able to receive geometry correctly in CAD/BIM software. You can also create a custom CRS by setting geographic coordinates and using 'Set as a project center' function.", level = 1, plugin = self.dockwidget)
             
-            logToUser(f"👌 Data sent to \"{streamName}\" \n View it online", level = 0, plugin=self.dockwidget, url = url)
-            self.dataStorage.sending_layers = None
-
-            return url
+            #time.sleep(0.3)
+            logToUser("👌 Data sent to \'" + str(streamName) + "\'" + "\nClick to view commit online", level = 0, plugin=self.dockwidget, url = url, report = True)
+            
 
         except Exception as e:
             #if self.dockwidget.experimental.isChecked(): 
             time.sleep(1)
             logToUser("Error creating commit: "+str(e), level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
+
+        self.dockwidget.cancelOperations()
 
     def onReceive(self):
         """Handles action when the Receive button is pressed"""
@@ -498,7 +521,7 @@ class SpeckleQGIS:
         try:
             if not self.dockwidget: return
 
-            self.dataStorage.receivingGISlayer = False
+            self.dataStorage.latestHostApp = ""
 
             # Check if stream id/url is empty
             if self.active_stream is None:
@@ -525,6 +548,10 @@ class SpeckleQGIS:
         try:
             
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
+            
+            if str(self.dockwidget.commitDropdown.currentText()).startswith("Latest"):
+                stream = client.stream.get(id = stream.id, branch_limit = 100, commit_limit = 100)
+                
             branch = validateBranch(stream, branchName, True, self.dockwidget)
             if branch == None: 
                 return
@@ -533,6 +560,7 @@ class SpeckleQGIS:
             commit = validateCommit(branch, commitId, self.dockwidget)
             if commit == None: 
                 return
+            self.active_commit = commit
 
         except Exception as e:
             logToUser(str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
@@ -544,23 +572,26 @@ class SpeckleQGIS:
 
             app_full = commit.sourceApplication
             app = getAppName(commit.sourceApplication)
+            self.dataStorage.latestHostApp = app 
             client_id = client.account.userInfo.id
 
             transport = validateTransport(client, streamId)
             if transport == None: 
                 return 
             
-            logToUser("Receiving data...", level = 0, plugin=self.dockwidget)
             commitObj = operations.receive(objId, transport, None)
             
-            projectCRS = self.qgis_project.crs()
+            projectCRS = self.project.crs()
+            units = str(QgsUnitTypes.encodeUnit(projectCRS.mapUnits())) 
+            self.dataStorage.latestActionUnits = units 
+            
             try:
                 metr_crs = True if self.dataStorage.custom_lat!=0 and self.dataStorage.custom_lon!=0 and str(self.dataStorage.custom_lat) in projectCRS.toWkt() and str(self.dataStorage.custom_lon) in projectCRS.toWkt() else False
             except:
                 metr_crs = False
             
             metr_projected = True if not projectCRS.isGeographic() else False
-            if self.qgis_project.crs().isValid() is False: metr_projected = None
+            if self.project.crs().isValid() is False: metr_projected = None
             try:
                 metrics.track(metrics.RECEIVE, self.dataStorage.active_account, {"hostAppFullVersion":self.gis_version, "sourceHostAppVersion": app_full, "sourceHostApp": app, "isMultiplayer": commit.authorId != client_id,"connector_version": str(self.version), "projectedCRS": metr_projected, "customCRS": metr_crs})
             except:
@@ -574,7 +605,7 @@ class SpeckleQGIS:
             )
 
             if app.lower() != "qgis" and app.lower() != "arcgis": 
-                if self.qgis_project.crs().isGeographic() is True or self.qgis_project.crs().isValid() is False: 
+                if self.project.crs().isGeographic() is True or self.project.crs().isValid() is False: 
                     logToUser("Conversion from metric units to DEGREES not supported. It is advisable to set the project CRS to Projected type before receiving CAD/BIM geometry (e.g. EPSG:32631), or create a custom one from geographic coordinates", level = 1, func = inspect.stack()[0][3], plugin = self.dockwidget)
             #logger.log(f"Succesfully received {objId}")
 
@@ -585,50 +616,50 @@ class SpeckleQGIS:
         newGroupName = streamId + "_" + branch.name + "_" + commit.id
         newGroupName = removeSpecialCharacters(newGroupName)
         try:
-            if (self.dataStorage.crs_offset_x is not None and self.dataStorage.crs_offset_x) != 0 or (self.dataStorage.crs_offset_y is not None and self.dataStorage.crs_offset_y):
-                logToUser(f"Applying CRS offsets: x={self.dataStorage.crs_offset_x}, y={self.dataStorage.crs_offset_y}", level = 0, plugin = self.dockwidget)
-            if (self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation) != 0 :
-                logToUser(f"Applying CRS rotation: {self.dataStorage.crs_rotation}°", level = 0, plugin = self.dockwidget)
+            if app.lower() != "qgis" and app.lower() != "arcgis":
+                if (self.dataStorage.crs_offset_x is not None and self.dataStorage.crs_offset_x) != 0 or (self.dataStorage.crs_offset_y is not None and self.dataStorage.crs_offset_y):
+                    logToUser(f"Applying CRS offsets: x={self.dataStorage.crs_offset_x}, y={self.dataStorage.crs_offset_y}", level = 0, plugin = self.dockwidget)
+                if (self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation) != 0 :
+                    logToUser(f"Applying CRS rotation: {self.dataStorage.crs_rotation}°", level = 0, plugin = self.dockwidget)
         except:
             pass
 
         try:
             if app.lower() == "qgis" or app.lower() == "arcgis": 
-                print(app.lower())
-                self.dataStorage.receivingGISlayer = True
+                #print(app.lower())
                 check: Callable[[Base], bool] = lambda base: base.speckle_type and (base.speckle_type.endswith("VectorLayer") or base.speckle_type.endswith("Layer") or base.speckle_type.endswith("RasterLayer") )
             else: 
                 check: Callable[[Base], bool] = lambda base: (base.speckle_type) # and base.speckle_type.endswith("Base") )
-            traverseObject(self, commitObj, callback, check, str(newGroupName))
-            
-            try: 
-                if self.dataStorage.receivingGISlayer == False:
-                    offsetsExist = True if self.dataStorage.crs_offset_x is not None and self.dataStorage.crs_offset_y is not None and (self.dataStorage.crs_offset_x != 0 or self.dataStorage.crs_offset_y != 0) else False
-                    rotationExists = True if self.dataStorage.crs_rotation is not None and self.dataStorage.crs_rotation != 0  else False
-                    if (offsetsExist is True or rotationExists is True):
-                        logToUser("Offsets or/and rotation are applied on receive", level = 0, plugin = self.dockwidget)
-                self.dataStorage.receivingGISlayer = False
-            except: pass 
+            self.receive_layer_tree = {str(newGroupName): {}}
+            #print(self.receive_layer_tree)
+
+            self.dataStorage.latestActionLayers = []
+            self.dataStorage.latestActionReport = []
+            traverseObject(self, commitObj, callback, check, str(newGroupName), "")
+            self.dataStorage.latestActionTime = str(datetime.now().strftime("%d/%m/%Y, %H:%M:%S"))
+
+            url: str = constructCommitURL(streamWrapper, branch.id, commit.id)
 
             #if self.dockwidget.experimental.isChecked(): time.sleep(3)
-            logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True)
-            #return 
+            logToUser("👌 Data received", level = 0, plugin = self.dockwidget, blue = True, report = True)
+            
             
         except Exception as e:
             #if self.dockwidget.experimental.isChecked(): time.sleep(1)
             logToUser("Receive failed: "+ str(e), level = 2, func = inspect.stack()[0][3], plugin = self.dockwidget)
-            return
+
+        self.dockwidget.cancelOperations()
 
     def reloadUI(self):
         print("___RELOAD UI")
         try:
             from speckle.utils.project_vars import get_project_streams, get_survey_point, get_rotation, get_crs_offsets, get_project_saved_layers, get_transformations 
 
-            self.qgis_project = QgsProject.instance()
+            self.project = QgsProject.instance()
             
             self.dataStorage = DataStorage()
             self.dataStorage.plugin_version = self.version
-            self.dataStorage.project = self.qgis_project
+            self.dataStorage.project = self.project
         
             get_transformations(self.dataStorage)
             
@@ -661,10 +692,10 @@ class SpeckleQGIS:
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        self.qgis_project = QgsProject.instance()
+        self.project = QgsProject.instance()
         self.dataStorage = DataStorage()
         self.dataStorage.plugin_version = self.version
-        self.dataStorage.project = self.qgis_project
+        self.dataStorage.project = self.project
     
         get_transformations(self.dataStorage)
 
@@ -684,8 +715,8 @@ class SpeckleQGIS:
                 self.dockwidget.runSetup(self)
                 self.dockwidget.createMappingDialog()
 
-                self.qgis_project.fileNameChanged.connect(self.reloadUI)
-                self.qgis_project.homePathChanged.connect(self.reloadUI)
+                self.project.fileNameChanged.connect(self.reloadUI)
+                self.project.homePathChanged.connect(self.reloadUI)
 
                 self.dockwidget.runButton.clicked.connect(self.onRunButtonClicked)
 
@@ -695,6 +726,11 @@ class SpeckleQGIS:
                 self.dockwidget.signal_2.connect(addBimMainThread)
                 self.dockwidget.signal_3.connect(addCadMainThread)
                 self.dockwidget.signal_4.connect(addRasterMainThread)
+                self.dockwidget.signal_5.connect(addNonGeometryMainThread)
+                self.dockwidget.signal_6.connect(addExcelMainThread)
+                self.dockwidget.signal_cancel_operation.connect(self.dockwidget.msgLog.removeBtnUrl)
+
+                #self.signal_groupCreate.connect(tryCreateGroup)
                 
             else: 
                 root = self.dataStorage.project.layerTreeRoot()
@@ -717,7 +753,7 @@ class SpeckleQGIS:
             self.dockwidget.enableElements(self)
     
     def populateSelectedLayerDropdown(self):
-        print("populateSelectedLayerDropdown")
+        #print("populateSelectedLayerDropdown")
         from speckle.utils.project_vars import set_project_layer_selection
         layers = getSelectedLayers(self)
         current_layers = []
@@ -779,7 +815,7 @@ class SpeckleQGIS:
                 return
             else:
                 sw = StreamWrapper(account.serverInfo.url + "/streams/" + str_id)
-                self.handleStreamAdd(sw)
+                self.handleStreamAdd((sw, None, None))
             return 
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
@@ -824,16 +860,30 @@ class SpeckleQGIS:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
 
-    def handleStreamAdd(self, sw: StreamWrapper):
+    def handleStreamAdd(self, objectPacked: Tuple):
         try: 
+            #print("___handleStreamAdd")
             from speckle.utils.project_vars import set_project_streams
-            
+            sw, branch, commit = objectPacked
+            #print(sw)
+            #print(branch)
+            #print(commit)
             streamExists = 0
             index = 0
 
             self.dataStorage.check_for_accounts()
             stream = tryGetStream(sw, self.dataStorage, False, self.dockwidget)
+            #print(stream)
+
+            if stream is not None and branch in stream.branches.items:
+                self.active_branch = branch
+                self.active_commit = commit
+            else:
+                self.active_branch = None 
+                self.active_commit = None 
             
+            #try: print(f"ACTIVE BRANCH NAME: {self.active_branch.name}")
+            #except: print("ACTIVE BRANCH IS NONE")
             for st in self.current_streams: 
                 #if isinstance(st[1], SpeckleException) or isinstance(stream, SpeckleException): pass 
                 if isinstance(stream, Stream) and st[0].stream_id == stream.id: 
@@ -876,7 +926,8 @@ class SpeckleQGIS:
             self.dockwidget.custom_crs_modal.populateRotation()
 
             self.dockwidget.custom_crs_modal.dialog_button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.customCRSApply)
-            self.dockwidget.custom_crs_modal.dialog_button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(self.crsMoreInfo)
+            crs_info_url = "https://speckle.guide/user/qgis.html#custom-project-center"
+            self.dockwidget.custom_crs_modal.dialog_button_box.button(QtWidgets.QDialogButtonBox.Cancel).clicked.connect(lambda: self.openUrl(crs_info_url) )
             
             self.dockwidget.custom_crs_modal.show()
 
@@ -884,10 +935,19 @@ class SpeckleQGIS:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
     
-    def crsMoreInfo(self):
+    def openUrl(self, url: str = ""):
         import webbrowser
-        url = "https://speckle.guide/user/qgis.html#custom-project-center"
-        webbrowser.open(url, new=0, autoraise=True)
+        #url = "https://speckle.guide/user/qgis.html#custom-project-center"
+        try: 
+            if "/commits/" in url or "/models/" in url:
+                metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Open In Web", "connector_version": str(self.dataStorage.plugin_version), "data": "Commit"})
+            else:
+                metrics.track("Connector Action", self.dataStorage.active_account, {"name": "Open In Web", "connector_version": str(self.dataStorage.plugin_version)})
+        except Exception as e: 
+            logToUser(e, level = 2, func = inspect.stack()[0][3] )
+        
+        if url is not None and url != "":
+            webbrowser.open(url, new=0, autoraise=True)
 
     def customCRSApply(self):
         index = self.dockwidget.custom_crs_modal.modeDropdown.currentIndex()
@@ -1004,4 +1064,3 @@ class SpeckleQGIS:
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3], plugin=self.dockwidget)
             return
-    

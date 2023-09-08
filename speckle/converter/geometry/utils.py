@@ -9,9 +9,17 @@ from specklepy.objects import Base
 from typing import List, Tuple, Union, Dict
 from speckle.converter.geometry.point import applyOffsetsRotation 
 
+from shapely.geometry import Polygon
+from shapely.ops import triangulate
+import shapely.wkt
+import geopandas as gpd
+from geovoronoi import voronoi_regions_from_coords
+
 #from speckle.converter.geometry.polyline import speckleArcCircleToPoints, specklePolycurveToPoints
 from speckle.utils.panel_logging import logToUser
 #import time
+
+import numpy as np
 
 from qgis.core import (Qgis, QgsProject, QgsLayerTreeLayer, QgsFeature,
                        QgsRasterLayer, QgsVectorLayer, QgsPoint )
@@ -63,47 +71,138 @@ def projectToPolygon(point: List, polygonPts: List):
 
 def triangulatePolygon(geom, dataStorage): 
     try:
-        import triangle as tr
-        vertices = []
-        segments = []
-        holes = []
-        vertices, vertices3d, segments, holes = getPolyPtsSegments(geom, dataStorage)
 
-        if len(holes)>0: 
-            dict_shape= {'vertices': vertices, 'segments': segments, 'holes': holes}
-        else: 
-            dict_shape= {'vertices': vertices, 'segments': segments }
+        #import triangle as tr
+        vertices = [] # only outer
+        segments = [] # including holes
+        holes = []
+        pack = getPolyPtsSegments(geom, dataStorage)
+
+        vertices, vertices3d, segments, holes = pack
+
+        if len(vertices)>0: vertices.append(vertices[0])
+        for i, h in enumerate(holes):
+            if len(holes[i])>0: holes[i].append(holes[i][0])
+        dict_shape= {'vertices': vertices, 'holes': holes}
+
         try:
-            #print(type(vertices[0][0]))
-            #print(vertices)
-            #print(segments)
-            #print(holes)
-            t = tr.triangulate(dict_shape, 'p')
-            #t = {'vertices': vertices, 'triangles': [[0,1,2]]}
-            #print(t)
+            t, iterations = to_triangles(dict_shape, 0) #tr.triangulate(dict_shape, 'p')
         except Exception as e:
             logToUser(e, level = 2, func = inspect.stack()[0][3])
             return None, None
-        return t, vertices3d 
+        return t, vertices3d, iterations 
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None, None
+
+def to_triangles(data, attempt = 0):
+    # https://gis.stackexchange.com/questions/316697/delaunay-triangulation-algorithm-in-shapely-producing-erratic-result
+    try:
+
+        vert_old = data['vertices']
+        holes_old = data['holes']
+
+        # round vertices:
+        digits = 3-attempt
+
+        vert = []
+        vert_rounded = []
+        for i,v in enumerate(vert_old):
+            if i == len(vert_old)-1: 
+                vert.append(v)
+                break # don't test last point 
+            rounded = [ round(v[0],digits), round(v[1],digits) ]
+            if v not in vert and rounded not in vert_rounded: 
+                vert.append(v)
+                vert_rounded.append(rounded)
+
+        # round holes:
+        holes = []
+        holes_rounded = []
+        for k,h in enumerate(holes_old):
+            hole = []
+            for i,v in enumerate(h):
+                if i == len(h)-1: 
+                    hole.append(v)
+                    break # don't test last point 
+                rounded = [ round(v[0],digits), round(v[1],digits) ]
+                if v not in holes and rounded not in holes_rounded: 
+                    hole.append(v)
+                    holes_rounded.append(rounded)
+            holes.append(hole)
+
+
+        if len(holes)==1 and len(holes[0])==0: 
+            polygon = Polygon([ ( v[0], v[1] ) for v in vert ] )
+        else:
+            polygon = Polygon([ ( v[0], v[1] ) for v in vert ], holes )
+        #polygon = Polygon([ ( v[0], v[1] ) for v in vert ] )
+        #polygon = Polygon([(3.0, 0.0), (2.0, 0.0), (2.0, 0.75), (2.5, 0.75), (2.5, 0.6), (2.25, 0.6), (2.25, 0.2), (3.0, 0.2), (3.0, 0.0)])
+
+        poly_points = []
+        exterior_linearring = polygon.exterior
+        poly_points += np.array(exterior_linearring.coords).tolist()
+        
+        try: polygon.interiors[0]
+        except: poly_points = poly_points
+        else:
+            for i, interior_linearring in enumerate(polygon.interiors):
+                a = interior_linearring.coords
+                poly_points += np.array(a).tolist()
+        
+        poly_points = np.array([item for sublist in poly_points for item in sublist]).reshape(-1,2)
+
+        poly_shapes, pts = voronoi_regions_from_coords(poly_points, polygon.buffer(0.000001))
+        gdf_poly_voronoi = gpd.GeoDataFrame({'geometry': poly_shapes}).explode().reset_index()
+
+        tri_geom = []
+        for geom in gdf_poly_voronoi.geometry:
+            inside_triangles = [tri for tri in triangulate(geom) if tri.centroid.within(polygon)]
+            tri_geom += inside_triangles
+
+        vertices = []
+        triangles = []
+        for tri in tri_geom:
+            xx, yy = tri.exterior.coords.xy
+            v_list = zip(xx.tolist(), yy.tolist())
+
+            tr_indices = []
+            count = 0
+            for vt in v_list:
+                v = list(vt)
+                if count ==3: continue
+                if v not in vertices: 
+                    vertices.append(v)
+                    tr_indices.append(len(vertices)-1)
+                else:
+                    tr_indices.append(vertices.index(v))
+                count += 1
+            triangles.append(tr_indices)
+
+        shape = {'vertices': vertices, 'triangles': triangles }
+        return shape, attempt
+    except Exception as e:
+        print(e)
+        attempt += 1
+        if attempt<=3: 
+            return to_triangles(data, attempt) 
+        else: return None, None 
 
 def getPolyPtsSegments(geom, dataStorage):
     vertices = []
     vertices3d = []
     segmList = []
     holes = []
+    gv = list(geom.vertices())
     try: 
         extRing = geom.exteriorRing()
         pt_iterator = extRing.vertices()
     except: 
         try:  
             extRing = geom.constGet().exteriorRing()
-            pt_iterator = geom.vertices()
+            pt_iterator = extRing.vertices()
         except: 
-            extRing = geom
             pt_iterator = geom.vertices()
     
     pointListLocal = []
@@ -125,46 +224,58 @@ def getPolyPtsSegments(geom, dataStorage):
         #except: vertices3d.append([pt.x(),pt.y(), 0]) # project boundary to 0
         if i>0: 
             segmList.append([startLen+i-1, startLen+i])
-        if i == len(pointListLocal)-1: #also add a cap
-            segmList.append([startLen+i, startLen])
+        #if i == len(pointListLocal)-1: #also add a cap
+        #    segmList.append([startLen+i, startLen])
     
     ########### get voids 
     try:
         geom = geom.constGet()
     except: pass
     try:
+        #logToUser(geom)
         intRingsNum = geom.numInteriorRings()
-        for i in range(intRingsNum):
-            intRing = geom.interiorRing(i)
-            pt_iterator = intRing.vertices()
+        #except: 
+        #    intRingsNum = len(geom.constParts())
 
+        for k in range(intRingsNum):
+            intRing = geom.interiorRing(k)
+            pt_iterator = intRing.vertices()
+            #pt_iterator = intRing.vertices()
+            #intRing = geom.constParts(k)
+            #intRing = geom.childGeometry(k)
+            #pt_iterator = intRing.vertices()
+            
+            pt_list = list(pt_iterator)
             pointListLocal = []
             startLen = len(vertices)
-            for i, pt in enumerate(pt_iterator): 
+            for i, pt in enumerate(pt_list): 
                 if len(pointListLocal)>0 and pt.x()==pointListLocal[0].x() and pt.y()==pointListLocal[0].y(): #don't repeat 1st point
-                    pass
-                else: 
+                    continue
+                elif [pt.x(), pt.y()] not in vertices: # in case it's not the inner part of geometry
                     pointListLocal.append(pt) 
+                    #try: 
+                    #    pointListLocal.append([pt.x(), pt.y(), pt.z()])
+                    #except: 
+                    #    pointListLocal.append([pt.x(), pt.y(), None])
 
-            hole = getHolePt(pointListLocal)
-            x, y = applyOffsetsRotation(hole[0], hole[1], dataStorage)
-            holes.append([x, y])
+            #hole = getHolePt(pointListLocal)
+            #x, y = applyOffsetsRotation(hole[0], hole[1], dataStorage)
+            
+            if len(pointListLocal)>2: 
+                holes.append([ applyOffsetsRotation(p.x(), p.y(), dataStorage) for p in pointListLocal ])
             for i,pt in enumerate(pointListLocal):
                 
                 x, y = applyOffsetsRotation(pt.x(), pt.y(), dataStorage)
-                vertices.append([x, y])
+                #vertices.append([x, y])
                 try: 
                     vertices3d.append([x, y, pt.z()])
                 except: 
                     vertices3d.append([x, y, None])
 
-                #vertices.append([pt.x(),pt.y()])
-                #try: vertices3d.append([pt.x(),pt.y(), pt.z()])
-                #except: vertices3d.append([pt.x(),pt.y(), None]) # leave voids Z as None, fill later
                 if i>0: 
                     segmList.append([startLen+i-1, startLen+i])
-                if i == len(pointListLocal)-1: #also add a cap
-                    segmList.append([startLen+i, startLen])
+                #if i == len(pointListLocal)-1: #also add a cap
+                #    segmList.append([startLen+i, startLen])
     except Exception as e: 
         logToUser(e, level = 1, func = inspect.stack()[0][3])
     return vertices, vertices3d, segmList, holes
@@ -227,7 +338,7 @@ def getPolygonFeatureHeight(feature, layer, dataStorage):
                     logToUser("Attribute for extrusion not selected", level = 1, func = inspect.stack()[0][3])
                     return None
             
-                print("Apply transform: " + transform_name)
+                #print("Apply transform: " + transform_name)
                 if "extrude" in transform_name and "polygon" in transform_name:
 
                     # additional check: 

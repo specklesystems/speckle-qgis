@@ -1,18 +1,21 @@
+import copy
 import inspect
+import time
+from plugin_utils.helpers import SYMBOL
+from typing import Any, Dict, List, Tuple, Union
+from specklepy.objects import Base
+from specklepy.objects.other import Collection
+from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
+
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from qgis._core import ( Qgis, QgsProject, 
                         QgsCoordinateReferenceSystem, QgsLayerTreeLayer, 
                         QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, 
                         QgsField, QgsFields, QgsLayerTreeGroup )
-from speckle.utils.panel_logging import logger
-from speckle.converter.layers import Layer
-from typing import Any, List, Tuple, Union
-from specklepy.objects import Base
-from specklepy.objects.geometry import Point, Line, Polyline, Circle, Arc, Polycurve, Mesh 
-
 from PyQt5.QtGui import QColor
 
 from osgeo import gdal, ogr, osr 
+
 import math
 import numpy as np 
 
@@ -20,27 +23,6 @@ import numpy as np
 from speckle.utils.panel_logging import logToUser
 
 ATTRS_REMOVE = ['speckleTyp','speckle_id','geometry','applicationId','bbox','displayStyle', 'id', 'renderMaterial', 'displayMesh', 'displayValue'] 
-
-def findAndClearLayerGroup(project_gis: QgsProject, newGroupName: str = "", commit_id: str = ""):
-    try:
-        root = project_gis.layerTreeRoot()
-        
-        if root.findGroup(newGroupName) is not None:
-            layerGroup = root.findGroup(newGroupName)
-            for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
-                if isinstance(child, QgsLayerTreeLayer): 
-
-                    if isinstance(child.layer(), QgsVectorLayer): 
-                        if "Speckle_ID" in child.layer().fields().names() and child.layer().name().startswith(commit_id + "_"): 
-                            project_gis.removeMapLayer(child.layerId())
-                    
-                    elif isinstance(child.layer(), QgsRasterLayer): 
-                        if "_Speckle" in child.layer().name(): 
-                            project_gis.removeMapLayer(child.layerId())
-
-    except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return
 
 def getLayerGeomType(layer: QgsVectorLayer): #https://qgis.org/pyqgis/3.0/core/Wkb/QgsWkbTypes.html 
     #print(layer.wkbType())
@@ -211,6 +193,7 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
         fields = QgsFields()
         all_props = []
         for feature in features: 
+            #print(feature)
             if feature is None: continue 
             #get object properties to add as attributes
             try:
@@ -223,10 +206,10 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
                 except: pass
 
             dynamicProps.sort()
+            #print(dynamicProps)
 
             # add field names and variands 
             for name in dynamicProps:
-                #if name not in all_props: all_props.append(name)
                 try:
                     value = feature.attributes[name]
                 except:
@@ -253,30 +236,17 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
                                 # replace if new one is NOT LongLong or IS String
                                 if oldVariant != QVariant.String and v == QVariant.String: 
                                     fields.append(QgsField(k, v)) # fields.update({k: v}) 
-
-                    #all_props.remove(name) # remove generic dict name
-                    #newF, newVals = traverseDict( {}, {}, name, value[0])
-                    #for i, (k,v) in enumerate(newF.items()):
-                    #    fields.append(QgsField(k, v)) 
-                    #    if k not in all_props: all_props.append(k)
-                    r'''
-                    elif variant and (name not in fields.names()): 
-                        fields.append(QgsField(name, variant)) 
-                    
-                    elif name in fields.names(): #check if the field was empty previously: 
-                        nameIndex = fields.indexFromName(name)
-                        oldType = fields[nameIndex].type()
-                        # replace if new one is NOT LongLong or IS String
-                        if oldType != QVariant.String and variant == QVariant.String: 
-                            fields.append(QgsField(name,variant)) 
-                    ''' 
                 
                 # add a field if not existing yet 
                 else: # if str, Base, etc
+                    #print(f"atrribute '{value}' is a Base/str/etc")
                     newF, newVals = traverseDict( {}, {}, name, value)
-                    
+                    #print(newF)
+                    #print(newVals)
+
                     for i, (k,v) in enumerate(newF.items()):
                         if k not in all_props: all_props.append(k)
+                        #print(all_props)
 
                         if k not in fields.names(): 
                             fields.append(QgsField(k, v)) # fields.update({k: v}) #if variant is known
@@ -303,22 +273,36 @@ def getLayerAttributes(features: List[Base]) -> QgsFields:
 
 def traverseDict(newF: dict[Any, Any], newVals: dict[Any, Any], nam: str, val: Any):
     try:
+        #print("___traverseDict")
         if isinstance(val, dict):
             for i, (k,v) in enumerate(val.items()):
                 newF, newVals = traverseDict( newF, newVals, nam+"_"+k, v)
         elif isinstance(val, Base):
+            #print(f"a Base: '{val}'")
+            #time.sleep(0.3)
             dynamicProps = val.get_dynamic_member_names()
+            if "Revit" in val.speckle_type:
+                dynamicProps = val.get_member_names()
+            #print(dynamicProps)
             for att in ATTRS_REMOVE:
                 try: dynamicProps.remove(att)
                 except: pass
             dynamicProps.sort()
+            #print(dynamicProps)
 
             item_dict = {} 
             for prop in dynamicProps:
-                item_dict.update({prop: val[prop]})
-
+                try: item_dict.update({prop: val[prop]})
+                except: 
+                    try:
+                        #if prop == "id": item_dict.update({prop: val.id})
+                        if prop == "speckle_type": item_dict.update({prop: val.speckle_type})
+                    except: pass 
+            #print(newF)
+            #print(item_dict)
             for i, (k,v) in enumerate(item_dict.items()):
                 newF, newVals = traverseDict( newF, newVals, nam+"_"+k, v)
+            #print(f"___FINAL newF: '{newF}'")
         else: 
             var = getVariantFromValue(val)
             if var is None: 
@@ -521,31 +505,6 @@ def getElevationLayer(dataStorage):
     except: 
         return None
 
-    #root = dataStorage.project.layerTreeRoot()
-    #dataStorage.all_layers = getAllLayers(root)   
-    #for i, layer in enumerate(dataStorage.all_layers):
-    #    if 
-
-    return elevationLayer 
-    
-    if dataStorage.savedTransforms is not None:
-        all_saved_transforms = [item.split("  ->  ")[1] for item in dataStorage.savedTransforms]
-        all_saved_transform_layers = [item.split("  ->  ")[0] for item in dataStorage.savedTransforms]
-        for item in dataStorage.savedTransforms:
-            layer_name = item.split("  ->  ")[0]
-            transform_name = item.split("  ->  ")[1]
-
-            if "elevation" in transform_name.lower() and "mesh" in transform_name.lower() and "texture" not in transform_name.lower(): 
-                # find a layer for meshing, if mesh transformation exists 
-                for l in dataStorage.all_layers: 
-                    if layer_name == l.name():
-                        return l  
-                        
-                        # also check if the layer is selected for sending
-                        for sending_l in dataStorage.sending_layers:
-                            if sending_l.name() == l.name():
-                                return sending_l 
-    return None 
 
 def get_raster_stats(rasterLayer):
     try:
@@ -625,9 +584,36 @@ def moveVerticallySegment(poly, height):
     return poly 
 
 
-def tryCreateGroup(project, streamBranch):
+def tryCreateGroupTree(root, fullGroupName, plugin = None):
     #CREATE A GROUP "received blabla" with sublayers
-    newGroupName = f'{streamBranch}'
+    #print("_________CREATE GROUP TREE: " + fullGroupName)
+
+    #receive_layer_tree: dict = plugin.receive_layer_tree
+    receive_layer_list = fullGroupName.split(SYMBOL)
+    path_list = []
+    for x in receive_layer_list:
+        if len(x)>0: path_list.append(x)
+    group_to_create_name = path_list[0]
+
+    layerGroup = QgsLayerTreeGroup(group_to_create_name)
+    if root.findGroup(group_to_create_name) is not None:
+        layerGroup = root.findGroup(group_to_create_name) # -> QgsLayerTreeNode
+    else:
+        layerGroup = root.insertGroup(0,group_to_create_name) #root.addChildNode(layerGroup)
+    layerGroup.setExpanded(True)
+    layerGroup.setItemVisibilityChecked(True)
+
+    path_list.pop(0)
+
+    if len(path_list)>0:
+        layerGroup = tryCreateGroupTree(layerGroup, SYMBOL.join(path_list), plugin)
+
+    return layerGroup
+
+def tryCreateGroup(project, groupName, plugin = None):
+    #CREATE A GROUP "received blabla" with sublayers
+    #print("_________CREATE GROUP: " + groupName)
+    newGroupName = f'{groupName}'
     root = project.layerTreeRoot()
     layerGroup = QgsLayerTreeGroup(newGroupName)
 
@@ -637,5 +623,109 @@ def tryCreateGroup(project, streamBranch):
         layerGroup = root.insertGroup(0,newGroupName) #root.addChildNode(layerGroup)
     layerGroup.setExpanded(True)
     layerGroup.setItemVisibilityChecked(True)
+
+    if plugin is not None:
+        plugin.current_layer_group = layerGroup
+
     return layerGroup
 
+
+def findUpdateJsonItemPath(tree: Dict, full_path_str: str):
+    try:
+        new_tree = copy.deepcopy(tree)
+
+        path_list_original = full_path_str.split(SYMBOL)
+        path_list = []
+        for x in path_list_original:
+            if len(x)>0: path_list.append(x)
+        attr_found = False
+
+        for i, item in enumerate(new_tree.items()):
+            attr, val_dict = item
+
+            if attr == path_list[0]: 
+                attr_found = True 
+                path_list.pop(0)
+                if len(path_list)>0: # if the path is not finished: 
+                    all_names = val_dict.keys() 
+                    if len(path_list) == 1 and path_list[0] in all_names: # already in a tree
+                        return new_tree
+                    else:
+                        branch = findUpdateJsonItemPath(val_dict, SYMBOL.join(path_list)) 
+                        new_tree.update({attr:branch}) 
+        
+        if attr_found is False and len(path_list)>0: # create a new branch at the top level 
+            if len(path_list) == 1:
+                new_tree.update({path_list[0]:{}})
+                return new_tree
+            else:
+                branch = findUpdateJsonItemPath({path_list[0]:{}}, SYMBOL.join(path_list)) 
+                new_tree.update(branch) 
+        return new_tree 
+    except Exception as e:
+        print(e)
+        return tree
+             
+
+def collectionsFromJson(jsonObj: dict, levels: list, layerConverted, baseCollection: Collection):
+    #print("collectionsFromJson")
+    #print(jsonObj)
+    #print(levels)
+    #print(layerConverted)
+    #print(baseCollection)
+    #print(baseCollection.name)
+    #print(baseCollection.elements)
+    if jsonObj == {} or len(levels)==0: 
+        #print("RETURN")
+        baseCollection.elements.append(layerConverted)
+        return baseCollection
+    
+    lastLevel = baseCollection
+    for i, l in enumerate(levels):
+
+            sub_collection_found = 0
+            for item in lastLevel.elements:
+                #print("___ITEM")
+                #print(l)
+                if item.name == l: 
+                    #print("___ITEM FOUND")
+                    #print(l)
+                    lastLevel = item
+                    sub_collection_found = 1
+                    break 
+            if sub_collection_found == 0:
+                #print("___ SUB COLLECTION NOT FOUND")
+                subCollection = Collection(units = "m", collectionType = "QGIS Layer Group", name = l, elements = []) 
+                lastLevel.elements.append(subCollection)
+                lastLevel = lastLevel.elements[len(lastLevel.elements)-1] # reassign last element 
+
+            if i == len(levels)-1: # if last level
+                lastLevel.elements.append(layerConverted)
+
+    return baseCollection 
+
+def getDisplayValueList(geom: Any) -> List: 
+    try:
+        #print("___getDisplayValueList")
+        val = [] 
+        # get list of display values for Meshes
+        if isinstance(geom, Mesh):
+            val = [geom]
+        elif isinstance(geom, List) and len(geom)>0:
+            if isinstance(geom[0], Mesh): 
+                val = geom
+            else:
+                print("not an individual geometry")
+        else:
+            try: val = geom.displayValue # list
+            except Exception as e:
+                print(e)
+                try: val = geom["@displayValue"] # list
+                except Exception as e:
+                    print(e)
+                    try: val = geom.displayMesh
+                    except: pass
+        return val 
+    except Exception as e:
+        print(e) 
+        return []
