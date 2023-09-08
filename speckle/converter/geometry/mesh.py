@@ -185,6 +185,8 @@ def constructMeshFromRaster(vertices, faces, colors, dataStorage):
 
 def constructMesh(vertices, faces, colors, dataStorage):
     try:
+        if vertices is None or faces is None or colors is None:
+            return None
         mesh = Mesh.create(vertices, faces, colors)
         mesh.units = "m"
         material = RenderMaterial()
@@ -290,6 +292,9 @@ def meshPartsFromPolygon(polyBorder: List[Point], voidsAsPts: List[List[Point]],
             triangulated_geom, vertices3d_original = triangulatePolygon(feature_geom, dataStorage)
             
             # temporary solution, as the list of points is not the same anymore:
+            if triangulated_geom is None or vertices3d_original is None:
+                return None, None, None, None 
+            
             vertices3d = []
             for v in triangulated_geom['vertices']:
                 vertices3d.append(v+[0.0])

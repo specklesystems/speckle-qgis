@@ -18,7 +18,7 @@ from typing import Dict, Any
 from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter import geometry
 from speckle.converter.geometry import convertToSpeckle, transform
-from specklepy.objects.GIS.geometry import GisRasterElement, GisNonGeometryElement, GisTopography 
+from specklepy.objects.GIS.geometry import GisRasterElement, GisPolygonGeometry, GisNonGeometryElement, GisTopography 
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from specklepy.objects.GIS.layers import RasterLayer
 from specklepy.objects.geometry import Mesh
@@ -61,13 +61,16 @@ def featureToSpeckle(fieldnames: List[str], f: QgsFeature, geomType, sourceCRS: 
                     if not isinstance(geom.geometry, List):
                         logToUser("Geometry not in list format", level = 2, func = inspect.stack()[0][3])
                         return None 
-                    
+
                     all_errors = ""
                     for g in geom.geometry:
                         if g is None or g=="None": 
                             all_errors += skipped_msg + ", "
                             logToUser(skipped_msg, level = 2, func = inspect.stack()[0][3])
-                            #print(g) 
+                        elif isinstance(g, GisPolygonGeometry) and len(g.displayValue) == 0:
+                            new_report = {"obj_type": "", "errors": "Polygon sent, but display mesh not generated"}
+                            logToUser("Polygon sent, but display mesh not generated", level = 1, func = inspect.stack()[0][3])
+
                     if len(geom.geometry) == 0:
                         all_errors = "No geometry converted"
                     new_report.update({"obj_type": geom.speckle_type, "errors": all_errors})

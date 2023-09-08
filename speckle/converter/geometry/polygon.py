@@ -183,6 +183,7 @@ def polygonToSpeckle(geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLay
             # https://latest.speckle.dev/streams/85bc4f61c6/commits/2a5d23a277
             # https://speckle.community/t/revit-add-new-parameters/5170/2 
         else: 
+            polygon.displayValue = [ ] 
             #polygon.boundary = boundary
             #polygon.voids = voids
             logToUser("Mesh creation from Polygon failed. Boundaries will be used as displayValue", level = 1, func = inspect.stack()[0][3])

@@ -81,8 +81,12 @@ def triangulatePolygon(geom, dataStorage):
         vertices_old, vertices3d, segments, holes = pack
 
         vertices = []
+        vertices_rounded = []
         for i,v in enumerate(vertices_old):
-            if v not in vertices: vertices.append(v)
+            rounded = [ round(v[0],3), round(v[1],3) ]
+            if v not in vertices and rounded not in vertices_rounded: 
+                vertices.append(v)
+                vertices_rounded.append(rounded)
 
         if len(vertices)>0: vertices.append(vertices[0])
         for i, h in enumerate(holes):
@@ -111,11 +115,11 @@ def to_triangles(data):
             polygon = Polygon([ ( v[0], v[1] ) for v in vert ] )
         else:
             polygon = Polygon([ ( v[0], v[1] ) for v in vert ], holes )
-        #polygon = Polygon([ ( v[0], v[1] ) for v in vert ] )
+        polygon = Polygon([ ( v[0], v[1] ) for v in vert ] )
         #polygon = Polygon([(3.0, 0.0), (2.0, 0.0), (2.0, 0.75), (2.5, 0.75), (2.5, 0.6), (2.25, 0.6), (2.25, 0.2), (3.0, 0.2), (3.0, 0.0)])
 
         poly_points = []
-        exterior_linearring = polygon.buffer(-0.0000001).exterior
+        exterior_linearring = polygon.exterior
         poly_points += np.array(exterior_linearring.coords).tolist()
         
         try: polygon.interiors[0]
@@ -127,7 +131,7 @@ def to_triangles(data):
         
         poly_points = np.array([item for sublist in poly_points for item in sublist]).reshape(-1,2)
 
-        poly_shapes, pts = voronoi_regions_from_coords(poly_points, polygon)
+        poly_shapes, pts = voronoi_regions_from_coords(poly_points, polygon.buffer(0.000001))
         gdf_poly_voronoi = gpd.GeoDataFrame({'geometry': poly_shapes}).explode().reset_index()
 
         tri_geom = []
