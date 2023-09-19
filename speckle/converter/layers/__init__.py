@@ -566,8 +566,14 @@ def addExcelMainThread(obj: Tuple):
         geom_print = "Table"
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
-        layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
+        try: layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
+        except: layerName = layerName + ("_"+geom_print)
         finalName = shortName + ("_"+geom_print)
+        
+        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except: groupName = streamBranch + SYMBOL + layerName
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
+
         dataStorage.latestActionLayers.append(finalName)
 
         ###########################################
@@ -607,11 +613,6 @@ def addExcelMainThread(obj: Tuple):
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
-
-        #print("05")
-        #layerGroup = tryCreateGroup(project, streamBranch)
-        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         #print("07")
         layerGroup.addLayer(vl)
@@ -658,8 +659,14 @@ def addNonGeometryMainThread(obj: Tuple):
         geom_print = "Table"
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
-        layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
+        try: layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
+        except: layerName = layerName + ("_"+geom_print)
         finalName = shortName + ("_"+geom_print)
+        
+        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except: groupName = streamBranch + SYMBOL + layerName
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
+
         dataStorage.latestActionLayers.append(finalName)
 
         ###########################################
@@ -731,8 +738,6 @@ def addNonGeometryMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
-        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
         layerGroup.addLayer(vl)
 
         # report
@@ -864,10 +869,15 @@ def addBimMainThread(obj: Tuple):
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
         #print(f"Final short name: {shortName}")
-        layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+        try: layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+        except: layerName = layerName + ("_as_" + geom_print)
         finalName = shortName + ("_as_" + geom_print)
         dataStorage.latestActionLayers.append(finalName)
-        #print(f"Final layer name: {finalName}")
+        
+        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except: groupName = streamBranch + SYMBOL + layerName
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
+
         #newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
         newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{finalName[:30]}'
 
@@ -963,10 +973,6 @@ def addBimMainThread(obj: Tuple):
         
         vl.updateExtents()
         vl.commitChanges()
-
-        #print(layerName) 
-        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         layerGroup.addLayer(vl)
 
@@ -1084,8 +1090,14 @@ def addCadMainThread(obj: Tuple):
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
         
-        layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+        try: layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+        except: layerName = layerName + ("_as_" + geom_print)
         finalName = shortName + ("_as_" + geom_print)
+        
+        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except: groupName = streamBranch + SYMBOL + layerName
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
+
         dataStorage.latestActionLayers.append(finalName)
 
         ###########################################
@@ -1158,9 +1170,6 @@ def addCadMainThread(obj: Tuple):
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
-
-        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         layerGroup.addLayer(vl)
 
@@ -1285,10 +1294,13 @@ def addVectorMainThread(obj: Tuple):
         #print(layer.name)
         
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL))-1][:50] 
-        #print(f"Final short name: {shortName}")
-        layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
+        try: layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
+        except: layerName = newName
         finalName = shortName #+ ("_" + geom_print)
         #print(f"Final layer name: {finalName}")
+        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except: groupName = streamBranch + SYMBOL + layerName
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         dataStorage.latestActionLayers.append(finalName)
         ###########################################
@@ -1354,8 +1366,6 @@ def addVectorMainThread(obj: Tuple):
 
         #print("05")
         #layerGroup = tryCreateGroup(project, streamBranch)
-        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
         
         vl = QgsVectorLayer(geomType + "?crs=" + authid, finalName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
@@ -1517,7 +1527,8 @@ def addRasterMainThread(obj: Tuple):
 
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL))-1][:50] 
         #print(f"Final short name: {shortName}")
-        layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
+        try: layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
+        except: layerName = newName
         finalName = shortName #+ ("_" + geom_print)
 
         #report on receive:
