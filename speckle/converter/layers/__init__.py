@@ -550,6 +550,7 @@ def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, s
 def addExcelMainThread(obj: Tuple):
     #print("___addExcelMainThread")
     try:
+        finalName = ""
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
         streamBranch = obj['streamBranch'] 
@@ -642,6 +643,7 @@ def addExcelMainThread(obj: Tuple):
 def addNonGeometryMainThread(obj: Tuple):
     #print("___addCadMainThread")
     try:
+        finalName = ""
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
         layer_id = obj['layer_id']
@@ -838,6 +840,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, val_id: str
 
 def addBimMainThread(obj: Tuple):
     try: 
+        finalName = ""
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         layerName = obj['layerName'] 
@@ -1058,6 +1061,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, ge
 def addCadMainThread(obj: Tuple):
     #print("___addCadMainThread")
     try:
+        finalName = ""
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         layerName = obj['layerName'] 
@@ -1253,6 +1257,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
 def addVectorMainThread(obj: Tuple):
     #print("___addVectorMainThread")
     try:
+        finalName = ""
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         newName = obj['newName'] 
@@ -1488,6 +1493,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, pl
 
 def addRasterMainThread(obj: Tuple):
     try: 
+        finalName = ""
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
         newName = obj['newName'] 
