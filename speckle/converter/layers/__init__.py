@@ -592,8 +592,8 @@ def addExcelMainThread(obj: Tuple):
             new_feat = nonGeomFeatureToNative(f, newFields, plugin.dataStorage)
             if new_feat is not None and new_feat != "": fets.append(new_feat)
             else:
-                logToUser(f"Feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
-                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid data"})
+                logToUser(f"Table feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
+                report_features[len(report_features)-1].update({"errors": "Table feature skipped due to invalid data"})
                 all_feature_errors_count += 1
             
         if newFields is None: 
@@ -725,8 +725,8 @@ def addNonGeometryMainThread(obj: Tuple):
                 fetIds.append(f.id)
                 fetColors = findFeatColors(fetColors, f)
             else:
-                logToUser(f"Feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
-                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid data"})
+                logToUser(f"Table feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
+                report_features[len(report_features)-1].update({"errors": "Table feature skipped due to invalid data"})
                 all_feature_errors_count += 1
         
         # add Layer attribute fields
