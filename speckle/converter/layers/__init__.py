@@ -651,6 +651,7 @@ def addNonGeometryMainThread(obj: Tuple):
         streamBranch = obj['streamBranch'] 
         newFields = obj['newFields'] 
         geomList = obj['geomList']
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
 
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
