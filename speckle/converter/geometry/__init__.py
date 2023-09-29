@@ -321,10 +321,31 @@ def convertToNativeMulti(items: List[Base], dataStorage):
         #elif isinstance(first, Arc) or isinstance(first, Polycurve) or isinstance(first, Ellipse) or isinstance(first, Circle) or isinstance(first, Curve): 
         #    return [convertToNative(it, dataStorage) for it in items]
         elif isinstance(first, Base): 
-            try:
-                if first["boundary"] is not None and first["voids"] is not None:
-                    return multiPolygonToNative(items, dataStorage)
-            except: return None 
+            try: 
+                displayVals = []
+                for it in items: 
+                    try: displayVals.extend(it.displayValue)
+                    except: displayVals.extend(it['@displayValue'])
+                if isinstance(first, GisPolygonGeometry):
+                    if first.boundary is None:
+                        converted: QgsMultiPolygon = meshToNative(displayVals, dataStorage )
+                        return converted
+                    elif first["boundary"] is not None and first["voids"] is not None:
+                        return multiPolygonToNative(items, dataStorage)
+                else:
+                    # for older commits 
+                    boundary = first.boundary # will throw exception if not polygon 
+                    if boundary is None:
+                        converted: QgsMultiPolygon = meshToNative(displayVals, dataStorage )
+                        return converted
+                    elif boundary is not None:
+                        return multiPolygonToNative(items, dataStorage)
+
+            except: # if no "boundary" found (either old Mesh from QGIS or other object) 
+                try:
+                    if first["boundary"] is not None and first["voids"] is not None:
+                        return multiPolygonToNative(items, dataStorage)
+                except: return None 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return None

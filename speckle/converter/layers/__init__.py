@@ -550,6 +550,7 @@ def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, s
 def addExcelMainThread(obj: Tuple):
     #print("___addExcelMainThread")
     try:
+        finalName = ""
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
         streamBranch = obj['streamBranch'] 
@@ -565,8 +566,14 @@ def addExcelMainThread(obj: Tuple):
         geom_print = "Table"
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
-        layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
+        try: layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
+        except: layerName = layerName + ("_"+geom_print)
         finalName = shortName + ("_"+geom_print)
+        
+        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except: groupName = streamBranch + SYMBOL + layerName
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
+
         dataStorage.latestActionLayers.append(finalName)
 
         ###########################################
@@ -585,8 +592,8 @@ def addExcelMainThread(obj: Tuple):
             new_feat = nonGeomFeatureToNative(f, newFields, plugin.dataStorage)
             if new_feat is not None and new_feat != "": fets.append(new_feat)
             else:
-                logToUser(f"Feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
-                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid data"})
+                logToUser(f"Table feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
+                report_features[len(report_features)-1].update({"errors": "Table feature skipped due to invalid data"})
                 all_feature_errors_count += 1
             
         if newFields is None: 
@@ -606,11 +613,6 @@ def addExcelMainThread(obj: Tuple):
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
-
-        #print("05")
-        #layerGroup = tryCreateGroup(project, streamBranch)
-        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         #print("07")
         layerGroup.addLayer(vl)
@@ -642,12 +644,14 @@ def addExcelMainThread(obj: Tuple):
 def addNonGeometryMainThread(obj: Tuple):
     #print("___addCadMainThread")
     try:
+        finalName = ""
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
         layer_id = obj['layer_id']
         streamBranch = obj['streamBranch'] 
         newFields = obj['newFields'] 
         geomList = obj['geomList']
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
 
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
@@ -656,8 +660,14 @@ def addNonGeometryMainThread(obj: Tuple):
         geom_print = "Table"
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
-        layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
+        try: layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
+        except: layerName = layerName + ("_"+geom_print)
         finalName = shortName + ("_"+geom_print)
+        
+        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except: groupName = streamBranch + SYMBOL + layerName
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
+
         dataStorage.latestActionLayers.append(finalName)
 
         ###########################################
@@ -716,8 +726,8 @@ def addNonGeometryMainThread(obj: Tuple):
                 fetIds.append(f.id)
                 fetColors = findFeatColors(fetColors, f)
             else:
-                logToUser(f"Feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
-                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid data"})
+                logToUser(f"Table feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
+                report_features[len(report_features)-1].update({"errors": "Table feature skipped due to invalid data"})
                 all_feature_errors_count += 1
         
         # add Layer attribute fields
@@ -729,8 +739,6 @@ def addNonGeometryMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
-        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
         layerGroup.addLayer(vl)
 
         # report
@@ -838,6 +846,7 @@ def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, val_id: str
 
 def addBimMainThread(obj: Tuple):
     try: 
+        finalName = ""
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         layerName = obj['layerName'] 
@@ -861,10 +870,15 @@ def addBimMainThread(obj: Tuple):
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
         #print(f"Final short name: {shortName}")
-        layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+        try: layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+        except: layerName = layerName + ("_as_" + geom_print)
         finalName = shortName + ("_as_" + geom_print)
         dataStorage.latestActionLayers.append(finalName)
-        #print(f"Final layer name: {finalName}")
+        
+        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except: groupName = streamBranch + SYMBOL + layerName
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
+
         #newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
         newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{finalName[:30]}'
 
@@ -961,10 +975,6 @@ def addBimMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
-        #print(layerName) 
-        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
-
         layerGroup.addLayer(vl)
 
         try: 
@@ -1058,6 +1068,7 @@ def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, ge
 def addCadMainThread(obj: Tuple):
     #print("___addCadMainThread")
     try:
+        finalName = ""
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         layerName = obj['layerName'] 
@@ -1080,8 +1091,14 @@ def addCadMainThread(obj: Tuple):
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
         
-        layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+        try: layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+        except: layerName = layerName + ("_as_" + geom_print)
         finalName = shortName + ("_as_" + geom_print)
+        
+        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except: groupName = streamBranch + SYMBOL + layerName
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
+
         dataStorage.latestActionLayers.append(finalName)
 
         ###########################################
@@ -1154,9 +1171,6 @@ def addCadMainThread(obj: Tuple):
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
-
-        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         layerGroup.addLayer(vl)
 
@@ -1253,6 +1267,7 @@ def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase
 def addVectorMainThread(obj: Tuple):
     #print("___addVectorMainThread")
     try:
+        finalName = ""
         plugin = obj['plugin'] 
         geomType = obj['geomType'] 
         newName = obj['newName'] 
@@ -1280,10 +1295,13 @@ def addVectorMainThread(obj: Tuple):
         #print(layer.name)
         
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL))-1][:50] 
-        #print(f"Final short name: {shortName}")
-        layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
+        try: layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
+        except: layerName = newName
         finalName = shortName #+ ("_" + geom_print)
         #print(f"Final layer name: {finalName}")
+        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except: groupName = streamBranch + SYMBOL + layerName
+        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         dataStorage.latestActionLayers.append(finalName)
         ###########################################
@@ -1349,8 +1367,6 @@ def addVectorMainThread(obj: Tuple):
 
         #print("05")
         #layerGroup = tryCreateGroup(project, streamBranch)
-        groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
         
         vl = QgsVectorLayer(geomType + "?crs=" + authid, finalName, "memory") # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
@@ -1488,6 +1504,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, pl
 
 def addRasterMainThread(obj: Tuple):
     try: 
+        finalName = ""
         plugin = obj['plugin'] 
         layerName = obj['layerName'] 
         newName = obj['newName'] 
@@ -1511,7 +1528,8 @@ def addRasterMainThread(obj: Tuple):
 
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL))-1][:50] 
         #print(f"Final short name: {shortName}")
-        layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
+        try: layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
+        except: layerName = newName
         finalName = shortName #+ ("_" + geom_print)
 
         #report on receive:
