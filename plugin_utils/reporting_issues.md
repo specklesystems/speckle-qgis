@@ -17,7 +17,7 @@ def upgradeDependencies():
     print(result.returncode)
     result = subprocess.run([path(), "-m", "pip", "install", "urllib3==1.26.16"],shell=True,timeout=1000,)
     print(result.returncode)
-    result = subprocess.run([path(), "-m", "pip", "install", "requests_toolbelt==0.10.0"],shell=True,timeout=1000,)
+    result = subprocess.run([path(), "-m", "pip", "install", "requests_toolbelt==0.10.1"],shell=True,timeout=1000,)
     print(result.returncode)
 
 upgradeDependencies()
