@@ -7,17 +7,27 @@ To resolve dependencies manually, make sure you have the following versions on l
 - urllib3==1.26.16
 - requests_toolbelt==0.10.0
 
-You can run the 2 following commands from QGIS Plugins panel->Python Console, and then restart QGIS:
+You can run the following command from QGIS Plugins panel->Python Console, and then restart QGIS:
 
 ```
+import os, sys
+def get_qgis_python_path():
+    if sys.platform.startswith("linux"):
+        return sys.executable
+    pythonExec = os.path.dirname(sys.executable)
+    if sys.platform == "win32":
+        pythonExec += "\\python3"
+    else:
+        pythonExec += "/bin/python3"
+    return pythonExec
+
 def upgradeDependencies():
     import subprocess
-    from speckle.utils.utils import get_qgis_python_path as path
-    result = subprocess.run([path(), "-m", "pip", "install", "requests==2.31.0"],shell=True,timeout=1000,)
+    result = subprocess.run([get_qgis_python_path(), "-m", "pip", "install", "requests==2.31.0"],shell=True,timeout=1000,)
     print(result.returncode)
-    result = subprocess.run([path(), "-m", "pip", "install", "urllib3==1.26.16"],shell=True,timeout=1000,)
+    result = subprocess.run([get_qgis_python_path(), "-m", "pip", "install", "urllib3==1.26.16"],shell=True,timeout=1000,)
     print(result.returncode)
-    result = subprocess.run([path(), "-m", "pip", "install", "requests_toolbelt==0.10.1"],shell=True,timeout=1000,)
+    result = subprocess.run([get_qgis_python_path(), "-m", "pip", "install", "requests_toolbelt==0.10.1"],shell=True,timeout=1000,)
     print(result.returncode)
 
 upgradeDependencies()
