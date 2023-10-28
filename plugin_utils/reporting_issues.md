@@ -2,24 +2,25 @@
 
 ### "Speckle dependencies were not installed."
 
-If restarting QGIS didn't resolve the problem, follow these steps to report the issue and give us more context to help: 
+To resolve dependencies manually, make sure you have the following versions on libraries installed as a primary source for QGIS (e.g. AppData>Roaming>Python or ProgramFiles>QGIS>apps>Python):
+- requests==2.31.0
+- urllib3==1.26.16
+- requests_toolbelt==0.10.0
 
- - Copy and paste this into QGIS Plugins -> Python console. 
-
-```sh
-
-if sys.platform == "win32": pythonExec = os.path.dirname(sys.executable) + "\\python3"
-elif sys.platform.startswith("linux"): pythonExec = sys.executable
-else: pythonExec = os.path.dirname(sys.executable) + "/bin/python3"
-
-import os; import sys; import subprocess; result = subprocess.run([pythonExec, "-m", "pip", "install", "specklepy==2.14.0"], capture_output=True, text=True, shell=True, timeout=1000); print(result) 
-
-import os; import sys; import subprocess; result = subprocess.run([pythonExec, "-m", "pip", "install", "pyshp==2.3.1"], capture_output=True, text=True, shell=True, timeout=1000); print(result) 
-
-import os; import sys; import subprocess; result = subprocess.run([pythonExec, "-m", "pip", "install", "scipy==1.10.1"], capture_output=True, text=True, shell=True, timeout=1000); print(result) 
-
-import os; import sys; import subprocess; result = subprocess.run([pythonExec, "-m", "pip", "install", "triangle==20220202"], capture_output=True, text=True, shell=True, timeout=1000); print(result) 
+You can run the 2 following commands from QGIS Plugins panel->Python Console, and then restart QGIS:
 
 ```
- - You can choose [Github](https://github.com/specklesystems/speckle-qgis/issues) or [Community Forum](https://speckle.community/) to report the issue. Share a FULL screenshot of the Python console output. Or copy and paste all text from Python console after running the command. You can delete/cover your folder path from the report if needed. 
+def upgradeDependencies():
+    import subprocess
+    from speckle.utils.utils import get_qgis_python_path as path
+    result = subprocess.run([path(), "-m", "pip", "install", "requests==2.31.0"],shell=True,timeout=1000,)
+    print(result.returncode)
+    result = subprocess.run([path(), "-m", "pip", "install", "urllib3==1.26.16"],shell=True,timeout=1000,)
+    print(result.returncode)
+    result = subprocess.run([path(), "-m", "pip", "install", "requests_toolbelt==0.10.1"],shell=True,timeout=1000,)
+    print(result.returncode)
+
+upgradeDependencies()
+```
+You can choose [Github](https://github.com/specklesystems/speckle-qgis/issues) or [Community Forum](https://speckle.community/) to report the issue. 
 
