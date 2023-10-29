@@ -662,7 +662,7 @@ class SpeckleQGIS:
 
             # time.sleep(0.3)
             logToUser(
-                "👌 Data sent to '"
+                "Data sent to '"
                 + str(streamName)
                 + "'"
                 + "\nClick to view commit online",
@@ -878,7 +878,7 @@ class SpeckleQGIS:
 
             # if self.dockwidget.experimental.isChecked(): time.sleep(3)
             logToUser(
-                "👌 Data received",
+                "Data received",
                 level=0,
                 plugin=self.dockwidget,
                 blue=True,
