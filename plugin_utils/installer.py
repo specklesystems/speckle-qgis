@@ -11,7 +11,8 @@ import pkg_resources
 from speckle.utils.utils import get_qgis_python_path
 
 _user_data_env_var = "SPECKLE_USERDATA_PATH"
-_debug = False  
+_debug = False
+
 
 def _path() -> Optional[Path]:
     """Read the user data path override setting."""
@@ -58,9 +59,7 @@ def user_application_data_path() -> Path:
         if sys.platform.startswith("win"):
             app_data_path = os.getenv("APPDATA")
             if not app_data_path:
-                raise Exception(
-                    "Cannot get appdata path from environment."
-                )
+                raise Exception("Cannot get appdata path from environment.")
             return Path(app_data_path)
         else:
             # try getting the standard XDG_DATA_HOME value
@@ -71,9 +70,7 @@ def user_application_data_path() -> Path:
             else:
                 return _ensure_folder_exists(Path.home(), ".config")
     except Exception as ex:
-        raise Exception(
-            "Failed to initialize user application data path.", ex
-        )
+        raise Exception("Failed to initialize user application data path.", ex)
 
 
 def user_speckle_folder_path() -> Path:
@@ -93,19 +90,16 @@ def user_speckle_connector_installation_path(host_application: str) -> Path:
     )
 
 
-
-
-
-
 print("Starting module dependency installation")
 print(sys.executable)
 
 PYTHON_PATH = get_qgis_python_path()
 
 
-
 def connector_installation_path(host_application: str) -> Path:
-    connector_installation_path = user_speckle_connector_installation_path(host_application)
+    connector_installation_path = user_speckle_connector_installation_path(
+        host_application
+    )
     connector_installation_path.mkdir(exist_ok=True, parents=True)
 
     # set user modules path at beginning of paths for earlier hit
@@ -114,7 +108,6 @@ def connector_installation_path(host_application: str) -> Path:
 
     print(f"Using connector installation path {connector_installation_path}")
     return connector_installation_path
-
 
 
 def is_pip_available() -> bool:
@@ -129,6 +122,7 @@ def ensure_pip() -> None:
     print("Installing pip... ")
 
     from subprocess import run
+
     print(PYTHON_PATH)
 
     completed_process = run([PYTHON_PATH, "-m", "ensurepip"])
@@ -136,7 +130,9 @@ def ensure_pip() -> None:
     if completed_process.returncode == 0:
         print("Successfully installed pip")
     else:
-        raise Exception(f"Failed to install pip, got {completed_process.returncode} return code")
+        raise Exception(
+            f"Failed to install pip, got {completed_process.returncode} return code"
+        )
 
 
 def get_requirements_path() -> Path:
@@ -147,31 +143,32 @@ def get_requirements_path() -> Path:
 
 
 def _dependencies_installed(requirements: str, path: str) -> bool:
-
     for d in pkg_resources.find_distributions(path):
         entry = f"{d.key}=={d.version}"
-        if entry in requirements: 
+        if entry in requirements:
             requirements = requirements.replace(entry, "")
-    
-    if len(requirements) > 0: 
+
+    if len(requirements) > 0:
         return False
     print("Dependencies already installed")
-    return True 
+    return True
+
 
 def install_requirements(host_application: str) -> None:
     # set up addons/modules under the user
     # script path. Here we'll install the
     # dependencies
-    requirements = get_requirements_path().read_text().replace("\n","")
-    path = str(connector_installation_path(host_application)) 
-    if _dependencies_installed(requirements, path): 
+    requirements = get_requirements_path().read_text().replace("\n", "")
+    path = str(connector_installation_path(host_application))
+    if _dependencies_installed(requirements, path):
         return
 
     try:
         import shutil
+
         shutil.rmtree(path)
     except PermissionError as e:
-        #from speckle.utils.panel_logging import logger
+        # from speckle.utils.panel_logging import logger
         raise Exception("Restart QGIS for changes to take effect")
 
     print(f"Installing Speckle dependencies to {path}")
@@ -193,45 +190,18 @@ def install_requirements(host_application: str) -> None:
     )
 
     if completed_process.returncode != 0:
-        m = f"Failed to install dependenices through pip, got {completed_process.returncode} as return code"
+        m = f"Failed to install dependenices through pip, got {completed_process.returncode} as return code. Full log: {completed_process.stdout}"
         print(m)
         print(completed_process.stdout)
         print(completed_process.stderr)
         raise Exception(m)
 
-def install_optional_requirements(host_application: str) -> None:
-    # set up addons/modules under the user
-    # script path. Here we'll install the
-    # dependencies
-    return
-    requirements = "triangle==20220202"
-    path = str(connector_installation_path(host_application)) 
-    if _dependencies_installed(requirements, path): 
-        return
-
-    print(f"Installing Triangle dependency to {path}")
-    from subprocess import run
-    
-    completed_process = run(
-        [
-            PYTHON_PATH,
-            "-m",
-            "pip",
-            "install",
-            "-t",
-            str(path),
-            requirements,
-        ],
-        capture_output=True,
-        text=True,
-    )
 
 def install_dependencies(host_application: str) -> None:
     if not is_pip_available():
         ensure_pip()
 
     install_requirements(host_application)
-    install_optional_requirements(host_application)
 
 
 def _import_dependencies() -> None:
@@ -239,7 +209,7 @@ def _import_dependencies() -> None:
     # the code above doesn't work for now, it fails on importing graphql-core
     # despite that, the connector seams to be working as expected
     # But it would be nice to make this solution work
-    # it would ensure that all dependencies are fully loaded  
+    # it would ensure that all dependencies are fully loaded
     # requirements = get_requirements_path().read_text()
     # reqs = [
     #     req.split(" ; ")[0].split("==")[0].split("[")[0].replace("-", "_")
@@ -250,30 +220,39 @@ def _import_dependencies() -> None:
     #     print(req)
     #     import_module("specklepy")
 
+
 def ensure_dependencies(host_application: str) -> None:
     try:
         install_dependencies(host_application)
         invalidate_caches()
-        #_import_dependencies()
+        # _import_dependencies()
         print("Successfully found dependencies")
     except ImportError:
-        raise Exception(f"Cannot automatically ensure Speckle dependencies. Please try restarting the host application {host_application}!")
+        raise Exception(
+            f"Cannot automatically ensure Speckle dependencies. Please try restarting the host application {host_application}!"
+        )
+
 
 def startDegugger() -> None:
     try:
         # debugger: https://gist.github.com/giohappy/8a30f14678aa7e446f9b694c632d7089
-        if _debug is True: 
+        if _debug is True:
             import debugpy
             import shutil
 
-            directory = os.path.expanduser( '~\.vscode\extensions\ms-python.python-2023.14.0\pythonFiles\lib\python' )
+            directory = os.path.expanduser(
+                "~\.vscode\extensions\ms-python.python-2023.14.0\pythonFiles\lib\python"
+            )
             sys.path.append(directory)
             debugpy.configure(python=shutil.which("python"))
 
-            try: debugpy.listen(("localhost", 5678))
-            except: 
+            try:
+                debugpy.listen(("localhost", 5678))
+            except:
                 debugpy.connect(("localhost", 5678))
-    except: pass 
+    except:
+        pass
 
-#path = str(connector_installation_path("QGIS")) 
-#print(path)
+
+# path = str(connector_installation_path("QGIS"))
+# print(path)
