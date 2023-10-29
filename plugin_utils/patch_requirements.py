@@ -1,4 +1,4 @@
-def main(tag):
+def main():
     """Removes Python version and OS from Requirements.txt"""
     req_file = "requirements.txt"
 
