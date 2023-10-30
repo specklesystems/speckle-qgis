@@ -52,8 +52,6 @@ def main(parameters, arguments):
         print("HTTP/HTTPS headers: %s" % err.headers)
         print("Error code: %d" % err.errcode)
         print("Error message: %s" % err.errmsg)
-        print(parameters.username[-3:])
-        print(parameters.password[-3:])
         sys.exit(1)
     except xmlrpc.client.Fault as err:
         print("A fault occurred")
