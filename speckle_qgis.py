@@ -1025,6 +1025,7 @@ class SpeckleQGIS:
             logToUser(
                 "Dependencies versioning error.\nClick here for details.",
                 url="dependencies_error",
+                level=2,
                 plugin=self.dockwidget,
             )
 
@@ -1086,6 +1087,7 @@ class SpeckleQGIS:
                     logToUser(
                         "Dependencies versioning error.\nClick here for details.",
                         url="dependencies_error",
+                        level=2,
                         plugin=self.dockwidget,
                     )
                     return
@@ -1148,6 +1150,7 @@ class SpeckleQGIS:
                     logToUser(
                         "Dependencies versioning error.\nClick here for details.",
                         url="dependencies_error",
+                        level=2,
                         plugin=self.dockwidget,
                     )
                     return
