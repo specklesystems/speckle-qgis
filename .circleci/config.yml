@@ -69,7 +69,7 @@ jobs:
       - run: 
           name: Install dependencies
           command: |
-            pip install pb_tool pyqt5
+            pip install pb_tool==3.1.0 pyqt5==5.15.9
       - run: 
           name: Update version if tag build
           command: |
@@ -182,7 +182,7 @@ jobs:
       - run: 
           name: Install dependencies
           command: |
-            pip install future
+            pip install future==0.18.3
       - attach_workspace:
           at: ./
       - run: 
