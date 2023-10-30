@@ -66,10 +66,14 @@ jobs:
           name: Export requirements.txt
           command: |
             poetry export --without-hashes --without-urls --output plugin_utils/requirements.txt
+      - run:
+          name: Clean requirements.txt
+          command: |
+            python plugin_utils/patch_requirements.py
       - run: 
           name: Install dependencies
           command: |
-            pip install pb_tool pyqt5
+            pip install pb_tool==3.1.0 pyqt5==5.15.9
       - run: 
           name: Update version if tag build
           command: |
@@ -77,7 +81,10 @@ jobs:
             SEMVER=$(echo "$TAG" | sed -e 's/\/[a-zA-Z-]+//')
             VERSION=$(echo "$SEMVER" | sed -e 's/[a-zA-Z]*\///')
             python patch_version.py $VERSION
-            python plugin_utils/patch_requirements.py
+      - run:
+          name: Remove extra License
+          command: |
+            rm ./specklepy_qt_ui/LICENSE
       - run:
           name: ZIP plugin
           command: pb_tool zip
@@ -182,7 +189,7 @@ jobs:
       - run: 
           name: Install dependencies
           command: |
-            pip install future
+            pip install future==0.18.3
       - attach_workspace:
           at: ./
       - run: 

@@ -42,7 +42,7 @@ def patch_installer(tag):
             print(f"Patched metadata v{tag} ")
     file.close()
 
-    with open(plugin_start_file, "r", encoding="utf8") as file:
+    with open(plugin_start_file, "r") as file:
         lines = file.readlines()
         for i, line in enumerate(lines):
             if "self.version = " in line:
