@@ -662,7 +662,7 @@ class SpeckleQGIS:
 
             # time.sleep(0.3)
             logToUser(
-                "👌 Data sent to '"
+                "Data sent to '"
                 + str(streamName)
                 + "'"
                 + "\nClick to view commit online",
@@ -878,7 +878,7 @@ class SpeckleQGIS:
 
             # if self.dockwidget.experimental.isChecked(): time.sleep(3)
             logToUser(
-                "👌 Data received",
+                "Data received",
                 level=0,
                 plugin=self.dockwidget,
                 blue=True,
@@ -1023,7 +1023,7 @@ class SpeckleQGIS:
         # if the standard QGIS libraries are used
         if urllib3.__version__ == "1.25.11" and requests.__version__ == "2.24.0":
             logToUser(
-                "❗ Dependencies versioning error.\nClick here for details.",
+                "Dependencies versioning error.\nClick here for details.",
                 url="dependencies_error",
                 plugin=self.dockwidget,
             )
@@ -1084,7 +1084,7 @@ class SpeckleQGIS:
             except SpeckleException as ex:
                 if "already connected" in ex.message:
                     logToUser(
-                        "❗ Dependencies versioning error.\nClick here for details.",
+                        "Dependencies versioning error.\nClick here for details.",
                         url="dependencies_error",
                         plugin=self.dockwidget,
                     )
@@ -1146,7 +1146,7 @@ class SpeckleQGIS:
             except SpeckleException as ex:
                 if "already connected" in ex.message:
                     logToUser(
-                        "❗ Dependencies versioning error.\nClick here for details.",
+                        "Dependencies versioning error.\nClick here for details.",
                         url="dependencies_error",
                         plugin=self.dockwidget,
                     )

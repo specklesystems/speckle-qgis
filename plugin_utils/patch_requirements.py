@@ -1,6 +1,6 @@
-def main(tag):
+def main():
     """Removes Python version and OS from Requirements.txt"""
-    req_file = "requirements.txt"
+    req_file = "plugin_utils/requirements.txt"
 
     with open(req_file, "r") as file:
         lines = file.readlines()
