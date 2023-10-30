@@ -1,65 +1,64 @@
 import re
 import sys
 
-
 def patch_installer(tag):
     """Patches the installer with the correct connector version and specklepy version"""
     iss_file = "speckle-sharp-ci-tools/qgis.iss"
     metadata = "metadata.txt"
     plugin_start_file = "speckle_qgis.py"
 
+    #conda_file = "speckle_arcgis_installer/conda_clone_activate.py"
+    #toolbox_install_file = "speckle_arcgis_installer/toolbox_install.py"
+    #toolbox_manual_install_file = "speckle_arcgis_installer/toolbox_install_manual.py"
+
+    #py_tag = get_specklepy_version()
     try:
         with open(iss_file, "r") as file:
             lines = file.readlines()
             new_lines = []
             for i, line in enumerate(lines):
-                if "#define AppVersion " in line:
+                if "#define AppVersion " in line: 
                     line = f'#define AppVersion "{tag.split("-")[0]}"\n'
-                if "#define AppInfoVersion " in line:
+                if "#define AppInfoVersion " in line: 
                     line = f'#define AppInfoVersion "{tag}"\n'
                 new_lines.append(line)
             with open(iss_file, "w") as file:
                 file.writelines(new_lines)
                 print(f"Patched installer with connector v{tag} ")
         file.close()
-    except:
-        pass
+    except: pass
+    
 
     with open(metadata, "r") as file:
         lines = file.readlines()
         new_lines = []
         for i, line in enumerate(lines):
-            if "version=" in line:
-                line = f"version={tag}\n"  # .split("-")[0]
-            if "experimental=" in line:
+            if "version=" in line: 
+                line = f'version={tag}\n'#.split("-")[0]
+            if "experimental=" in line: 
                 if "-" in tag:
-                    line = f"experimental=True\n"  # .split("-")[0]
-                elif len(tag.split(".")) == 3 and tag != "0.0.99":
-                    line = f"experimental=False\n"  # .split("-")[0]
+                    line = f'experimental=True\n'#.split("-")[0]
+                elif len(tag.split("."))==3 and tag!="0.0.99":
+                    line = f'experimental=False\n'#.split("-")[0]
             new_lines.append(line)
         with open(metadata, "w") as file:
             file.writelines(new_lines)
             print(f"Patched metadata v{tag} ")
     file.close()
 
-    with open(plugin_start_file, "r", encoding="utf8") as file:
+
+    with open(plugin_start_file, "r") as file:
         lines = file.readlines()
         for i, line in enumerate(lines):
-            if "self.version = " in line:
-                lines[i] = (
-                    lines[i].split('"')[0]
-                    + '"'
-                    + tag.split("-")[0]
-                    + '"'
-                    + lines[i].split('"')[2]
-                )
+            if 'self.version = ' in line: 
+                lines[i] = lines[i].split("\"")[0] + "\"" + tag.split('-')[0] + "\"" + lines[i].split("\"")[2]
                 break
         with open(plugin_start_file, "w") as file:
             file.writelines(lines)
             print(f"Patched GIS start file with connector v{tag} and specklepy ")
     file.close()
 
-    r"""
+    r'''
     def whlFileRename(fileName: str): 
         with open(fileName, "r") as file:
             lines = file.readlines()
@@ -77,7 +76,7 @@ def patch_installer(tag):
     whlFileRename(conda_file)
     whlFileRename(toolbox_install_file)
     whlFileRename(toolbox_manual_install_file)
-    """
+    '''
 
 
 def main():
@@ -89,7 +88,7 @@ def main():
         raise ValueError(f"Invalid tag provided: {tag}")
 
     print(f"Patching version: {tag}")
-    # patch_connector(tag.split("-")[0]) if I need to edit a connector file
+    #patch_connector(tag.split("-")[0]) if I need to edit a connector file
     patch_installer(tag)
 
 
