@@ -26,9 +26,8 @@ def tryGetClient(sw: StreamWrapper, dataStorage, write=False, dockwidget=None):
                 except SpeckleException as ex:
                     if "already connected" in ex.message:
                         logToUser(
-                            "Dependencies versioning error.\nClick here for details.",
+                            "❗ Dependencies versioning error.\nClick here for details.",
                             url="dependencies_error",
-                            level=2,
                             plugin=dockwidget,
                         )
                         return

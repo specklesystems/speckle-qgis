@@ -190,7 +190,7 @@ def install_requirements(host_application: str) -> None:
     )
 
     if completed_process.returncode != 0:
-        m = f"Failed to install dependenices through pip, got {completed_process.returncode} as return code. Full log: {completed_process}"
+        m = f"Failed to install dependenices through pip, got {completed_process.returncode} as return code. Full log: {completed_process.stdout}"
         print(m)
         print(completed_process.stdout)
         print(completed_process.stderr)
