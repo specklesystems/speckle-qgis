@@ -84,7 +84,7 @@ jobs:
       - run:
           name: Remove extra License
           command: |
-            del specklepy_qt_ui/LICENSE
+            rm ./specklepy_qt_ui/LICENSE
       - run:
           name: ZIP plugin
           command: pb_tool zip
