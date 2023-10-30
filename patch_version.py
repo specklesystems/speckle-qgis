@@ -13,6 +13,11 @@ def patch_installer(tag):
     # toolbox_manual_install_file = "speckle_arcgis_installer/toolbox_install_manual.py"
 
     # py_tag = get_specklepy_version()
+    # conda_file = "speckle_arcgis_installer/conda_clone_activate.py"
+    # toolbox_install_file = "speckle_arcgis_installer/toolbox_install.py"
+    # toolbox_manual_install_file = "speckle_arcgis_installer/toolbox_install_manual.py"
+
+    # py_tag = get_specklepy_version()
     try:
         with open(iss_file, "r") as file:
             lines = file.readlines()
