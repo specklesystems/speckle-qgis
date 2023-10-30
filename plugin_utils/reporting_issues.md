@@ -2,8 +2,10 @@
 
 ### "Speckle dependencies were not installed."
 
-If restarting QGIS didn't resolve the problem, follow these steps to report the issue and give us more context to help: 
-
+To resolve dependencies manually, make sure you have the following versions on libraries installed as a primary source for QGIS (e.g. AppData>Roaming>Python or ProgramFiles>QGIS>apps>Python):
+- requests==2.31.0
+- urllib3==1.26.16
+- requests_toolbelt==0.10.0
 You can run the 2 following commands from QGIS Plugins panel->Python Console, and then restart QGIS:
 
 ```
