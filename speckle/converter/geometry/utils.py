@@ -113,9 +113,7 @@ def triangulatePolygon(geom, dataStorage):
         dict_shape = {"vertices": vertices, "holes": holes}
 
         try:
-            t, iterations = to_triangles(
-                dict_shape, 0
-            )  # tr.triangulate(dict_shape, 'p')
+            t, iterations = to_triangles(dict_shape, 0)
         except Exception as e:
             logToUser(e, level=2, func=inspect.stack()[0][3])
             return None, None, None
