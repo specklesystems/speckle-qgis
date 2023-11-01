@@ -940,7 +940,7 @@ class SpeckleQGIS:
 
     def run(self):
         """Run method that performs all the real work"""
-        from speckle.ui_widgets.dockwidget_main import SpeckleQGISDialog
+        from specklepy_qt_ui.qt_ui.dockwidget_main import SpeckleQGISDialog
         from speckle.utils.project_vars import (
             get_project_streams,
             get_survey_point,
@@ -969,6 +969,7 @@ class SpeckleQGIS:
             self.pluginIsActive = True
             if self.dockwidget is None:
                 self.dockwidget = SpeckleQGISDialog()
+                self.dockwidget.iface = self.iface
 
                 root = self.dataStorage.project.layerTreeRoot()
                 self.dataStorage.all_layers = getAllLayers(root)
