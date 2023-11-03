@@ -660,7 +660,8 @@ class SpeckleQGIS:
                     plugin=self.dockwidget,
                 )
 
-            # time.sleep(0.3)
+            self.dockwidget.msgLog.dataStorage = self.dataStorage
+
             logToUser(
                 "Data sent to '"
                 + str(streamName)
@@ -873,9 +874,9 @@ class SpeckleQGIS:
             self.dataStorage.latestActionTime = str(
                 datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
             )
-
             url: str = constructCommitURL(streamWrapper, branch.id, commit.id)
 
+            self.dockwidget.msgLog.dataStorage = self.dataStorage
             # if self.dockwidget.experimental.isChecked(): time.sleep(3)
             logToUser(
                 "Data received",

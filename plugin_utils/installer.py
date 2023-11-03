@@ -147,7 +147,7 @@ def _dependencies_installed(requirements: str, path: str) -> bool:
         entry = f"{d.key}=={d.version}"
         if entry in requirements:
             requirements = requirements.replace(entry, "")
-
+    requirements = requirements.replace(" ", "").replace(";", "").replace(",", "")
     if len(requirements) > 0:
         return False
     print("Dependencies already installed")
