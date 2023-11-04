@@ -632,12 +632,14 @@ def addExcelMainThread(obj: Tuple):
         #print("12")
         for item in report_features:
             dataStorage.latestActionReport.append(item)
+        dataStorage.latestConversionTime = datetime.now()
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         # report
         obj_type = "Vector Layer"
         dataStorage.latestActionReport.append({"speckle_id": f"{val_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+        dataStorage.latestConversionTime = datetime.now()
 
     
 
@@ -749,12 +751,14 @@ def addNonGeometryMainThread(obj: Tuple):
             dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
         for item in report_features:
             dataStorage.latestActionReport.append(item)
+        dataStorage.latestConversionTime = datetime.now()
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         # report
         obj_type = geom_print + "Vector Layer"
         dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+        dataStorage.latestConversionTime = datetime.now()
 
 def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: str, streamBranch: str, plugin, matrix = None):
     #print("01_____GEOMETRY layer to native")
@@ -1026,12 +1030,14 @@ def addBimMainThread(obj: Tuple):
             dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
         for item in report_features:
             dataStorage.latestActionReport.append(item)
+        dataStorage.latestConversionTime = datetime.now()
         
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         # report 
         obj_type = geom_print + "Vector Layer"
         dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+        dataStorage.latestConversionTime = datetime.now()
 
 
 def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, geomType: str, streamBranch: str, plugin, matrix = None) -> QgsVectorLayer: 
@@ -1225,12 +1231,14 @@ def addCadMainThread(obj: Tuple):
             dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
         for item in report_features:
             dataStorage.latestActionReport.append(item)
+        dataStorage.latestConversionTime = datetime.now()
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         # report
         obj_type = geom_print + "Vector Layer"
         dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+        dataStorage.latestConversionTime = datetime.now()
 
 def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase: str, plugin):
     try:
@@ -1478,12 +1486,14 @@ def addVectorMainThread(obj: Tuple):
         
         for item in report_features:
             dataStorage.latestActionReport.append(item)
+        dataStorage.latestConversionTime = datetime.now()
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         # report
         obj_type = "Vector Layer"
         dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+        dataStorage.latestConversionTime = datetime.now()
 
     
 def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, plugin):
@@ -1694,9 +1704,10 @@ def addRasterMainThread(obj: Tuple):
 
         #report on receive:
         dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": "Raster Layer", "errors": ""})
+        dataStorage.latestConversionTime = datetime.now()
 
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
         #report on receive:
         dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": "Raster Layer", "errors": f"Receiving layer {layer.name} failed"})
-          
+        dataStorage.latestConversionTime = datetime.now()

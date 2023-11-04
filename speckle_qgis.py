@@ -447,7 +447,6 @@ class SpeckleQGIS:
         try:
             if not self.dockwidget:
                 return
-            # self.dockwidget.showWait()
 
             projectCRS = self.project.crs()
 
@@ -521,9 +520,14 @@ class SpeckleQGIS:
                 name="QGIS commit",
                 elements=[],
             )
+
+            # conversions
+            time_start_conversion = datetime.now()
             base_obj = convertSelectedLayers(
                 base_obj, layers, tree_structure, projectCRS, self
             )
+            time_end_conversion = datetime.now()
+
             if (
                 base_obj is None
                 or base_obj.elements is None
@@ -562,12 +566,11 @@ class SpeckleQGIS:
             logToUser(e, level=2, func=inspect.stack()[0][3], plugin=self.dockwidget)
             return
 
+        # data transfer
+        time_start_transfer = datetime.now()
         try:
             # this serialises the block and sends it to the transport
             objId = operations.send(base=base_obj, transports=[transport])
-            self.dataStorage.latestActionTime = str(
-                datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
-            )
         except Exception as e:
             logToUser(
                 "Error sending data: " + str(e),
@@ -576,6 +579,7 @@ class SpeckleQGIS:
                 plugin=self.dockwidget,
             )
             return
+        time_end_transfer = datetime.now()
 
         self.dockwidget.signal_cancel_operation.emit("cancel")
 
@@ -589,6 +593,16 @@ class SpeckleQGIS:
                 source_application="QGIS" + self.gis_version.split(".")[0],
             )
 
+            # add time stats to the report
+            self.dataStorage.latestActionTime = str(
+                datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+            )
+            self.dataStorage.latestTransferTime = str(
+                time_end_transfer - time_start_transfer
+            )
+            self.dataStorage.latestConversionTime = str(
+                time_end_conversion - time_start_conversion
+            )
             try:
                 metr_filter = "Selected" if bySelection is True else "Saved"
                 metr_main = True if branchName == "main" else False
@@ -624,6 +638,12 @@ class SpeckleQGIS:
                         "savedStreams": metr_saved_streams,
                         "projectedCRS": metr_projected,
                         "customCRS": metr_crs,
+                        "time_conversion": (
+                            time_end_conversion - time_start_conversion
+                        ).total_seconds(),
+                        "time_transfer": (
+                            time_end_transfer - time_start_transfer
+                        ).total_seconds(),
                     },
                 )
             except:
@@ -761,7 +781,10 @@ class SpeckleQGIS:
             if transport == None:
                 return
 
+            # data transfer
+            time_start_transfer = datetime.now()
             commitObj = operations.receive(objId, transport, None)
+            time_end_transfer = datetime.now()
 
             projectCRS = self.project.crs()
             units = str(QgsUnitTypes.encodeUnit(projectCRS.mapUnits()))
@@ -782,22 +805,6 @@ class SpeckleQGIS:
             metr_projected = True if not projectCRS.isGeographic() else False
             if self.project.crs().isValid() is False:
                 metr_projected = None
-            try:
-                metrics.track(
-                    metrics.RECEIVE,
-                    self.dataStorage.active_account,
-                    {
-                        "hostAppFullVersion": self.gis_version,
-                        "sourceHostAppVersion": app_full,
-                        "sourceHostApp": app,
-                        "isMultiplayer": commit.authorId != client_id,
-                        "connector_version": str(self.version),
-                        "projectedCRS": metr_projected,
-                        "customCRS": metr_crs,
-                    },
-                )
-            except:
-                metrics.track(metrics.RECEIVE, self.dataStorage.active_account)
 
             client.commit.received(
                 streamId,
@@ -817,7 +824,6 @@ class SpeckleQGIS:
                         func=inspect.stack()[0][3],
                         plugin=self.dockwidget,
                     )
-            # logger.log(f"Succesfully received {objId}")
 
         except Exception as e:
             logToUser(
@@ -870,11 +876,19 @@ class SpeckleQGIS:
 
             self.dataStorage.latestActionLayers = []
             self.dataStorage.latestActionReport = []
+
+            # conversions
+            time_start_conversion = self.dataStorage.latestConversionTime = datetime.now()
             traverseObject(self, commitObj, callback, check, str(newGroupName), "")
+            time_end_conversion = self.dataStorage.latestConversionTime
+
+            # add time stats to the report
             self.dataStorage.latestActionTime = str(
                 datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
             )
-            url: str = constructCommitURL(streamWrapper, branch.id, commit.id)
+            self.dataStorage.latestTransferTime = str(
+                time_end_transfer - time_start_transfer
+            )
 
             self.dockwidget.msgLog.dataStorage = self.dataStorage
             # if self.dockwidget.experimental.isChecked(): time.sleep(3)
@@ -885,6 +899,26 @@ class SpeckleQGIS:
                 blue=True,
                 report=True,
             )
+
+            try:
+                metrics.track(
+                    metrics.RECEIVE,
+                    self.dataStorage.active_account,
+                    {
+                        "hostAppFullVersion": self.gis_version,
+                        "sourceHostAppVersion": app_full,
+                        "sourceHostApp": app,
+                        "isMultiplayer": commit.authorId != client_id,
+                        "connector_version": str(self.version),
+                        "projectedCRS": metr_projected,
+                        "customCRS": metr_crs,
+                        "time_transfer": (
+                            time_end_transfer - time_start_transfer
+                        ).total_seconds(),
+                    },
+                )
+            except:
+                metrics.track(metrics.RECEIVE, self.dataStorage.active_account)
 
         except Exception as e:
             # if self.dockwidget.experimental.isChecked(): time.sleep(1)
