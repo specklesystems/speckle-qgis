@@ -12,6 +12,9 @@ from speckle.utils.utils import get_qgis_python_path
 
 _user_data_env_var = "SPECKLE_USERDATA_PATH"
 _debug = False
+_vs_code_directory = os.path.expanduser(
+    "~\.vscode\extensions\ms-python.python-2023.20.0\pythonFiles\lib\python"
+)
 
 
 def _path() -> Optional[Path]:
@@ -160,6 +163,31 @@ def install_requirements(host_application: str) -> None:
     # dependencies
     requirements = get_requirements_path().read_text().replace("\n", "")
     path = str(connector_installation_path(host_application))
+
+    print(f"Installing debugpy to {path}")
+    from subprocess import run
+
+    if _debug is True:
+        try:
+            import debugpy
+        except:
+            completed_process = run(
+                [
+                    PYTHON_PATH,
+                    "-m",
+                    "pip",
+                    "install",
+                    "-t",
+                    str(path),
+                    "debugpy==1.8.0",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if completed_process.returncode != 0:
+                m = f"Failed to install debugpy through pip. Disable debug mode or install debugpy manually. Full log: {completed_process}"
+                raise Exception(completed_process)
+
     if _dependencies_installed(requirements, path):
         return
 
@@ -240,10 +268,7 @@ def startDegugger() -> None:
             import debugpy
             import shutil
 
-            directory = os.path.expanduser(
-                "~\.vscode\extensions\ms-python.python-2023.14.0\pythonFiles\lib\python"
-            )
-            sys.path.append(directory)
+            sys.path.append(_vs_code_directory)
             debugpy.configure(python=shutil.which("python"))
 
             try:

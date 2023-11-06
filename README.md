@@ -157,14 +157,14 @@ Though it is not required, we recommend installing these plugins from the QGIS P
 
 #### Visual Studio Code
 
-First, you'll need to uncomment these 2 lines in the `__init__.py` file:
+First, you'll need to change the _debug value to True in `plugin_utils/installer.py` file and verify the VS Code Python extension path:
 
 ```python
-    # from speckle.utils import enable_remote_debugging
-    # enable_remote_debugging()
+    _debug = True
+    _vs_code_directory = os.path.expanduser("~\.vscode\extensions\ms-python.python-2023.20.0\pythonFiles\lib\python")
 ```
 
-This will automatically setup `ptvsd` if it's not already installed, and start listening to port `5678`.
+This will automatically setup `debugpy` if it's not already installed, and start listening to port `5678`.
 
 In VS Code, you can use the built in python debugger. You'll need to create a debug configuration by creating a `launch.json` file.
 
@@ -199,10 +199,5 @@ That's all there is to it! Now any breakpoints you create should be hit.
 
 ![successful debugging in vs code](https://user-images.githubusercontent.com/7717434/129324011-42ebd156-ba6b-4eca-8b67-22300eb462fc.png)
 
-> If you want to have the debugger wait for you to connect using VSCode, you can uncomment this line in the `speckle/utils.py` file:
->
-> ```python
->   #ptvsd.wait_for_attach()
-> ```
 
 Enjoy!
