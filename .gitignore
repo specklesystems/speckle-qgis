@@ -124,3 +124,4 @@ zip-build*
 *.json 
 */PyQt-UI*
 specklepy_qt_ui*
+*requirements.txt
