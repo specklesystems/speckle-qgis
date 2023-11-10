@@ -11,7 +11,7 @@ import pkg_resources
 from speckle.utils.utils import get_qgis_python_path
 
 _user_data_env_var = "SPECKLE_USERDATA_PATH"
-_debug = False
+_debug = True
 
 
 def _path() -> Optional[Path]:
@@ -160,6 +160,29 @@ def install_requirements(host_application: str) -> None:
     # dependencies
     requirements = get_requirements_path().read_text().replace("\n", "")
     path = str(connector_installation_path(host_application))
+    from subprocess import run
+
+    if _debug is True:
+        try:
+            import debugpy
+        except:
+            completed_process = run(
+                [
+                    PYTHON_PATH,
+                    "-m",
+                    "pip",
+                    "install",
+                    "-t",
+                    str(path),
+                    "debugpy==1.8.0",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if completed_process.returncode != 0:
+                m = f"Failed to install debugpy through pip. Disable debug mode or install debugpy manually. Full log: {completed_process}"
+                raise Exception(completed_process)
+
     if _dependencies_installed(requirements, path):
         return
 
@@ -172,7 +195,6 @@ def install_requirements(host_application: str) -> None:
         raise Exception("Restart QGIS for changes to take effect")
 
     print(f"Installing Speckle dependencies to {path}")
-    from subprocess import run
 
     completed_process = run(
         [
