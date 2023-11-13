@@ -181,6 +181,7 @@ def install_requirements(host_application: str) -> None:
                     str(path),
                     "debugpy==1.8.0",
                 ],
+                shell=True,
                 capture_output=True,
                 text=True,
             )
@@ -213,6 +214,7 @@ def install_requirements(host_application: str) -> None:
             "-r",
             str(get_requirements_path()),
         ],
+        shell=True,
         capture_output=True,
         text=True,
     )

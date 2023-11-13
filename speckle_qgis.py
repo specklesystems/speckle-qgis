@@ -581,7 +581,7 @@ class SpeckleQGIS:
             return
         time_end_transfer = datetime.now()
 
-        self.dockwidget.signal_cancel_operation.emit("cancel")
+        self.dockwidget.signal_remove_btn_url.emit("cancel")
 
         try:
             # you can now create a commit on your stream with this object
@@ -785,6 +785,7 @@ class SpeckleQGIS:
             time_start_transfer = datetime.now()
             commitObj = operations.receive(objId, transport, None)
             time_end_transfer = datetime.now()
+            self.dockwidget.signal_remove_btn_url.emit("cancel")
 
             projectCRS = self.project.crs()
             units = str(QgsUnitTypes.encodeUnit(projectCRS.mapUnits()))
@@ -878,7 +879,9 @@ class SpeckleQGIS:
             self.dataStorage.latestActionReport = []
 
             # conversions
-            time_start_conversion = self.dataStorage.latestConversionTime = datetime.now()
+            time_start_conversion = (
+                self.dataStorage.latestConversionTime
+            ) = datetime.now()
             traverseObject(self, commitObj, callback, check, str(newGroupName), "")
             time_end_conversion = self.dataStorage.latestConversionTime
 
@@ -934,7 +937,8 @@ class SpeckleQGIS:
     def reloadUI(self):
         print("___RELOAD UI")
         try:
-            self.dockwidget.cancelOperations()
+            self.dockwidget.signal_cancel_operation.emit()
+            # self.dockwidget.cancelOperations()
             from speckle.utils.project_vars import (
                 get_project_streams,
                 get_survey_point,
@@ -1024,8 +1028,11 @@ class SpeckleQGIS:
                 self.dockwidget.signal_4.connect(addRasterMainThread)
                 self.dockwidget.signal_5.connect(addNonGeometryMainThread)
                 self.dockwidget.signal_6.connect(addExcelMainThread)
-                self.dockwidget.signal_cancel_operation.connect(
+                self.dockwidget.signal_remove_btn_url.connect(
                     self.dockwidget.msgLog.removeBtnUrl
+                )
+                self.dockwidget.signal_cancel_operation.connect(
+                    self.dockwidget.cancelOperations
                 )
 
                 # self.signal_groupCreate.connect(tryCreateGroup)

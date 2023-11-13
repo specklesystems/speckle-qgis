@@ -248,13 +248,14 @@ def addFeatVariant(key, variant, value, f: QgsFeature):
         return feat
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        return
+        return feat
 
 
 def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, Any]:
     try:
         # print("__updateFeat")
-        for i, key in enumerate(fields.names()):
+        all_field_names = fields.names()
+        for i, key in enumerate(all_field_names):
             variant = fields.at(i).type()
             try:
                 if key == "Speckle_ID":
@@ -282,6 +283,7 @@ def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, 
                                         {},
                                         rootName + "_" + str(i),
                                         feature[rootName][i],
+                                        1,
                                     )
                                     for i, (key, value) in enumerate(newVals.items()):
                                         for k, (x, y) in enumerate(newF.items()):
@@ -295,7 +297,7 @@ def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, 
                         else:
                             try:
                                 newF, newVals = traverseDict(
-                                    {}, {}, rootName, feature[rootName]
+                                    {}, {}, rootName, feature[rootName], 1
                                 )
                                 for i, (key, value) in enumerate(newVals.items()):
                                     for k, (x, y) in enumerate(newF.items()):
