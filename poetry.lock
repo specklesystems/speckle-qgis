@@ -1104,13 +1104,13 @@ files = [
 
 [[package]]
 name = "specklepy"
-version = "2.17.0"
+version = "2.17.12"
 description = "The Python SDK for Speckle 2.0"
 optional = false
 python-versions = ">=3.8.0,<4.0"
 files = [
-    {file = "specklepy-2.17.0-py3-none-any.whl", hash = "sha256:90c18812666dd3beeabe6b784f57de26227f7651d949c7cabe041e533b895581"},
-    {file = "specklepy-2.17.0.tar.gz", hash = "sha256:6c6044351beb6e68e81d296189966efdc470096febfa588e965949567ffaac1a"},
+    {file = "specklepy-2.17.12-py3-none-any.whl", hash = "sha256:770808e5e7cacfc5f4b4bd2facd4a4a58a0b7f2d3fa629563f03501d5c86d0b9"},
+    {file = "specklepy-2.17.12.tar.gz", hash = "sha256:86297ade6a989314c1e710e17abad15201e7dd0b1da3128b31e19d34b87600a7"},
 ]
 
 [package.dependencies]
@@ -1508,4 +1508,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9, <4.0"
-content-hash = "637c75440fa04bc6887334a453706be5c776b9d3fd57dc38675d60ee12ebd0ad"
+content-hash = "97c4e6ee2f46d12a243bccba16271df97df76e4d1f069508f3e2571b82e170a9"
