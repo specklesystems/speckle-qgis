@@ -7,7 +7,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 if path not in sys.path:
     sys.path.insert(0, path)
 
-from plugin_utils.installer import ensure_dependencies, startDegugger
+from plugin_utils.installer import ensure_dependencies, startDebugger
 from speckle.utils.panel_logging import logger
 
 from qgis.core import Qgis
@@ -28,22 +28,8 @@ def classFactory(iface):  # pylint: disable=invalid-name
     # Ensure dependencies are installed in the machine
     # from speckle.utils import enable_remote_debugging
     # enable_remote_debugging()
+    startDebugger()
     ensure_dependencies("QGIS")
-    startDegugger()
-
-    try:
-        import specklepy
-        import shapefile
-        from urllib3.contrib import appengine
-
-    except Exception as e:
-        logger.logToUserWithAction(
-            "Speckle dependencies were not resolved.",
-            action_text="More info",
-            url="https://github.com/specklesystems/speckle-qgis/blob/main/plugin_utils/reporting_issues.md",
-            level=2,
-        )
-        return EmptyClass(iface)
 
     from speckle_qgis import SpeckleQGIS
     from specklepy.logging import metrics

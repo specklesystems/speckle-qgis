@@ -1063,7 +1063,7 @@ class SpeckleQGIS:
         import requests
 
         # if the standard QGIS libraries are used
-        if urllib3.__version__ == "1.25.11" and requests.__version__ == "2.24.0":
+        if (urllib3.__version__ == "1.25.11" and requests.__version__ == "2.24.0") or (urllib3.__version__.startswith("1.24.") and requests.__version__.startswith("2.23.")):
             logToUser(
                 "Dependencies versioning error.\nClick here for details.",
                 url="dependencies_error",
