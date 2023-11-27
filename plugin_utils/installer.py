@@ -140,6 +140,8 @@ def ensure_pip() -> None:
 
 def get_requirements_path() -> Path:
     # we assume that a requirements.txt exists next to the __init__.py file
+    if sys.platform.lower().startswith("darwin"):
+        path = Path(Path(__file__).parent, "requirements_mac.txt")
     path = Path(Path(__file__).parent, "requirements.txt")
     assert path.exists(), f"path not found {path}"
     return path
