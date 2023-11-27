@@ -157,18 +157,13 @@ Though it is not required, we recommend installing these plugins from the QGIS P
 
 #### Visual Studio Code
 
-First, you'll need to change the _debug value to True in `plugin_utils/installer.py` file and verify the VS Code Python extension path:
+First, you'll need to change the _debug value to True in `plugin_utils/installer.py` file.
 
 ```python
     _debug = True
-    _vs_code_directory = os.path.expanduser("~\.vscode\extensions\ms-python.python-2023.20.0\pythonFiles\lib\python")
 ```
 
 This will automatically setup `debugpy` if it's not already installed, and start listening to port `5678`.
-
-In VS Code, you can use the built in python debugger. You'll need to create a debug configuration by creating a `launch.json` file.
-
-![Create Debug Config](https://user-images.githubusercontent.com/2316535/129895259-3b9ede24-a898-4dbd-86df-0d15f19a2714.png)
 
 Select the "Python" -> "Remote Attach" option. Your `launch.json` should look like this:
 
