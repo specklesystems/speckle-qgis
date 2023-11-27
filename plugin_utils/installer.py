@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Optional
 from importlib import import_module, invalidate_caches
 import pkg_resources
+from subprocess import run
+import shutil
 
 from speckle.utils.utils import get_qgis_python_path
 
@@ -124,8 +126,6 @@ def is_pip_available() -> bool:
 def ensure_pip() -> None:
     print("Installing pip... ")
 
-    from subprocess import run
-
     print(PYTHON_PATH)
 
     completed_process = run([PYTHON_PATH, "-m", "ensurepip"])
@@ -140,6 +140,8 @@ def ensure_pip() -> None:
 
 def get_requirements_path() -> Path:
     # we assume that a requirements.txt exists next to the __init__.py file
+    if sys.platform.lower().startswith("darwin"):
+        path = Path(Path(__file__).parent, "requirements_mac.txt")
     path = Path(Path(__file__).parent, "requirements.txt")
     assert path.exists(), f"path not found {path}"
     return path
@@ -165,36 +167,11 @@ def install_requirements(host_application: str) -> None:
     path = str(connector_installation_path(host_application))
 
     print(f"Installing debugpy to {path}")
-    from subprocess import run
-
-    if _debug is True:
-        try:
-            import debugpy
-        except:
-            completed_process = run(
-                [
-                    PYTHON_PATH,
-                    "-m",
-                    "pip",
-                    "install",
-                    "-t",
-                    str(path),
-                    "debugpy==1.8.0",
-                ],
-                shell=True,
-                capture_output=True,
-                text=True,
-            )
-            if completed_process.returncode != 0:
-                m = f"Failed to install debugpy through pip. Disable debug mode or install debugpy manually. Full log: {completed_process}"
-                raise Exception(completed_process)
 
     if _dependencies_installed(requirements, path):
         return
 
     try:
-        import shutil
-
         shutil.rmtree(path)
     except PermissionError as e:
         # from speckle.utils.panel_logging import logger
@@ -214,9 +191,7 @@ def install_requirements(host_application: str) -> None:
             "-r",
             str(get_requirements_path()),
         ],
-        shell=True,
         capture_output=True,
-        text=True,
     )
 
     if completed_process.returncode != 0:
@@ -263,22 +238,35 @@ def ensure_dependencies(host_application: str) -> None:
         )
 
 
-def startDegugger() -> None:
-    try:
-        # debugger: https://gist.github.com/giohappy/8a30f14678aa7e446f9b694c632d7089
-        if _debug is True:
+def startDebugger() -> None:
+    if _debug is True:
+        try:
             import debugpy
-            import shutil
+        except:
+            # path = str(connector_installation_path(host_application))
+            completed_process = run(
+                [
+                    PYTHON_PATH,
+                    "-m",
+                    "pip",
+                    "install",
+                    "debugpy==1.8.0",
+                ],
+                capture_output=True,
+            )
+            if completed_process.returncode != 0:
+                m = f"Failed to install debugpy through pip. Disable debug mode or install debugpy manually. Full log: {completed_process}"
+                raise Exception(completed_process)
 
-            sys.path.append(_vs_code_directory)
-            debugpy.configure(python=shutil.which("python"))
+    # debugger: https://gist.github.com/giohappy/8a30f14678aa7e446f9b694c632d7089
+    if _debug is True:
+        import debugpy
 
-            try:
-                debugpy.listen(("localhost", 5678))
-            except:
-                debugpy.connect(("localhost", 5678))
-    except:
-        pass
+        sys.path.append(_vs_code_directory)
+        debugpy.configure(python=PYTHON_PATH)  # shutil.which("python"))
+
+        debugpy.listen(("localhost", 5678))
+        debugpy.wait_for_client()
 
 
 # path = str(connector_installation_path("QGIS"))
