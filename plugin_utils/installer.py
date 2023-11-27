@@ -13,7 +13,7 @@ import shutil
 from speckle.utils.utils import get_qgis_python_path
 
 _user_data_env_var = "SPECKLE_USERDATA_PATH"
-_debug = True
+_debug = False
 _vs_code_directory = os.path.expanduser(
     "~\.vscode\extensions\ms-python.python-2023.20.0\pythonFiles\lib\python"
 )
