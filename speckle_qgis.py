@@ -36,11 +36,12 @@ from qgis import PyQt
 import sip
 
 from specklepy.core.api import operations
-from specklepy.logging.exceptions import SpeckleException, GraphQLException
+from specklepy.logging.exceptions import SpeckleException, GraphQLException, SpeckleInvalidUnitException
 from specklepy.core.api.models import Stream, Branch, Commit
 from specklepy.core.api.wrapper import StreamWrapper
 from specklepy.objects import Base
 from specklepy.objects.other import Collection
+from specklepy.objects.units import get_units_from_string
 from specklepy.transports.server import ServerTransport
 from specklepy.core.api.credentials import (
     Account,
@@ -486,8 +487,10 @@ class SpeckleQGIS:
 
             units = str(QgsUnitTypes.encodeUnit(projectCRS.mapUnits()))
             self.dataStorage.latestActionUnits = units
-            if units is None or units == "degrees":
-                units = "m"
+            try: 
+                units = get_units_from_string(units)
+            except SpeckleInvalidUnitException:
+                units = 'none' 
             self.dataStorage.currentUnits = units
 
             if (
