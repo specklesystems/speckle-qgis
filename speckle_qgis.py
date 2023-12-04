@@ -36,7 +36,11 @@ from qgis import PyQt
 import sip
 
 from specklepy.core.api import operations
-from specklepy.logging.exceptions import SpeckleException, GraphQLException, SpeckleInvalidUnitException
+from specklepy.logging.exceptions import (
+    SpeckleException,
+    GraphQLException,
+    SpeckleInvalidUnitException,
+)
 from specklepy.core.api.models import Stream, Branch, Commit
 from specklepy.core.api.wrapper import StreamWrapper
 from specklepy.objects import Base
@@ -487,10 +491,10 @@ class SpeckleQGIS:
 
             units = str(QgsUnitTypes.encodeUnit(projectCRS.mapUnits()))
             self.dataStorage.latestActionUnits = units
-            try: 
+            try:
                 units = get_units_from_string(units)
             except SpeckleInvalidUnitException:
-                units = 'none' 
+                units = "none"
             self.dataStorage.currentUnits = units
 
             if (
@@ -1066,7 +1070,10 @@ class SpeckleQGIS:
         import requests
 
         # if the standard QGIS libraries are used
-        if (urllib3.__version__ == "1.25.11" and requests.__version__ == "2.24.0") or (urllib3.__version__.startswith("1.24.") and requests.__version__.startswith("2.23.")):
+        if (urllib3.__version__ == "1.25.11" and requests.__version__ == "2.24.0") or (
+            urllib3.__version__.startswith("1.24.")
+            and requests.__version__.startswith("2.23.")
+        ):
             logToUser(
                 "Dependencies versioning error.\nClick here for details.",
                 url="dependencies_error",
@@ -1251,7 +1258,10 @@ class SpeckleQGIS:
             index = 0
 
             self.dataStorage.check_for_accounts()
-            stream = tryGetStream(sw, self.dataStorage, False, self.dockwidget)
+            stream = sw.get_client().stream.get(
+                id=sw.stream_id, branch_limit=100, commit_limit=100
+            )
+            # stream = tryGetStream(sw, self.dataStorage, False, self.dockwidget)
             # print(stream)
 
             if stream is not None and branch in stream.branches.items:
