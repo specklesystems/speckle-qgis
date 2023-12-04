@@ -786,6 +786,12 @@ class SpeckleQGIS:
 
             transport = validateTransport(client, streamId)
             if transport == None:
+                logToUser(
+                    "Transport not found",
+                    level=2,
+                    func=inspect.stack()[0][3],
+                    plugin=self.dockwidget,
+                )
                 return
 
             # data transfer
@@ -1293,7 +1299,7 @@ class SpeckleQGIS:
                 self.add_stream_modal.handleStreamAdd.disconnect(self.handleStreamAdd)
             except:
                 pass
-            set_project_streams(self)
+            #set_project_streams(self)
             self.dockwidget.populateProjectStreams(self)
         except Exception as e:
             logToUser(e, level=2, func=inspect.stack()[0][3], plugin=self.dockwidget)

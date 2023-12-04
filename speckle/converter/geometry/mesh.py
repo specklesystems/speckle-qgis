@@ -26,7 +26,10 @@ def meshToNative(meshes: List[Mesh], dataStorage) -> QgsMultiPolygon:
             parts_list, types_list = deconstructSpeckleMesh(mesh, dataStorage)
             for part in parts_list: 
                 polygon = QgsPolygon()
-                pts = [Point(x=pt[0], y=pt[1], z=pt[2], units="m") for pt in part]
+                units = dataStorage.currentUnits
+                if not isinstance(units, str):
+                    units = "m"
+                pts = [Point(x=pt[0], y=pt[1], z=pt[2], units=units) for pt in part]
                 pts.append(pts[0])
                 boundary = QgsLineString([pointToNative(pt, dataStorage) for pt in pts])
                 polygon.setExteriorRing(boundary)
