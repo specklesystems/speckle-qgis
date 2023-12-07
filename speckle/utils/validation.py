@@ -1,5 +1,6 @@
 import inspect
 from typing import Union
+from specklepy.core.api.credentials import get_default_account
 from specklepy.core.api.wrapper import StreamWrapper
 from specklepy.core.api.models import Stream, Branch, Commit
 from specklepy.transports.server import ServerTransport
@@ -81,7 +82,7 @@ def tryGetClient(sw: StreamWrapper, dataStorage, write=False, dockwidget=None):
 
 def tryGetStream(
     sw: StreamWrapper, dataStorage, write=False, dockwidget=None
-) -> Stream:
+) -> Union[Stream, None]:
     try:
         # print("tryGetStream")
         client, stream = tryGetClient(sw, dataStorage, write, dockwidget)
@@ -173,7 +174,10 @@ def validateTransport(
     client: SpeckleClient, streamId: str
 ) -> Union[ServerTransport, None]:
     try:
-        transport = ServerTransport(client=client, stream_id=streamId)
+        account = client.account
+        if not account.token:
+            account = get_default_account()
+        transport = ServerTransport(client=client, account=account, stream_id=streamId)
         # print(transport)
         return transport
     except Exception as e:
