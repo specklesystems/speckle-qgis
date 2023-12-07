@@ -18,7 +18,7 @@ from PyQt5.QtCore import pyqtSignal
 
 from specklepy_qt_ui.qt_ui.widget_transforms import MappingSendDialog
 from specklepy_qt_ui.qt_ui.LogWidget import LogWidget
-from specklepy_qt_ui.qt_ui.logger import logToUser
+from specklepy_qt_ui.qt_ui.utils.logger import logToUser
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
 FORM_CLASS, _ = uic.loadUiType(

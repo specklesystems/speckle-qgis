@@ -16,7 +16,7 @@ from specklepy.core.api.client import SpeckleClient
 #from speckle.utils.panel_logging import logger
 from qgis.core import (Qgis, QgsProject, QgsCoordinateReferenceSystem)
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
-from specklepy_qt_ui.qt_ui.logger import displayUserMsg, logToUser
+from specklepy_qt_ui.qt_ui.utils.logger import displayUserMsg, logToUser
 from speckle.utils.validation import tryGetStream
 from specklepy_qt_ui.qt_ui.widget_custom_crs import CustomCRSDialog
 

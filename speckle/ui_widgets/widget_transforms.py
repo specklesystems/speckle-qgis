@@ -4,7 +4,7 @@ from typing import Any, List, Tuple, Union
 from speckle.converter.layers import getAllLayers
 from speckle.converter.layers.utils import getElevationLayer, getLayerGeomType
 from specklepy_qt_ui.qt_ui.widget_transforms import MappingSendDialog
-from specklepy_qt_ui.qt_ui.logger import displayUserMsg
+from specklepy_qt_ui.qt_ui.utils.logger import displayUserMsg
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
 from speckle.utils.panel_logging import logToUser
