@@ -6,34 +6,93 @@ import inspect
 import math
 from typing import List, Tuple, Union
 from specklepy.objects import Base
-from specklepy.objects.geometry import Mesh, Point, Line, Curve, Circle, Ellipse, Polycurve, Arc, Polyline 
+from specklepy.objects.geometry import (
+    Mesh,
+    Point,
+    Line,
+    Curve,
+    Circle,
+    Ellipse,
+    Polycurve,
+    Arc,
+    Polyline,
+)
 import os
 import time
 from datetime import datetime
 
 from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
-    gdal, osr)
-from plugin_utils.helpers import findFeatColors, findOrCreatePath, jsonFromList, removeSpecialCharacters
-#from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
-from qgis.core import (Qgis, QgsProject, QgsRasterLayer, QgsPoint, 
-                       QgsVectorLayer, QgsProject, QgsWkbTypes,
-                       QgsLayerTree, QgsLayerTreeGroup, QgsLayerTreeNode, QgsLayerTreeLayer,
-                       QgsCoordinateReferenceSystem, QgsCoordinateTransform,
-                       QgsFields, 
-                       QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer,
-                       QgsRendererCategory,
-                       QgsSymbol, QgsUnitTypes, QgsVectorFileWriter)
+    gdal,
+    osr,
+)
+from plugin_utils.helpers import (
+    findFeatColors,
+    findOrCreatePath,
+    jsonFromList,
+    removeSpecialCharacters,
+)
+
+# from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
+from qgis.core import (
+    Qgis,
+    QgsProject,
+    QgsRasterLayer,
+    QgsPoint,
+    QgsVectorLayer,
+    QgsProject,
+    QgsWkbTypes,
+    QgsLayerTree,
+    QgsLayerTreeGroup,
+    QgsLayerTreeNode,
+    QgsLayerTreeLayer,
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+    QgsFields,
+    QgsSingleSymbolRenderer,
+    QgsCategorizedSymbolRenderer,
+    QgsRendererCategory,
+    QgsSymbol,
+    QgsUnitTypes,
+    QgsVectorFileWriter,
+)
 from specklepy.objects.GIS.geometry import GisPolygonElement, GisNonGeometryElement
-from speckle.converter.geometry.point import pointToNative, pointToNativeWithoutTransforms
+from speckle.converter.geometry.point import (
+    pointToNative,
+    pointToNativeWithoutTransforms,
+)
 from specklepy.objects.GIS.CRS import CRS
 from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from specklepy.objects.other import Collection
 
-from speckle.converter.layers.feature import featureToSpeckle, nonGeomFeatureToNative, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import collectionsFromJson, colorFromSpeckle, colorFromSpeckle, getDisplayValueList, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, tryCreateGroupTree, trySaveCRS, validateAttributeName
+from speckle.converter.layers.feature import (
+    featureToSpeckle,
+    nonGeomFeatureToNative,
+    rasterFeatureToSpeckle,
+    featureToNative,
+    cadFeatureToNative,
+    bimFeatureToNative,
+)
+from speckle.converter.layers.utils import (
+    collectionsFromJson,
+    colorFromSpeckle,
+    colorFromSpeckle,
+    getDisplayValueList,
+    getElevationLayer,
+    getLayerGeomType,
+    getLayerAttributes,
+    isAppliedLayerTransformByKeywords,
+    tryCreateGroup,
+    tryCreateGroupTree,
+    trySaveCRS,
+    validateAttributeName,
+)
 from speckle.converter.geometry.mesh import writeMeshToShp
 
-from speckle.converter.layers.symbology import vectorRendererToNative, rasterRendererToNative, rendererToSpeckle
+from speckle.converter.layers.symbology import (
+    vectorRendererToNative,
+    rasterRendererToNative,
+    rendererToSpeckle,
+)
 
 from PyQt5.QtGui import QColor
 import numpy as np
@@ -42,90 +101,111 @@ from speckle.utils.panel_logging import logToUser
 
 from plugin_utils.helpers import SYMBOL
 
-GEOM_LINE_TYPES = ["Objects.Geometry.Line", "Objects.Geometry.Polyline", "Objects.Geometry.Curve", "Objects.Geometry.Arc", "Objects.Geometry.Circle", "Objects.Geometry.Ellipse", "Objects.Geometry.Polycurve"]
+GEOM_LINE_TYPES = [
+    "Objects.Geometry.Line",
+    "Objects.Geometry.Polyline",
+    "Objects.Geometry.Curve",
+    "Objects.Geometry.Arc",
+    "Objects.Geometry.Circle",
+    "Objects.Geometry.Ellipse",
+    "Objects.Geometry.Polycurve",
+]
 
 
 def getAllLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode = None):
     try:
-        #print("Root tree: ")
-        #print(tree)
+        # print("Root tree: ")
+        # print(tree)
         layers = []
 
         if parent is None:
-            parent = tree 
-        
-        if isinstance(parent, QgsLayerTreeLayer): 
-            #print("QgsLayerTreeLayer")
-            #print(parent)
-            return [parent.layer()] 
-        
-        elif isinstance(parent, QgsLayerTreeGroup): 
-            #print("QgsLayerTreeGroup")
-            #print(parent)
-            children = parent.children()
-            
-            for node in children: 
-                #print(node)
-                if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
-                    #print("QgsLayerTreeLayer")
+            parent = tree
 
-                    #if isinstance(node, QgsLayerTreeLayer):
-                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
+        if isinstance(parent, QgsLayerTreeLayer):
+            # print("QgsLayerTreeLayer")
+            # print(parent)
+            return [parent.layer()]
+
+        elif isinstance(parent, QgsLayerTreeGroup):
+            # print("QgsLayerTreeGroup")
+            # print(parent)
+            children = parent.children()
+
+            for node in children:
+                # print(node)
+                if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
+                    # print("QgsLayerTreeLayer")
+
+                    # if isinstance(node, QgsLayerTreeLayer):
+                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(
+                        node.layer(), QgsRasterLayer
+                    ):
                         layers.append(node.layer())
                     continue
                 elif tree.isGroup(node):
-                    #print("is Group")
+                    # print("is Group")
                     for lyr in getAllLayers(tree, node):
-                        if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
-                            layers.append(lyr) 
+                        if isinstance(lyr, QgsVectorLayer) or isinstance(
+                            lyr, QgsRasterLayer
+                        ):
+                            layers.append(lyr)
                 elif isinstance(node, QgsLayerTreeNode):
-                    #print("QgsLayerTreeNode")
+                    # print("QgsLayerTreeNode")
                     try:
                         visible = node.itemVisibilityChecked()
                         node.setItemVisibilityChecked(True)
                         for lyr in node.checkedLayers():
-                            #print("layer in a node")
-                            #print(lyr)
-                            if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
-                                layers.append(lyr) 
+                            # print("layer in a node")
+                            # print(lyr)
+                            if isinstance(lyr, QgsVectorLayer) or isinstance(
+                                lyr, QgsRasterLayer
+                            ):
+                                layers.append(lyr)
                         node.setItemVisibilityChecked(visible)
-                    except Exception as e: 
-                        logToUser(e, level = 2, func = inspect.stack()[0][3]) 
-        #print("Final layers: ")        
-        #print(layers)
+                    except Exception as e:
+                        logToUser(e, level=2, func=inspect.stack()[0][3])
+        # print("Final layers: ")
+        # print(layers)
         return layers
-    
-    except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return [parent] 
 
-def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return [parent]
+
+
+def findAndClearLayerGroup(root, newGroupName: str = "", plugin=None):
     try:
-        #root = project_gis.layerTreeRoot()
-        
-        #print("clearGroup: " + str(newGroupName))
+        # root = project_gis.layerTreeRoot()
+
+        # print("clearGroup: " + str(newGroupName))
         layerGroup = root.findGroup(newGroupName)
-        if layerGroup is None: return
+        if layerGroup is None:
+            return
 
         layersInGroup = getAllLayers(root, layerGroup)
         for lyr in layersInGroup:
-            if isinstance(lyr, QgsVectorLayer): 
-                #print(lyr.fields().names())
+            if isinstance(lyr, QgsVectorLayer):
+                # print(lyr.fields().names())
                 try:
-                    lyr.getFeature(0).geometry() # <QgsGeometry: null>
-                except: pass
-                if "Speckle_ID" in lyr.fields().names(): 
-                    if lyr.name().endswith(("_Mesh", "_Polyline", "_Point", "_Table")) or plugin.dataStorage.latestHostApp.lower().endswith("gis"): # or str(lyr.wkbType()) == "WkbType.NoGeometry": 
-                        #print("Speckle_ID")
-                        #print(lyr.name())
+                    lyr.getFeature(0).geometry()  # <QgsGeometry: null>
+                except:
+                    pass
+                if "Speckle_ID" in lyr.fields().names():
+                    if lyr.name().endswith(
+                        ("_Mesh", "_Polyline", "_Point", "_Table")
+                    ) or plugin.dataStorage.latestHostApp.lower().endswith(
+                        "gis"
+                    ):  # or str(lyr.wkbType()) == "WkbType.NoGeometry":
+                        # print("Speckle_ID")
+                        # print(lyr.name())
                         plugin.project.removeMapLayer(lyr)
-            
-            elif isinstance(lyr, QgsRasterLayer): 
-                if "_Speckle" in lyr.name(): 
-                    #print(lyr.name())
+
+            elif isinstance(lyr, QgsRasterLayer):
+                if "_Speckle" in lyr.name():
+                    # print(lyr.name())
                     plugin.project.removeMapLayer(lyr)
 
-        r'''
+        r"""
         if layerGroup is not None or newGroupName is None:
             if newGroupName is None: layerGroup = root
             for child in layerGroup.children(): # -> List[QgsLayerTreeNode]
@@ -140,234 +220,323 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin = None):
                 else: # group
                     print(child)
                     findAndClearLayerGroup(child, None, plugin)
-        ''' 
+        """
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
+        logToUser(e, level=2, func=inspect.stack()[0][3])
         return
 
 
-def getAllLayersWithTree(tree: QgsLayerTree, parent: QgsLayerTreeNode = None, existingStructure: str = ""):
+def getAllLayersWithTree(
+    tree: QgsLayerTree, parent: QgsLayerTreeNode = None, existingStructure: str = ""
+):
     try:
-        #print("Root tree with structure: ")
-        #print(tree)
-        #print(parent)
+        # print("Root tree with structure: ")
+        # print(tree)
+        # print(parent)
         layers = []
-        tree_structure = [] 
-        existingStructure = existingStructure.replace(SYMBOL+SYMBOL, SYMBOL)
+        tree_structure = []
+        existingStructure = existingStructure.replace(SYMBOL + SYMBOL, SYMBOL)
 
         if parent is None:
-            parent = tree 
-        
-        if isinstance(parent, QgsLayerTreeLayer): 
-            #print("QgsLayerTreeLayer")
-            #print(parent)
-            newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
-            tree_structure.append(newStructure)
-            
-            #print("Final layers: ")        
-            #print([parent.layer()])
-            #print(newStructure)
-            return ([parent.layer()], tree_structure) 
-        
-        elif isinstance(parent, QgsLayerTreeGroup): 
-            children = parent.children()
-            
-            for node in children: 
-                if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
-                    #print("QgsLayerTreeLayer")
+            parent = tree
 
-                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(node.layer(), QgsRasterLayer): 
+        if isinstance(parent, QgsLayerTreeLayer):
+            # print("QgsLayerTreeLayer")
+            # print(parent)
+            newStructure = (existingStructure + SYMBOL).replace(SYMBOL + SYMBOL, SYMBOL)
+            tree_structure.append(newStructure)
+
+            # print("Final layers: ")
+            # print([parent.layer()])
+            # print(newStructure)
+            return ([parent.layer()], tree_structure)
+
+        elif isinstance(parent, QgsLayerTreeGroup):
+            children = parent.children()
+
+            for node in children:
+                if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
+                    # print("QgsLayerTreeLayer")
+
+                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(
+                        node.layer(), QgsRasterLayer
+                    ):
                         layers.append(node.layer())
-                        newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
+                        newStructure = (existingStructure + SYMBOL).replace(
+                            SYMBOL + SYMBOL, SYMBOL
+                        )
                         tree_structure.append(newStructure + parent.name())
                     continue
                 elif tree.isGroup(node):
-                    #print("is Group")
-                    #print(existingStructure)
-                    newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
-                    result = getAllLayersWithTree(tree, node, newStructure + parent.name())
-                    #print(result)
+                    # print("is Group")
+                    # print(existingStructure)
+                    newStructure = (existingStructure + SYMBOL).replace(
+                        SYMBOL + SYMBOL, SYMBOL
+                    )
+                    result = getAllLayersWithTree(
+                        tree, node, newStructure + parent.name()
+                    )
+                    # print(result)
                     for i, lyr in enumerate(result[0]):
-                        if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
-                            #print(i)
-                            #print(lyr)
-                            #print(result[1][i])
-                            layers.append(lyr) 
-                            newStructureGroup = (existingStructure + result[1][i]).replace(SYMBOL+SYMBOL, SYMBOL)
+                        if isinstance(lyr, QgsVectorLayer) or isinstance(
+                            lyr, QgsRasterLayer
+                        ):
+                            # print(i)
+                            # print(lyr)
+                            # print(result[1][i])
+                            layers.append(lyr)
+                            newStructureGroup = (
+                                existingStructure + result[1][i]
+                            ).replace(SYMBOL + SYMBOL, SYMBOL)
                             tree_structure.append(newStructureGroup)
-                            #print(layers)
-                            #print(tree_structure)
+                            # print(layers)
+                            # print(tree_structure)
                 elif isinstance(node, QgsLayerTreeNode):
                     try:
                         visible = node.itemVisibilityChecked()
                         node.setItemVisibilityChecked(True)
                         for lyr in node.checkedLayers():
-                            #print("layer in a node")
-                            #print(lyr)
-                            if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
-                                layers.append(lyr) 
-                                newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
+                            # print("layer in a node")
+                            # print(lyr)
+                            if isinstance(lyr, QgsVectorLayer) or isinstance(
+                                lyr, QgsRasterLayer
+                            ):
+                                layers.append(lyr)
+                                newStructure = (existingStructure + SYMBOL).replace(
+                                    SYMBOL + SYMBOL, SYMBOL
+                                )
                                 tree_structure.append(newStructure + parent.name())
                         node.setItemVisibilityChecked(visible)
-                    except Exception as e: 
-                        logToUser(e, level = 2, func = inspect.stack()[0][3]) 
-        
+                    except Exception as e:
+                        logToUser(e, level=2, func=inspect.stack()[0][3])
+
         elif isinstance(parent, QgsLayerTreeNode):
             try:
                 visible = parent.itemVisibilityChecked()
                 parent.setItemVisibilityChecked(True)
                 for lyr in parent.checkedLayers():
-                    #print("layer in a node")
-                    #print(lyr)
-                    if isinstance(lyr, QgsVectorLayer) or isinstance(lyr, QgsRasterLayer): 
-                        layers.append(lyr) 
-                        newStructure = (existingStructure+SYMBOL).replace(SYMBOL+SYMBOL, SYMBOL)
+                    # print("layer in a node")
+                    # print(lyr)
+                    if isinstance(lyr, QgsVectorLayer) or isinstance(
+                        lyr, QgsRasterLayer
+                    ):
+                        layers.append(lyr)
+                        newStructure = (existingStructure + SYMBOL).replace(
+                            SYMBOL + SYMBOL, SYMBOL
+                        )
                         tree_structure.append(newStructure + tree.name())
                 parent.setItemVisibilityChecked(visible)
-            except Exception as e: 
-                logToUser(e, level = 2, func = inspect.stack()[0][3]) 
+            except Exception as e:
+                logToUser(e, level=2, func=inspect.stack()[0][3])
 
-
-        #print("Final layers: ")        
-        #print(layers)
-        #print(tree_structure)
+        # print("Final layers: ")
+        # print(layers)
+        # print(tree_structure)
         return (layers, tree_structure)
-    
+
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3])
-        return None, None 
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return None, None
 
 
-def getSavedLayers(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+def getSavedLayers(plugin) -> List[Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
-    
+
     layers = []
     try:
         project = plugin.project
         for item in plugin.dataStorage.current_layers:
-            try: 
+            try:
                 id = item[0].id()
             except:
-                logToUser(f'Saved layer not found: "{item[1]}"', level = 1, plugin = plugin.dockwidget)
+                logToUser(
+                    f'Saved layer not found: "{item[1]}"',
+                    level=1,
+                    plugin=plugin.dockwidget,
+                )
                 continue
             found = 0
             for l in project.mapLayers().values():
                 if id == l.id():
                     layers.append(l)
                     found += 1
-                    break 
-            if found == 0: 
-                logToUser(f'Saved layer not found: "{item[1]}"', level = 1, plugin = plugin.dockwidget)
-        
+                    break
+            if found == 0:
+                logToUser(
+                    f'Saved layer not found: "{item[1]}"',
+                    level=1,
+                    plugin=plugin.dockwidget,
+                )
+
         return layers
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return layers 
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        return layers
 
-def getSelectedLayers(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
-    """Gets a list of all layers in the given QgsLayerTree"""
-    return getSelectedLayersWithStructure(plugin)[0] 
 
-def getSelectedLayersWithStructure(plugin) -> List[ Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+def getSelectedLayers(plugin) -> List[Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
     """Gets a list of all layers in the given QgsLayerTree"""
-    #print("__getSelectedLayersWithStructure")
-    layers = [] 
-    tree_structure = [] 
+    return getSelectedLayersWithStructure(plugin)[0]
+
+
+def getSelectedLayersWithStructure(
+    plugin,
+) -> List[Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+    """Gets a list of all layers in the given QgsLayerTree"""
+    # print("__getSelectedLayersWithStructure")
+    layers = []
+    tree_structure = []
     try:
         self = plugin.dockwidget
         selected_layers = plugin.iface.layerTreeView().selectedNodes()
-        #print(selected_layers)
-        
+        # print(selected_layers)
+
         for item in selected_layers:
             root = self.dataStorage.project.layerTreeRoot()
 
             results = getAllLayersWithTree(root, item)
             layers.extend(results[0])
             tree_structure.extend(results[1])
-            #print(results[0])
-            #print(results[1])
+            # print(results[0])
+            # print(results[1])
         return layers, tree_structure
-    
-    except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return None, None 
 
-def convertSelectedLayers(baseCollection: Collection, layers: List[Union[QgsVectorLayer, QgsRasterLayer]], tree_structure: List[str], projectCRS: QgsCoordinateReferenceSystem, plugin) -> List[Union[VectorLayer, RasterLayer]]:
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        return None, None
+
+
+def convertSelectedLayers(
+    baseCollection: Collection,
+    layers: List[Union[QgsVectorLayer, QgsRasterLayer]],
+    tree_structure: List[str],
+    projectCRS: QgsCoordinateReferenceSystem,
+    plugin,
+) -> List[Union[VectorLayer, RasterLayer]]:
     """Converts the current selected layers to Speckle"""
-    #print("____convertSelectedLayers")
+    # print("____convertSelectedLayers")
     dataStorage = plugin.dataStorage
     result = []
     try:
         project: QgsProject = plugin.project
 
-        ## Generate dictionnary from the list of layers to send 
+        ## Generate dictionnary from the list of layers to send
         jsonTree = {}
         for i, layer in enumerate(layers):
             structure = tree_structure[i]
-            #print(structure)
-            if structure.startswith(SYMBOL): structure = structure[len(SYMBOL):]
-            #print(structure)
+            # print(structure)
+            if structure.startswith(SYMBOL):
+                structure = structure[len(SYMBOL) :]
+            # print(structure)
             levels = structure.split(SYMBOL)
-            while '' in levels: levels.remove('')
+            while "" in levels:
+                levels.remove("")
 
-            #print(levels)
+            # print(levels)
             jsonTree = jsonFromList(jsonTree, levels)
 
         for i, layer in enumerate(layers):
-            logToUser(f"Converting layer '{layer.name()}'...", level = 0, plugin = plugin.dockwidget)
-            try: 
+            logToUser(
+                f"Converting layer '{layer.name()}'...",
+                level=0,
+                plugin=plugin.dockwidget,
+            )
+            try:
                 for item in plugin.dataStorage.savedTransforms:
-                    layer_name = item.split("  ->  ")[0].split(" (\'")[0]
+                    layer_name = item.split("  ->  ")[0].split(" ('")[0]
                     transform_name = item.split("  ->  ")[1]
                     if layer_name == layer.name():
-                        logToUser(f"Applying transformation to layer '{layer_name}': '{transform_name}'", level = 0, plugin = plugin.dockwidget)
-            except Exception as e: print(e)
+                        logToUser(
+                            f"Applying transformation to layer '{layer_name}': '{transform_name}'",
+                            level=0,
+                            plugin=plugin.dockwidget,
+                        )
+            except Exception as e:
+                print(e)
 
             if plugin.dataStorage.savedTransforms is not None:
                 for item in plugin.dataStorage.savedTransforms:
-                    layer_name = item.split("  ->  ")[0].split(" (\'")[0]
+                    layer_name = item.split("  ->  ")[0].split(" ('")[0]
                     transform_name = item.split("  ->  ")[1].lower()
 
-                    # check all the conditions for transform 
-                    if isinstance(layer, QgsVectorLayer) and layer.name() == layer_name and "extrude" in transform_name and "polygon" in transform_name:
+                    # check all the conditions for transform
+                    if (
+                        isinstance(layer, QgsVectorLayer)
+                        and layer.name() == layer_name
+                        and "extrude" in transform_name
+                        and "polygon" in transform_name
+                    ):
                         if plugin.dataStorage.project.crs().isGeographic():
-                            logToUser("Extrusion cannot be applied when the project CRS is set to Geographic type", level = 2, plugin = plugin.dockwidget)
+                            logToUser(
+                                "Extrusion cannot be applied when the project CRS is set to Geographic type",
+                                level=2,
+                                plugin=plugin.dockwidget,
+                            )
                             return None
-                        
+
                         attribute = None
-                        if " (\'" in item:
-                            attribute = item.split(" (\'")[1].split("\') ")[0]
-                        if (attribute is None or str(attribute) not in layer.fields().names()) and "ignore" in transform_name:
-                            logToUser("Attribute for extrusion not found", level = 2, plugin = plugin.dockwidget)
+                        if " ('" in item:
+                            attribute = item.split(" ('")[1].split("') ")[0]
+                        if (
+                            attribute is None
+                            or str(attribute) not in layer.fields().names()
+                        ) and "ignore" in transform_name:
+                            logToUser(
+                                "Attribute for extrusion not found",
+                                level=2,
+                                plugin=plugin.dockwidget,
+                            )
                             return None
-                        
-                    elif isinstance(layer, QgsRasterLayer) and layer.name() == layer_name and "elevation" in transform_name:
+
+                    elif (
+                        isinstance(layer, QgsRasterLayer)
+                        and layer.name() == layer_name
+                        and "elevation" in transform_name
+                    ):
                         if plugin.dataStorage.project.crs().isGeographic():
-                            logToUser("Raster layer transformation cannot be applied when the project CRS is set to Geographic type", level = 2, plugin = plugin.dockwidget)
+                            logToUser(
+                                "Raster layer transformation cannot be applied when the project CRS is set to Geographic type",
+                                level=2,
+                                plugin=plugin.dockwidget,
+                            )
                             return None
-            
+
             converted = layerToSpeckle(layer, projectCRS, plugin)
-            #print(converted)
+            # print(converted)
             if converted is not None:
                 structure = tree_structure[i]
-                if structure.startswith(SYMBOL): structure = structure[len(SYMBOL):]
+                if structure.startswith(SYMBOL):
+                    structure = structure[len(SYMBOL) :]
                 levels = structure.split(SYMBOL)
-                while '' in levels: levels.remove('')
-                
-                baseCollection = collectionsFromJson(jsonTree, levels, converted, baseCollection)
-            else: 
-                logToUser(f"Layer '{layer.name()}' conversion failed", level = 2, plugin = plugin.dockwidget)
-        
+                while "" in levels:
+                    levels.remove("")
+
+                baseCollection = collectionsFromJson(
+                    jsonTree, levels, converted, baseCollection
+                )
+            else:
+                logToUser(
+                    f"Layer '{layer.name()}' conversion failed",
+                    level=2,
+                    plugin=plugin.dockwidget,
+                )
+
         return baseCollection
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
         return baseCollection
 
 
-def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], projectCRS: QgsCoordinateReferenceSystem, plugin) -> VectorLayer or RasterLayer: #now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
+def layerToSpeckle(
+    selectedLayer: Union[QgsVectorLayer, QgsRasterLayer],
+    projectCRS: QgsCoordinateReferenceSystem,
+    plugin,
+) -> (
+    VectorLayer or RasterLayer
+):  # now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     """Converts a given QGIS Layer to Speckle"""
     try:
-        #print("___layerToSpeckle")
+        # print("___layerToSpeckle")
         dataStorage = plugin.dataStorage
         project: QgsProject = plugin.project
         layerName = selectedLayer.name()
@@ -382,32 +551,51 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
         units_layer_native = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
 
         units_layer = units_layer_native
-        if crs.isGeographic(): units_layer = "m" ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']). 
-        
-        if "unknown" in units_layer: units_layer = "m" # if no-geometry layer
-        #print(units_layer)
-        #print(type(units_layer))
+        if crs.isGeographic():
+            units_layer = "m"  ## specklepy.logging.exceptions.SpeckleException: SpeckleException: Could not understand what unit degrees is referring to. Please enter a valid unit (eg ['mm', 'cm', 'm', 'in', 'ft', 'yd', 'mi']).
+
+        if "unknown" in units_layer:
+            units_layer = "m"  # if no-geometry layer
+        # print(units_layer)
+        # print(type(units_layer))
         layerObjs = []
 
         # Convert CRS to speckle, use the projectCRS
-        #print(projectCRS.toWkt())
-        speckleReprojectedCrs = CRS(authority_id=projectCRS.authid(), name=str(projectCRS.description()), wkt=projectCRS.toWkt(), units=units_proj, offset_x=offset_x, offset_y=offset_y, rotation=rotation) 
-        layerCRS = CRS(authority_id=crs.authid(), name=str(crs.description()), wkt=crs.toWkt(), units=units_layer, units_native = units_layer_native, offset_x=offset_x, offset_y=offset_y, rotation=rotation) 
-        
-        renderer = selectedLayer.renderer()
-        layerRenderer = rendererToSpeckle(renderer) 
-        
-        if isinstance(selectedLayer, QgsVectorLayer):
-            #print("_____isinstance(selectedLayer, QgsVectorLayer)____")
+        # print(projectCRS.toWkt())
+        speckleReprojectedCrs = CRS(
+            authority_id=projectCRS.authid(),
+            name=str(projectCRS.description()),
+            wkt=projectCRS.toWkt(),
+            units=units_proj,
+            offset_x=offset_x,
+            offset_y=offset_y,
+            rotation=rotation,
+        )
+        layerCRS = CRS(
+            authority_id=crs.authid(),
+            name=str(crs.description()),
+            wkt=crs.toWkt(),
+            units=units_layer,
+            units_native=units_layer_native,
+            offset_x=offset_x,
+            offset_y=offset_y,
+            rotation=rotation,
+        )
 
-            fieldnames = [] #[str(field.name()) for field in selectedLayer.fields()]
+        renderer = selectedLayer.renderer()
+        layerRenderer = rendererToSpeckle(renderer)
+
+        if isinstance(selectedLayer, QgsVectorLayer):
+            # print("_____isinstance(selectedLayer, QgsVectorLayer)____")
+
+            fieldnames = []  # [str(field.name()) for field in selectedLayer.fields()]
             attributes = Base()
             for field in selectedLayer.fields():
-                #print(str(field.name()))
+                # print(str(field.name()))
                 fieldnames.append(str(field.name()))
                 corrected = validateAttributeName(str(field.name()), [])
                 attribute_type = field.type()
-                r'''
+                r"""
                 all_types = [
                     (1, "bool"), 
                     (2, "int"),
@@ -424,140 +612,249 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 for att_type in all_types:
                     if attribute_type == att_type[0]:
                         attribute_type = att_type[1]
-                '''
+                """
                 attributes[corrected] = attribute_type
 
-            extrusionApplied = isAppliedLayerTransformByKeywords(selectedLayer, ["extrude", "polygon"], [], plugin.dataStorage)
-            
+            extrusionApplied = isAppliedLayerTransformByKeywords(
+                selectedLayer, ["extrude", "polygon"], [], plugin.dataStorage
+            )
+
             if extrusionApplied is True:
-                if not layerName.endswith("_as_Mesh"): layerName += "_as_Mesh" 
-                #attributes["Speckle_ID"] = 10 # string type  # not needed
+                if not layerName.endswith("_as_Mesh"):
+                    layerName += "_as_Mesh"
+                # attributes["Speckle_ID"] = 10 # string type  # not needed
 
             geomType = getLayerGeomType(selectedLayer)
-            #print(geomType)
+            # print(geomType)
             features = selectedLayer.getFeatures()
 
-            elevationLayer = getElevationLayer(plugin.dataStorage) 
-            projectingApplied = isAppliedLayerTransformByKeywords(selectedLayer, ["extrude", "polygon", "project", "elevation"], [], plugin.dataStorage)
+            elevationLayer = getElevationLayer(plugin.dataStorage)
+            projectingApplied = isAppliedLayerTransformByKeywords(
+                selectedLayer,
+                ["extrude", "polygon", "project", "elevation"],
+                [],
+                plugin.dataStorage,
+            )
             if projectingApplied is True and elevationLayer is None:
-                logToUser(f"Elevation layer is not found. Layer '{selectedLayer.name()}' will not be projected on a 3d elevation.", level = 1, plugin = plugin.dockwidget)
-            
-            # write features 
+                logToUser(
+                    f"Elevation layer is not found. Layer '{selectedLayer.name()}' will not be projected on a 3d elevation.",
+                    level=1,
+                    plugin=plugin.dockwidget,
+                )
+
+            # write features
             all_errors_count = 0
             for i, f in enumerate(features):
-                dataStorage.latestActionFeaturesReport.append({"feature_id": str(i+1), "obj_type": "", "errors": ""})
-                b = featureToSpeckle(fieldnames, f, geomType, crs, projectCRS, project, selectedLayer, plugin.dataStorage)
-                #if b is None: continue 
+                dataStorage.latestActionFeaturesReport.append(
+                    {"feature_id": str(i + 1), "obj_type": "", "errors": ""}
+                )
+                b = featureToSpeckle(
+                    fieldnames,
+                    f,
+                    geomType,
+                    crs,
+                    projectCRS,
+                    project,
+                    selectedLayer,
+                    plugin.dataStorage,
+                )
+                # if b is None: continue
 
                 if extrusionApplied is True and isinstance(b, GisPolygonElement):
-                    #b.attributes["Speckle_ID"] = str(i+1) # not needed
+                    # b.attributes["Speckle_ID"] = str(i+1) # not needed
                     for g in b.geometry:
-                        if g is not None and g!="None": 
+                        if g is not None and g != "None":
                             # remove native polygon props, if extruded:
-                                g.boundary = None
-                                g.voids = None
+                            g.boundary = None
+                            g.voids = None
                 layerObjs.append(b)
-                if dataStorage.latestActionFeaturesReport[len(dataStorage.latestActionFeaturesReport)-1]["errors"] != "":
-                    all_errors_count +=1
+                if (
+                    dataStorage.latestActionFeaturesReport[
+                        len(dataStorage.latestActionFeaturesReport) - 1
+                    ]["errors"]
+                    != ""
+                ):
+                    all_errors_count += 1
 
             # Convert layer to speckle
-            layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, attributes = attributes, geomType=geomType)
+            layerBase = VectorLayer(
+                units=units_proj,
+                name=layerName,
+                crs=speckleReprojectedCrs,
+                elements=layerObjs,
+                attributes=attributes,
+                geomType=geomType,
+            )
             if all_errors_count == 0:
-                dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": layerBase.speckle_type, "errors": ""})
-            else: 
-                dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": layerBase.speckle_type, "errors": f"{all_errors_count} features failed"})
+                dataStorage.latestActionReport.append(
+                    {
+                        "feature_id": layerName,
+                        "obj_type": layerBase.speckle_type,
+                        "errors": "",
+                    }
+                )
+            else:
+                dataStorage.latestActionReport.append(
+                    {
+                        "feature_id": layerName,
+                        "obj_type": layerBase.speckle_type,
+                        "errors": f"{all_errors_count} features failed",
+                    }
+                )
             for item in dataStorage.latestActionFeaturesReport:
                 dataStorage.latestActionReport.append(item)
 
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
-            #print(layerBase.features)
+            # print(layerBase.features)
             return layerBase
 
         if isinstance(selectedLayer, QgsRasterLayer):
             # write feature attributes
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
-            #print(b)
-            if b is None: 
-                dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": "Raster Layer", "errors": "Layer failed to send"})
-                return None 
+            # print(b)
+            if b is None:
+                dataStorage.latestActionReport.append(
+                    {
+                        "feature_id": layerName,
+                        "obj_type": "Raster Layer",
+                        "errors": "Layer failed to send",
+                    }
+                )
+                return None
             layerObjs.append(b)
             # Convert layer to speckle
-            layerBase = RasterLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, elements=layerObjs)
-            #layerBase.type="RasterLayer"
-            dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": layerBase.speckle_type, "errors": ""})
+            layerBase = RasterLayer(
+                units=units_proj,
+                name=layerName,
+                crs=speckleReprojectedCrs,
+                rasterCrs=layerCRS,
+                elements=layerObjs,
+            )
+            # layerBase.type="RasterLayer"
+            dataStorage.latestActionReport.append(
+                {
+                    "feature_id": layerName,
+                    "obj_type": layerBase.speckle_type,
+                    "errors": "",
+                }
+            )
 
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
             return layerBase
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": "", "errors": f"Layer conversion failed: {e}"})
-        return None 
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        dataStorage.latestActionReport.append(
+            {
+                "feature_id": layerName,
+                "obj_type": "",
+                "errors": f"Layer conversion failed: {e}",
+            }
+        )
+        return None
 
 
-def layerToNative(layer: Union[Layer, VectorLayer, RasterLayer], streamBranch: str, nameBase: str, plugin) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+def layerToNative(
+    layer: Union[Layer, VectorLayer, RasterLayer],
+    streamBranch: str,
+    nameBase: str,
+    plugin,
+) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
     try:
         project: QgsProject = plugin.project
-        #plugin.dataStorage.currentCRS = project.crs()
+        # plugin.dataStorage.currentCRS = project.crs()
 
-        
-        if isinstance(layer.collectionType, str) and layer.collectionType.endswith("VectorLayer"):
+        if isinstance(layer.collectionType, str) and layer.collectionType.endswith(
+            "VectorLayer"
+        ):
             vectorLayerToNative(layer, streamBranch, nameBase, plugin)
-            return 
-        elif isinstance(layer.collectionType, str) and layer.collectionType.endswith("RasterLayer"):
+            return
+        elif isinstance(layer.collectionType, str) and layer.collectionType.endswith(
+            "RasterLayer"
+        ):
             rasterLayerToNative(layer, streamBranch, nameBase, plugin)
-            return 
+            return
         # if collectionType exists but not defined
-        elif isinstance(layer.type, str) and layer.type.endswith("VectorLayer"): # older commits
+        elif isinstance(layer.type, str) and layer.type.endswith(
+            "VectorLayer"
+        ):  # older commits
             vectorLayerToNative(layer, streamBranch, nameBase, plugin)
-            return 
-        elif isinstance(layer.type, str) and layer.type.endswith("RasterLayer"): # older commits
+            return
+        elif isinstance(layer.type, str) and layer.type.endswith(
+            "RasterLayer"
+        ):  # older commits
             rasterLayerToNative(layer, streamBranch, nameBase, plugin)
-            return 
+            return
     except:
-        try: 
-            if isinstance(layer.type, str) and layer.type.endswith("VectorLayer"): # older commits
+        try:
+            if isinstance(layer.type, str) and layer.type.endswith(
+                "VectorLayer"
+            ):  # older commits
                 vectorLayerToNative(layer, streamBranch, nameBase, plugin)
-                return 
-            elif isinstance(layer.type, str) and layer.type.endswith("RasterLayer"): # older commits
+                return
+            elif isinstance(layer.type, str) and layer.type.endswith(
+                "RasterLayer"
+            ):  # older commits
                 rasterLayerToNative(layer, streamBranch, nameBase, plugin)
-                return 
-            
-            return 
-        except Exception as e:
-            logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
+                return
 
-def nonGeometryLayerToNative(geomList: List[Base], nameBase: str, val_id: str, streamBranch: str, plugin):
-    #print("01_____NON-GEOMETRY layer to native")
-    
+            return
+        except Exception as e:
+            logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        return
+
+
+def nonGeometryLayerToNative(
+    geomList: List[Base], nameBase: str, val_id: str, streamBranch: str, plugin
+):
+    # print("01_____NON-GEOMETRY layer to native")
+
     try:
-        layerName = removeSpecialCharacters(nameBase) 
+        layerName = removeSpecialCharacters(nameBase)
         newFields = getLayerAttributes(geomList)
 
         if plugin.dataStorage.latestHostApp.endswith("excel"):
-            plugin.dockwidget.signal_6.emit({'plugin': plugin, 'layerName': layerName, 'val_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
+            plugin.dockwidget.signal_6.emit(
+                {
+                    "plugin": plugin,
+                    "layerName": layerName,
+                    "val_id": val_id,
+                    "streamBranch": streamBranch,
+                    "newFields": newFields,
+                    "geomList": geomList,
+                }
+            )
         else:
-            plugin.dockwidget.signal_5.emit({'plugin': plugin, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList})
-        
+            plugin.dockwidget.signal_5.emit(
+                {
+                    "plugin": plugin,
+                    "layerName": layerName,
+                    "layer_id": val_id,
+                    "streamBranch": streamBranch,
+                    "newFields": newFields,
+                    "geomList": geomList,
+                }
+            )
+
         return
-    
+
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
-    
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        return
+
+
 def addExcelMainThread(obj: Tuple):
-    #print("___addExcelMainThread")
+    # print("___addExcelMainThread")
     try:
         finalName = ""
-        plugin = obj['plugin'] 
-        layerName = obj['layerName'] 
-        streamBranch = obj['streamBranch'] 
-        val_id = obj['val_id'] 
-        newFields = obj['newFields'] 
-        geomList = obj['geomList']
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
+        plugin = obj["plugin"]
+        layerName = obj["layerName"]
+        streamBranch = obj["streamBranch"]
+        val_id = obj["val_id"]
+        newFields = obj["newFields"]
+        geomList = obj["geomList"]
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel")
 
         dataStorage = plugin.dataStorage
         project: QgsProject = plugin.dataStorage.project
@@ -565,13 +862,17 @@ def addExcelMainThread(obj: Tuple):
         geomType = "None"
         geom_print = "Table"
 
-        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
-        try: layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
-        except: layerName = layerName + ("_"+geom_print)
-        finalName = shortName + ("_"+geom_print)
-        
-        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        except: groupName = streamBranch + SYMBOL + layerName
+        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL)) - 1][:50]
+        try:
+            layerName = layerName.split(shortName)[0] + shortName + ("_" + geom_print)
+        except:
+            layerName = layerName + ("_" + geom_print)
+        finalName = shortName + ("_" + geom_print)
+
+        try:
+            groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except:
+            groupName = streamBranch + SYMBOL + layerName
         layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         dataStorage.latestActionLayers.append(finalName)
@@ -582,26 +883,37 @@ def addExcelMainThread(obj: Tuple):
         fets = []
         report_features = []
         all_feature_errors_count = 0
-        #print("before newFields")
-        #print(newFields)
-        for f in geomList: 
-            #print(f)
+        # print("before newFields")
+        # print(newFields)
+        for f in geomList:
+            # print(f)
             # pre-fill report:
-            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
+            report_features.append(
+                {"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""}
+            )
 
             new_feat = nonGeomFeatureToNative(f, newFields, plugin.dataStorage)
-            if new_feat is not None and new_feat != "": fets.append(new_feat)
+            if new_feat is not None and new_feat != "":
+                fets.append(new_feat)
             else:
-                logToUser(f"Table feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
-                report_features[len(report_features)-1].update({"errors": "Table feature skipped due to invalid data"})
+                logToUser(
+                    f"Table feature skipped due to invalid data",
+                    level=2,
+                    func=inspect.stack()[0][3],
+                )
+                report_features[len(report_features) - 1].update(
+                    {"errors": "Table feature skipped due to invalid data"}
+                )
                 all_feature_errors_count += 1
-            
-        if newFields is None: 
+
+        if newFields is None:
             newFields = QgsFields()
 
-        #print("04")
+        # print("04")
         vl = None
-        vl = QgsVectorLayer(geomType + "?crs=" + "WGS84", finalName, "memory") # do something to distinguish: stream_id_latest_name
+        vl = QgsVectorLayer(
+            geomType + "?crs=" + "WGS84", finalName, "memory"
+        )  # do something to distinguish: stream_id_latest_name
         project.addMapLayer(vl, False)
         pr = vl.dataProvider()
         vl.startEditing()
@@ -614,94 +926,125 @@ def addExcelMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
-        #print("07")
+        # print("07")
         layerGroup.addLayer(vl)
 
         # report
         all_feature_errors_count = 0
         for item in report_features:
-            if item["errors"] != "": all_feature_errors_count += 1
+            if item["errors"] != "":
+                all_feature_errors_count += 1
 
-        #print("11")
+        # print("11")
         obj_type = "Vector Layer"
         if all_feature_errors_count == 0:
-            dataStorage.latestActionReport.append({"speckle_id": f"{val_id} {finalName}", "obj_type": obj_type, "errors": ""})
-        else: 
-            dataStorage.latestActionReport.append({"speckle_id": f"{val_id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
-        
-        #print("12")
+            dataStorage.latestActionReport.append(
+                {
+                    "speckle_id": f"{val_id} {finalName}",
+                    "obj_type": obj_type,
+                    "errors": "",
+                }
+            )
+        else:
+            dataStorage.latestActionReport.append(
+                {
+                    "speckle_id": f"{val_id} {finalName}",
+                    "obj_type": obj_type,
+                    "errors": f"{all_feature_errors_count} features failed",
+                }
+            )
+
+        # print("12")
         for item in report_features:
             dataStorage.latestActionReport.append(item)
         dataStorage.latestConversionTime = datetime.now()
 
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
         # report
         obj_type = "Vector Layer"
-        dataStorage.latestActionReport.append({"speckle_id": f"{val_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+        dataStorage.latestActionReport.append(
+            {
+                "speckle_id": f"{val_id} {finalName}",
+                "obj_type": obj_type,
+                "errors": f"{e}",
+            }
+        )
         dataStorage.latestConversionTime = datetime.now()
 
-    
 
 def addNonGeometryMainThread(obj: Tuple):
-    #print("___addCadMainThread")
+    # print("___addCadMainThread")
     try:
         finalName = ""
-        plugin = obj['plugin'] 
-        layerName = obj['layerName'] 
-        layer_id = obj['layer_id']
-        streamBranch = obj['streamBranch'] 
-        newFields = obj['newFields'] 
-        geomList = obj['geomList']
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
+        plugin = obj["plugin"]
+        layerName = obj["layerName"]
+        layer_id = obj["layer_id"]
+        streamBranch = obj["streamBranch"]
+        newFields = obj["newFields"]
+        geomList = obj["geomList"]
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel")
 
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
-        
+
         geomType = "None"
         geom_print = "Table"
 
-        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
-        try: layerName = layerName.split(shortName)[0] + shortName + ("_"+geom_print)
-        except: layerName = layerName + ("_"+geom_print)
-        finalName = shortName + ("_"+geom_print)
-        
-        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        except: groupName = streamBranch + SYMBOL + layerName
+        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL)) - 1][:50]
+        try:
+            layerName = layerName.split(shortName)[0] + shortName + ("_" + geom_print)
+        except:
+            layerName = layerName + ("_" + geom_print)
+        finalName = shortName + ("_" + geom_print)
+
+        try:
+            groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except:
+            groupName = streamBranch + SYMBOL + layerName
         layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         dataStorage.latestActionLayers.append(finalName)
 
         ###########################################
-        dummy = None 
+        dummy = None
         root = project.layerTreeRoot()
         plugin.dataStorage.all_layers = getAllLayers(root)
-        if plugin.dataStorage.all_layers is not None: 
+        if plugin.dataStorage.all_layers is not None:
             if len(plugin.dataStorage.all_layers) == 0:
-                dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
+                dummy = QgsVectorLayer(
+                    "Point?crs=EPSG:4326", "", "memory"
+                )  # do something to distinguish: stream_id_latest_name
                 crs = QgsCoordinateReferenceSystem(4326)
                 dummy.setCrs(crs)
                 project.addMapLayer(dummy, True)
         #################################################
 
-        crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-        plugin.dataStorage.currentUnits = str(QgsUnitTypes.encodeUnit(crs.mapUnits())) 
-        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
-            plugin.dataStorage.currentUnits = 'm'
-        #authid = trySaveCRS(crs, streamBranch)
+        crs = project.crs()  # QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+        plugin.dataStorage.currentUnits = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
+        if (
+            plugin.dataStorage.currentUnits is None
+            or plugin.dataStorage.currentUnits == "degrees"
+        ):
+            plugin.dataStorage.currentUnits = "m"
+        # authid = trySaveCRS(crs, streamBranch)
 
-        if crs.isGeographic is True: 
-            logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
+        if crs.isGeographic is True:
+            logToUser(
+                f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly",
+                level=1,
+                func=inspect.stack()[0][3],
+            )
 
-        
-        vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid() , finalName, "memory") # do something to distinguish: stream_id_latest_name
+        vl = QgsVectorLayer(
+            geomType + "?crs=" + crs.authid(), finalName, "memory"
+        )  # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
 
         pr = vl.dataProvider()
         vl.startEditing()
-        
-        
+
         # create list of Features (fets) and list of Layer fields (fields)
         attrs = QgsFields()
         fets = []
@@ -710,33 +1053,42 @@ def addNonGeometryMainThread(obj: Tuple):
 
         report_features = []
         all_feature_errors_count = 0
-        for f in geomList[:]: 
-
+        for f in geomList[:]:
             # pre-fill report:
-            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
+            report_features.append(
+                {"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""}
+            )
 
             new_feat = nonGeomFeatureToNative(f, newFields, plugin.dataStorage)
             # update attrs for the next feature (if more fields were added from previous feature)
 
-            #print("________cad feature to add") 
-            if new_feat is not None and new_feat != "": 
+            # print("________cad feature to add")
+            if new_feat is not None and new_feat != "":
                 fets.append(new_feat)
-                for a in newFields.toList(): 
-                    attrs.append(a) 
-                
-                pr.addAttributes(newFields) # add new attributes from the current object
+                for a in newFields.toList():
+                    attrs.append(a)
+
+                pr.addAttributes(
+                    newFields
+                )  # add new attributes from the current object
                 fetIds.append(f.id)
                 fetColors = findFeatColors(fetColors, f)
             else:
-                logToUser(f"Table feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
-                report_features[len(report_features)-1].update({"errors": "Table feature skipped due to invalid data"})
+                logToUser(
+                    f"Table feature skipped due to invalid data",
+                    level=2,
+                    func=inspect.stack()[0][3],
+                )
+                report_features[len(report_features) - 1].update(
+                    {"errors": "Table feature skipped due to invalid data"}
+                )
                 all_feature_errors_count += 1
-        
+
         # add Layer attribute fields
         pr.addAttributes(newFields)
         vl.updateFields()
 
-        #pr = vl.dataProvider()
+        # pr = vl.dataProvider()
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
@@ -744,123 +1096,199 @@ def addNonGeometryMainThread(obj: Tuple):
         layerGroup.addLayer(vl)
 
         # report
-        obj_type = geom_print + " Vector Layer" if "Mesh" not in geom_print else "Multipolygon Vector Layer"
+        obj_type = (
+            geom_print + " Vector Layer"
+            if "Mesh" not in geom_print
+            else "Multipolygon Vector Layer"
+        )
         if all_feature_errors_count == 0:
-            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": ""})
-        else: 
-            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
+            dataStorage.latestActionReport.append(
+                {
+                    "speckle_id": f"{layer_id} {finalName}",
+                    "obj_type": obj_type,
+                    "errors": "",
+                }
+            )
+        else:
+            dataStorage.latestActionReport.append(
+                {
+                    "speckle_id": f"{layer_id} {finalName}",
+                    "obj_type": obj_type,
+                    "errors": f"{all_feature_errors_count} features failed",
+                }
+            )
         for item in report_features:
             dataStorage.latestActionReport.append(item)
         dataStorage.latestConversionTime = datetime.now()
 
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
         # report
         obj_type = geom_print + "Vector Layer"
-        dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+        dataStorage.latestActionReport.append(
+            {
+                "speckle_id": f"{layer_id} {finalName}",
+                "obj_type": obj_type,
+                "errors": f"{e}",
+            }
+        )
         dataStorage.latestConversionTime = datetime.now()
 
-def geometryLayerToNative(layerContentList: List[Base], layerName: str, val_id: str, streamBranch: str, plugin, matrix = None):
-    #print("01_____GEOMETRY layer to native")
+
+def geometryLayerToNative(
+    layerContentList: List[Base],
+    layerName: str,
+    val_id: str,
+    streamBranch: str,
+    plugin,
+    matrix=None,
+):
+    # print("01_____GEOMETRY layer to native")
     try:
-        #print(layerContentList)
+        # print(layerContentList)
         geom_meshes = []
-        
+
         geom_points = []
         geom_polylines = []
-        
+
         layer_points = None
         layer_polylines = None
-        #geom_meshes = []
-        val = None 
-        
-        #filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
+        # geom_meshes = []
+        val = None
+
+        # filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
         for geom in layerContentList:
-            #print(geom)
-            if isinstance(geom, Point): 
+            # print(geom)
+            if isinstance(geom, Point):
                 geom_points.append(geom)
                 continue
-            elif isinstance(geom, Line) or isinstance(geom, Polyline) or isinstance(geom, Curve) or isinstance(geom, Arc) or isinstance(geom, Circle) or isinstance(geom, Ellipse) or isinstance(geom, Polycurve):
+            elif (
+                isinstance(geom, Line)
+                or isinstance(geom, Polyline)
+                or isinstance(geom, Curve)
+                or isinstance(geom, Arc)
+                or isinstance(geom, Circle)
+                or isinstance(geom, Ellipse)
+                or isinstance(geom, Polycurve)
+            ):
                 geom_polylines.append(geom)
                 continue
             try:
-                if geom.speckle_type.endswith(".ModelCurve") and geom["baseCurve"].speckle_type in GEOM_LINE_TYPES:
+                if (
+                    geom.speckle_type.endswith(".ModelCurve")
+                    and geom["baseCurve"].speckle_type in GEOM_LINE_TYPES
+                ):
                     geom_polylines.append(geom["baseCurve"])
                     continue
                 elif geom["baseLine"].speckle_type in GEOM_LINE_TYPES:
                     geom_polylines.append(geom["baseLine"])
-                    # don't skip the rest if baseLine is found 
-            except: pass # check for the Meshes
+                    # don't skip the rest if baseLine is found
+            except:
+                pass  # check for the Meshes
 
             # ________________get list of display values for Meshes___________________________
             val = getDisplayValueList(geom)
-            #print(val) # List of Meshes
+            # print(val) # List of Meshes
 
-            if isinstance(val, List) and len(val)>0 and isinstance(val[0], Mesh) : 
-                #print("__________GET ACTUAL ELEMENT BEFORE DISPLAY VALUE")
-                #print(val[0]) # Mesh 
-                
-                if isinstance(geom, List): geom_meshes.extend(geom)
-                else: geom_meshes.append(geom)
-            #print("__GEOM MESHES")
-            #print(geom_meshes)
-        
-        if len(geom_meshes)>0: 
-            bimVectorLayerToNative(geom_meshes, layerName, val_id, "Mesh", streamBranch, plugin, matrix) 
-        if len(geom_points)>0: 
-            cadVectorLayerToNative(geom_points, layerName, val_id, "Points", streamBranch, plugin, matrix)
-        if len(geom_polylines)>0: 
-            cadVectorLayerToNative(geom_polylines, layerName, val_id, "Polylines", streamBranch, plugin, matrix)
+            if isinstance(val, List) and len(val) > 0 and isinstance(val[0], Mesh):
+                # print("__________GET ACTUAL ELEMENT BEFORE DISPLAY VALUE")
+                # print(val[0]) # Mesh
+
+                if isinstance(geom, List):
+                    geom_meshes.extend(geom)
+                else:
+                    geom_meshes.append(geom)
+            # print("__GEOM MESHES")
+            # print(geom_meshes)
+
+        if len(geom_meshes) > 0:
+            bimVectorLayerToNative(
+                geom_meshes, layerName, val_id, "Mesh", streamBranch, plugin, matrix
+            )
+        if len(geom_points) > 0:
+            cadVectorLayerToNative(
+                geom_points, layerName, val_id, "Points", streamBranch, plugin, matrix
+            )
+        if len(geom_polylines) > 0:
+            cadVectorLayerToNative(
+                geom_polylines,
+                layerName,
+                val_id,
+                "Polylines",
+                streamBranch,
+                plugin,
+                matrix,
+            )
 
         return True
-    
+
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        return
 
-def bimVectorLayerToNative(geomList: List[Base], layerName_old: str, val_id: str, geomType: str, streamBranch: str, plugin, matrix: list = None): 
-    #print("02_________BIM vector layer to native_____")
-    try: 
-        #project: QgsProject = plugin.project
-        #print(layerName_old)
 
-        layerName = layerName_old#[:50]
-        layerName = removeSpecialCharacters(layerName) 
-        #print(layerName)
+def bimVectorLayerToNative(
+    geomList: List[Base],
+    layerName_old: str,
+    val_id: str,
+    geomType: str,
+    streamBranch: str,
+    plugin,
+    matrix: list = None,
+):
+    # print("02_________BIM vector layer to native_____")
+    try:
+        # project: QgsProject = plugin.project
+        # print(layerName_old)
 
-        #get Project CRS, use it by default for the new received layer
+        layerName = layerName_old  # [:50]
+        layerName = removeSpecialCharacters(layerName)
+        # print(layerName)
+
+        # get Project CRS, use it by default for the new received layer
         vl = None
-        #layerName = layerName + "_" + geomType
-        #print(layerName)
+        # layerName = layerName + "_" + geomType
+        # print(layerName)
 
-        if "mesh" in geomType.lower(): geomType = "MultiPolygonZ"
-        
+        if "mesh" in geomType.lower():
+            geomType = "MultiPolygonZ"
+
         newFields = getLayerAttributes(geomList)
-        #print("___________Layer fields_____________")
-        #print(newFields.toList())
-        
-        plugin.dockwidget.signal_2.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
-        
+        # print("___________Layer fields_____________")
+        # print(newFields.toList())
 
-        return 
+        plugin.dockwidget.signal_2.emit(
+            {
+                "plugin": plugin,
+                "geomType": geomType,
+                "layerName": layerName,
+                "layer_id": val_id,
+                "streamBranch": streamBranch,
+                "newFields": newFields,
+                "geomList": geomList,
+                "matrix": matrix,
+            }
+        )
+
+        return
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        return
 
 
 def addBimMainThread(obj: Tuple):
-    try: 
+    try:
         finalName = ""
-        plugin = obj['plugin'] 
-        geomType = obj['geomType'] 
-        layerName = obj['layerName'] 
-        layer_id = obj['layer_id']
-        streamBranch = obj['streamBranch'] 
-        newFields = obj['newFields'] 
-        geomList = obj['geomList']
-        matrix = obj['matrix']
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
-        
+        plugin = obj["plugin"]
+        geomType = obj["geomType"]
+        layerName = obj["layerName"]
+        layer_id = obj["layer_id"]
+        streamBranch = obj["streamBranch"]
+        newFields = obj["newFields"]
+        geomList = obj["geomList"]
+        matrix = obj["matrix"]
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel")
+
         dataStorage = plugin.dataStorage
         dataStorage.matrix = matrix
         report_features = []
@@ -868,65 +1296,93 @@ def addBimMainThread(obj: Tuple):
         project: QgsProject = dataStorage.project
 
         geom_print = geomType
-        if "MultiPolygonZ" in geom_print:  geom_print = "Mesh"
-        elif "LineStringZ" in geom_print:  geom_print = "Polyline"
-        elif "PointZ" in geom_print:  geom_print = "Point"
+        if "MultiPolygonZ" in geom_print:
+            geom_print = "Mesh"
+        elif "LineStringZ" in geom_print:
+            geom_print = "Polyline"
+        elif "PointZ" in geom_print:
+            geom_print = "Point"
 
-        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
-        #print(f"Final short name: {shortName}")
-        try: layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
-        except: layerName = layerName + ("_as_" + geom_print)
+        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL)) - 1][:50]
+        # print(f"Final short name: {shortName}")
+        try:
+            layerName = (
+                layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+            )
+        except:
+            layerName = layerName + ("_as_" + geom_print)
         finalName = shortName + ("_as_" + geom_print)
         dataStorage.latestActionLayers.append(finalName)
-        
-        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        except: groupName = streamBranch + SYMBOL + layerName
+
+        try:
+            groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except:
+            groupName = streamBranch + SYMBOL + layerName
         layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
-        #newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
+        # newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
         newName_shp = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{finalName[:30]}'
 
-
         ###########################################
-        dummy = None 
+        dummy = None
         root = project.layerTreeRoot()
         dataStorage.all_layers = getAllLayers(root)
-        if dataStorage.all_layers is not None: 
+        if dataStorage.all_layers is not None:
             if len(dataStorage.all_layers) == 0:
-                dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
+                dummy = QgsVectorLayer(
+                    "Point?crs=EPSG:4326", "", "memory"
+                )  # do something to distinguish: stream_id_latest_name
                 crs = QgsCoordinateReferenceSystem(4326)
                 dummy.setCrs(crs)
                 project.addMapLayer(dummy, True)
         #################################################
 
-        
-        crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-        dataStorage.currentUnits = str(QgsUnitTypes.encodeUnit(crs.mapUnits())) 
-        if dataStorage.currentUnits is None or dataStorage.currentUnits == 'degrees': 
-            dataStorage.currentUnits = 'm'
+        crs = project.crs()  # QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+        dataStorage.currentUnits = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
+        if dataStorage.currentUnits is None or dataStorage.currentUnits == "degrees":
+            dataStorage.currentUnits = "m"
 
-        if crs.isGeographic is True: 
-            logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
+        if crs.isGeographic is True:
+            logToUser(
+                f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly",
+                level=1,
+                func=inspect.stack()[0][3],
+            )
 
-        p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M")
+        p = (
+            os.path.expandvars(r"%LOCALAPPDATA%")
+            + "\\Temp\\Speckle_QGIS_temp\\"
+            + datetime.now().strftime("%Y-%m-%d_%H-%M")
+        )
         findOrCreatePath(p)
         path = p
-        #logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", level = 1, func = inspect.stack()[0][3])
+        # logToUser(f"BIM layers can only be received in an existing saved project. Layer {layerName} will be ignored", level = 1, func = inspect.stack()[0][3])
 
-        path_bim = path + "/Layers_Speckle/BIM_layers/" + streamBranch+ "/" + layerName[:30] + "/" #arcpy.env.workspace + "\\" #
+        path_bim = (
+            path
+            + "/Layers_Speckle/BIM_layers/"
+            + streamBranch
+            + "/"
+            + layerName[:30]
+            + "/"
+        )  # arcpy.env.workspace + "\\" #
 
         findOrCreatePath(path_bim)
-        #print(path_bim)
+        # print(path_bim)
 
         shp = writeMeshToShp(geomList, path_bim + newName_shp, dataStorage)
         dataStorage.matrix = None
-        if shp is None: return 
-        #print("____ meshes saved___")
-        #print(shp)
+        if shp is None:
+            return
+        # print("____ meshes saved___")
+        # print(shp)
 
-
-        vl_shp = QgsVectorLayer( shp + ".shp", finalName, "ogr") # do something to distinguish: stream_id_latest_name
-        vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid(), finalName, "memory") # do something to distinguish: stream_id_latest_name
+        vl_shp = QgsVectorLayer(
+            shp + ".shp", finalName, "ogr"
+        )  # do something to distinguish: stream_id_latest_name
+        vl = QgsVectorLayer(
+            geomType + "?crs=" + crs.authid(), finalName, "memory"
+        )  # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
 
@@ -938,18 +1394,18 @@ def addBimMainThread(obj: Tuple):
         vl.updateFields()
 
         # create list of Features (fets) and list of Layer fields (fields)
-        #attrs = QgsFields()
+        # attrs = QgsFields()
         fets = []
         fetIds = []
         fetColors = []
-        
-        
+
         report_features = []
         all_feature_errors_count = 0
-        for i,f in enumerate(geomList[:]): 
-            
+        for i, f in enumerate(geomList[:]):
             # pre-fill report:
-            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
+            report_features.append(
+                {"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""}
+            )
 
             try:
                 exist_feat: None = None
@@ -957,186 +1413,270 @@ def addBimMainThread(obj: Tuple):
                     if shape["speckle_id"] == f.id:
                         exist_feat = vl_shp.getFeature(n)
                         break
-                if exist_feat is None: 
-                    logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-                    report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid geometry"})
-                    continue 
+                if exist_feat is None:
+                    logToUser(
+                        f"Feature skipped due to invalid geometry",
+                        level=2,
+                        func=inspect.stack()[0][3],
+                    )
+                    report_features[len(report_features) - 1].update(
+                        {"errors": "Feature skipped due to invalid geometry"}
+                    )
+                    continue
 
-                new_feat = bimFeatureToNative(exist_feat, f, vl.fields(), crs, path_bim, dataStorage)
-                if new_feat is not None and new_feat != "": 
+                new_feat = bimFeatureToNative(
+                    exist_feat, f, vl.fields(), crs, path_bim, dataStorage
+                )
+                if new_feat is not None and new_feat != "":
                     fetColors = findFeatColors(fetColors, f)
                     fets.append(new_feat)
                     vl.addFeature(new_feat)
                     fetIds.append(f.id)
                 else:
-                    logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-                    report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid geometry"})
-                    
-            except Exception as e: 
-                logToUser(e, level = 2, func = inspect.stack()[0][3])
-                report_features[len(report_features)-1].update({"errors": f"{e}"})
-        
+                    logToUser(
+                        f"Feature skipped due to invalid geometry",
+                        level=2,
+                        func=inspect.stack()[0][3],
+                    )
+                    report_features[len(report_features) - 1].update(
+                        {"errors": "Feature skipped due to invalid geometry"}
+                    )
+
+            except Exception as e:
+                logToUser(e, level=2, func=inspect.stack()[0][3])
+                report_features[len(report_features) - 1].update({"errors": f"{e}"})
+
         vl.updateExtents()
         vl.commitChanges()
 
         layerGroup.addLayer(vl)
 
-        try: 
+        try:
             ################################### RENDERER 3D ###########################################
-            #rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
+            # rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
 
             plugin_dir = os.path.dirname(__file__)
-            renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
-            #print(renderer3d)
+            renderer3d = os.path.join(plugin_dir, "renderer3d.qml")
+            # print(renderer3d)
 
             vl.loadNamedStyle(renderer3d)
             vl.triggerRepaint()
-        except: pass 
-        
+        except:
+            pass
+
         try:
             ################################### RENDERER ###########################################
             # only set up renderer if the layer is just created
-            attribute = 'Speckle_ID'
+            attribute = "Speckle_ID"
             categories = []
             for i in range(len(fets)):
                 material = fetColors[i]
                 color = colorFromSpeckle(material)
 
-                symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
+                symbol = QgsSymbol.defaultSymbol(
+                    QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType))
+                )
                 symbol.setColor(color)
-                categories.append(QgsRendererCategory(fetIds[i], symbol, fetIds[i], True) )  
+                categories.append(
+                    QgsRendererCategory(fetIds[i], symbol, fetIds[i], True)
+                )
             # create empty category for all other values
             symbol2 = symbol.clone()
-            symbol2.setColor(QColor.fromRgb(245,245,245))
+            symbol2.setColor(QColor.fromRgb(245, 245, 245))
             cat = QgsRendererCategory()
             cat.setSymbol(symbol2)
-            cat.setLabel('Other')
-            categories.append(cat)        
+            cat.setLabel("Other")
+            categories.append(cat)
             rendererNew = QgsCategorizedSymbolRenderer(attribute, categories)
-        except Exception as e: print(e)
+        except Exception as e:
+            print(e)
 
-        try: vl.setRenderer(rendererNew)
-        except: pass
+        try:
+            vl.setRenderer(rendererNew)
+        except:
+            pass
 
-        
-        try: project.removeMapLayer(dummy)
-        except: pass
-        
+        try:
+            project.removeMapLayer(dummy)
+        except:
+            pass
+
         # report
-        obj_type = geom_print + " Vector Layer" if "Mesh" not in geom_print else "Multipolygon Vector Layer"
+        obj_type = (
+            geom_print + " Vector Layer"
+            if "Mesh" not in geom_print
+            else "Multipolygon Vector Layer"
+        )
         if all_feature_errors_count == 0:
-            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": ""})
-        else: 
-            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
+            dataStorage.latestActionReport.append(
+                {
+                    "speckle_id": f"{layer_id} {finalName}",
+                    "obj_type": obj_type,
+                    "errors": "",
+                }
+            )
+        else:
+            dataStorage.latestActionReport.append(
+                {
+                    "speckle_id": f"{layer_id} {finalName}",
+                    "obj_type": obj_type,
+                    "errors": f"{all_feature_errors_count} features failed",
+                }
+            )
         for item in report_features:
             dataStorage.latestActionReport.append(item)
         dataStorage.latestConversionTime = datetime.now()
-        
+
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        # report 
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        # report
         obj_type = geom_print + "Vector Layer"
-        dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+        dataStorage.latestActionReport.append(
+            {
+                "speckle_id": f"{layer_id} {finalName}",
+                "obj_type": obj_type,
+                "errors": f"{e}",
+            }
+        )
         dataStorage.latestConversionTime = datetime.now()
 
 
-def cadVectorLayerToNative(geomList: List[Base], layerName: str, val_id: str, geomType: str, streamBranch: str, plugin, matrix = None) -> QgsVectorLayer: 
-    #print("___________cadVectorLayerToNative")
+def cadVectorLayerToNative(
+    geomList: List[Base],
+    layerName: str,
+    val_id: str,
+    geomType: str,
+    streamBranch: str,
+    plugin,
+    matrix=None,
+) -> QgsVectorLayer:
+    # print("___________cadVectorLayerToNative")
     try:
         project: QgsProject = plugin.project
 
-        #get Project CRS, use it by default for the new received layer
+        # get Project CRS, use it by default for the new received layer
         vl = None
 
-        layerName = removeSpecialCharacters(layerName) 
+        layerName = removeSpecialCharacters(layerName)
 
-        #layerName = layerName + "_" + geomType
-        #print(layerName)
+        # layerName = layerName + "_" + geomType
+        # print(layerName)
 
-        newName = f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
+        newName = (
+            f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
+        )
 
-        if geomType == "Points": geomType = "PointZ"
-        elif geomType == "Polylines": geomType = "LineStringZ"
+        if geomType == "Points":
+            geomType = "PointZ"
+        elif geomType == "Polylines":
+            geomType = "LineStringZ"
 
-        
         newFields = getLayerAttributes(geomList)
-        #print(newFields.toList())
-        #print(geomList)
-        
-        plugin.dockwidget.signal_3.emit({'plugin': plugin, 'geomType': geomType, 'layerName': layerName, 'layer_id': val_id, 'streamBranch': streamBranch, 'newFields': newFields, 'geomList': geomList, 'matrix': matrix})
-        
+        # print(newFields.toList())
+        # print(geomList)
 
-        return 
+        plugin.dockwidget.signal_3.emit(
+            {
+                "plugin": plugin,
+                "geomType": geomType,
+                "layerName": layerName,
+                "layer_id": val_id,
+                "streamBranch": streamBranch,
+                "newFields": newFields,
+                "geomList": geomList,
+                "matrix": matrix,
+            }
+        )
+
+        return
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
-    
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        return
+
+
 def addCadMainThread(obj: Tuple):
-    #print("___addCadMainThread")
+    # print("___addCadMainThread")
     try:
         finalName = ""
-        plugin = obj['plugin'] 
-        geomType = obj['geomType'] 
-        layerName = obj['layerName'] 
-        layer_id = obj['layer_id']
-        streamBranch = obj['streamBranch'] 
-        newFields = obj['newFields'] 
-        geomList = obj['geomList']
-        matrix = obj['matrix']
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
+        plugin = obj["plugin"]
+        geomType = obj["geomType"]
+        layerName = obj["layerName"]
+        layer_id = obj["layer_id"]
+        streamBranch = obj["streamBranch"]
+        newFields = obj["newFields"]
+        geomList = obj["geomList"]
+        matrix = obj["matrix"]
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel")
 
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
         dataStorage.matrix = matrix
 
-        
         geom_print = geomType
-        if "MultiPolygonZ" in geom_print:  geom_print = "Mesh"
-        elif "LineStringZ" in geom_print:  geom_print = "Polyline"
-        elif "PointZ" in geom_print:  geom_print = "Point"
+        if "MultiPolygonZ" in geom_print:
+            geom_print = "Mesh"
+        elif "LineStringZ" in geom_print:
+            geom_print = "Polyline"
+        elif "PointZ" in geom_print:
+            geom_print = "Point"
 
-        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL))-1][:50] 
-        
-        try: layerName = layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
-        except: layerName = layerName + ("_as_" + geom_print)
+        shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL)) - 1][:50]
+
+        try:
+            layerName = (
+                layerName.split(shortName)[0] + shortName + ("_as_" + geom_print)
+            )
+        except:
+            layerName = layerName + ("_as_" + geom_print)
         finalName = shortName + ("_as_" + geom_print)
-        
-        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        except: groupName = streamBranch + SYMBOL + layerName
+
+        try:
+            groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except:
+            groupName = streamBranch + SYMBOL + layerName
         layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         dataStorage.latestActionLayers.append(finalName)
 
         ###########################################
-        dummy = None 
+        dummy = None
         root = project.layerTreeRoot()
         plugin.dataStorage.all_layers = getAllLayers(root)
-        if plugin.dataStorage.all_layers is not None: 
+        if plugin.dataStorage.all_layers is not None:
             if len(plugin.dataStorage.all_layers) == 0:
-                dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
+                dummy = QgsVectorLayer(
+                    "Point?crs=EPSG:4326", "", "memory"
+                )  # do something to distinguish: stream_id_latest_name
                 crs = QgsCoordinateReferenceSystem(4326)
                 dummy.setCrs(crs)
                 project.addMapLayer(dummy, True)
         #################################################
 
-        crs = project.crs() #QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
-        plugin.dataStorage.currentUnits = str(QgsUnitTypes.encodeUnit(crs.mapUnits())) 
-        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
-            plugin.dataStorage.currentUnits = 'm'
-        #authid = trySaveCRS(crs, streamBranch)
+        crs = project.crs()  # QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt)
+        plugin.dataStorage.currentUnits = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
+        if (
+            plugin.dataStorage.currentUnits is None
+            or plugin.dataStorage.currentUnits == "degrees"
+        ):
+            plugin.dataStorage.currentUnits = "m"
+        # authid = trySaveCRS(crs, streamBranch)
 
-        if crs.isGeographic is True: 
-            logToUser(f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly", level = 1, func = inspect.stack()[0][3])
+        if crs.isGeographic is True:
+            logToUser(
+                f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly",
+                level=1,
+                func=inspect.stack()[0][3],
+            )
 
-        
-        vl = QgsVectorLayer( geomType+ "?crs=" + crs.authid() , finalName, "memory") # do something to distinguish: stream_id_latest_name
+        vl = QgsVectorLayer(
+            geomType + "?crs=" + crs.authid(), finalName, "memory"
+        )  # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
 
         pr = vl.dataProvider()
         vl.startEditing()
-        
-        
+
         # create list of Features (fets) and list of Layer fields (fields)
         attrs = QgsFields()
         fets = []
@@ -1145,35 +1685,44 @@ def addCadMainThread(obj: Tuple):
 
         report_features = []
         all_feature_errors_count = 0
-        for f in geomList[:]: 
-
+        for f in geomList[:]:
             # pre-fill report:
-            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
+            report_features.append(
+                {"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""}
+            )
 
             new_feat = cadFeatureToNative(f, newFields, plugin.dataStorage)
             # update attrs for the next feature (if more fields were added from previous feature)
 
-            #print("________cad feature to add") 
-            if new_feat is not None and new_feat != "": 
+            # print("________cad feature to add")
+            if new_feat is not None and new_feat != "":
                 fets.append(new_feat)
-                for a in newFields.toList(): 
-                    attrs.append(a) 
-                
-                pr.addAttributes(newFields) # add new attributes from the current object
+                for a in newFields.toList():
+                    attrs.append(a)
+
+                pr.addAttributes(
+                    newFields
+                )  # add new attributes from the current object
                 fetIds.append(f.id)
                 fetColors = findFeatColors(fetColors, f)
             else:
-                logToUser(f"Feature skipped due to invalid geometry", level = 2, func = inspect.stack()[0][3])
-                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid geometry"})
+                logToUser(
+                    f"Feature skipped due to invalid geometry",
+                    level=2,
+                    func=inspect.stack()[0][3],
+                )
+                report_features[len(report_features) - 1].update(
+                    {"errors": "Feature skipped due to invalid geometry"}
+                )
                 all_feature_errors_count += 1
-            
+
         dataStorage.matrix = None
-        
+
         # add Layer attribute fields
         pr.addAttributes(newFields)
         vl.updateFields()
 
-        #pr = vl.dataProvider()
+        # pr = vl.dataProvider()
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
@@ -1182,133 +1731,189 @@ def addCadMainThread(obj: Tuple):
 
         ################################### RENDERER ###########################################
         # only set up renderer if the layer is just created
-        attribute = 'Speckle_ID'
+        attribute = "Speckle_ID"
         categories = []
         for i in range(len(fets)):
             rgb = fetColors[i]
             if rgb:
                 r = (rgb & 0xFF0000) >> 16
                 g = (rgb & 0xFF00) >> 8
-                b = rgb & 0xFF 
+                b = rgb & 0xFF
                 color = QColor.fromRgb(r, g, b)
-            else: color = QColor.fromRgb(0,0,0)
+            else:
+                color = QColor.fromRgb(0, 0, 0)
 
-            symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
+            symbol = QgsSymbol.defaultSymbol(
+                QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType))
+            )
             symbol.setColor(color)
-            categories.append(QgsRendererCategory(fetIds[i], symbol, fetIds[i], True) )  
+            categories.append(QgsRendererCategory(fetIds[i], symbol, fetIds[i], True))
         # create empty category for all other values
         symbol2 = symbol.clone()
-        symbol2.setColor(QColor.fromRgb(0,0,0))
+        symbol2.setColor(QColor.fromRgb(0, 0, 0))
         cat = QgsRendererCategory()
         cat.setSymbol(symbol2)
-        cat.setLabel('Other')
-        categories.append(cat)        
+        cat.setLabel("Other")
+        categories.append(cat)
         rendererNew = QgsCategorizedSymbolRenderer(attribute, categories)
 
-        try: vl.setRenderer(rendererNew)
-        except: pass
+        try:
+            vl.setRenderer(rendererNew)
+        except:
+            pass
 
-        try: 
+        try:
             ################################### RENDERER 3D ###########################################
-            #rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
+            # rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
 
             plugin_dir = os.path.dirname(__file__)
-            renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
-            #print(renderer3d)
+            renderer3d = os.path.join(plugin_dir, "renderer3d.qml")
+            # print(renderer3d)
 
             vl.loadNamedStyle(renderer3d)
             vl.triggerRepaint()
-        except: pass 
+        except:
+            pass
 
-        try: project.removeMapLayer(dummy)
-        except: pass
+        try:
+            project.removeMapLayer(dummy)
+        except:
+            pass
 
         # report
-        obj_type = geom_print + " Vector Layer" if "Mesh" not in geom_print else "Multipolygon Vector Layer"
+        obj_type = (
+            geom_print + " Vector Layer"
+            if "Mesh" not in geom_print
+            else "Multipolygon Vector Layer"
+        )
         if all_feature_errors_count == 0:
-            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": ""})
-        else: 
-            dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
+            dataStorage.latestActionReport.append(
+                {
+                    "speckle_id": f"{layer_id} {finalName}",
+                    "obj_type": obj_type,
+                    "errors": "",
+                }
+            )
+        else:
+            dataStorage.latestActionReport.append(
+                {
+                    "speckle_id": f"{layer_id} {finalName}",
+                    "obj_type": obj_type,
+                    "errors": f"{all_feature_errors_count} features failed",
+                }
+            )
         for item in report_features:
             dataStorage.latestActionReport.append(item)
         dataStorage.latestConversionTime = datetime.now()
 
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
         # report
         obj_type = geom_print + "Vector Layer"
-        dataStorage.latestActionReport.append({"speckle_id": f"{layer_id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+        dataStorage.latestActionReport.append(
+            {
+                "speckle_id": f"{layer_id} {finalName}",
+                "obj_type": obj_type,
+                "errors": f"{e}",
+            }
+        )
         dataStorage.latestConversionTime = datetime.now()
 
-def vectorLayerToNative(layer: Layer or VectorLayer, streamBranch: str, nameBase: str, plugin):
-    try:
-        #print("vectorLayerToNative")
-        project: QgsProject = plugin.project
-        layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name) 
-        #print(layerName)
 
-        newName = layerName #f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
-        #print(newName)
+def vectorLayerToNative(
+    layer: Layer or VectorLayer, streamBranch: str, nameBase: str, plugin
+):
+    try:
+        # print("vectorLayerToNative")
+        project: QgsProject = plugin.project
+        layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name)
+        # print(layerName)
+
+        newName = layerName  # f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
+        # print(newName)
 
         # particularly if the layer comes from ArcGIS
-        geomType = layer.geomType # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
-        if geomType =="Point": geomType = "Point"
-        elif geomType =="Polygon": geomType = "MultiPolygon"
-        elif geomType =="Polyline": geomType = "MultiLineString"
-        elif geomType =="Multipoint": geomType = "Point"
-        elif geomType == 'MultiPatch': geomType = "Polygon"
+        geomType = (
+            layer.geomType
+        )  # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
+        if geomType == "Point":
+            geomType = "Point"
+        elif geomType == "Polygon":
+            geomType = "MultiPolygon"
+        elif geomType == "Polyline":
+            geomType = "MultiLineString"
+        elif geomType == "Multipoint":
+            geomType = "Point"
+        elif geomType == "MultiPatch":
+            geomType = "Polygon"
 
         fets = []
-        #print("before newFields")
+        # print("before newFields")
 
         newFields = QgsFields()
-        objectEmit = {'plugin': plugin, 'geomType': geomType, 'newName': newName, 'streamBranch': streamBranch, 'wkt': layer.crs.wkt, 'layer': layer, 'newFields': newFields, 'fets': fets}
+        objectEmit = {
+            "plugin": plugin,
+            "geomType": geomType,
+            "newName": newName,
+            "streamBranch": streamBranch,
+            "wkt": layer.crs.wkt,
+            "layer": layer,
+            "newFields": newFields,
+            "fets": fets,
+        }
         plugin.dockwidget.signal_1.emit(objectEmit)
-        
 
-        return 
-    
+        return
+
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
-    
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        return
+
+
 def addVectorMainThread(obj: Tuple):
-    #print("___addVectorMainThread")
+    # print("___addVectorMainThread")
     try:
         finalName = ""
-        plugin = obj['plugin'] 
-        geomType = obj['geomType'] 
-        newName = obj['newName'] 
-        streamBranch = obj['streamBranch'] 
-        wkt = obj['wkt']
-        layer = obj['layer'] 
-        newFields = obj['newFields'] 
-        fets = obj['fets']
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
-        
+        plugin = obj["plugin"]
+        geomType = obj["geomType"]
+        newName = obj["newName"]
+        streamBranch = obj["streamBranch"]
+        wkt = obj["wkt"]
+        layer = obj["layer"]
+        newFields = obj["newFields"]
+        fets = obj["fets"]
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel")
+
         dataStorage = plugin.dataStorage
-        
-        plugin.dataStorage.currentUnits = layer.crs.units 
-        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
-            plugin.dataStorage.currentUnits = 'm'
+
+        plugin.dataStorage.currentUnits = layer.crs.units
+        if (
+            plugin.dataStorage.currentUnits is None
+            or plugin.dataStorage.currentUnits == "degrees"
+        ):
+            plugin.dataStorage.currentUnits = "m"
         try:
             dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
-            dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
+            dataStorage.current_layer_crs_offset_y = layer.crs.offset_y
             dataStorage.current_layer_crs_rotation = layer.crs.rotation
         except Exception as e:
-            print(e) 
-        
+            print(e)
+
         project: QgsProject = plugin.dataStorage.project
 
-        #print(layer.name)
-        
-        shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL))-1][:50] 
-        try: layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
-        except: layerName = newName
-        finalName = shortName #+ ("_" + geom_print)
-        #print(f"Final layer name: {finalName}")
-        try: groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
-        except: groupName = streamBranch + SYMBOL + layerName
+        # print(layer.name)
+
+        shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50]
+        try:
+            layerName = newName.split(shortName)[0] + shortName  # + ("_" + geom_print)
+        except:
+            layerName = newName
+        finalName = shortName  # + ("_" + geom_print)
+        # print(f"Final layer name: {finalName}")
+        try:
+            groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
+        except:
+            groupName = streamBranch + SYMBOL + layerName
         layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
 
         dataStorage.latestActionLayers.append(finalName)
@@ -1318,49 +1923,66 @@ def addVectorMainThread(obj: Tuple):
         fets = []
         report_features = []
         all_feature_errors_count = 0
-        #print("before newFields")
+        # print("before newFields")
         newFields = getLayerAttributes(layer.elements)
-        for f in layer.elements: 
+        for f in layer.elements:
             # pre-fill report:
-            report_features.append({"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""})
+            report_features.append(
+                {"speckle_id": f.id, "obj_type": f.speckle_type, "errors": ""}
+            )
 
             new_feat = featureToNative(f, newFields, plugin.dataStorage)
-            if new_feat is not None and new_feat != "": 
+            if new_feat is not None and new_feat != "":
                 fets.append(new_feat)
-            
+
                 if isinstance(f, GisNonGeometryElement):
-                    logToUser(f"Feature does not contain geometry", level = 2, func = inspect.stack()[0][3])
-                    report_features[len(report_features)-1].update({"errors": "Feature does not contain geometry"})
+                    logToUser(
+                        f"Feature does not contain geometry",
+                        level=2,
+                        func=inspect.stack()[0][3],
+                    )
+                    report_features[len(report_features) - 1].update(
+                        {"errors": "Feature does not contain geometry"}
+                    )
                     all_feature_errors_count += 1
             else:
-                logToUser(f"Feature skipped due to invalid data", level = 2, func = inspect.stack()[0][3])
-                report_features[len(report_features)-1].update({"errors": "Feature skipped due to invalid data"})
+                logToUser(
+                    f"Feature skipped due to invalid data",
+                    level=2,
+                    func=inspect.stack()[0][3],
+                )
+                report_features[len(report_features) - 1].update(
+                    {"errors": "Feature skipped due to invalid data"}
+                )
                 all_feature_errors_count += 1
-            
-        if newFields is None: 
+
+        if newFields is None:
             newFields = QgsFields()
 
         # add dummy layer to secure correct CRS
-        #print("before dummy layer")
-        dummy = None 
+        # print("before dummy layer")
+        dummy = None
         root = project.layerTreeRoot()
         plugin.dataStorage.all_layers = getAllLayers(root)
-        if plugin.dataStorage.all_layers is not None: 
+        if plugin.dataStorage.all_layers is not None:
             if len(plugin.dataStorage.all_layers) == 0:
-                dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
+                dummy = QgsVectorLayer(
+                    "Point?crs=EPSG:4326", "", "memory"
+                )  # do something to distinguish: stream_id_latest_name
                 crs = QgsCoordinateReferenceSystem(4326)
                 dummy.setCrs(crs)
                 project.addMapLayer(dummy, True)
         #################################################
 
-        crs = QgsCoordinateReferenceSystem.fromWkt(wkt) 
+        crs = QgsCoordinateReferenceSystem.fromWkt(wkt)
         srsid = trySaveCRS(crs, streamBranch)
         crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
         authid = crs_new.authid()
-        #print(authid)
-        
+        # print(authid)
+
         #################################################
-        #print("03")
+        # print("03")
+        r"""
         if "polygon" in geomType.lower(): # not newName.endswith("_Mesh") and  and "Speckle_ID" in newFields.names():
             # reproject all QGIS polygon geometry to EPSG 4326 until the CRS issue is found 
             for i, f in enumerate(fets):
@@ -1372,11 +1994,14 @@ def addVectorMainThread(obj: Tuple):
             crs = QgsCoordinateReferenceSystem(4326)
             authid = "EPSG:4326"
         #################################################
+        """
 
-        #print("05")
-        #layerGroup = tryCreateGroup(project, streamBranch)
-        
-        vl = QgsVectorLayer(geomType + "?crs=" + authid, finalName, "memory") # do something to distinguish: stream_id_latest_name
+        # print("05")
+        # layerGroup = tryCreateGroup(project, streamBranch)
+
+        vl = QgsVectorLayer(
+            geomType + "?crs=" + authid, finalName, "memory"
+        )  # do something to distinguish: stream_id_latest_name
         vl.setCrs(crs)
         project.addMapLayer(vl, False)
 
@@ -1393,164 +2018,225 @@ def addVectorMainThread(obj: Tuple):
 
         #################################################
 
-        if "polygon" in geomType.lower(): # and "Speckle_ID" in newFields.names(): #not newName.endswith("_Mesh") and 
-
-            p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        if (
+            "polygon" in geomType.lower()
+        ):  # and "Speckle_ID" in newFields.names(): #not newName.endswith("_Mesh") and
+            p = (
+                os.path.expandvars(r"%LOCALAPPDATA%")
+                + "\\Temp\\Speckle_QGIS_temp\\"
+                + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            )
             findOrCreatePath(p)
-            file_name = os.path.join(p, newName )
+            file_name = os.path.join(p, newName)
 
             options = QgsVectorFileWriter.SaveVectorOptions()
-            options.fileEncoding = "utf-8" 
+            options.fileEncoding = "utf-8"
 
             options.driverName = "GeoJSON"
-            options.overrideGeometryType = QgsWkbTypes.parseType('MultiPolygonZ')
+            options.overrideGeometryType = QgsWkbTypes.parseType("MultiPolygonZ")
             options.forceMulti = True
             options.includeZ = True
-            writer = QgsVectorFileWriter.writeAsVectorFormatV3(layer = vl, fileName  = file_name, transformContext = project.transformContext(), options = options)
-            del writer 
+            writer = QgsVectorFileWriter.writeAsVectorFormatV3(
+                layer=vl,
+                fileName=file_name,
+                transformContext=project.transformContext(),
+                options=options,
+            )
+            del writer
 
-            # geojson writer fix 
+            # geojson writer fix
             try:
                 with open(file_name + ".geojson", "r") as file:
                     lines = file.readlines()
                     polygonType = False
                     for i, line in enumerate(lines):
-                        if '"type": "Polygon"' in line: 
+                        if '"type": "Polygon"' in line:
                             polygonType = True
                             break
 
                     if polygonType is True:
                         new_lines = []
                         for i, line in enumerate(lines):
-                            #print(line)
+                            # print(line)
                             if '"type": "Polygon"' in line:
-                                line = line.replace('"type": "Polygon"','"type": "MultiPolygonZ"')
-                            if " ] ] ] " in line and '"coordinates": [ [ [ [ ' not in line: 
+                                line = line.replace(
+                                    '"type": "Polygon"', '"type": "MultiPolygonZ"'
+                                )
+                            if (
+                                " ] ] ] " in line
+                                and '"coordinates": [ [ [ [ ' not in line
+                            ):
                                 line = line.replace(" ] ] ] ", " ] ] ] ] ")
-                            if '"coordinates": [ [ [ ' in line and '"coordinates": [ [ [ [ ' not in line: 
-                                line = line.replace('"coordinates": [ [ [ ', '"coordinates": [ [ [ [ ')
+                            if (
+                                '"coordinates": [ [ [ ' in line
+                                and '"coordinates": [ [ [ [ ' not in line
+                            ):
+                                line = line.replace(
+                                    '"coordinates": [ [ [ ', '"coordinates": [ [ [ [ '
+                                )
                             new_lines.append(line)
                         with open(file_name + ".geojson", "w") as file:
                             file.writelines(new_lines)
                 file.close()
-            except Exception as e: 
-                logToUser(e, level = 2, func = inspect.stack()[0][3])
-                return 
+            except Exception as e:
+                logToUser(e, level=2, func=inspect.stack()[0][3])
+                return
 
-            if not newName.endswith("_Mesh"): finalName += "_Mesh"
-            
+            if not newName.endswith("_Mesh"):
+                finalName += "_Mesh"
+
             project.removeMapLayer(vl)
             vl = QgsVectorLayer(file_name + ".geojson", finalName, "ogr")
             vl.setCrs(crs)
             project.addMapLayer(vl, False)
-        
+
         #################################################
 
         layerGroup.addLayer(vl)
 
         rendererNew = vectorRendererToNative(layer, newFields)
         if rendererNew is None:
-            symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType)))
+            symbol = QgsSymbol.defaultSymbol(
+                QgsWkbTypes.geometryType(QgsWkbTypes.parseType(geomType))
+            )
             rendererNew = QgsSingleSymbolRenderer(symbol)
-        
-        
-        #time.sleep(3)
-        try: vl.setRenderer(rendererNew)
-        except: pass
 
-        #print("08")
-        try: 
+        # time.sleep(3)
+        try:
+            vl.setRenderer(rendererNew)
+        except:
+            pass
+
+        # print("08")
+        try:
             ################################### RENDERER 3D ###########################################
-            #rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
+            # rend3d = QgsVectorLayer3DRenderer() # https://qgis.org/pyqgis/3.16/3d/QgsVectorLayer3DRenderer.html?highlight=layer3drenderer#module-QgsVectorLayer3DRenderer
 
             plugin_dir = os.path.dirname(__file__)
-            renderer3d = os.path.join(plugin_dir, 'renderer3d.qml')
+            renderer3d = os.path.join(plugin_dir, "renderer3d.qml")
 
             vl.loadNamedStyle(renderer3d)
             vl.triggerRepaint()
-        except: pass 
+        except:
+            pass
 
-        try: project.removeMapLayer(dummy)
-        except: pass
-        
+        try:
+            project.removeMapLayer(dummy)
+        except:
+            pass
+
         # report
         all_feature_errors_count = 0
         for item in report_features:
-            if item["errors"] != "": all_feature_errors_count += 1
+            if item["errors"] != "":
+                all_feature_errors_count += 1
 
         obj_type = "Vector Layer"
         if all_feature_errors_count == 0:
-            dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": obj_type, "errors": ""})
-        else: 
-            dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": obj_type, "errors": f"{all_feature_errors_count} features failed"})
-        
+            dataStorage.latestActionReport.append(
+                {
+                    "speckle_id": f"{layer.id} {finalName}",
+                    "obj_type": obj_type,
+                    "errors": "",
+                }
+            )
+        else:
+            dataStorage.latestActionReport.append(
+                {
+                    "speckle_id": f"{layer.id} {finalName}",
+                    "obj_type": obj_type,
+                    "errors": f"{all_feature_errors_count} features failed",
+                }
+            )
+
         for item in report_features:
             dataStorage.latestActionReport.append(item)
         dataStorage.latestConversionTime = datetime.now()
 
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
         # report
         obj_type = "Vector Layer"
-        dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": obj_type, "errors": f"{e}"})
+        dataStorage.latestActionReport.append(
+            {
+                "speckle_id": f"{layer.id} {finalName}",
+                "obj_type": obj_type,
+                "errors": f"{e}",
+            }
+        )
         dataStorage.latestConversionTime = datetime.now()
 
-    
+
 def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, plugin):
     try:
-        #project = plugin.project
-        #layerName = removeSpecialCharacters(layer.name) + "_Speckle"
+        # project = plugin.project
+        # layerName = removeSpecialCharacters(layer.name) + "_Speckle"
         layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name) + "_Speckle"
 
-        newName = layerName #f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
+        newName = layerName  # f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
-        plugin.dockwidget.signal_4.emit({'plugin': plugin, 'layerName': layerName, 'newName': newName, 'streamBranch': streamBranch, 'layer': layer})
-        
+        plugin.dockwidget.signal_4.emit(
+            {
+                "plugin": plugin,
+                "layerName": layerName,
+                "newName": newName,
+                "streamBranch": streamBranch,
+                "layer": layer,
+            }
+        )
 
-        return 
+        return
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        return  
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        return
+
 
 def addRasterMainThread(obj: Tuple):
-    try: 
+    try:
         finalName = ""
-        plugin = obj['plugin'] 
-        layerName = obj['layerName'] 
-        newName = obj['newName'] 
-        streamBranch = obj['streamBranch'] 
-        layer = obj['layer'] 
-        plugin.dockwidget.msgLog.removeBtnUrl("cancel") 
-        
+        plugin = obj["plugin"]
+        layerName = obj["layerName"]
+        newName = obj["newName"]
+        streamBranch = obj["streamBranch"]
+        layer = obj["layer"]
+        plugin.dockwidget.msgLog.removeBtnUrl("cancel")
+
         project: QgsProject = plugin.dataStorage.project
         dataStorage = plugin.dataStorage
 
-        plugin.dataStorage.currentUnits = layer.crs.units 
-        if plugin.dataStorage.currentUnits is None or plugin.dataStorage.currentUnits == 'degrees': 
-            plugin.dataStorage.currentUnits = 'm'
+        plugin.dataStorage.currentUnits = layer.crs.units
+        if (
+            plugin.dataStorage.currentUnits is None
+            or plugin.dataStorage.currentUnits == "degrees"
+        ):
+            plugin.dataStorage.currentUnits = "m"
 
         try:
             plugin.dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
-            plugin.dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
+            plugin.dataStorage.current_layer_crs_offset_y = layer.crs.offset_y
             plugin.dataStorage.current_layer_crs_rotation = layer.crs.rotation
         except Exception as e:
-            print(e) 
+            print(e)
 
-        shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL))-1][:50] 
-        #print(f"Final short name: {shortName}")
-        try: layerName = newName.split(shortName)[0] + shortName #+ ("_" + geom_print)
-        except: layerName = newName
-        finalName = shortName #+ ("_" + geom_print)
+        shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50]
+        # print(f"Final short name: {shortName}")
+        try:
+            layerName = newName.split(shortName)[0] + shortName  # + ("_" + geom_print)
+        except:
+            layerName = newName
+        finalName = shortName  # + ("_" + geom_print)
 
-        #report on receive:
+        # report on receive:
         dataStorage.latestActionLayers.append(finalName)
         ###########################################
-        dummy = None 
+        dummy = None
         root = project.layerTreeRoot()
         dataStorage.all_layers = getAllLayers(root)
-        if dataStorage.all_layers is not None: 
+        if dataStorage.all_layers is not None:
             if len(dataStorage.all_layers) == 0:
-                dummy = QgsVectorLayer("Point?crs=EPSG:4326", "", "memory") # do something to distinguish: stream_id_latest_name
+                dummy = QgsVectorLayer(
+                    "Point?crs=EPSG:4326", "", "memory"
+                )  # do something to distinguish: stream_id_latest_name
                 crs = QgsCoordinateReferenceSystem(4326)
                 dummy.setCrs(crs)
                 project.addMapLayer(dummy, True)
@@ -1560,135 +2246,192 @@ def addRasterMainThread(obj: Tuple):
         source_folder = project.absolutePath()
 
         feat = layer.elements[0]
-        
+
         vl = None
-        crs = QgsCoordinateReferenceSystem.fromWkt(layer.crs.wkt) #moved up, because CRS of existing layer needs to be rewritten
-        # try, in case of older version "rasterCrs" will not exist 
-        try: 
-            if layer.rasterCrs.wkt is None or layer.rasterCrs.wkt =="":
+        crs = QgsCoordinateReferenceSystem.fromWkt(
+            layer.crs.wkt
+        )  # moved up, because CRS of existing layer needs to be rewritten
+        # try, in case of older version "rasterCrs" will not exist
+        try:
+            if layer.rasterCrs.wkt is None or layer.rasterCrs.wkt == "":
                 raise Exception
             crsRasterWkt = str(layer.rasterCrs.wkt)
-            crsRaster = QgsCoordinateReferenceSystem.fromWkt(layer.rasterCrs.wkt) #moved up, because CRS of existing layer needs to be rewritten
-        except: 
+            crsRaster = QgsCoordinateReferenceSystem.fromWkt(
+                layer.rasterCrs.wkt
+            )  # moved up, because CRS of existing layer needs to be rewritten
+        except:
             crsRasterWkt = str(layer.crs.wkt)
             crsRaster = crs
-            logToUser(f"Raster layer '{layer.name}' might have been sent from the older version of plugin. Try sending it again for more accurate results.", level = 1, plugin = plugin.dockwidget)
-        
+            logToUser(
+                f"Raster layer '{layer.name}' might have been sent from the older version of plugin. Try sending it again for more accurate results.",
+                level=1,
+                plugin=plugin.dockwidget,
+            )
+
         srsid = trySaveCRS(crsRaster, streamBranch)
         crs_new = QgsCoordinateReferenceSystem.fromSrsId(srsid)
         authid = crs_new.authid()
 
         try:
             bandNames = feat.band_names
-        except: 
+        except:
             bandNames = feat["Band names"]
         bandValues = [feat["@(10000)" + name + "_values"] for name in bandNames]
 
-        
-
-        if(source_folder == ""):
-            p = os.path.expandvars(r'%LOCALAPPDATA%') + "\\Temp\\Speckle_QGIS_temp\\" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        if source_folder == "":
+            p = (
+                os.path.expandvars(r"%LOCALAPPDATA%")
+                + "\\Temp\\Speckle_QGIS_temp\\"
+                + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            )
             findOrCreatePath(p)
             source_folder = p
-            logToUser(f"Project directory not found. Raster layers will be saved to \"{p}\".", level = 1, plugin = plugin.dockwidget)
+            logToUser(
+                f'Project directory not found. Raster layers will be saved to "{p}".',
+                level=1,
+                plugin=plugin.dockwidget,
+            )
 
-        path_fn = source_folder + "/Layers_Speckle/raster_layers/" + streamBranch+ "/" 
-        if not os.path.exists(path_fn): os.makedirs(path_fn)
+        path_fn = source_folder + "/Layers_Speckle/raster_layers/" + streamBranch + "/"
+        if not os.path.exists(path_fn):
+            os.makedirs(path_fn)
 
-        
-        fn = path_fn + layerName + ".tif" #arcpy.env.workspace + "\\" #
-        #fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
-        driver = gdal.GetDriverByName('GTiff')
+        fn = path_fn + layerName + ".tif"  # arcpy.env.workspace + "\\" #
+        # fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
+        driver = gdal.GetDriverByName("GTiff")
         # create raster dataset
         try:
-            ds = driver.Create(fn, xsize=feat.x_size, ysize=feat.y_size, bands=feat.band_count, eType=gdal.GDT_Float32)
-        except: 
-            ds = driver.Create(fn, xsize=feat["X pixels"], ysize=feat["Y pixels"], bands=feat["Band count"], eType=gdal.GDT_Float32)
+            ds = driver.Create(
+                fn,
+                xsize=feat.x_size,
+                ysize=feat.y_size,
+                bands=feat.band_count,
+                eType=gdal.GDT_Float32,
+            )
+        except:
+            ds = driver.Create(
+                fn,
+                xsize=feat["X pixels"],
+                ysize=feat["Y pixels"],
+                bands=feat["Band count"],
+                eType=gdal.GDT_Float32,
+            )
 
         # Write data to raster band
         # No data issue: https://gis.stackexchange.com/questions/389587/qgis-set-raster-no-data-value
-        
+
         try:
-            b_count = int(feat.band_count) # from 2.14
+            b_count = int(feat.band_count)  # from 2.14
         except:
             b_count = feat["Band count"]
-        
+
         for i in range(b_count):
             rasterband = np.array(bandValues[i])
             try:
-                rasterband = np.reshape(rasterband,(feat.y_size, feat.x_size))
+                rasterband = np.reshape(rasterband, (feat.y_size, feat.x_size))
             except:
-                rasterband = np.reshape(rasterband,(feat["Y pixels"], feat["X pixels"]))
+                rasterband = np.reshape(
+                    rasterband, (feat["Y pixels"], feat["X pixels"])
+                )
 
-            band = ds.GetRasterBand(i+1) # https://pcjericks.github.io/py-gdalogr-cookbook/raster_layers.html
-            
+            band = ds.GetRasterBand(
+                i + 1
+            )  # https://pcjericks.github.io/py-gdalogr-cookbook/raster_layers.html
+
             # get noDataVal or use default
-            try: 
+            try:
                 try:
                     noDataVal = float(feat.noDataValue)
                 except:
-                    noDataVal = float(feat["NoDataVal"][i]) # if value available
-                try: band.SetNoDataValue(noDataVal)
-                except: band.SetNoDataValue(float(noDataVal))
-            except: pass
+                    noDataVal = float(feat["NoDataVal"][i])  # if value available
+                try:
+                    band.SetNoDataValue(noDataVal)
+                except:
+                    band.SetNoDataValue(float(noDataVal))
+            except:
+                pass
 
-            band.WriteArray(rasterband) # or "rasterband.T"
-        
+            band.WriteArray(rasterband)  # or "rasterband.T"
+
         # create GDAL transformation in format [top-left x coord, cell width, 0, top-left y coord, 0, cell height]
-        pt = None 
-        ptSpeckle = None 
+        pt = None
+        ptSpeckle = None
         try:
             try:
                 pt = QgsPoint(feat.x_origin, feat.y_origin, 0)
-                ptSpeckle = Point(x = feat.x_origin, y = feat.y_origin, z = 0, units = feat.units)
-            except: 
+                ptSpeckle = Point(
+                    x=feat.x_origin, y=feat.y_origin, z=0, units=feat.units
+                )
+            except:
                 pt = QgsPoint(feat["X_min"], feat["Y_min"], 0)
-                ptSpeckle = Point(x = feat["X_min"], y = feat["Y_min"], z = 0, units = feat.units)
-        except: 
+                ptSpeckle = Point(
+                    x=feat["X_min"], y=feat["Y_min"], z=0, units=feat.units
+                )
+        except:
             try:
                 displayVal = feat.displayValue
             except:
                 displayVal = feat["displayValue"]
             if displayVal is not None:
-                if isinstance(displayVal[0], Point): 
-                    pt = pointToNativeWithoutTransforms(displayVal[0], plugin.dataStorage)
+                if isinstance(displayVal[0], Point):
+                    pt = pointToNativeWithoutTransforms(
+                        displayVal[0], plugin.dataStorage
+                    )
                     ptSpeckle = displayVal[0]
-                if isinstance(displayVal[0], Mesh): 
+                if isinstance(displayVal[0], Mesh):
                     pt = QgsPoint(displayVal[0].vertices[0], displayVal[0].vertices[1])
-                    ptSpeckle = Point(x = displayVal[0].vertices[0], y = displayVal[0].vertices[1], z = displayVal[0].vertices[2], units = displayVal[0].units)
+                    ptSpeckle = Point(
+                        x=displayVal[0].vertices[0],
+                        y=displayVal[0].vertices[1],
+                        z=displayVal[0].vertices[2],
+                        units=displayVal[0].units,
+                    )
         if pt is None or ptSpeckle is None:
-            logToUser("Raster layer doesn't have the origin point", level = 2, plugin = plugin.dockwidget)
-            return 
-        
-        try: # if the CRS has offset props
-            #ptSpeckle = Point(x = pt.x(), y = pt.y(), z = 0, units = "m")
+            logToUser(
+                "Raster layer doesn't have the origin point",
+                level=2,
+                plugin=plugin.dockwidget,
+            )
+            return
+
+        try:  # if the CRS has offset props
+            # ptSpeckle = Point(x = pt.x(), y = pt.y(), z = 0, units = "m")
             dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
-            dataStorage.current_layer_crs_offset_y = layer.crs.offset_y 
-            dataStorage.current_layer_crs_rotation = layer.crs.rotation 
-            
-            #ptSpeckleTransformed = transformSpecklePt(ptSpeckle, dataStorage) 
-            pt = pointToNative(ptSpeckle, plugin.dataStorage) # already transforms the offsets 
-            dataStorage.current_layer_crs_offset_x = dataStorage.current_layer_crs_offset_y = dataStorage.current_layer_crs_rotation = None 
-        
-        except Exception as e: print(e)
-        #print(crs)
-        #print(crsRaster)
+            dataStorage.current_layer_crs_offset_y = layer.crs.offset_y
+            dataStorage.current_layer_crs_rotation = layer.crs.rotation
+
+            # ptSpeckleTransformed = transformSpecklePt(ptSpeckle, dataStorage)
+            pt = pointToNative(
+                ptSpeckle, plugin.dataStorage
+            )  # already transforms the offsets
+            dataStorage.current_layer_crs_offset_x = (
+                dataStorage.current_layer_crs_offset_y
+            ) = dataStorage.current_layer_crs_rotation = None
+
+        except Exception as e:
+            print(e)
+        # print(crs)
+        # print(crsRaster)
         xform = QgsCoordinateTransform(crs, crsRaster, project)
         pt.transform(xform)
         try:
-            ds.SetGeoTransform([pt.x(), feat.x_resolution, 0, pt.y(), 0, feat.y_resolution])
+            ds.SetGeoTransform(
+                [pt.x(), feat.x_resolution, 0, pt.y(), 0, feat.y_resolution]
+            )
         except:
-            ds.SetGeoTransform([pt.x(), feat["X resolution"], 0, pt.y(), 0, feat["Y resolution"]])
-        
+            ds.SetGeoTransform(
+                [pt.x(), feat["X resolution"], 0, pt.y(), 0, feat["Y resolution"]]
+            )
+
         # create a spatial reference object
         ds.SetProjection(crsRasterWkt)
         # close the rater datasource by setting it equal to None
         ds = None
 
-        raster_layer = QgsRasterLayer(fn, finalName, 'gdal')
+        raster_layer = QgsRasterLayer(fn, finalName, "gdal")
         project.addMapLayer(raster_layer, False)
-        
-        #layerGroup = tryCreateGroup(project, streamBranch)
+
+        # layerGroup = tryCreateGroup(project, streamBranch)
         groupName = streamBranch + SYMBOL + layerName.split(finalName)[0]
         layerGroup = tryCreateGroupTree(project.layerTreeRoot(), groupName, plugin)
         layerGroup.addLayer(raster_layer)
@@ -1696,18 +2439,34 @@ def addRasterMainThread(obj: Tuple):
         dataProvider = raster_layer.dataProvider()
         rendererNew = rasterRendererToNative(layer, dataProvider)
 
-        try: raster_layer.setRenderer(rendererNew)
-        except: pass
+        try:
+            raster_layer.setRenderer(rendererNew)
+        except:
+            pass
 
-        try: project.removeMapLayer(dummy)
-        except: pass
+        try:
+            project.removeMapLayer(dummy)
+        except:
+            pass
 
-        #report on receive:
-        dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": "Raster Layer", "errors": ""})
+        # report on receive:
+        dataStorage.latestActionReport.append(
+            {
+                "speckle_id": f"{layer.id} {finalName}",
+                "obj_type": "Raster Layer",
+                "errors": "",
+            }
+        )
         dataStorage.latestConversionTime = datetime.now()
 
     except Exception as e:
-        logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
-        #report on receive:
-        dataStorage.latestActionReport.append({"speckle_id": f"{layer.id} {finalName}", "obj_type": "Raster Layer", "errors": f"Receiving layer {layer.name} failed"})
+        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
+        # report on receive:
+        dataStorage.latestActionReport.append(
+            {
+                "speckle_id": f"{layer.id} {finalName}",
+                "obj_type": "Raster Layer",
+                "errors": f"Receiving layer {layer.name} failed",
+            }
+        )
         dataStorage.latestConversionTime = datetime.now()
