@@ -6,6 +6,7 @@ orbs:
   win: circleci/windows@2.4.0
   # Upload artifacts to s3
   aws-s3: circleci/aws-s3@2.0.0
+  codecov: codecov/codecov@3.3.0
 
 jobs:
 
