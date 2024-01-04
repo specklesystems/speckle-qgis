@@ -27,15 +27,6 @@
                     "remoteRoot": "${workspaceFolder}"
                 }
             ]
-        },
-        {
-          "name": "Pytest",
-          "type": "python",
-          "request": "launch",
-          "program": "pytest",
-          "args": [],
-          "console": "integratedTerminal",
-          "justMyCode": true
         }
     ]
 }
