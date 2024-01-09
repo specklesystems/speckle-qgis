@@ -12,7 +12,6 @@ try:
 
     from qgis.core import Qgis
 
-
     # noinspection PyPep8Naming
     def classFactory(iface):  # pylint: disable=invalid-name
         """Load SpeckleQGIS class from file SpeckleQGIS.
@@ -42,7 +41,6 @@ try:
         metrics.set_host_app("QGIS", f"QGIS{version}")
         return SpeckleQGIS(iface)
 
-
     class EmptyClass:
         # https://docs.qgis.org/3.28/en/docs/pyqgis_developer_cookbook/plugins/plugins.html#mainplugin-py
         def __init__(self, iface):
@@ -53,5 +51,6 @@ try:
 
         def unload(self):
             pass
-except:
+
+except ModuleNotFoundError:
     pass

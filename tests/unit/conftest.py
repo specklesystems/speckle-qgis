@@ -1,11 +1,9 @@
 import random
-
 import pytest
-
 from specklepy.objects.base import Base
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture # scope = function, class, module, session
 def base():
     base = Base()
     base.name = "my_base"
