@@ -59,6 +59,14 @@ import webbrowser
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.layers import (
+    getAllLayers,
+    getAllLayersWithTree,
+    getSavedLayers,
+    getSelectedLayers,
+    getSelectedLayersWithStructure,
+)
+
+from speckle.converter.layers.layer_conversions import (
     addBimMainThread,
     addCadMainThread,
     addExcelMainThread,
@@ -66,11 +74,6 @@ from speckle.converter.layers import (
     addRasterMainThread,
     addVectorMainThread,
     convertSelectedLayers,
-    getAllLayers,
-    getAllLayersWithTree,
-    getSavedLayers,
-    getSelectedLayers,
-    getSelectedLayersWithStructure,
 )
 from speckle.converter.layers import findAndClearLayerGroup
 
@@ -458,7 +461,7 @@ class SpeckleQGIS:
             bySelection = True
             if self.dockwidget.layerSendModeDropdown.currentIndex() == 1:
                 bySelection = False
-                layers = getSavedLayers(self)
+                layers, tree_structure = getSavedLayers(self)
             else:
                 # layers = getSelectedLayers(self) # List[QgsLayerTreeNode]
                 layers, tree_structure = getSelectedLayersWithStructure(self)
@@ -1299,7 +1302,7 @@ class SpeckleQGIS:
                 self.add_stream_modal.handleStreamAdd.disconnect(self.handleStreamAdd)
             except:
                 pass
-            #set_project_streams(self)
+            # set_project_streams(self)
             self.dockwidget.populateProjectStreams(self)
         except Exception as e:
             logToUser(e, level=2, func=inspect.stack()[0][3], plugin=self.dockwidget)
