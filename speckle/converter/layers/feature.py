@@ -38,7 +38,7 @@ from specklepy.objects.GIS.geometry import (
 )
 from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
 from specklepy.objects.GIS.layers import RasterLayer
-from specklepy.objects.geometry import Mesh
+
 from speckle.converter.geometry.point import applyOffsetsRotation
 
 # from speckle.utils.panel_logging import logger
@@ -61,9 +61,113 @@ from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-pac
 )
 import numpy as np
 import scipy as sp
-import scipy.ndimage
 
 from speckle.utils.panel_logging import logToUser
+
+
+def addFeatVariant(key, variant, value, f: QgsFeature):
+    # print("__________add variant")
+    try:
+        feat = f
+
+        r"""
+        if isinstance(value, str) and variant == QVariant.Date:  # 14
+            y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]
+            value = QDate(int(y), int(m), int(d) ) 
+        elif isinstance(value, str) and variant == QVariant.DateTime: 
+            y,m,d,t1,t2 = value.split("(")[1].split(")")[0].split(",")[:5]
+            value = QDateTime(int(y), int(m), int(d), int(t1), int(t2) )
+        """
+        if variant == 10:
+            value = str(value)  # string
+
+        if value != "NULL" and value != "None":
+            if variant == getVariantFromValue(value):
+                feat[key] = value
+            elif (
+                isinstance(value, float) and variant == 4
+            ):  # float, but expecting Long (integer)
+                feat[key] = int(value)
+            elif (
+                isinstance(value, int) and variant == 6
+            ):  # int (longlong), but expecting float
+                feat[key] = float(value)
+            else:
+                feat[key] = None
+                # print(key); print(value); print(type(value)); print(variant); print(getVariantFromValue(value))
+        elif isinstance(variant, int):
+            feat[key] = None
+        return feat
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return feat
+
+
+def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, Any]:
+    try:
+        # print("__updateFeat")
+        all_field_names = fields.names()
+        for i, key in enumerate(all_field_names):
+            variant = fields.at(i).type()
+            try:
+                if key == "Speckle_ID":
+                    value = str(feature["id"])
+                    # if key != "parameters": print(value)
+                    feat[key] = value
+
+                    feat = addFeatVariant(key, variant, value, feat)
+
+                else:
+                    try:
+                        value = feature[key]
+                        feat = addFeatVariant(key, variant, value, feat)
+
+                    except:
+                        value = None
+                        rootName = key.split("_")[0]
+                        # try: # if the root category exists
+                        # if its'a list
+                        if isinstance(feature[rootName], list):
+                            for i in range(len(feature[rootName])):
+                                try:
+                                    newF, newVals = traverseDict(
+                                        {},
+                                        {},
+                                        rootName + "_" + str(i),
+                                        feature[rootName][i],
+                                        1,
+                                    )
+                                    for i, (key, value) in enumerate(newVals.items()):
+                                        for k, (x, y) in enumerate(newF.items()):
+                                            if key == x:
+                                                variant = y
+                                                break
+                                        feat = addFeatVariant(key, variant, value, feat)
+                                except Exception as e:
+                                    print(e)
+                        # except: # if not a list
+                        else:
+                            try:
+                                newF, newVals = traverseDict(
+                                    {}, {}, rootName, feature[rootName], 1
+                                )
+                                for i, (key, value) in enumerate(newVals.items()):
+                                    for k, (x, y) in enumerate(newF.items()):
+                                        if key == x:
+                                            variant = y
+                                            break
+                                    feat = addFeatVariant(key, variant, value, feat)
+                            except Exception as e:
+                                feat.update({key: None})
+            except Exception as e:
+                feat[key] = None
+        # feat_sorted = {k: v for k, v in sorted(feat.items(), key=lambda item: item[0])}
+        # print("_________________end of updating a feature_________________________")
+
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+
+    return feat
 
 
 def featureToSpeckle(
@@ -188,134 +292,6 @@ def featureToSpeckle(
         ].update(new_report)
         logToUser(e, level=2, func=inspect.stack()[0][3])
         return geom
-
-
-def bimFeatureToNative(
-    exist_feat: QgsFeature,
-    feature: Base,
-    fields: QgsFields,
-    crs,
-    path: str,
-    dataStorage,
-):
-    # print("04_________BIM Feature To Native____________")
-    try:
-        exist_feat.setFields(fields)
-
-        feat_updated = updateFeat(exist_feat, fields, feature)
-        # print(fields.toList())
-        # print(feature)
-        # print(feat_updated)
-
-        return feat_updated
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-        return
-
-
-def addFeatVariant(key, variant, value, f: QgsFeature):
-    # print("__________add variant")
-    try:
-        feat = f
-
-        r"""
-        if isinstance(value, str) and variant == QVariant.Date:  # 14
-            y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]
-            value = QDate(int(y), int(m), int(d) ) 
-        elif isinstance(value, str) and variant == QVariant.DateTime: 
-            y,m,d,t1,t2 = value.split("(")[1].split(")")[0].split(",")[:5]
-            value = QDateTime(int(y), int(m), int(d), int(t1), int(t2) )
-        """
-        if variant == 10:
-            value = str(value)  # string
-
-        if value != "NULL" and value != "None":
-            if variant == getVariantFromValue(value):
-                feat[key] = value
-            elif (
-                isinstance(value, float) and variant == 4
-            ):  # float, but expecting Long (integer)
-                feat[key] = int(value)
-            elif (
-                isinstance(value, int) and variant == 6
-            ):  # int (longlong), but expecting float
-                feat[key] = float(value)
-            else:
-                feat[key] = None
-                # print(key); print(value); print(type(value)); print(variant); print(getVariantFromValue(value))
-        elif isinstance(variant, int):
-            feat[key] = None
-        return feat
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-        return feat
-
-
-def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, Any]:
-    try:
-        # print("__updateFeat")
-        all_field_names = fields.names()
-        for i, key in enumerate(all_field_names):
-            variant = fields.at(i).type()
-            try:
-                if key == "Speckle_ID":
-                    value = str(feature["id"])
-                    # if key != "parameters": print(value)
-                    feat[key] = value
-
-                    feat = addFeatVariant(key, variant, value, feat)
-
-                else:
-                    try:
-                        value = feature[key]
-                        feat = addFeatVariant(key, variant, value, feat)
-
-                    except:
-                        value = None
-                        rootName = key.split("_")[0]
-                        # try: # if the root category exists
-                        # if its'a list
-                        if isinstance(feature[rootName], list):
-                            for i in range(len(feature[rootName])):
-                                try:
-                                    newF, newVals = traverseDict(
-                                        {},
-                                        {},
-                                        rootName + "_" + str(i),
-                                        feature[rootName][i],
-                                        1,
-                                    )
-                                    for i, (key, value) in enumerate(newVals.items()):
-                                        for k, (x, y) in enumerate(newF.items()):
-                                            if key == x:
-                                                variant = y
-                                                break
-                                        feat = addFeatVariant(key, variant, value, feat)
-                                except Exception as e:
-                                    print(e)
-                        # except: # if not a list
-                        else:
-                            try:
-                                newF, newVals = traverseDict(
-                                    {}, {}, rootName, feature[rootName], 1
-                                )
-                                for i, (key, value) in enumerate(newVals.items()):
-                                    for k, (x, y) in enumerate(newF.items()):
-                                        if key == x:
-                                            variant = y
-                                            break
-                                    feat = addFeatVariant(key, variant, value, feat)
-                            except Exception as e:
-                                feat.update({key: None})
-            except Exception as e:
-                feat[key] = None
-        # feat_sorted = {k: v for k, v in sorted(feat.items(), key=lambda item: item[0])}
-        # print("_________________end of updating a feature_________________________")
-
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-
-    return feat
 
 
 def rasterFeatureToSpeckle(
@@ -1104,99 +1080,6 @@ def rasterFeatureToSpeckle(
         return None
 
 
-def trianglateQuadMesh(mesh: Mesh) -> Mesh:
-    new_mesh = None
-    try:
-        new_v: List[float] = []
-        new_f: List[int] = []
-        new_c: List[int] = []
-
-        # new list with face indices
-        r"""
-        temp_f = []
-        used_ind = []
-        for i, f in enumerate(mesh.faces):
-            try:
-                if i%5 != 0 and i not in used_ind: #ignore indices and used pts
-                    temp_f.extend([mesh.faces[i], mesh.faces[i+1], mesh.faces[i+2], mesh.faces[i+2], mesh.faces[i+3], mesh.faces[i]])
-                    used_ind.extend([i,i+1,i+2,i+3])
-            except Exception as e: print(e) 
-        for i, f in enumerate(temp_f):
-            if i%3 == 0: new_f.append(int(3))
-            new_f.append(int(f))
-        """
-
-        # fill new color and vertices lists
-        used_ind = []
-        for i, c in enumerate(mesh.colors):
-            try:
-                # new_c.append(c)
-                # continue
-                if i not in used_ind:
-                    new_c.extend(
-                        [
-                            mesh.colors[i],
-                            mesh.colors[i + 1],
-                            mesh.colors[i + 2],
-                            mesh.colors[i + 2],
-                            mesh.colors[i + 3],
-                            mesh.colors[i],
-                        ]
-                    )
-                    used_ind.extend([i, i + 1, i + 2, i + 3])
-            except Exception as e:
-                print(e)
-
-        used_ind = []
-        for i, v in enumerate(mesh.vertices):
-            try:
-                # new_v.append(v)
-                # continue
-                if i not in used_ind:
-                    v0 = [mesh.vertices[i], mesh.vertices[i + 1], mesh.vertices[i + 2]]
-                    v1 = [
-                        mesh.vertices[i + 3],
-                        mesh.vertices[i + 4],
-                        mesh.vertices[i + 5],
-                    ]
-                    v2 = [
-                        mesh.vertices[i + 6],
-                        mesh.vertices[i + 7],
-                        mesh.vertices[i + 8],
-                    ]
-                    v3 = [
-                        mesh.vertices[i + 9],
-                        mesh.vertices[i + 10],
-                        mesh.vertices[i + 11],
-                    ]
-
-                    new_v.extend(v0 + v1 + v2 + v2 + v3 + v0)
-                    new_f.extend(
-                        [
-                            int(3),
-                            int(i / 12),
-                            int(i / 12) + 1,
-                            int(i / 12) + 2,
-                            int(3),
-                            int(i / 12) + 3,
-                            int(i / 12) + 4,
-                            int(i / 12) + 5,
-                        ]
-                    )
-                    used_ind.extend(list(range(i, i + 12)))
-            except Exception as e:
-                print(e)
-        # print(len(new_v))
-        # print(len(new_f))
-        # print(len(new_c))
-        new_mesh = Mesh.create(new_v, new_f, new_c)
-        new_mesh.units = mesh.units
-    except Exception as e:
-        print(e)
-        pass
-    return new_mesh
-
-
 def featureToNative(feature: Base, fields: QgsFields, dataStorage):
     feat = QgsFeature()
     # print("___featureToNative")
@@ -1288,10 +1171,31 @@ def featureToNative(feature: Base, fields: QgsFields, dataStorage):
         return feat
 
 
+def bimFeatureToNative(
+    exist_feat: QgsFeature,
+    feature: Base,
+    fields: QgsFields,
+    crs,
+    path: str,
+    dataStorage,
+):
+    # print("04_________BIM Feature To Native____________")
+    try:
+        exist_feat.setFields(fields)
+
+        feat_updated = updateFeat(exist_feat, fields, feature)
+        # print(fields.toList())
+        # print(feature)
+        # print(feat_updated)
+
+        return feat_updated
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return
+
+
 def nonGeomFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
     try:
-        # print("______________nonGeomFeatureToNative")
-        # print(feature)
         exist_feat = QgsFeature()
         exist_feat.setFields(fields)
         feat_updated = updateFeat(exist_feat, fields, feature)
@@ -1304,7 +1208,6 @@ def nonGeomFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
 
 def cadFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
     try:
-        # print("______________cadFeatureToNative")
         exist_feat = QgsFeature()
         try:
             speckle_geom = feature["geometry"]  # for created in QGIS Layer type
@@ -1322,36 +1225,8 @@ def cadFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
             return
 
         exist_feat.setFields(fields)
-
         feat_updated = updateFeat(exist_feat, fields, feature)
-        # print(fields.toList())
-        # print(feature)
-        # print(feat_updated)
 
-        #### setting attributes to feature
-        r"""
-        for field in fields:
-            #print(str(field.name()))
-            name = str(field.name())
-            variant = field.type()
-            if name == "Speckle_ID": 
-                value = str(feature["id"])
-                feat[name] = value
-            else: 
-                # for values - normal or inside dictionaries: 
-                try: value = feature[name]
-                except:
-                    rootName = name.split("_")[0]
-                    newF, newVals = traverseDict({}, {}, rootName, feature[rootName][0])
-                    for i, (k,v) in enumerate(newVals.items()):
-                        if k == name: value = v; break
-                # for all values: 
-                if variant == QVariant.String: value = str(value) 
-                
-                
-                if variant == getVariantFromValue(value) and value != "NULL" and value != "None": 
-                    feat[name] = value
-        """
         return feat_updated
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])

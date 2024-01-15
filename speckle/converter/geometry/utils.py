@@ -14,6 +14,7 @@ from specklepy.objects.geometry import (
 from specklepy.objects import Base
 from typing import List, Tuple, Union, Dict
 from speckle.converter.geometry.point import applyOffsetsRotation
+from specklepy.objects.geometry import Mesh
 
 from shapely.geometry import Polygon
 from shapely.ops import triangulate
@@ -226,6 +227,79 @@ def to_triangles(data, attempt=0):
             return to_triangles(data, attempt)
         else:
             return None, None
+
+
+def trianglateQuadMesh(mesh: Mesh) -> Mesh:
+    new_mesh = None
+    try:
+        new_v: List[float] = []
+        new_f: List[int] = []
+        new_c: List[int] = []
+
+        # fill new color and vertices lists
+        used_ind = []
+        for i, c in enumerate(mesh.colors):
+            try:
+                # new_c.append(c)
+                # continue
+                if i not in used_ind:
+                    new_c.extend(
+                        [
+                            mesh.colors[i],
+                            mesh.colors[i + 1],
+                            mesh.colors[i + 2],
+                            mesh.colors[i + 2],
+                            mesh.colors[i + 3],
+                            mesh.colors[i],
+                        ]
+                    )
+                    used_ind.extend([i, i + 1, i + 2, i + 3])
+            except Exception as e:
+                print(e)
+
+        used_ind = []
+        for i, v in enumerate(mesh.vertices):
+            try:
+                if i not in used_ind:
+                    v0 = [mesh.vertices[i], mesh.vertices[i + 1], mesh.vertices[i + 2]]
+                    v1 = [
+                        mesh.vertices[i + 3],
+                        mesh.vertices[i + 4],
+                        mesh.vertices[i + 5],
+                    ]
+                    v2 = [
+                        mesh.vertices[i + 6],
+                        mesh.vertices[i + 7],
+                        mesh.vertices[i + 8],
+                    ]
+                    v3 = [
+                        mesh.vertices[i + 9],
+                        mesh.vertices[i + 10],
+                        mesh.vertices[i + 11],
+                    ]
+
+                    new_v.extend(v0 + v1 + v2 + v2 + v3 + v0)
+                    new_f.extend(
+                        [
+                            int(3),
+                            int(i / 12),
+                            int(i / 12) + 1,
+                            int(i / 12) + 2,
+                            int(3),
+                            int(i / 12) + 3,
+                            int(i / 12) + 4,
+                            int(i / 12) + 5,
+                        ]
+                    )
+                    used_ind.extend(list(range(i, i + 12)))
+            except Exception as e:
+                print(e)
+        new_mesh = Mesh.create(new_v, new_f, new_c)
+        new_mesh.units = mesh.units
+    except Exception as e:
+        print(e)
+        pass
+    return new_mesh
 
 
 def getPolyPtsSegments(geom, dataStorage):

@@ -1,162 +1,55 @@
 """
 Contains all Layer related classes and methods.
 """
-import enum
 import inspect
-import math
-from typing import List, Tuple, Union
-from specklepy.objects import Base
-from specklepy.objects.geometry import (
-    Mesh,
-    Point,
-    Line,
-    Curve,
-    Circle,
-    Ellipse,
-    Polycurve,
-    Arc,
-    Polyline,
-)
-import os
-import time
-from datetime import datetime
+from typing import Any, List, Union
 
-from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
-    gdal,
-    osr,
-)
-from plugin_utils.helpers import (
-    findFeatColors,
-    findOrCreatePath,
-    jsonFromList,
-    removeSpecialCharacters,
-)
-
-# from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
 from qgis.core import (
-    Qgis,
-    QgsProject,
     QgsRasterLayer,
-    QgsPoint,
     QgsVectorLayer,
-    QgsProject,
-    QgsWkbTypes,
     QgsLayerTree,
     QgsLayerTreeGroup,
     QgsLayerTreeNode,
     QgsLayerTreeLayer,
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
-    QgsFields,
-    QgsSingleSymbolRenderer,
-    QgsCategorizedSymbolRenderer,
-    QgsRendererCategory,
-    QgsSymbol,
-    QgsUnitTypes,
-    QgsVectorFileWriter,
 )
-from specklepy.objects.GIS.geometry import GisPolygonElement, GisNonGeometryElement
-from speckle.converter.geometry.point import (
-    pointToNative,
-    pointToNativeWithoutTransforms,
-)
-from specklepy.objects.GIS.CRS import CRS
-from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
-from specklepy.objects.other import Collection
-
-from speckle.converter.layers.feature import (
-    featureToSpeckle,
-    nonGeomFeatureToNative,
-    rasterFeatureToSpeckle,
-    featureToNative,
-    cadFeatureToNative,
-    bimFeatureToNative,
-)
-from speckle.converter.layers.utils import (
-    collectionsFromJson,
-    colorFromSpeckle,
-    colorFromSpeckle,
-    getDisplayValueList,
-    getElevationLayer,
-    getLayerGeomType,
-    getLayerAttributes,
-    isAppliedLayerTransformByKeywords,
-    tryCreateGroup,
-    tryCreateGroupTree,
-    trySaveCRS,
-    validateAttributeName,
-)
-from speckle.converter.geometry.mesh import writeMeshToShp
-
-from speckle.converter.layers.symbology import (
-    vectorRendererToNative,
-    rasterRendererToNative,
-    rendererToSpeckle,
-)
-
-from PyQt5.QtGui import QColor
-import numpy as np
 
 from speckle.utils.panel_logging import logToUser
 
 from plugin_utils.helpers import SYMBOL
 
-GEOM_LINE_TYPES = [
-    "Objects.Geometry.Line",
-    "Objects.Geometry.Polyline",
-    "Objects.Geometry.Curve",
-    "Objects.Geometry.Arc",
-    "Objects.Geometry.Circle",
-    "Objects.Geometry.Ellipse",
-    "Objects.Geometry.Polycurve",
-]
 
-
-def getAllLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode = None):
+def getAllLayers(
+    tree: QgsLayerTree, parent: Union[QgsLayerTreeNode, None] = None
+) -> List[Any[QgsVectorLayer, QgsRasterLayer]]:
     try:
-        # print("Root tree: ")
-        # print(tree)
         layers = []
-
         if parent is None:
             parent = tree
 
         if isinstance(parent, QgsLayerTreeLayer):
-            # print("QgsLayerTreeLayer")
-            # print(parent)
             return [parent.layer()]
 
         elif isinstance(parent, QgsLayerTreeGroup):
-            # print("QgsLayerTreeGroup")
-            # print(parent)
             children = parent.children()
 
             for node in children:
-                # print(node)
                 if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
-                    # print("QgsLayerTreeLayer")
-
-                    # if isinstance(node, QgsLayerTreeLayer):
                     if isinstance(node.layer(), QgsVectorLayer) or isinstance(
                         node.layer(), QgsRasterLayer
                     ):
                         layers.append(node.layer())
                     continue
                 elif tree.isGroup(node):
-                    # print("is Group")
                     for lyr in getAllLayers(tree, node):
                         if isinstance(lyr, QgsVectorLayer) or isinstance(
                             lyr, QgsRasterLayer
                         ):
                             layers.append(lyr)
                 elif isinstance(node, QgsLayerTreeNode):
-                    # print("QgsLayerTreeNode")
                     try:
                         visible = node.itemVisibilityChecked()
                         node.setItemVisibilityChecked(True)
                         for lyr in node.checkedLayers():
-                            # print("layer in a node")
-                            # print(lyr)
                             if isinstance(lyr, QgsVectorLayer) or isinstance(
                                 lyr, QgsRasterLayer
                             ):
@@ -164,13 +57,98 @@ def getAllLayers(tree: QgsLayerTree, parent: QgsLayerTreeNode = None):
                         node.setItemVisibilityChecked(visible)
                     except Exception as e:
                         logToUser(e, level=2, func=inspect.stack()[0][3])
-        # print("Final layers: ")
-        # print(layers)
         return layers
 
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
         return [parent]
+
+
+def getAllLayersWithTree(
+    tree: QgsLayerTree, parent: QgsLayerTreeNode = None, existingStructure: str = ""
+):
+    try:
+        layers = []
+        tree_structure = []
+        existingStructure = existingStructure.replace(SYMBOL + SYMBOL, SYMBOL)
+
+        if parent is None:
+            parent = tree
+
+        if isinstance(parent, QgsLayerTreeLayer):
+            newStructure = (existingStructure + SYMBOL).replace(SYMBOL + SYMBOL, SYMBOL)
+            tree_structure.append(newStructure)
+            return ([parent.layer()], tree_structure)
+
+        elif isinstance(parent, QgsLayerTreeGroup):
+            children = parent.children()
+
+            for node in children:
+                if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
+                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(
+                        node.layer(), QgsRasterLayer
+                    ):
+                        layers.append(node.layer())
+                        newStructure = (existingStructure + SYMBOL).replace(
+                            SYMBOL + SYMBOL, SYMBOL
+                        )
+                        tree_structure.append(newStructure + parent.name())
+                    continue
+                elif tree.isGroup(node):
+                    newStructure = (existingStructure + SYMBOL).replace(
+                        SYMBOL + SYMBOL, SYMBOL
+                    )
+                    result = getAllLayersWithTree(
+                        tree, node, newStructure + parent.name()
+                    )
+                    for i, lyr in enumerate(result[0]):
+                        if isinstance(lyr, QgsVectorLayer) or isinstance(
+                            lyr, QgsRasterLayer
+                        ):
+                            layers.append(lyr)
+                            newStructureGroup = (
+                                existingStructure + result[1][i]
+                            ).replace(SYMBOL + SYMBOL, SYMBOL)
+                            tree_structure.append(newStructureGroup)
+                elif isinstance(node, QgsLayerTreeNode):
+                    try:
+                        visible = node.itemVisibilityChecked()
+                        node.setItemVisibilityChecked(True)
+                        for lyr in node.checkedLayers():
+                            if isinstance(lyr, QgsVectorLayer) or isinstance(
+                                lyr, QgsRasterLayer
+                            ):
+                                layers.append(lyr)
+                                newStructure = (existingStructure + SYMBOL).replace(
+                                    SYMBOL + SYMBOL, SYMBOL
+                                )
+                                tree_structure.append(newStructure + parent.name())
+                        node.setItemVisibilityChecked(visible)
+                    except Exception as e:
+                        logToUser(e, level=2, func=inspect.stack()[0][3])
+
+        elif isinstance(parent, QgsLayerTreeNode):
+            try:
+                visible = parent.itemVisibilityChecked()
+                parent.setItemVisibilityChecked(True)
+                for lyr in parent.checkedLayers():
+                    if isinstance(lyr, QgsVectorLayer) or isinstance(
+                        lyr, QgsRasterLayer
+                    ):
+                        layers.append(lyr)
+                        newStructure = (existingStructure + SYMBOL).replace(
+                            SYMBOL + SYMBOL, SYMBOL
+                        )
+                        tree_structure.append(newStructure + tree.name())
+                parent.setItemVisibilityChecked(visible)
+            except Exception as e:
+                logToUser(e, level=2, func=inspect.stack()[0][3])
+
+        return (layers, tree_structure)
+
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return None, None
 
 
 def findAndClearLayerGroup(root, newGroupName: str = "", plugin=None):
@@ -224,105 +202,6 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin=None):
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
         return
-
-
-def getAllLayersWithTree(
-    tree: QgsLayerTree, parent: QgsLayerTreeNode = None, existingStructure: str = ""
-):
-    try:
-        layers = []
-        tree_structure = []
-        existingStructure = existingStructure.replace(SYMBOL + SYMBOL, SYMBOL)
-
-        if parent is None:
-            parent = tree
-
-        if isinstance(parent, QgsLayerTreeLayer):
-            newStructure = (existingStructure + SYMBOL).replace(SYMBOL + SYMBOL, SYMBOL)
-            tree_structure.append(newStructure)
-            return ([parent.layer()], tree_structure)
-
-        elif isinstance(parent, QgsLayerTreeGroup):
-            children = parent.children()
-
-            for node in children:
-                if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
-                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(
-                        node.layer(), QgsRasterLayer
-                    ):
-                        layers.append(node.layer())
-                        newStructure = (existingStructure + SYMBOL).replace(
-                            SYMBOL + SYMBOL, SYMBOL
-                        )
-                        tree_structure.append(newStructure + parent.name())
-                    continue
-                elif tree.isGroup(node):
-                    # print("is Group")
-                    # print(existingStructure)
-                    newStructure = (existingStructure + SYMBOL).replace(
-                        SYMBOL + SYMBOL, SYMBOL
-                    )
-                    result = getAllLayersWithTree(
-                        tree, node, newStructure + parent.name()
-                    )
-                    # print(result)
-                    for i, lyr in enumerate(result[0]):
-                        if isinstance(lyr, QgsVectorLayer) or isinstance(
-                            lyr, QgsRasterLayer
-                        ):
-                            # print(i)
-                            # print(lyr)
-                            # print(result[1][i])
-                            layers.append(lyr)
-                            newStructureGroup = (
-                                existingStructure + result[1][i]
-                            ).replace(SYMBOL + SYMBOL, SYMBOL)
-                            tree_structure.append(newStructureGroup)
-                            # print(layers)
-                            # print(tree_structure)
-                elif isinstance(node, QgsLayerTreeNode):
-                    try:
-                        visible = node.itemVisibilityChecked()
-                        node.setItemVisibilityChecked(True)
-                        for lyr in node.checkedLayers():
-                            # print("layer in a node")
-                            # print(lyr)
-                            if isinstance(lyr, QgsVectorLayer) or isinstance(
-                                lyr, QgsRasterLayer
-                            ):
-                                layers.append(lyr)
-                                newStructure = (existingStructure + SYMBOL).replace(
-                                    SYMBOL + SYMBOL, SYMBOL
-                                )
-                                tree_structure.append(newStructure + parent.name())
-                        node.setItemVisibilityChecked(visible)
-                    except Exception as e:
-                        logToUser(e, level=2, func=inspect.stack()[0][3])
-
-        elif isinstance(parent, QgsLayerTreeNode):
-            try:
-                visible = parent.itemVisibilityChecked()
-                parent.setItemVisibilityChecked(True)
-                for lyr in parent.checkedLayers():
-                    # print("layer in a node")
-                    # print(lyr)
-                    if isinstance(lyr, QgsVectorLayer) or isinstance(
-                        lyr, QgsRasterLayer
-                    ):
-                        layers.append(lyr)
-                        newStructure = (existingStructure + SYMBOL).replace(
-                            SYMBOL + SYMBOL, SYMBOL
-                        )
-                        tree_structure.append(newStructure + tree.name())
-                parent.setItemVisibilityChecked(visible)
-            except Exception as e:
-                logToUser(e, level=2, func=inspect.stack()[0][3])
-
-        return (layers, tree_structure)
-
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-        return None, None
 
 
 def getSavedLayers(plugin) -> List[Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
