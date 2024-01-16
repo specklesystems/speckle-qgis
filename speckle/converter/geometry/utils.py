@@ -1,7 +1,6 @@
 import inspect
 from math import cos, sin, atan
 import math
-import random
 from specklepy.objects.geometry import (
     Point,
     Line,
@@ -197,7 +196,7 @@ def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage"):
     return vertices, vertices3d, segmList, holes
 
 
-def to_triangles(data: dict, attempt: int = 0) -> Tuple[dict | None, int]:
+def to_triangles(data: dict, attempt: int = 0) -> Tuple[Union[dict, None], int]:
     # https://gis.stackexchange.com/questions/316697/delaunay-triangulation-algorithm-in-shapely-producing-erratic-result
     try:
         vert_old = data["vertices"]
@@ -330,7 +329,7 @@ def triangulatePolygon(
         return None, None, None
 
 
-def trianglateQuadMesh(mesh: Mesh) -> Mesh | None:
+def trianglateQuadMesh(mesh: Mesh) -> Union[Mesh, None]:
     new_mesh = None
     try:
         new_v: List[float] = []
@@ -404,7 +403,7 @@ def trianglateQuadMesh(mesh: Mesh) -> Mesh | None:
 
 def fix_orientation(
     polyBorder: List[Union[Point, "QgsPoint"]], positive: bool = True, coef: int = 1
-):
+) -> List[Union[Point, "QgsPoint"]]:
     sum_orientation = 0
     for k, _ in enumerate(polyBorder):
         index = k + 1
@@ -413,9 +412,9 @@ def fix_orientation(
         pt = polyBorder[k * coef]
         pt2 = polyBorder[index * coef]
 
-        try:
+        if isinstance(pt, Point) and isinstance(pt2, Point):
             sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)  # if Speckle Points
-        except:
+        else:
             sum_orientation += (pt2.x() - pt.x()) * (pt2.y() + pt.y())  # if QGIS Points
     if positive is True:
         if sum_orientation < 0:
@@ -426,257 +425,44 @@ def fix_orientation(
     return polyBorder
 
 
-def getHolePt(pointListLocal):
+def getHolePt(pointListLocal: List[Union[Point, "QgsPoint"]]) -> List[float]:
     pointListLocal = fix_orientation(pointListLocal, True, 1)
     minXpt = pointListLocal[0]
     index = 0
     index2 = 1
+    points_as_speckle = isinstance(minXpt, Point)
     for i, pt in enumerate(pointListLocal):
-        if pt.x() < minXpt.x():
+        if points_as_speckle:
+            check_next = pt.x < minXpt.x  # if Speckle points
+        else:
+            check_next = pt.x() < minXpt.x()
+
+        if check_next:
             minXpt = pt
             index = i
             if i == len(pointListLocal) - 1:
                 index2 = 0
             else:
                 index2 = index + 1
-    x_range = pointListLocal[index2].x() - minXpt.x()
-    y_range = pointListLocal[index2].y() - minXpt.y()
-    if y_range > 0:
-        sidePt = [minXpt.x() + abs(x_range / 2) + 0.001, minXpt.y() + y_range / 2]
+    if points_as_speckle:
+        x_range = pointListLocal[index2].x - minXpt.x
+        y_range = pointListLocal[index2].y - minXpt.y
+        if y_range > 0:
+            sidePt = [minXpt.x + abs(x_range / 2) + 0.001, minXpt.y + y_range / 2]
+        else:
+            sidePt = [minXpt.x + abs(x_range / 2) - 0.001, minXpt.y + y_range / 2]
+
     else:
-        sidePt = [minXpt.x() + abs(x_range / 2) - 0.001, minXpt.y() + y_range / 2]
+        x_range = pointListLocal[index2].x - minXpt.x
+        y_range = pointListLocal[index2].y - minXpt.y
+        if y_range > 0:
+            sidePt = [minXpt.x() + abs(x_range / 2) + 0.001, minXpt.y() + y_range / 2]
+        else:
+            sidePt = [minXpt.x() + abs(x_range / 2) - 0.001, minXpt.y() + y_range / 2]
     return sidePt
 
 
-def getPolygonFeatureHeight(feature, layer, dataStorage):
-    height = None
-    ignore = False
-    if dataStorage.savedTransforms is not None:
-        for item in dataStorage.savedTransforms:
-            layer_name = item.split("  ->  ")[0].split(" ('")[0]
-            transform_name = item.split("  ->  ")[1].lower()
-            if "ignore" in transform_name:
-                ignore = True
-
-            if layer_name == layer.name():
-                attribute = None
-                if " ('" in item:
-                    attribute = item.split(" ('")[1].split("') ")[0]
-
-                if attribute is None and ignore is False:
-                    logToUser(
-                        "Attribute for extrusion not selected",
-                        level=1,
-                        func=inspect.stack()[0][3],
-                    )
-                    return None
-
-                # print("Apply transform: " + transform_name)
-                if "extrude" in transform_name and "polygon" in transform_name:
-                    # additional check:
-                    try:
-                        if dataStorage.project.crs().isGeographic():
-                            # logToUser("Extrusion can only be applied when project CRS is using metric units", level = 1, func = inspect.stack()[0][3])
-                            return None
-                    except:
-                        return None
-
-                    try:
-                        existing_height = float(feature[attribute])
-                        if (
-                            existing_height is None or str(feature[attribute]) == "NULL"
-                        ):  # if attribute value invalid
-                            if ignore is True:
-                                return None
-                            else:  # find approximate value
-                                all_existing_vals = [
-                                    f[attribute]
-                                    for f in layer.getFeatures()
-                                    if (
-                                        f[attribute] is not None
-                                        and (
-                                            isinstance(f[attribute], float)
-                                            or isinstance(f[attribute], int)
-                                        )
-                                    )
-                                ]
-                                try:
-                                    if len(all_existing_vals) > 5:
-                                        height_average = all_existing_vals[
-                                            int(len(all_existing_vals) / 2)
-                                        ]
-                                        height = random.randint(
-                                            height_average - 5, height_average + 5
-                                        )
-                                    else:
-                                        height = random.randint(10, 20)
-                                except:
-                                    height = random.randint(10, 20)
-                        else:  # if acceptable value: reading from existing attribute
-                            height = existing_height
-
-                    except:  # if no Height attribute
-                        if ignore is True:
-                            height = None
-                        else:
-                            height = random.randint(10, 20)
-
-    return height
-
-
-def specklePolycurveToPoints(poly: Polycurve, dataStorage) -> List[Point]:
-    # print("_____Speckle Polycurve to points____")
-    try:
-        points = []
-        for i, segm in enumerate(poly.segments):
-            pts = []
-            if isinstance(segm, Arc) or isinstance(
-                segm, Circle
-            ):  # or isinstance(segm, Curve):
-                pts: List[Point] = speckleArcCircleToPoints(segm)
-            elif isinstance(segm, Line):
-                pts: List[Point] = [segm.start, segm.end]
-            elif isinstance(segm, Polyline):
-                pts: List[Point] = segm.as_points()
-
-            if i == 0:
-                points.extend(pts)
-            else:
-                points.extend(pts[1:])
-        return points
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-        return
-
-
-def speckleArcCircleToPoints(poly: Union[Arc, Circle], dataStorage) -> List[Point]:
-    try:
-        # print("__Arc or Circle to Points___")
-        points = []
-        # print(poly.plane)
-        # print(poly.plane.normal)
-        if poly.plane is None or poly.plane.normal.z == 0:
-            normal = 1
-        else:
-            normal = poly.plane.normal.z
-
-        if isinstance(poly, Circle):
-            interval = 2 * math.pi
-            range_start = 0
-            angle1 = 0
-
-        else:  # if Arc
-            points.append(poly.startPoint)
-            range_start = 0
-
-            # angle1, angle2 = getArcAngles(poly)
-            interval, angle1, angle2 = getArcRadianAngle(poly)
-
-            if (angle1 > angle2 and normal == -1) or (angle2 > angle1 and normal == 1):
-                pass
-            if angle1 > angle2 and normal == 1:
-                interval = abs((2 * math.pi - angle1) + angle2)
-            if angle2 > angle1 and normal == -1:
-                interval = abs((2 * math.pi - angle2) + angle1)
-
-        pointsNum = math.floor(abs(interval)) * 12
-        if pointsNum < 4:
-            pointsNum = 4
-
-        for i in range(range_start, pointsNum + 1):
-            k = i / pointsNum  # to reset values from 1/10 to 1
-            angle = angle1 + k * interval * normal
-
-            pt = Point(
-                x=poly.plane.origin.x + poly.radius * cos(angle),
-                y=poly.plane.origin.y + poly.radius * sin(angle),
-                z=0,
-            )
-
-            pt.units = poly.plane.origin.units
-            points.append(pt)
-
-        if isinstance(poly, Arc):
-            points.append(poly.endPoint)
-        return points
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-        return []
-
-
-def speckleBoundaryToSpecklePts(
-    boundary: Union[None, Polyline, Arc, Line, Polycurve], dataStorage
-) -> List[Point]:
-    # add boundary points
-    try:
-        # print(dataStorage)
-        polyBorder = []
-        if isinstance(boundary, Circle) or isinstance(boundary, Arc):
-            polyBorder = speckleArcCircleToPoints(boundary, dataStorage)
-        elif isinstance(boundary, Polycurve):
-            polyBorder = specklePolycurveToPoints(boundary, dataStorage)
-        elif isinstance(boundary, Line):
-            pass
-        else:
-            try:
-                polyBorder = boundary.as_points()
-            except:
-                pass  # if Line or None
-        for i, p in enumerate(polyBorder):
-            if polyBorder[i].z == -0.0:
-                polyBorder[i].z = 0
-        return polyBorder
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-        return
-
-
-def addCorrectUnits(geom, dataStorage):
-    if not isinstance(geom, Base):
-        return None
-    units = dataStorage.currentUnits
-
-    geom.units = units
-    if isinstance(geom, Arc):
-        geom.plane.origin.units = units
-        geom.startPoint.units = units
-        geom.midPoint.units = units
-        geom.endPoint.units = units
-
-    elif isinstance(geom, Polycurve):
-        for s in geom.segments:
-            s.units = units
-            if isinstance(s, Arc):
-                s.plane.origin.units = units
-                s.startPoint.units = units
-                s.midPoint.units = units
-                s.endPoint.units = units
-
-    return geom
-
-
-def getArcRadianAngle(arc: Arc, dataStorage) -> List[float]:
-    try:
-        interval = None
-        normal = arc.plane.normal.z
-        angle1, angle2 = getArcAngles(arc)
-        if angle1 is None or angle2 is None:
-            return None
-        interval = abs(angle2 - angle1)
-
-        if (angle1 > angle2 and normal == -1) or (angle2 > angle1 and normal == 1):
-            pass
-        if angle1 > angle2 and normal == 1:
-            interval = abs((2 * math.pi - angle1) + angle2)
-        if angle2 > angle1 and normal == -1:
-            interval = abs((2 * math.pi - angle2) + angle1)
-        return interval, angle1, angle2
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-        return None, None, None
-
-
-def getArcAngles(poly: Arc, dataStorage) -> Tuple[float]:
+def getArcAngles(poly: Arc, dataStorage) -> Tuple[Union[float, None]]:
     try:
         if poly.startPoint.x == poly.plane.origin.x:
             angle1 = math.pi / 2
@@ -736,10 +522,155 @@ def getArcAngles(poly: Arc, dataStorage) -> Tuple[float]:
         return None, None
 
 
-def getArcNormal(poly: Arc, midPt: Point, dataStorage):
-    # print("____getArcNormal___")
+def getArcRadianAngle(arc: Arc, dataStorage) -> List[float]:
     try:
-        angle1, angle2 = getArcAngles(poly)
+        interval = None
+        normal = arc.plane.normal.z
+        angle1, angle2 = getArcAngles(arc, dataStorage)
+        if angle1 is None or angle2 is None:
+            return None
+        interval = abs(angle2 - angle1)
+
+        if (angle1 > angle2 and normal == -1) or (angle2 > angle1 and normal == 1):
+            pass
+        if angle1 > angle2 and normal == 1:
+            interval = abs((2 * math.pi - angle1) + angle2)
+        if angle2 > angle1 and normal == -1:
+            interval = abs((2 * math.pi - angle2) + angle1)
+        return interval, angle1, angle2
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return None, None, None
+
+
+def speckleArcCircleToPoints(poly: Union[Arc, Circle], dataStorage) -> List[Point]:
+    try:
+        points = []
+        if poly.plane is None or poly.plane.normal.z == 0:
+            normal = 1
+        else:
+            normal = poly.plane.normal.z
+
+        if isinstance(poly, Circle):
+            interval = 2 * math.pi
+            range_start = 0
+            angle1 = 0
+
+        elif isinstance(poly, Arc):
+            points.append(poly.startPoint)
+            range_start = 0
+
+            interval, angle1, angle2 = getArcRadianAngle(poly, dataStorage)
+
+            if (angle1 > angle2 and normal == -1) or (angle2 > angle1 and normal == 1):
+                pass
+            if angle1 > angle2 and normal == 1:
+                interval = abs((2 * math.pi - angle1) + angle2)
+            if angle2 > angle1 and normal == -1:
+                interval = abs((2 * math.pi - angle2) + angle1)
+
+        pointsNum = math.floor(abs(interval)) * 12
+        if pointsNum < 4:
+            pointsNum = 4
+
+        for i in range(range_start, pointsNum + 1):
+            k = i / pointsNum  # to reset values from 1/10 to 1
+            angle = angle1 + k * interval * normal
+
+            pt = Point(
+                x=poly.plane.origin.x + poly.radius * cos(angle),
+                y=poly.plane.origin.y + poly.radius * sin(angle),
+                z=0,
+            )
+
+            pt.units = poly.plane.origin.units
+            points.append(pt)
+
+        if isinstance(poly, Arc):
+            points.append(poly.endPoint)
+        return points
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return []
+
+
+def specklePolycurveToPoints(poly: Polycurve, dataStorage) -> List[Point]:
+    try:
+        points = []
+        if poly.segments is None:
+            return []
+        for i, segm in enumerate(poly.segments):
+            pts = []
+            if isinstance(segm, Arc) or isinstance(segm, Circle):
+                pts: List[Point] = speckleArcCircleToPoints(segm, dataStorage)
+            elif isinstance(segm, Line):
+                pts: List[Point] = [segm.start, segm.end]
+            elif isinstance(segm, Polyline):
+                pts: List[Point] = segm.as_points()
+
+            if i == 0:
+                points.extend(pts)
+            else:
+                points.extend(pts[1:])
+        return points
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return []
+
+
+def speckleBoundaryToSpecklePts(
+    boundary: Union[Circle, Arc, Line, Polycurve, Polyline], dataStorage
+) -> List[Point]:
+    # add boundary points
+    try:
+        polyBorder = []
+        if isinstance(boundary, Circle) or isinstance(boundary, Arc):
+            polyBorder = speckleArcCircleToPoints(boundary, dataStorage)
+        elif isinstance(boundary, Polycurve):
+            polyBorder = specklePolycurveToPoints(boundary, dataStorage)
+        elif isinstance(boundary, Line):
+            pass
+        else:
+            try:
+                polyBorder = boundary.as_points()
+            except:
+                pass  # if Line or None
+        for i, p in enumerate(polyBorder):
+            if polyBorder[i].z == -0.0:
+                polyBorder[i].z = 0
+        return polyBorder
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return []
+
+
+def addCorrectUnits(geom: Base, dataStorage) -> Base:
+    if not isinstance(geom, Base):
+        return None
+    units = dataStorage.currentUnits
+
+    geom.units = units
+    if isinstance(geom, Arc):
+        geom.plane.origin.units = units
+        geom.startPoint.units = units
+        geom.midPoint.units = units
+        geom.endPoint.units = units
+
+    elif isinstance(geom, Polycurve):
+        for s in geom.segments:
+            s.units = units
+            if isinstance(s, Arc):
+                s.plane.origin.units = units
+                s.startPoint.units = units
+                s.midPoint.units = units
+                s.endPoint.units = units
+
+    return geom
+
+
+def getArcNormal(poly: Arc, midPt: Point, dataStorage) -> Union[Vector, None]:
+    try:
+        angle1, angle2 = getArcAngles(poly, dataStorage)
 
         if midPt.x == poly.plane.origin.x:
             angle = math.pi / 2
@@ -773,18 +704,15 @@ def getArcNormal(poly: Arc, midPt: Point, dataStorage):
         if angle > angle2 > angle1:
             normal.z = -1
 
-        # print(angle1)
-        # print(angle)
-        # print(angle2)
-        # print(normal)
-
         return normal
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        return
+        return None
 
 
-def applyOffsetsRotation(x: float, y: float, dataStorage):  # on Send
+def applyOffsetsRotation(
+    x: float, y: float, dataStorage
+) -> Tuple[Union[float, None]]:  # on Send
     try:
         offset_x = dataStorage.crs_offset_x
         offset_y = dataStorage.crs_offset_y
@@ -795,7 +723,7 @@ def applyOffsetsRotation(x: float, y: float, dataStorage):  # on Send
             y -= offset_y
         if (
             rotation is not None
-            and isinstance(rotation, float)
+            and (isinstance(rotation, float) or isinstance(rotation, int))
             and -360 < rotation < 360
         ):
             a = rotation * math.pi / 180

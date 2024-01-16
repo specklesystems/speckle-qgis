@@ -1,11 +1,18 @@
 """Logging Utility Module for Speckle QGIS"""
 import inspect
+from typing import Union
 import webbrowser
 from specklepy_qt_ui.qt_ui.logger import logToUser as logToUser_UI
 
 
 def logToUser(
-    msg: str, func=None, level: int = 2, plugin=None, url="", blue=False, report=False
+    msg: Union[str, Exception],
+    func=None,
+    level: int = 2,
+    plugin=None,
+    url="",
+    blue=False,
+    report=False,
 ):
     msg = str(msg)
     logToUser_UI(msg, func, level, plugin, url, blue, report)

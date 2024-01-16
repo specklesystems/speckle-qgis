@@ -1,3 +1,5 @@
+import math
+from typing import List, Tuple
 import pytest
 
 from speckle.converter.geometry.utils import (
@@ -13,7 +15,6 @@ from speckle.converter.geometry.utils import (
     getPolyPtsSegments,
     fix_orientation,
     getHolePt,
-    getPolygonFeatureHeight,
     specklePolycurveToPoints,
     speckleArcCircleToPoints,
     speckleBoundaryToSpecklePts,
@@ -24,13 +25,15 @@ from speckle.converter.geometry.utils import (
     applyOffsetsRotation,
 )
 
+from specklepy.objects import Base
 from specklepy.objects.geometry import (
     Point,
     Line,
     Mesh,
-    Polyline,
     Circle,
     Arc,
+    Plane,
+    Polyline,
     Polycurve,
     Vector,
 )
@@ -189,7 +192,7 @@ def test_trianglateQuadMesh():
     assert len(new_mesh.vertices) == 18
 
 
-def test_fix_orientation():
+def test_fix_orientation_speckle_pts():
     polyBorder = [
         Point.from_list([-4, -4, 0]),
         Point.from_list([0, 4, 0]),
@@ -199,3 +202,104 @@ def test_fix_orientation():
     coef = 1
     result = fix_orientation(polyBorder, positive, coef)
     assert result == polyBorder
+
+
+def test_getHolePt_speckle_pts():
+    polyBorder = [
+        Point.from_list([-4, -4, 0]),
+        Point.from_list([0, 4, 0]),
+        Point.from_list([4, 4, 0]),
+    ]
+    result = getHolePt(polyBorder)
+    assert result == ([-1.999, 0.0])
+
+
+def test_getArcAngles_basic(arc, data_storage):
+    arc = Arc()
+
+    arc.startPoint = Point.from_list([-5, 0, 0])
+    arc.midPoint = Point.from_list([0, 5, 0])
+    arc.endPoint = Point.from_list([5, 0, 0])
+    arc.plane = Plane()
+    arc.plane.origin = Point.from_list([-5, 0, 0])
+    arc.units = "m"
+    arc.plane.normal = Vector.from_list([0, 0, 1])
+    arc.plane.origin.units = "m"
+    arc.radius = 5
+    arc.angleRadians = math.pi
+
+    result = getArcAngles(arc, data_storage)
+    assert isinstance(result, tuple)
+    assert isinstance(result[0], float)
+
+
+def test_getArcRadianAngle_basic(arc, data_storage):
+    result = getArcRadianAngle(arc, data_storage)
+    assert isinstance(result, tuple)
+    assert isinstance(result[0], float)
+
+
+def test_speckleArcCircleToPoints_basic(arc, data_storage):
+    result = speckleArcCircleToPoints(arc, data_storage)
+    assert isinstance(result, List)
+    assert len(result) > 0
+    assert isinstance(result[0], Point)
+
+
+def test_specklePolycurveToPoints_basic(polycurve, data_storage):
+    result = specklePolycurveToPoints(polycurve, data_storage)
+    assert isinstance(result, List)
+    assert len(result) > 0
+    assert isinstance(result[0], Point)
+
+
+def test_speckleBoundaryToSpecklePts_arc(arc, data_storage):
+    result = speckleBoundaryToSpecklePts(arc, data_storage)
+    assert isinstance(result, List)
+    assert len(result) > 0
+    assert isinstance(result[0], Point)
+
+
+def test_speckleBoundaryToSpecklePts_polycurve(polycurve, data_storage):
+    result = speckleBoundaryToSpecklePts(polycurve, data_storage)
+    assert isinstance(result, List)
+    assert len(result) > 0
+    assert isinstance(result[0], Point)
+
+
+def test_addCorrectUnits_arc(arc, data_storage):
+    result = addCorrectUnits(arc, data_storage)
+    assert isinstance(result, Base)
+    assert result.units == data_storage.currentUnits
+
+
+def test_addCorrectUnits_polycurve(polycurve, data_storage):
+    result = addCorrectUnits(polycurve, data_storage)
+    assert isinstance(result, Base)
+    assert result.units == data_storage.currentUnits
+
+
+def test_getArcNormal_basic(arc, data_storage):
+    result = getArcNormal(arc, arc.midPoint, data_storage)
+    assert isinstance(result, Vector)
+
+
+def test_applyOffsetsRotation_basic(data_storage):
+    x = 0.0
+    y = 10.0
+    result = applyOffsetsRotation(x, y, data_storage)
+    assert isinstance(result, Tuple)
+    assert len(result) == 2
+    assert isinstance(result[0], float) and isinstance(result[1], float)
+    assert result[0] == x and result[1] == y
+
+
+def test_applyOffsetsRotation_rotate(data_storage):
+    x = 0.0
+    y = 10.0
+    data_storage.crs_rotation = 180
+    result = applyOffsetsRotation(x, y, data_storage)
+    assert isinstance(result, Tuple)
+    assert len(result) == 2
+    assert isinstance(result[0], float) and isinstance(result[1], float)
+    assert (result[0] - x) < 0.0000001 and (result[1] + y) < 0.0000001

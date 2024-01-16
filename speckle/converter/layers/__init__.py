@@ -20,7 +20,7 @@ from plugin_utils.helpers import SYMBOL
 
 def getAllLayers(
     tree: QgsLayerTree, parent: Union[QgsLayerTreeNode, None] = None
-) -> List[Any[QgsVectorLayer, QgsRasterLayer]]:
+) -> List[Union[QgsVectorLayer, QgsRasterLayer]]:
     try:
         layers = []
         if parent is None:

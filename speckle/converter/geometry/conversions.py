@@ -24,7 +24,7 @@ from qgis.core import (
     QgsUnitTypes,
 )
 
-from speckle.converter.geometry.utils import getPolygonFeatureHeight
+from speckle.converter.features.utils import getPolygonFeatureHeight
 from speckle.converter.geometry.mesh import meshToNative
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 from speckle.converter.geometry.polygon import (
