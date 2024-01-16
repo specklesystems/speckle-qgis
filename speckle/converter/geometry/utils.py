@@ -10,7 +10,7 @@ from specklepy.objects.geometry import (
     Arc,
     Mesh,
     Polycurve,
-    Vector
+    Vector,
 )
 from specklepy.objects import Base
 from typing import Any, List, Tuple, Union, Dict
@@ -403,7 +403,7 @@ def trianglateQuadMesh(mesh: Mesh) -> Mesh | None:
 
 
 def fix_orientation(
-    polyBorder: List[Point | "QgsPoint"], positive: bool = True, coef: int = 1
+    polyBorder: List[Union[Point, "QgsPoint"]], positive: bool = True, coef: int = 1
 ):
     sum_orientation = 0
     for k, _ in enumerate(polyBorder):

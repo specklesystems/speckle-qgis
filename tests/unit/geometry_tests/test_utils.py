@@ -190,7 +190,11 @@ def test_trianglateQuadMesh():
 
 
 def test_fix_orientation():
-    polyBorder = [Point(-4, -4, 0), Point(0, 4, 0), Point(4, 4, 0)]
+    polyBorder = [
+        Point.from_list([-4, -4, 0]),
+        Point.from_list([0, 4, 0]),
+        Point.from_list([4, 4, 0]),
+    ]
     positive = True
     coef = 1
     result = fix_orientation(polyBorder, positive, coef)

@@ -3,10 +3,17 @@ from specklepy.objects import Base
 from specklepy.objects.geometry import Point, Line, Mesh
 from specklepy.objects.other import RevitParameter
 
+# run testing locally:
+# in .toml:
+# [tool.pytest.ini_options]
+# pythonpath = "speckle"
+# pytest -o console_output_style=classic
+
 
 def someF(path):
     import importlib.util
     import sys
+
     if "/" in path:
         name = path.split("/")[-2]
     else:
@@ -16,22 +23,29 @@ def someF(path):
     sys.modules[name] = foo
     spec.loader.exec_module(foo)
     return foo
-    #foo.MyClass()
+    # foo.MyClass()
 
-import types 
+
+import types
+
+
 def reload_package(root_module):
     package_name = root_module.__name__
     # get a reference to each loaded module
-    loaded_package_modules = dict([
-        (key, value) for key, value in sys.modules.items() 
-        if key.startswith(package_name) and isinstance(value, types.ModuleType)])
+    loaded_package_modules = dict(
+        [
+            (key, value)
+            for key, value in sys.modules.items()
+            if key.startswith(package_name) and isinstance(value, types.ModuleType)
+        ]
+    )
     # delete references to these loaded modules from sys.modules
     for key in loaded_package_modules:
         del sys.modules[key]
-    # load each of the modules again; 
+    # load each of the modules again;
     # make old modules share state with new modules
     for key in loaded_package_modules:
-        print('loading %s' % key)
+        print("loading %s" % key)
         newmodule = __import__(key)
         oldmodule = loaded_package_modules[key]
         oldmodule.__dict__.clear()
@@ -46,15 +60,22 @@ import external_def
 
 from importlib import reload
 import urllib3
+
 urllib3 = reload(urllib3)
 
 ####################
 import os, sys
 from subprocess import run
+
 path = r"C:\Users\katri\AppData\Roaming\Speckle\connector_installations\QGIS"
 pythonExec = os.path.dirname(sys.executable) + "\\python3.exe"
 pythonExec = r"C:\Program Files\QGIS 3.32.2\apps\Python39\python3.exe"
-completed_process = run([pythonExec,"-m", "pip","install","-t",path, "requests-toolbelt==1.0.0"],capture_output=True,text=True)
+completed_process = run(
+    [pythonExec, "-m", "pip", "install", "-t", path, "requests-toolbelt==1.0.0"],
+    capture_output=True,
+    text=True,
+)
+
 
 #################################
 class RevitDirectShape(Base, speckle_type="Objects.BuiltElements.Revit.DirectShape"):
