@@ -25,8 +25,6 @@ try:
         iface.pluginToolBar().setVisible(True)
 
         # Ensure dependencies are installed in the machine
-        # from speckle.utils import enable_remote_debugging
-        # enable_remote_debugging()
         startDebugger()
         ensure_dependencies("QGIS")
 

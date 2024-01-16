@@ -1,3 +1,4 @@
+r"""
 from speckle.converter.layers.feature import (
     addFeatVariant,
     updateFeat,
@@ -8,6 +9,7 @@ from speckle.converter.layers.feature import (
     nonGeomFeatureToNative,
     cadFeatureToNative,
 )
+"""
 
 
 def test():

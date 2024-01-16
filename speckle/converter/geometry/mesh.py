@@ -15,7 +15,7 @@ from speckle.converter.layers.utils import get_scale_factor, get_scale_factor_to
 from speckle.utils.panel_logging import logToUser
 
 from qgis.core import (
-    Qgis, QgsPoint, QgsPointXY, QgsMultiPolygon, QgsPolygon, QgsLineString, QgsFeature, QgsVectorLayer
+    QgsMultiPolygon, QgsPolygon, QgsLineString, QgsFeature, QgsVectorLayer
     )
 #from panda3d.core import Triangulator
 

@@ -28,18 +28,21 @@ from specklepy.objects.other import RevitParameter
 from typing import Dict, Any
 
 from PyQt5.QtCore import QVariant, QDate, QDateTime
-from speckle.converter import geometry
-from speckle.converter.geometry import convertToSpeckle, transform
+from speckle.converter.geometry.conversions import (
+    convertToNative,
+    convertToNativeMulti,
+    convertToSpeckle,
+)
+from speckle.converter.geometry import transform
 from specklepy.objects.GIS.geometry import (
     GisRasterElement,
     GisPolygonGeometry,
     GisNonGeometryElement,
     GisTopography,
 )
-from speckle.converter.geometry.mesh import constructMesh, constructMeshFromRaster
-from specklepy.objects.GIS.layers import RasterLayer
+from speckle.converter.geometry.mesh import constructMeshFromRaster
 
-from speckle.converter.geometry.point import applyOffsetsRotation
+from speckle.converter.geometry.utils import applyOffsetsRotation
 
 # from speckle.utils.panel_logging import logger
 from speckle.converter.layers.utils import (
@@ -1102,13 +1105,13 @@ def featureToNative(feature: Base, fields: QgsFields, dataStorage):
                     speckle_geom = feature  # for created in other software
 
             if not isinstance(speckle_geom, list):
-                qgsGeom = geometry.convertToNative(speckle_geom, dataStorage)
+                qgsGeom = convertToNative(speckle_geom, dataStorage)
 
             elif isinstance(speckle_geom, list):
                 if len(speckle_geom) == 1:
-                    qgsGeom = geometry.convertToNative(speckle_geom[0], dataStorage)
+                    qgsGeom = convertToNative(speckle_geom[0], dataStorage)
                 elif len(speckle_geom) > 1:
-                    qgsGeom = geometry.convertToNativeMulti(speckle_geom, dataStorage)
+                    qgsGeom = convertToNativeMulti(speckle_geom, dataStorage)
                 else:
                     logToUser(
                         f"Feature '{feature.id}' does not contain geometry",
@@ -1215,9 +1218,9 @@ def cadFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
             speckle_geom = feature  # for created in other software
 
         if isinstance(speckle_geom, list):
-            qgsGeom = geometry.convertToNativeMulti(speckle_geom, dataStorage)
+            qgsGeom = convertToNativeMulti(speckle_geom, dataStorage)
         else:
-            qgsGeom = geometry.convertToNative(speckle_geom, dataStorage)
+            qgsGeom = convertToNative(speckle_geom, dataStorage)
 
         if qgsGeom is not None:
             exist_feat.setGeometry(qgsGeom)

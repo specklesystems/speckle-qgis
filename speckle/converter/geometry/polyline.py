@@ -423,50 +423,12 @@ def polycurveToNative(poly: Polycurve, dataStorage) -> QgsLineString:
                     curve = QgsLineString(points)
                     return curve
         except: curve = None
-
-        #new_curve = QgsLineString(points)
         return curve
     
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3])
         return
     
-
-r'''
-def arcToQgisPoints(poly: Arc):
-    points = []
-    angle1 = atan( abs ((poly.startPoint.y - poly.plane.origin.y) / (poly.startPoint.x - poly.plane.origin.x) )) # between 0 and pi/2
-    if poly.plane.origin.x < poly.startPoint.x and poly.plane.origin.y > poly.startPoint.y: angle1 = 2*math.pi - angle1
-    if poly.plane.origin.x > poly.startPoint.x and poly.plane.origin.y > poly.startPoint.y: angle1 = math.pi + angle1
-    if poly.plane.origin.x > poly.startPoint.x and poly.plane.origin.y < poly.startPoint.y: angle1 = math.pi - angle1
-
-    angle2 = atan( abs ((poly.endPoint.y - poly.plane.origin.y) / (poly.endPoint.x - poly.plane.origin.x) )) # between 0 and pi/2
-    if poly.plane.origin.x < poly.endPoint.x and poly.plane.origin.y > poly.endPoint.y: angle2 = 2*math.pi - angle2
-    if poly.plane.origin.x > poly.endPoint.x and poly.plane.origin.y > poly.endPoint.y: angle2 = math.pi + angle2
-    if poly.plane.origin.x > poly.endPoint.x and poly.plane.origin.y < poly.endPoint.y: angle2 = math.pi - angle2
-
-    try: interval = (poly.endAngle - poly.startAngle)
-    except: interval = (angle2-angle1)
-    try: 
-        pointsNum = math.floor( abs(interval)) * 12
-        if pointsNum <4: pointsNum = 4
-        points.append(pointToNative(poly.startPoint))
-
-        for i in range(1, pointsNum + 1): 
-            k = i/pointsNum # to reset values from 1/10 to 1
-            if poly.plane.normal.z == 0: normal = 1
-            else: normal = poly.plane.normal.z
-            angle = angle1 + k * interval * normal
-            pt = Point( x = poly.plane.origin.x + poly.radius * cos(angle), y = poly.plane.origin.y + poly.radius * sin(angle), z = 0) 
-            pt.units = poly.startPoint.units 
-            points.append(pointToNative(pt))
-        points.append(pointToNative(poly.endPoint))
-
-        curve = QgsLineString(points)
-        return curve
-    except: return None
-'''
-
 
 def speckleEllipseToPoints(poly: Ellipse, dataStorage) -> List[Point]:
     try:
