@@ -1,5 +1,5 @@
 import inspect
-from typing import List
+from typing import List, Union
 from specklepy.objects.geometry import Mesh, Point
 from specklepy.objects.other import RenderMaterial
 
@@ -107,7 +107,7 @@ def fill_multi_mesh_parts(
         return None
 
 
-def writeMeshToShp(meshes: List, path: str, dataStorage):
+def writeMeshToShp(meshes: List[Mesh], path: str, dataStorage):
     """Converts a Speckle Mesh to QgsGeometry"""
     try:
         try:
@@ -146,8 +146,15 @@ def fill_mesh_parts(w: shapefile.Writer, mesh: Mesh, geom_id: str, dataStorage):
     return w
 
 
-def constructMeshFromRaster(vertices, faces, colors, dataStorage):
+def constructMeshFromRaster(
+    vertices: List[Union[float, int]],
+    faces: List[int],
+    colors: Union[List[int], None],
+    dataStorage,
+):
     try:
+        if vertices is None or faces is None:
+            return None
         mesh = Mesh.create(vertices, faces, colors)
         mesh.units = "m"
         return mesh
@@ -156,7 +163,9 @@ def constructMeshFromRaster(vertices, faces, colors, dataStorage):
         return None
 
 
-def constructMesh(vertices, faces, colors, dataStorage):
+def constructMesh(
+    vertices: List[Union[float, int]], faces: List[int], colors: List[int], dataStorage
+):
     try:
         if vertices is None or faces is None or colors is None:
             return None
