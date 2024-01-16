@@ -16,21 +16,27 @@ from specklepy.objects.geometry import (
 )
 
 from PyQt5.QtCore import QVariant, QDate, QDateTime
-from qgis._core import (
-    Qgis,
-    QgsProject,
-    QgsCoordinateReferenceSystem,
-    QgsLayerTreeLayer,
-    QgsVectorLayer,
-    QgsRasterLayer,
-    QgsWkbTypes,
-    QgsField,
-    QgsFields,
-    QgsLayerTreeGroup,
-)
+
+try:
+    from qgis._core import (
+        Qgis,
+        QgsProject,
+        QgsCoordinateReferenceSystem,
+        QgsLayerTreeLayer,
+        QgsVectorLayer,
+        QgsRasterLayer,
+        QgsWkbTypes,
+        QgsField,
+        QgsFields,
+        QgsLayerTreeGroup,
+    )
+
+    from osgeo import gdal, ogr, osr
+except ModuleNotFoundError:
+    pass
+
 from PyQt5.QtGui import QColor
 
-from osgeo import gdal, ogr, osr
 
 import math
 import numpy as np
@@ -53,7 +59,7 @@ ATTRS_REMOVE = [
 
 
 def getLayerGeomType(
-    layer: QgsVectorLayer,
+    layer: "QgsVectorLayer",
 ):  # https://qgis.org/pyqgis/3.0/core/Wkb/QgsWkbTypes.html
     # print(layer.wkbType())
     try:
@@ -223,7 +229,7 @@ def colorFromSpeckle(rgb):
         return QColor.fromRgb(245, 245, 245)
 
 
-def getLayerAttributes(features: List[Base]) -> QgsFields:
+def getLayerAttributes(features: List[Base]) -> "QgsFields":
     try:
         # print("___________getLayerAttributes")
         fields = QgsFields()
@@ -384,52 +390,6 @@ def traverseDict(
             newF.update({nam: var})
             newVals.update({nam: val})
         return newF, newVals
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-        return
-
-
-def get_scale_factor(units: str, dataStorage) -> float:
-    scale_to_meter = get_scale_factor_to_meter(units)
-    if dataStorage is not None:
-        scale_back = scale_to_meter / get_scale_factor_to_meter(
-            dataStorage.currentUnits
-        )
-        return scale_back
-    else:
-        return scale_to_meter
-
-
-def get_scale_factor_to_meter(units: str) -> float:
-    try:
-        unit_scale = {
-            "meters": 1.0,
-            "centimeters": 0.01,
-            "millimeters": 0.001,
-            "inches": 0.0254,
-            "feet": 0.3048,
-            "kilometers": 1000.0,
-            "mm": 0.001,
-            "cm": 0.01,
-            "m": 1.0,
-            "km": 1000.0,
-            "in": 0.0254,
-            "ft": 0.3048,
-            "yd": 0.9144,
-            "mi": 1609.340,
-        }
-        if (
-            units is not None
-            and isinstance(units, str)
-            and units.lower() in unit_scale.keys()
-        ):
-            return unit_scale[units]
-        logToUser(
-            f"Units {units} are not supported. Meters will be applied by default.",
-            level=1,
-            func=inspect.stack()[0][3],
-        )
-        return 1.0
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
         return

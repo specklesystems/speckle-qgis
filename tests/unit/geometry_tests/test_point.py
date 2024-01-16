@@ -1,21 +1,11 @@
-r"""
 from speckle.converter.geometry.point import (
-    pointToSpeckle,
-    transformSpecklePt,
-    pointToNativeWithoutTransforms,
-    pointToNative,
-    applyTransformMatrix,
     scalePointToNative,
 )
-
-def test_applyOffsetsRotation():
-    x = 0
-    y = 0
-    dataStorage = None
-    assert applyOffsetsRotation(x, y, dataStorage) == (None, None)
-
-"""
+from specklepy.objects.geometry import Point
 
 
-def test():
-    assert 0 == 0
+def test_scalePointToNative(data_storage):
+    pt = Point.from_list([0, 4, 0])
+    pt.units = "m"
+    result = scalePointToNative(pt, pt.units, data_storage)
+    assert isinstance(result, Point)

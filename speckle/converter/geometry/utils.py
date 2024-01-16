@@ -136,7 +136,7 @@ def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage"):
         else:
             pointListLocal.append(pt)
     for i, pt in enumerate(pointListLocal):
-        x, y = applyOffsetsRotation(pt.x(), pt.y(), dataStorage)
+        x, y = apply_pt_offsets_rotation_on_send(pt.x(), pt.y(), dataStorage)
         vertices.append([x, y])
         try:
             vertices3d.append([x, y, pt.z()])
@@ -177,12 +177,12 @@ def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage"):
             if len(pointListLocal) > 2:
                 holes.append(
                     [
-                        applyOffsetsRotation(p.x(), p.y(), dataStorage)
+                        apply_pt_offsets_rotation_on_send(p.x(), p.y(), dataStorage)
                         for p in pointListLocal
                     ]
                 )
             for i, pt in enumerate(pointListLocal):
-                x, y = applyOffsetsRotation(pt.x(), pt.y(), dataStorage)
+                x, y = apply_pt_offsets_rotation_on_send(pt.x(), pt.y(), dataStorage)
                 try:
                     vertices3d.append([x, y, pt.z()])
                 except:
@@ -710,7 +710,7 @@ def getArcNormal(poly: Arc, midPt: Point, dataStorage) -> Union[Vector, None]:
         return None
 
 
-def applyOffsetsRotation(
+def apply_pt_offsets_rotation_on_send(
     x: float, y: float, dataStorage
 ) -> Tuple[Union[float, None]]:  # on Send
     try:
@@ -735,3 +735,94 @@ def applyOffsetsRotation(
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
         return None, None
+
+
+def transform_speckle_pt_on_receive(pt_original: Point, dataStorage) -> Point:
+    offset_x = dataStorage.crs_offset_x
+    offset_y = dataStorage.crs_offset_y
+    rotation = dataStorage.crs_rotation
+
+    pt = Point(
+        x=pt_original.x, y=pt_original.y, z=pt_original.z, units=pt_original.units
+    )
+
+    gisLayer = None
+    try:
+        gisLayer = dataStorage.latestHostApp.lower().endswith("gis")
+        applyTransforms = False if (gisLayer and gisLayer is True) else True
+    except Exception as e:
+        print(e)
+        applyTransforms = True
+
+    # for non-GIS layers
+    if applyTransforms is True:
+        if (
+            rotation is not None
+            and (isinstance(rotation, float) or isinstance(rotation, int))
+            and -360 < rotation < 360
+        ):
+            a = rotation * math.pi / 180
+            x2 = pt.x
+            y2 = pt.y
+
+            # if a > 0: # turn counterclockwise on receive
+            x2 = pt.x * math.cos(a) - pt.y * math.sin(a)
+            y2 = pt.x * math.sin(a) + pt.y * math.cos(a)
+
+            pt.x = x2
+            pt.y = y2
+        if (
+            offset_x is not None
+            and isinstance(offset_x, float)
+            and offset_y is not None
+            and isinstance(offset_y, float)
+        ):
+            pt.x += offset_x
+            pt.y += offset_y
+
+    # for GIS layers
+    if gisLayer is True:
+        try:
+            offset_x = dataStorage.current_layer_crs_offset_x
+            offset_y = dataStorage.current_layer_crs_offset_y
+            rotation = dataStorage.current_layer_crs_rotation
+
+            if (
+                rotation is not None
+                and isinstance(rotation, float)
+                and -360 < rotation < 360
+            ):
+                a = rotation * math.pi / 180
+                x2 = pt.x
+                y2 = pt.y
+
+                # if a > 0: # turn counterclockwise on receive
+                x2 = pt.x * math.cos(a) - pt.y * math.sin(a)
+                y2 = pt.x * math.sin(a) + pt.y * math.cos(a)
+
+                pt.x = x2
+                pt.y = y2
+            if (
+                offset_x is not None
+                and isinstance(offset_x, float)
+                and offset_y is not None
+                and isinstance(offset_y, float)
+            ):
+                pt.x += offset_x
+                pt.y += offset_y
+        except Exception as e:
+            print(e)
+
+    return pt
+
+
+def apply_pt_transform_matrix(pt: Point, dataStorage) -> Point:
+    try:
+        if dataStorage.matrix is not None:
+            b = np.matrix([pt.x, pt.y, pt.z, 1])
+            res = b * dataStorage.matrix
+            x, y, z = res.item(0), res.item(1), res.item(2)
+            return Point(x=x, y=y, z=z, units=pt.units)
+    except Exception as e:
+        print(e)
+    return pt

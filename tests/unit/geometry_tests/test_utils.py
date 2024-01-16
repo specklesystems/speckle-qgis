@@ -1,4 +1,5 @@
 import math
+import numpy as np
 from typing import List, Tuple
 import pytest
 
@@ -22,7 +23,9 @@ from speckle.converter.geometry.utils import (
     getArcRadianAngle,
     getArcAngles,
     getArcNormal,
-    applyOffsetsRotation,
+    apply_pt_offsets_rotation_on_send,
+    transform_speckle_pt_on_receive,
+    apply_pt_transform_matrix,
 )
 
 from specklepy.objects import Base
@@ -284,22 +287,39 @@ def test_getArcNormal_basic(arc, data_storage):
     assert isinstance(result, Vector)
 
 
-def test_applyOffsetsRotation_basic(data_storage):
+def test_apply_pt_offsets_rotation_on_send_basic(data_storage):
     x = 0.0
     y = 10.0
-    result = applyOffsetsRotation(x, y, data_storage)
+    result = apply_pt_offsets_rotation_on_send(x, y, data_storage)
     assert isinstance(result, Tuple)
     assert len(result) == 2
     assert isinstance(result[0], float) and isinstance(result[1], float)
     assert result[0] == x and result[1] == y
 
 
-def test_applyOffsetsRotation_rotate(data_storage):
+def test_apply_pt_offsets_rotation_on_send_rotate(data_storage):
     x = 0.0
     y = 10.0
     data_storage.crs_rotation = 180
-    result = applyOffsetsRotation(x, y, data_storage)
+    result = apply_pt_offsets_rotation_on_send(x, y, data_storage)
     assert isinstance(result, Tuple)
     assert len(result) == 2
     assert isinstance(result[0], float) and isinstance(result[1], float)
     assert (result[0] - x) < 0.0000001 and (result[1] + y) < 0.0000001
+
+
+def test_transform_speckle_pt_on_receive_rotate(data_storage):
+    pt = Point.from_list([0, 4, 0])
+    data_storage.crs_rotation = 180
+    result = transform_speckle_pt_on_receive(pt, data_storage)
+    assert isinstance(result, Point)
+    assert (result.x - pt.x) < 0.0000001 and (result.y + pt.y) < 0.0000001
+
+
+def test_apply_pt_transform_matrix(data_storage):
+    pt = Point.from_list([0, 4, 0])
+    matrixList = np.array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
+    matrix = np.matrix(matrixList).reshape(4, 4)
+    data_storage.matrix = matrix
+    result = apply_pt_transform_matrix(pt, data_storage)
+    assert isinstance(result, Point)

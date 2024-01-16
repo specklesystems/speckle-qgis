@@ -2,16 +2,19 @@
 Contains all Layer related classes and methods.
 """
 import inspect
-from typing import Any, List, Union
+from typing import List, Union
 
-from qgis.core import (
-    QgsRasterLayer,
-    QgsVectorLayer,
-    QgsLayerTree,
-    QgsLayerTreeGroup,
-    QgsLayerTreeNode,
-    QgsLayerTreeLayer,
-)
+try:
+    from qgis.core import (
+        QgsRasterLayer,
+        QgsVectorLayer,
+        QgsLayerTree,
+        QgsLayerTreeGroup,
+        QgsLayerTreeNode,
+        QgsLayerTreeLayer,
+    )
+except ModuleNotFoundError:
+    pass
 
 from speckle.utils.panel_logging import logToUser
 
@@ -19,39 +22,39 @@ from plugin_utils.helpers import SYMBOL
 
 
 def getAllLayers(
-    tree: QgsLayerTree, parent: Union[QgsLayerTreeNode, None] = None
-) -> List[Union[QgsVectorLayer, QgsRasterLayer]]:
+    tree: "QgsLayerTree", parent: Union["QgsLayerTreeNode", None] = None
+) -> List[Union["QgsVectorLayer", "QgsRasterLayer"]]:
     try:
         layers = []
         if parent is None:
             parent = tree
 
-        if isinstance(parent, QgsLayerTreeLayer):
+        if isinstance(parent, "QgsLayerTreeLayer"):
             return [parent.layer()]
 
-        elif isinstance(parent, QgsLayerTreeGroup):
+        elif isinstance(parent, "QgsLayerTreeGroup"):
             children = parent.children()
 
             for node in children:
-                if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
-                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(
-                        node.layer(), QgsRasterLayer
+                if tree.isLayer(node) and isinstance(node, "QgsLayerTreeLayer"):
+                    if isinstance(node.layer(), "QgsVectorLayer") or isinstance(
+                        node.layer(), "QgsRasterLayer"
                     ):
                         layers.append(node.layer())
                     continue
                 elif tree.isGroup(node):
                     for lyr in getAllLayers(tree, node):
-                        if isinstance(lyr, QgsVectorLayer) or isinstance(
-                            lyr, QgsRasterLayer
+                        if isinstance(lyr, "QgsVectorLayer") or isinstance(
+                            lyr, "QgsRasterLayer"
                         ):
                             layers.append(lyr)
-                elif isinstance(node, QgsLayerTreeNode):
+                elif isinstance(node, "QgsLayerTreeNode"):
                     try:
                         visible = node.itemVisibilityChecked()
                         node.setItemVisibilityChecked(True)
                         for lyr in node.checkedLayers():
-                            if isinstance(lyr, QgsVectorLayer) or isinstance(
-                                lyr, QgsRasterLayer
+                            if isinstance(lyr, "QgsVectorLayer") or isinstance(
+                                lyr, "QgsRasterLayer"
                             ):
                                 layers.append(lyr)
                         node.setItemVisibilityChecked(visible)
@@ -65,7 +68,9 @@ def getAllLayers(
 
 
 def getAllLayersWithTree(
-    tree: QgsLayerTree, parent: QgsLayerTreeNode = None, existingStructure: str = ""
+    tree: "QgsLayerTree",
+    parent: Union["QgsLayerTreeNode", None] = None,
+    existingStructure: str = "",
 ):
     try:
         layers = []
@@ -153,9 +158,6 @@ def getAllLayersWithTree(
 
 def findAndClearLayerGroup(root, newGroupName: str = "", plugin=None):
     try:
-        # root = project_gis.layerTreeRoot()
-
-        # print("clearGroup: " + str(newGroupName))
         layerGroup = root.findGroup(newGroupName)
         if layerGroup is None:
             return
@@ -163,7 +165,6 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin=None):
         layersInGroup = getAllLayers(root, layerGroup)
         for lyr in layersInGroup:
             if isinstance(lyr, QgsVectorLayer):
-                # print(lyr.fields().names())
                 try:
                     lyr.getFeature(0).geometry()  # <QgsGeometry: null>
                 except:
@@ -204,7 +205,7 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin=None):
         return
 
 
-def getSavedLayers(plugin) -> List[Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+def getSavedLayers(plugin) -> List[Union["QgsLayerTreeLayer", "QgsLayerTreeNode"]]:
     """Gets a list of all layers in the given QgsLayerTree"""
 
     layers = []
@@ -244,14 +245,14 @@ def getSavedLayers(plugin) -> List[Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
         return None, None
 
 
-def getSelectedLayers(plugin) -> List[Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+def getSelectedLayers(plugin) -> List[Union["QgsLayerTreeLayer", "QgsLayerTreeNode"]]:
     """Gets a list of all layers in the given QgsLayerTree"""
     return getSelectedLayersWithStructure(plugin)[0]
 
 
 def getSelectedLayersWithStructure(
     plugin,
-) -> List[Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+) -> List[Union["QgsLayerTreeLayer", "QgsLayerTreeNode"]]:
     """Gets a list of all layers in the given QgsLayerTree"""
     try:
         selected_layers = plugin.iface.layerTreeView().selectedNodes()
@@ -264,8 +265,8 @@ def getSelectedLayersWithStructure(
 
 
 def getTreeFromLayers(
-    plugin, layers: List[Union[QgsLayerTreeLayer, QgsLayerTreeNode]], layerTreeRoot
-) -> List[Union[QgsLayerTreeLayer, QgsLayerTreeNode]]:
+    plugin, layers: List[Union["QgsLayerTreeLayer", "QgsLayerTreeNode"]], layerTreeRoot
+) -> List[Union["QgsLayerTreeLayer", "QgsLayerTreeNode"]]:
     try:
         layers_list = []
         tree_structure_list = []

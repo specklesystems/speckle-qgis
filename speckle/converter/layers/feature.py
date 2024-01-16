@@ -42,12 +42,11 @@ from specklepy.objects.GIS.geometry import (
 )
 from speckle.converter.geometry.mesh import constructMeshFromRaster
 
-from speckle.converter.geometry.utils import applyOffsetsRotation
+from speckle.converter.geometry.utils import apply_pt_offsets_rotation_on_send
 
-# from speckle.utils.panel_logging import logger
+from speckle.converter.utils import get_scale_factor_to_meter
 from speckle.converter.layers.utils import (
     get_raster_stats,
-    get_scale_factor_to_meter,
     getArrayIndicesFromXY,
     getElevationLayer,
     getHeightWithRemainderFromArray,
@@ -435,7 +434,7 @@ def rasterFeatureToSpeckle(
         b.y_resolution = rasterResXY[1]
         b.x_size = rasterDimensions[0]
         b.y_size = rasterDimensions[1]
-        b.x_origin, b.y_origin = applyOffsetsRotation(
+        b.x_origin, b.y_origin = apply_pt_offsets_rotation_on_send(
             reprojectedPt.x(), reprojectedPt.y(), dataStorage
         )
         b.band_count = rasterBandCount
@@ -819,10 +818,18 @@ def rasterFeatureToSpeckle(
                     row_z_bottom.append(z3)
 
                 ########################################################
-                x1, y1 = applyOffsetsRotation(pt1.x(), pt1.y(), dataStorage)
-                x2, y2 = applyOffsetsRotation(pt2.x(), pt2.y(), dataStorage)
-                x3, y3 = applyOffsetsRotation(pt3.x(), pt3.y(), dataStorage)
-                x4, y4 = applyOffsetsRotation(pt4.x(), pt4.y(), dataStorage)
+                x1, y1 = apply_pt_offsets_rotation_on_send(
+                    pt1.x(), pt1.y(), dataStorage
+                )
+                x2, y2 = apply_pt_offsets_rotation_on_send(
+                    pt2.x(), pt2.y(), dataStorage
+                )
+                x3, y3 = apply_pt_offsets_rotation_on_send(
+                    pt3.x(), pt3.y(), dataStorage
+                )
+                x4, y4 = apply_pt_offsets_rotation_on_send(
+                    pt4.x(), pt4.y(), dataStorage
+                )
 
                 vertices.append(
                     [x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4]

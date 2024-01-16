@@ -1,54 +1,53 @@
 # -*- coding: utf-8 -*-
-try:
-    import os
-    import sys
 
-    path = os.path.dirname(os.path.abspath(__file__))
-    if path not in sys.path:
-        sys.path.insert(0, path)
+import os
+import sys
 
-    from plugin_utils.installer import ensure_dependencies, startDebugger
-    from speckle.utils.panel_logging import logger
+path = os.path.dirname(os.path.abspath(__file__))
+if path not in sys.path:
+    sys.path.insert(0, path)
 
-    from qgis.core import Qgis
+from plugin_utils.installer import ensure_dependencies, startDebugger
+from speckle.utils.panel_logging import logger
 
-    # noinspection PyPep8Naming
-    def classFactory(iface):  # pylint: disable=invalid-name
-        """Load SpeckleQGIS class from file SpeckleQGIS.
+from qgis.core import Qgis
 
-        :param iface: A QGIS interface instance.
-        :type iface: QgsInterface
-        """
 
-        # Set qgisInterface to enable logToUser notifications
-        logger.qgisInterface = iface
-        iface.pluginToolBar().setVisible(True)
+# noinspection PyPep8Naming
+def classFactory(iface):  # pylint: disable=invalid-name
+    """Load SpeckleQGIS class from file SpeckleQGIS.
 
-        # Ensure dependencies are installed in the machine
-        startDebugger()
-        ensure_dependencies("QGIS")
+    :param iface: A QGIS interface instance.
+    :type iface: QgsInterface
+    """
 
-        from speckle_qgis import SpeckleQGIS
-        from specklepy.logging import metrics
+    # Set qgisInterface to enable logToUser notifications
+    logger.qgisInterface = iface
+    iface.pluginToolBar().setVisible(True)
 
-        version = (
-            Qgis.QGIS_VERSION.encode("iso-8859-1", errors="ignore")
-            .decode("utf-8")
-            .split(".")[0]
-        )
-        metrics.set_host_app("QGIS", f"QGIS{version}")
-        return SpeckleQGIS(iface)
+    # Ensure dependencies are installed in the machine
+    startDebugger()
+    ensure_dependencies("QGIS")
 
-    class EmptyClass:
-        # https://docs.qgis.org/3.28/en/docs/pyqgis_developer_cookbook/plugins/plugins.html#mainplugin-py
-        def __init__(self, iface):
-            pass
+    from speckle_qgis import SpeckleQGIS
+    from specklepy.logging import metrics
 
-        def initGui(self):
-            pass
+    version = (
+        Qgis.QGIS_VERSION.encode("iso-8859-1", errors="ignore")
+        .decode("utf-8")
+        .split(".")[0]
+    )
+    metrics.set_host_app("QGIS", f"QGIS{version}")
+    return SpeckleQGIS(iface)
 
-        def unload(self):
-            pass
 
-except ModuleNotFoundError:
-    pass
+class EmptyClass:
+    # https://docs.qgis.org/3.28/en/docs/pyqgis_developer_cookbook/plugins/plugins.html#mainplugin-py
+    def __init__(self, iface):
+        pass
+
+    def initGui(self):
+        pass
+
+    def unload(self):
+        pass

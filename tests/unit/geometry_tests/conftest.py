@@ -4,7 +4,7 @@ import pytest
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
 from specklepy.objects.encoding import CurveTypeEncoding
-from specklepy.objects.geometry import Arc, Line, Point, Plane, Polycurve, Vector
+from specklepy.objects.geometry import Arc, Line, Mesh, Point, Plane, Polycurve, Vector
 
 
 @pytest.fixture()
@@ -34,7 +34,7 @@ def arc():
 
 @pytest.fixture()
 def polycurve():
-    polycurve = Polycurve()
+    poly = Polycurve()
     segm1 = Line.from_list(
         [CurveTypeEncoding.Line.value, -10, 0, 0, -5, 0, 0, -5, 0, 0, 3]
     )
@@ -43,5 +43,14 @@ def polycurve():
     )
     # segm2 = Polyline()
     # segm3 = Arc()
-    polycurve.segments = [segm1, segm2]  # , segm3]
-    return polycurve
+    poly.segments = [segm1, segm2]  # , segm3]
+    return poly
+
+
+@pytest.fixture()
+def mesh():
+    mesh_obj = Mesh().create(
+        vertices=[0, 0, 0, 100, 0, 0, 0, 100, 0], faces=[3, 0, 1, 2]
+    )
+    mesh.units = "m"
+    return mesh_obj

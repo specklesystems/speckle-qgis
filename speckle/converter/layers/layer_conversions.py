@@ -70,7 +70,7 @@ from speckle.converter.layers import (
     getAllLayersWithTree,
     getSavedLayers,
     getSelectedLayers,
-    getSelectedLayersWithStructure
+    getSelectedLayersWithStructure,
 )
 from speckle.converter.layers.feature import (
     featureToSpeckle,
@@ -118,6 +118,7 @@ GEOM_LINE_TYPES = [
     "Objects.Geometry.Ellipse",
     "Objects.Geometry.Polycurve",
 ]
+
 
 def convertSelectedLayers(
     baseCollection: Collection,
@@ -2108,12 +2109,10 @@ def addRasterMainThread(obj: Tuple):
             return
 
         try:  # if the CRS has offset props
-            # ptSpeckle = Point(x = pt.x(), y = pt.y(), z = 0, units = "m")
             dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
             dataStorage.current_layer_crs_offset_y = layer.crs.offset_y
             dataStorage.current_layer_crs_rotation = layer.crs.rotation
 
-            # ptSpeckleTransformed = transformSpecklePt(ptSpeckle, dataStorage)
             pt = pointToNative(
                 ptSpeckle, plugin.dataStorage
             )  # already transforms the offsets
@@ -2123,8 +2122,6 @@ def addRasterMainThread(obj: Tuple):
 
         except Exception as e:
             print(e)
-        # print(crs)
-        # print(crsRaster)
         xform = QgsCoordinateTransform(crs, crsRaster, project)
         pt.transform(xform)
         try:
