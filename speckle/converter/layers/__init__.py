@@ -29,32 +29,32 @@ def getAllLayers(
         if parent is None:
             parent = tree
 
-        if isinstance(parent, "QgsLayerTreeLayer"):
+        if isinstance(parent, QgsLayerTreeLayer):
             return [parent.layer()]
 
-        elif isinstance(parent, "QgsLayerTreeGroup"):
+        elif isinstance(parent, QgsLayerTreeGroup):
             children = parent.children()
 
             for node in children:
-                if tree.isLayer(node) and isinstance(node, "QgsLayerTreeLayer"):
-                    if isinstance(node.layer(), "QgsVectorLayer") or isinstance(
-                        node.layer(), "QgsRasterLayer"
+                if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
+                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(
+                        node.layer(), QgsRasterLayer
                     ):
                         layers.append(node.layer())
                     continue
                 elif tree.isGroup(node):
                     for lyr in getAllLayers(tree, node):
-                        if isinstance(lyr, "QgsVectorLayer") or isinstance(
-                            lyr, "QgsRasterLayer"
+                        if isinstance(lyr, QgsVectorLayer) or isinstance(
+                            lyr, QgsRasterLayer
                         ):
                             layers.append(lyr)
-                elif isinstance(node, "QgsLayerTreeNode"):
+                elif isinstance(node, QgsLayerTreeNode):
                     try:
                         visible = node.itemVisibilityChecked()
                         node.setItemVisibilityChecked(True)
                         for lyr in node.checkedLayers():
-                            if isinstance(lyr, "QgsVectorLayer") or isinstance(
-                                lyr, "QgsRasterLayer"
+                            if isinstance(lyr, QgsVectorLayer) or isinstance(
+                                lyr, QgsRasterLayer
                             ):
                                 layers.append(lyr)
                         node.setItemVisibilityChecked(visible)
