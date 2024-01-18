@@ -44,6 +44,16 @@ def test_path2():
     assert "1" in os.path.dirname(specklepy_qt_ui.__file__)
 
 
+def test_path3():
+    import speckle
+
+    root = os.path.abspath(
+        os.path.dirname(os.path.abspath(os.path.dirname(speckle.__file__)))
+    )
+    subfolders = [f.path for f in os.scandir(root) if f.is_dir()]
+    assert "1" in subfolders
+
+
 from speckle.converter.geometry.utils import (
     cross_product,
     dot,
