@@ -121,7 +121,9 @@ jobs:
             pip install poetry
       - run:
           name: Install packages
-          command: poetry install
+          command: |
+            poetry lock [--no-update]
+            poetry install
       - run:
           name: Run tests
           command: poetry run pytest --cov --cov-report xml:reports/coverage.xml --junitxml=reports/test-results.xml
