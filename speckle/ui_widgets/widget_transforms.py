@@ -5,13 +5,12 @@ from speckle.converter.layers import getAllLayers
 from speckle.converter.layers.utils import getElevationLayer, getLayerGeomType
 from specklepy_qt_ui.qt_ui.widget_transforms import MappingSendDialog
 from specklepy_qt_ui.qt_ui.logger import displayUserMsg
-from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
 from speckle.utils.panel_logging import logToUser
 
 from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsIconUtils
 
-from PyQt5 import QtWidgets, uic, QtCore
+from PyQt5 import uic, QtCore
 from PyQt5.QtWidgets import QListWidgetItem
 
 from specklepy.logging import metrics
