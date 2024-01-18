@@ -31,7 +31,6 @@ from qgis.PyQt.QtWidgets import (
 from qgis.PyQt import QtWidgets
 from qgis import PyQt
 
-# from PyQt5.QtCore import pyqtSignal
 
 import sip
 

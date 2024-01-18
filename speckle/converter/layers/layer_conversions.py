@@ -21,10 +21,6 @@ import os
 import time
 from datetime import datetime
 
-from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
-    gdal,
-    osr,
-)
 from plugin_utils.helpers import (
     findFeatColors,
     findOrCreatePath,
@@ -33,28 +29,37 @@ from plugin_utils.helpers import (
 )
 
 # from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
-from qgis.core import (
-    Qgis,
-    QgsProject,
-    QgsRasterLayer,
-    QgsPoint,
-    QgsVectorLayer,
-    QgsProject,
-    QgsWkbTypes,
-    QgsLayerTree,
-    QgsLayerTreeGroup,
-    QgsLayerTreeNode,
-    QgsLayerTreeLayer,
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
-    QgsFields,
-    QgsSingleSymbolRenderer,
-    QgsCategorizedSymbolRenderer,
-    QgsRendererCategory,
-    QgsSymbol,
-    QgsUnitTypes,
-    QgsVectorFileWriter,
-)
+try:
+    from qgis.core import (
+        Qgis,
+        QgsProject,
+        QgsRasterLayer,
+        QgsPoint,
+        QgsVectorLayer,
+        QgsProject,
+        QgsWkbTypes,
+        QgsLayerTree,
+        QgsLayerTreeGroup,
+        QgsLayerTreeNode,
+        QgsLayerTreeLayer,
+        QgsCoordinateReferenceSystem,
+        QgsCoordinateTransform,
+        QgsFields,
+        QgsSingleSymbolRenderer,
+        QgsCategorizedSymbolRenderer,
+        QgsRendererCategory,
+        QgsSymbol,
+        QgsUnitTypes,
+        QgsVectorFileWriter,
+    )
+    from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
+        gdal,
+        osr,
+    )
+    from PyQt5.QtGui import QColor
+except ModuleNotFoundError:
+    pass
+
 from specklepy.objects.GIS.geometry import GisPolygonElement, GisNonGeometryElement
 from speckle.converter.geometry.point import (
     pointToNative,
@@ -102,7 +107,7 @@ from speckle.converter.layers.symbology import (
     rendererToSpeckle,
 )
 
-from PyQt5.QtGui import QColor
+
 import numpy as np
 
 from speckle.utils.panel_logging import logToUser

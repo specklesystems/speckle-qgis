@@ -15,7 +15,6 @@ from specklepy.objects.geometry import (
     Mesh,
 )
 
-from PyQt5.QtCore import QVariant, QDate, QDateTime
 
 try:
     from qgis._core import (
@@ -30,12 +29,11 @@ try:
         QgsFields,
         QgsLayerTreeGroup,
     )
-
+    from PyQt5.QtGui import QColor
+    from PyQt5.QtCore import QVariant, QDate, QDateTime
     from osgeo import gdal, ogr, osr
 except ModuleNotFoundError:
     pass
-
-from PyQt5.QtGui import QColor
 
 
 import math
@@ -186,7 +184,7 @@ def getLayerGeomType(
         return
 
 
-def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
+def getVariantFromValue(value: Any) -> Union["QVariant.Type", None]:
     try:
         # TODO add Base object
         pairs = {

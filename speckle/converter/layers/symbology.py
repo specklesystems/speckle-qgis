@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Dict, Union
+from typing import Any, Dict, Tuple, Union
 
 try:
     from qgis.core import (
@@ -23,11 +23,11 @@ try:
         QgsGraduatedSymbolRenderer,
         QgsRasterDataProvider,
     )
+    from PyQt5.QtGui import QColor
 except ModuleNotFoundError:
     pass
 
 from specklepy.objects.GIS.layers import Layer, RasterLayer, VectorLayer
-from PyQt5.QtGui import QColor
 
 from speckle.utils.panel_logging import logToUser
 
@@ -170,7 +170,7 @@ def gradientColorRampToNative(renderer: dict[str, Any]) -> "QgsGradientColorRamp
         return newRamp
 
 
-def get_r_g_b(rgb: int) -> tuple[int, int, int]:
+def get_r_g_b(rgb: int) -> Tuple[int, int, int]:
     r = g = b = 0
     try:
         r = (rgb & 0xFF0000) >> 16

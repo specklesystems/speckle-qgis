@@ -5,29 +5,38 @@ import math
 import os
 import time
 from tokenize import String
-from typing import List
+from typing import List, Union
 from plugin_utils.helpers import findOrCreatePath
-from qgis._core import (
-    QgsCoordinateTransform,
-    Qgis,
-    QgsPointXY,
-    QgsGeometry,
-    QgsRasterBandStats,
-    QgsFeature,
-    QgsFields,
-    QgsField,
-    QgsVectorLayer,
-    QgsRasterLayer,
-    QgsCoordinateReferenceSystem,
-    QgsProject,
-    QgsUnitTypes,
-)
+
+try:
+    from qgis._core import (
+        QgsCoordinateTransform,
+        Qgis,
+        QgsPointXY,
+        QgsGeometry,
+        QgsRasterBandStats,
+        QgsFeature,
+        QgsFields,
+        QgsField,
+        QgsVectorLayer,
+        QgsRasterLayer,
+        QgsCoordinateReferenceSystem,
+        QgsProject,
+        QgsUnitTypes,
+    )
+    from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
+        gdal,
+        osr,
+    )
+    from PyQt5.QtCore import QVariant, QDate, QDateTime
+except ModuleNotFoundError:
+    pass
+
 from specklepy.objects import Base
 from specklepy.objects.other import RevitParameter
 
 from typing import Dict, Any
 
-from PyQt5.QtCore import QVariant, QDate, QDateTime
 from speckle.converter.geometry.conversions import (
     convertToNative,
     convertToNativeMulti,
@@ -57,17 +66,14 @@ from speckle.converter.layers.utils import (
     traverseDict,
     validateAttributeName,
 )
-from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
-    gdal,
-    osr,
-)
+
 import numpy as np
 import scipy as sp
 
 from speckle.utils.panel_logging import logToUser
 
 
-def addFeatVariant(key, variant, value, f: QgsFeature):
+def addFeatVariant(key, variant, value, f: "QgsFeature"):
     # print("__________add variant")
     try:
         feat = f
@@ -105,7 +111,9 @@ def addFeatVariant(key, variant, value, f: QgsFeature):
         return feat
 
 
-def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, Any]:
+def updateFeat(
+    feat: "QgsFeature", fields: "QgsFields", feature: Base
+) -> dict[str, Any]:
     try:
         # print("__updateFeat")
         all_field_names = fields.names()
@@ -174,12 +182,12 @@ def updateFeat(feat: QgsFeature, fields: QgsFields, feature: Base) -> dict[str, 
 
 def featureToSpeckle(
     fieldnames: List[str],
-    f: QgsFeature,
+    f: "QgsFeature",
     geomType,
-    sourceCRS: QgsCoordinateReferenceSystem,
-    targetCRS: QgsCoordinateReferenceSystem,
-    project: QgsProject,
-    selectedLayer: QgsVectorLayer or QgsRasterLayer,
+    sourceCRS: "QgsCoordinateReferenceSystem",
+    targetCRS: "QgsCoordinateReferenceSystem",
+    project: "QgsProject",
+    selectedLayer: Union["QgsVectorLayer", "QgsRasterLayer"],
     dataStorage,
 ):
     # print("Feature to Speckle")
@@ -297,9 +305,9 @@ def featureToSpeckle(
 
 
 def rasterFeatureToSpeckle(
-    selectedLayer: QgsRasterLayer,
-    projectCRS: QgsCoordinateReferenceSystem,
-    project: QgsProject,
+    selectedLayer: "QgsRasterLayer",
+    projectCRS: "QgsCoordinateReferenceSystem",
+    project: "QgsProject",
     plugin,
 ) -> Base:
     dataStorage = plugin.dataStorage
@@ -1090,7 +1098,7 @@ def rasterFeatureToSpeckle(
         return None
 
 
-def featureToNative(feature: Base, fields: QgsFields, dataStorage):
+def featureToNative(feature: Base, fields: "QgsFields", dataStorage):
     feat = QgsFeature()
     # print("___featureToNative")
     try:
@@ -1182,9 +1190,9 @@ def featureToNative(feature: Base, fields: QgsFields, dataStorage):
 
 
 def bimFeatureToNative(
-    exist_feat: QgsFeature,
+    exist_feat: "QgsFeature",
     feature: Base,
-    fields: QgsFields,
+    fields: "QgsFields",
     crs,
     path: str,
     dataStorage,
@@ -1204,7 +1212,7 @@ def bimFeatureToNative(
         return
 
 
-def nonGeomFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
+def nonGeomFeatureToNative(feature: Base, fields: "QgsFields", dataStorage):
     try:
         exist_feat = QgsFeature()
         exist_feat.setFields(fields)
@@ -1216,7 +1224,7 @@ def nonGeomFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
         return
 
 
-def cadFeatureToNative(feature: Base, fields: QgsFields, dataStorage):
+def cadFeatureToNative(feature: Base, fields: "QgsFields", dataStorage):
     try:
         exist_feat = QgsFeature()
         try:

@@ -1,10 +1,13 @@
 import math
+from typing import Union
 import pytest
 
 import os
 import sys
 import speckle
+import specklepy_qt_ui
 
+r"""
 sys.path.append(
     os.path.abspath(
         os.path.dirname(speckle.__file__).replace(
@@ -12,8 +15,9 @@ sys.path.append(
         )
     )
 )
+"""
 
-from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
+# from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
 from specklepy.objects.encoding import CurveTypeEncoding
 from specklepy.objects.geometry import Arc, Line, Mesh, Point, Plane, Polycurve, Vector
@@ -21,6 +25,14 @@ from specklepy.objects.geometry import Arc, Line, Mesh, Point, Plane, Polycurve,
 
 @pytest.fixture()
 def data_storage():
+    class DataStorage:
+        crs_offset_x: Union[int, float]
+        crs_offset_y: Union[int, float]
+        crs_rotation: Union[int, float]
+
+        def __init__(self):
+            pass
+
     sample_obj = DataStorage()
     sample_obj.crs_offset_x = 0
     sample_obj.crs_offset_y = 0

@@ -27,6 +27,3 @@ devtools = "^0.12.2"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.pytest.ini_options]
-pythonpath = "specklepy_qt_ui"
