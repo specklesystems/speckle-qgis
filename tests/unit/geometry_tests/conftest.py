@@ -3,8 +3,15 @@ import pytest
 
 import os
 import sys
+import speckle
 
-sys.path.append(os.path.abspath(__file__))
+sys.path.append(
+    os.path.abspath(
+        os.path.dirname(speckle.__file__).replace(
+            "speckle-qgis\\speckle", "speckle-qgis\\specklepy_qt_ui"
+        )
+    )
+)
 
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
