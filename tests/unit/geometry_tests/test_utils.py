@@ -39,10 +39,6 @@ def test_path2():
 
     assert "1" in sys.path
 
-    import specklepy_qt_ui
-
-    assert "1" in os.path.dirname(specklepy_qt_ui.__file__)
-
 
 def test_path3():
     import speckle
@@ -50,8 +46,27 @@ def test_path3():
     root = os.path.abspath(
         os.path.dirname(os.path.abspath(os.path.dirname(speckle.__file__)))
     )
-    subfolders = [f.path for f in os.scandir(root) if f.is_dir()]
+    subfolders = [f.path for f in os.scandir(root) if f.is_dir()][6:]
     assert "1" in subfolders
+
+
+def test_path4():
+    import speckle
+
+    p = os.path.abspath(os.path.dirname(speckle.__file__))
+    if "speckle-qgis" not in p:  # for CI
+        path_add = p.replace("speckle", "specklepy_qt_ui")
+    else:  # for local debugging
+        path_add = p.replace(
+            "speckle-qgis\\speckle",
+            "speckle-qgis\\specklepy_qt_ui".replace(
+                "speckle-qgis/speckle", "speckle-qgis/specklepy_qt_ui"
+            ),
+        )
+    sys.path.append(path_add)
+    import specklepy_qt_ui
+
+    assert "1" in os.path.dirname(specklepy_qt_ui.__file__)
 
 
 from speckle.converter.geometry.utils import (
