@@ -5,6 +5,21 @@ import pytest
 import os
 import sys
 
+
+def test_path():
+    import speckle
+
+    p = os.path.abspath(os.path.dirname(speckle.__file__))
+    t = os.path.abspath(
+        os.path.dirname(speckle.__file__).replace(
+            "speckle-qgis\\speckle", "speckle-qgis\\specklepy_qt_ui"
+        )
+    )
+    assert "1" in sys.path
+    assert p == "1"
+    assert t == "1"
+
+
 from speckle.converter.geometry.utils import (
     cross_product,
     dot,
@@ -325,17 +340,3 @@ def test_apply_pt_transform_matrix(data_storage):
     data_storage.matrix = matrix
     result = apply_pt_transform_matrix(pt, data_storage)
     assert isinstance(result, Point)
-
-
-def test_path():
-    import speckle
-
-    p = os.path.abspath(os.path.dirname(speckle.__file__))
-    t = os.path.abspath(
-        os.path.dirname(speckle.__file__).replace(
-            "speckle-qgis\\speckle", "speckle-qgis\\specklepy_qt_ui"
-        )
-    )
-    assert "1" in sys.path
-    assert p=="1"
-    assert t=="1"
