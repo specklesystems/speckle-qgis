@@ -77,11 +77,11 @@ from speckle.converter.layers import (
     getSelectedLayers,
     getSelectedLayersWithStructure,
 )
-from speckle.converter.layers.feature import (
+from speckle.converter.features.feature_conversions import (
     featureToSpeckle,
-    nonGeomFeatureToNative,
     rasterFeatureToSpeckle,
     featureToNative,
+    nonGeomFeatureToNative,
     cadFeatureToNative,
     bimFeatureToNative,
 )
@@ -125,7 +125,7 @@ GEOM_LINE_TYPES = [
 ]
 
 
-def convertSelectedLayers(
+def convertSelectedLayersToSpeckle(
     baseCollection: Collection,
     layers: List[Union[QgsVectorLayer, QgsRasterLayer]],
     tree_structure: List[str],
@@ -133,7 +133,6 @@ def convertSelectedLayers(
     plugin,
 ) -> List[Union[VectorLayer, RasterLayer]]:
     """Converts the current selected layers to Speckle"""
-    # print("____convertSelectedLayers")
     dataStorage = plugin.dataStorage
     result = []
     try:
@@ -143,15 +142,14 @@ def convertSelectedLayers(
         jsonTree = {}
         for i, layer in enumerate(layers):
             structure = tree_structure[i]
-            # print(structure)
+
             if structure.startswith(SYMBOL):
                 structure = structure[len(SYMBOL) :]
-            # print(structure)
+
             levels = structure.split(SYMBOL)
             while "" in levels:
                 levels.remove("")
 
-            # print(levels)
             jsonTree = jsonFromList(jsonTree, levels)
 
         for i, layer in enumerate(layers):

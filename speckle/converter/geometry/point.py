@@ -14,13 +14,16 @@ from speckle.converter.geometry.utils import (
     transform_speckle_pt_on_receive,
     apply_pt_transform_matrix,
 )
-from speckle.converter.utils import get_scale_factor
+from plugin_utils.helpers import get_scale_factor
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.utils.panel_logging import logToUser
 
 
 def pointToSpeckle(
-    pt: "QgsPoint" or "QgsPointXY", feature: "QgsFeature", layer: "QgsVectorLayer", dataStorage
+    pt: "QgsPoint" or "QgsPointXY",
+    feature: "QgsFeature",
+    layer: "QgsVectorLayer",
+    dataStorage,
 ):
     """Converts a QgsPoint to Speckle"""
     try:

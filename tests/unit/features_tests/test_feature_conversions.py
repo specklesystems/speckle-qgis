@@ -1,7 +1,4 @@
-r"""
-from speckle.converter.layers.feature import (
-    addFeatVariant,
-    updateFeat,
+from speckle.converter.features import (
     featureToSpeckle,
     rasterFeatureToSpeckle,
     featureToNative,
@@ -9,8 +6,3 @@ from speckle.converter.layers.feature import (
     nonGeomFeatureToNative,
     cadFeatureToNative,
 )
-"""
-
-
-def test():
-    assert 0 == 0

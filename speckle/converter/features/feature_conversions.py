@@ -1,12 +1,42 @@
 from datetime import datetime
-from distutils.log import error
 import inspect
 import math
 import os
-import time
-from tokenize import String
 from typing import List, Union
-from plugin_utils.helpers import findOrCreatePath
+
+import numpy as np
+
+import scipy as sp
+from plugin_utils.helpers import findOrCreatePath, get_scale_factor_to_meter
+from speckle.converter.geometry import transform
+from speckle.converter.geometry.conversions import (
+    convertToNative,
+    convertToNativeMulti,
+    convertToSpeckle,
+)
+from speckle.converter.geometry.mesh import constructMeshFromRaster
+from speckle.converter.geometry.utils import apply_pt_offsets_rotation_on_send
+from speckle.converter.layers.utils import (
+    get_raster_stats,
+    getArrayIndicesFromXY,
+    getElevationLayer,
+    getHeightWithRemainderFromArray,
+    getRasterArrays,
+    getVariantFromValue,
+    getXYofArrayPoint,
+    isAppliedLayerTransformByKeywords,
+    validateAttributeName,
+)
+from speckle.utils.panel_logging import logToUser
+from speckle.converter.features.utils import updateFeat
+from specklepy.objects.GIS.geometry import (
+    GisRasterElement,
+    GisPolygonGeometry,
+    GisNonGeometryElement,
+    GisTopography,
+)
+
+from specklepy.objects import Base
 
 try:
     from qgis._core import (
@@ -31,153 +61,6 @@ try:
     from PyQt5.QtCore import QVariant, QDate, QDateTime
 except ModuleNotFoundError:
     pass
-
-from specklepy.objects import Base
-from specklepy.objects.other import RevitParameter
-
-from typing import Dict, Any
-
-from speckle.converter.geometry.conversions import (
-    convertToNative,
-    convertToNativeMulti,
-    convertToSpeckle,
-)
-from speckle.converter.geometry import transform
-from specklepy.objects.GIS.geometry import (
-    GisRasterElement,
-    GisPolygonGeometry,
-    GisNonGeometryElement,
-    GisTopography,
-)
-from speckle.converter.geometry.mesh import constructMeshFromRaster
-
-from speckle.converter.geometry.utils import apply_pt_offsets_rotation_on_send
-
-from speckle.converter.utils import get_scale_factor_to_meter
-from speckle.converter.layers.utils import (
-    get_raster_stats,
-    getArrayIndicesFromXY,
-    getElevationLayer,
-    getHeightWithRemainderFromArray,
-    getRasterArrays,
-    getVariantFromValue,
-    getXYofArrayPoint,
-    isAppliedLayerTransformByKeywords,
-    traverseDict,
-    validateAttributeName,
-)
-
-import numpy as np
-import scipy as sp
-
-from speckle.utils.panel_logging import logToUser
-
-
-def addFeatVariant(key, variant, value, f: "QgsFeature"):
-    # print("__________add variant")
-    try:
-        feat = f
-
-        r"""
-        if isinstance(value, str) and variant == QVariant.Date:  # 14
-            y,m,d = value.split("(")[1].split(")")[0].split(",")[:3]
-            value = QDate(int(y), int(m), int(d) ) 
-        elif isinstance(value, str) and variant == QVariant.DateTime: 
-            y,m,d,t1,t2 = value.split("(")[1].split(")")[0].split(",")[:5]
-            value = QDateTime(int(y), int(m), int(d), int(t1), int(t2) )
-        """
-        if variant == 10:
-            value = str(value)  # string
-
-        if value != "NULL" and value != "None":
-            if variant == getVariantFromValue(value):
-                feat[key] = value
-            elif (
-                isinstance(value, float) and variant == 4
-            ):  # float, but expecting Long (integer)
-                feat[key] = int(value)
-            elif (
-                isinstance(value, int) and variant == 6
-            ):  # int (longlong), but expecting float
-                feat[key] = float(value)
-            else:
-                feat[key] = None
-                # print(key); print(value); print(type(value)); print(variant); print(getVariantFromValue(value))
-        elif isinstance(variant, int):
-            feat[key] = None
-        return feat
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-        return feat
-
-
-def updateFeat(
-    feat: "QgsFeature", fields: "QgsFields", feature: Base
-) -> dict[str, Any]:
-    try:
-        # print("__updateFeat")
-        all_field_names = fields.names()
-        for i, key in enumerate(all_field_names):
-            variant = fields.at(i).type()
-            try:
-                if key == "Speckle_ID":
-                    value = str(feature["id"])
-                    # if key != "parameters": print(value)
-                    feat[key] = value
-
-                    feat = addFeatVariant(key, variant, value, feat)
-
-                else:
-                    try:
-                        value = feature[key]
-                        feat = addFeatVariant(key, variant, value, feat)
-
-                    except:
-                        value = None
-                        rootName = key.split("_")[0]
-                        # try: # if the root category exists
-                        # if its'a list
-                        if isinstance(feature[rootName], list):
-                            for i in range(len(feature[rootName])):
-                                try:
-                                    newF, newVals = traverseDict(
-                                        {},
-                                        {},
-                                        rootName + "_" + str(i),
-                                        feature[rootName][i],
-                                        1,
-                                    )
-                                    for i, (key, value) in enumerate(newVals.items()):
-                                        for k, (x, y) in enumerate(newF.items()):
-                                            if key == x:
-                                                variant = y
-                                                break
-                                        feat = addFeatVariant(key, variant, value, feat)
-                                except Exception as e:
-                                    print(e)
-                        # except: # if not a list
-                        else:
-                            try:
-                                newF, newVals = traverseDict(
-                                    {}, {}, rootName, feature[rootName], 1
-                                )
-                                for i, (key, value) in enumerate(newVals.items()):
-                                    for k, (x, y) in enumerate(newF.items()):
-                                        if key == x:
-                                            variant = y
-                                            break
-                                    feat = addFeatVariant(key, variant, value, feat)
-                            except Exception as e:
-                                feat.update({key: None})
-            except Exception as e:
-                feat[key] = None
-        # feat_sorted = {k: v for k, v in sorted(feat.items(), key=lambda item: item[0])}
-        # print("_________________end of updating a feature_________________________")
-
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-
-    return feat
 
 
 def featureToSpeckle(

@@ -34,7 +34,7 @@ from speckle.converter.geometry.utils import (
     speckleArcCircleToPoints,
 )
 
-from speckle.converter.utils import get_scale_factor
+from plugin_utils.helpers import get_scale_factor
 from typing import List, Tuple, Union
 from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.utils.panel_logging import logToUser

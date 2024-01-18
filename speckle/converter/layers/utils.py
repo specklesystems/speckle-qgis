@@ -770,13 +770,6 @@ def findUpdateJsonItemPath(tree: Dict, full_path_str: str):
 def collectionsFromJson(
     jsonObj: dict, levels: list, layerConverted, baseCollection: Collection
 ):
-    # print("collectionsFromJson")
-    # print(jsonObj)
-    # print(levels)
-    # print(layerConverted)
-    # print(baseCollection)
-    # print(baseCollection.name)
-    # print(baseCollection.elements)
     if jsonObj == {} or len(levels) == 0:
         # print("RETURN")
         baseCollection.elements.append(layerConverted)

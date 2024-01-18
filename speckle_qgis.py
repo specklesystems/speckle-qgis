@@ -69,7 +69,7 @@ from speckle.converter.layers.layer_conversions import (
     addNonGeometryMainThread,
     addRasterMainThread,
     addVectorMainThread,
-    convertSelectedLayers,
+    convertSelectedLayersToSpeckle,
 )
 from speckle.converter.layers import findAndClearLayerGroup
 
@@ -530,7 +530,7 @@ class SpeckleQGIS:
 
             # conversions
             time_start_conversion = datetime.now()
-            base_obj = convertSelectedLayers(
+            base_obj = convertSelectedLayersToSpeckle(
                 base_obj, layers, tree_structure, projectCRS, self
             )
             time_end_conversion = datetime.now()
