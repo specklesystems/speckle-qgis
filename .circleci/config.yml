@@ -107,6 +107,8 @@ jobs:
         type: string
     steps:
       - checkout
+      - attach_workspace:
+          at: ./
       - run:
           name: Install python
           command: |

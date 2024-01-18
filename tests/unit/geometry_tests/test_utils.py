@@ -6,7 +6,13 @@ import os
 import sys
 
 
-def test_path():
+def tests_path():
+    import specklepy_qt_ui
+
+    assert True
+
+
+def test_path1():
     import speckle
 
     p = os.path.abspath(os.path.dirname(speckle.__file__))
