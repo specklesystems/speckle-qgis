@@ -2,7 +2,6 @@
 import inspect
 from typing import Union
 import webbrowser
-from specklepy_qt_ui.qt_ui.logger import logToUser as logToUser_UI
 
 
 def logToUser(
@@ -14,6 +13,8 @@ def logToUser(
     blue=False,
     report=False,
 ):
+    from specklepy_qt_ui.qt_ui.logger import logToUser as logToUser_UI
+
     msg = str(msg)
     logToUser_UI(msg, func, level, plugin, url, blue, report)
     logger.writeToLog(msg.replace("\n", ". ") + " " + url, level, func)

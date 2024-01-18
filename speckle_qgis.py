@@ -2,7 +2,6 @@
 
 import inspect
 import os.path
-import sys
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -11,28 +10,30 @@ from datetime import datetime
 import threading
 from plugin_utils.threads import KThread
 from plugin_utils.helpers import constructCommitURL, getAppName, removeSpecialCharacters
-from qgis.core import (
-    Qgis,
-    QgsProject,
-    QgsRasterLayer,
-    QgsVectorLayer,
-    QgsUnitTypes,
-)
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import (
-    QApplication,
-    QAction,
-    QMenu,
-    QDockWidget,
-    QVBoxLayout,
-    QWidget,
-)
-from qgis.PyQt import QtWidgets
-from qgis import PyQt
 
+try:
+    from qgis.core import (
+        Qgis,
+        QgsProject,
+        QgsRasterLayer,
+        QgsVectorLayer,
+        QgsUnitTypes,
+    )
+    from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
+    from qgis.PyQt.QtGui import QIcon
+    from qgis.PyQt.QtWidgets import (
+        QApplication,
+        QAction,
+        QMenu,
+        QDockWidget,
+        QVBoxLayout,
+        QWidget,
+    )
+    from qgis.PyQt import QtWidgets
+    from qgis import PyQt
+except ModuleNotFoundError:
+    pass
 
-import sip
 
 from specklepy.core.api import operations
 from specklepy.logging.exceptions import (
@@ -45,21 +46,17 @@ from specklepy.core.api.wrapper import StreamWrapper
 from specklepy.objects import Base
 from specklepy.objects.other import Collection
 from specklepy.objects.units import get_units_from_string
-from specklepy.transports.server import ServerTransport
 from specklepy.core.api.credentials import (
     Account,
-    get_local_accounts,
-)  # , StreamWrapper
+)
 from specklepy.core.api.client import SpeckleClient
 from specklepy.logging import metrics
-import webbrowser
 
 # Initialize Qt resources from file resources.py
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.layers import (
     getAllLayers,
-    getAllLayersWithTree,
     getSavedLayers,
     getSelectedLayers,
     getSelectedLayersWithStructure,
@@ -78,7 +75,6 @@ from speckle.converter.layers import findAndClearLayerGroup
 
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
-# from speckle.utils.panel_logging import logger
 from specklepy_qt_ui.qt_ui.widget_add_stream import AddStreamModalDialog
 from specklepy_qt_ui.qt_ui.widget_create_stream import CreateStreamModalDialog
 from specklepy_qt_ui.qt_ui.widget_create_branch import CreateBranchModalDialog
@@ -104,13 +100,15 @@ SPECKLE_COLOR_LIGHT = (69, 140, 255)
 class SpeckleQGIS:
     """Speckle Connector Plugin for QGIS"""
 
-    dockwidget: Optional[QDockWidget]
+    dockwidget: Optional["QDockWidget"]
     version: str
     gis_version: str
     add_stream_modal: AddStreamModalDialog
     create_stream_modal: CreateStreamModalDialog
     current_streams: List[Tuple[StreamWrapper, Stream]]  # {id:(sw,st),id2:()}
-    current_layers: List[Tuple[Union[QgsVectorLayer, QgsRasterLayer], str, str]] = []
+    current_layers: List[
+        Tuple[Union["QgsVectorLayer", "QgsRasterLayer"], str, str]
+    ] = []
     # current_layer_group: Any
     receive_layer_tree: Dict
 
@@ -118,7 +116,7 @@ class SpeckleQGIS:
     active_branch: Optional[Branch] = None
     active_commit: Optional[Commit] = None
 
-    project: QgsProject
+    project: "QgsProject"
 
     # lat: float
     # lon: float

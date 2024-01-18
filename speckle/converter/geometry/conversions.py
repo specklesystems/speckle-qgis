@@ -1,28 +1,29 @@
-from numpy import isin
 from specklepy.objects.GIS.geometry import (
     GisLineElement,
     GisPointElement,
     GisPolygonElement,
 )
 
-# from speckle.utils.panel_logging import logger
 from typing import List, Sequence, Union
 import inspect
 
-from qgis.core import (
-    QgsGeometry,
-    QgsWkbTypes,
-    QgsMultiPoint,
-    QgsAbstractGeometry,
-    QgsMultiLineString,
-    QgsMultiPolygon,
-    QgsCircularString,
-    QgsLineString,
-    QgsRasterLayer,
-    QgsVectorLayer,
-    QgsFeature,
-    QgsUnitTypes,
-)
+try:
+    from qgis.core import (
+        QgsGeometry,
+        QgsWkbTypes,
+        QgsMultiPoint,
+        QgsAbstractGeometry,
+        QgsMultiLineString,
+        QgsMultiPolygon,
+        QgsCircularString,
+        QgsLineString,
+        QgsRasterLayer,
+        QgsVectorLayer,
+        QgsFeature,
+        QgsUnitTypes,
+    )
+except ModuleNotFoundError:
+    pass
 
 from speckle.converter.features.utils import getPolygonFeatureHeight
 from speckle.converter.geometry.mesh import meshToNative
@@ -76,7 +77,7 @@ from speckle.converter.layers.utils import (
 
 
 def convertToSpeckle(
-    feature: QgsFeature, layer: QgsVectorLayer or QgsRasterLayer, dataStorage
+    feature: "QgsFeature", layer: "QgsVectorLayer" or "QgsRasterLayer", dataStorage
 ) -> Union[Base, Sequence[Base], None]:
     """Converts the provided layer feature to Speckle objects"""
     try:
@@ -358,7 +359,7 @@ def convertToSpeckle(
         return None, None
 
 
-def convertToNative(base: Base, dataStorage) -> Union[QgsGeometry, None]:
+def convertToNative(base: Base, dataStorage) -> Union["QgsGeometry", None]:
     """Converts any given base object to QgsGeometry."""
     try:
         # print("convertToNative")
@@ -442,7 +443,7 @@ def convertToNative(base: Base, dataStorage) -> Union[QgsGeometry, None]:
         return None
 
 
-def multiPointToNative(items: List[Point], dataStorage) -> QgsMultiPoint:
+def multiPointToNative(items: List[Point], dataStorage) -> "QgsMultiPoint":
     try:
         pts = QgsMultiPoint()
         for item in items:
@@ -455,7 +456,7 @@ def multiPointToNative(items: List[Point], dataStorage) -> QgsMultiPoint:
         return None
 
 
-def multiPolylineToNative(items: List[Polyline], dataStorage) -> QgsMultiLineString:
+def multiPolylineToNative(items: List[Polyline], dataStorage) -> "QgsMultiLineString":
     try:
         polys = QgsMultiLineString()
         for item in items:
@@ -468,7 +469,7 @@ def multiPolylineToNative(items: List[Polyline], dataStorage) -> QgsMultiLineStr
         return None
 
 
-def multiPolygonToNative(items: List[Base], dataStorage) -> QgsMultiPolygon:
+def multiPolygonToNative(items: List[Base], dataStorage) -> "QgsMultiPolygon":
     try:
         polygons = QgsMultiPolygon()
         for item in items:
