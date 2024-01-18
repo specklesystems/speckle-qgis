@@ -577,6 +577,8 @@ class SpeckleQGIS:
             return
 
         # data transfer
+
+        self.dockwidget.signal_remove_btn_url.emit("cancel")
         time_start_transfer = datetime.now()
         try:
             # this serialises the block and sends it to the transport
@@ -590,8 +592,6 @@ class SpeckleQGIS:
             )
             return
         time_end_transfer = datetime.now()
-
-        self.dockwidget.signal_remove_btn_url.emit("cancel")
 
         try:
             # you can now create a commit on your stream with this object
