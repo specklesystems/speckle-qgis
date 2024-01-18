@@ -5,7 +5,6 @@ import pytest
 import os
 import sys
 import speckle
-import specklepy_qt_ui
 
 r"""
 sys.path.append(
