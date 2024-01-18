@@ -1,6 +1,11 @@
 import math
 import pytest
 
+import os
+import sys
+
+sys.path.append(os.path.abspath(__file__))
+
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
 from specklepy.objects.encoding import CurveTypeEncoding
