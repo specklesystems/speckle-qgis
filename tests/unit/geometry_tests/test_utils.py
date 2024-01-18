@@ -9,7 +9,7 @@ import sys
 def test_path():
     import speckle
 
-    p = os.path.abspath(os.path.dirname(speckle.__file__))
+    p = os.path.abspath(os.path.dirname(__file__))
     t = os.path.abspath(
         os.path.dirname(speckle.__file__).replace(
             "speckle-qgis\\speckle", "speckle-qgis\\specklepy_qt_ui"
