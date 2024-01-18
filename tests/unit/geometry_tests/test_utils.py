@@ -9,14 +9,26 @@ import sys
 def test_path():
     import speckle
 
-    p = os.path.abspath(os.path.dirname(__file__))
-    t = os.path.abspath(
-        os.path.dirname(speckle.__file__).replace(
-            "speckle-qgis\\speckle", "speckle-qgis\\specklepy_qt_ui"
+    p = os.path.abspath(os.path.dirname(speckle.__file__))
+    if "speckle-qgis" not in p:  # for CI
+        path_add = os.path.abspath(
+            os.path.dirname(speckle.__file__).replace("speckle", "specklepy_qt_ui")
         )
+    else:  # for local debugging
+        path_add = os.path.abspath(
+            os.path.dirname(speckle.__file__).replace(
+                "speckle-qgis\\speckle",
+                "speckle-qgis\\specklepy_qt_ui".replace(
+                    "speckle-qgis/speckle", "speckle-qgis/specklepy_qt_ui"
+                ),
+            )
+        )
+    assert "specklepy_qt_ui" in path_add
+    import specklepy_qt_ui
+
+    assert "specklepy_qt_ui" in os.path.abspath(
+        os.path.dirname(specklepy_qt_ui.__file__)
     )
-    assert p == "1"
-    assert t == "1"
 
 
 from speckle.converter.geometry.utils import (
