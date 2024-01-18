@@ -24,6 +24,7 @@ def test_path():
             )
         )
     assert "specklepy_qt_ui" in path_add
+    sys.path.append(path_add)
     import specklepy_qt_ui
 
     assert "specklepy_qt_ui" in os.path.abspath(
