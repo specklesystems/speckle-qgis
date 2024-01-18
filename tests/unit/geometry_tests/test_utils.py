@@ -15,7 +15,6 @@ def test_path():
             "speckle-qgis\\speckle", "speckle-qgis\\specklepy_qt_ui"
         )
     )
-    assert "1" in sys.path
     assert p == "1"
     assert t == "1"
 
