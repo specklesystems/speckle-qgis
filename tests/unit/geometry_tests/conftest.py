@@ -1,7 +1,6 @@
 import math
 from typing import Union
 import pytest
-
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
 from specklepy.objects.encoding import CurveTypeEncoding

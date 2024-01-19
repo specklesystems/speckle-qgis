@@ -8,7 +8,7 @@ from speckle.utils.panel_logging import logToUser
 from specklepy.objects import Base
 
 
-def addFeatVariant(key, variant, value, f: "QgsFeature"):
+def addFeatVariant(key, variant, value, f: "QgsFeature") -> "QgsFeature":
     try:
         feat = f
         if variant == 10:

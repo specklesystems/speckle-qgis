@@ -8,7 +8,14 @@ from specklepy.objects.other import RevitParameter
 # [tool.pytest.ini_options]
 # pythonpath = "speckle"
 # pytest -o console_output_style=classic
+# poetry self add poetry-dotenv-plugin
+# https://pypi.org/project/poetry-dotenv-plugin/
+# USE_PATH_FOR_GDAL_PYTHON=YES
 
+# from OSGeo4W shell: 
+# "C:\Program Files\QGIS 3.34.1\bin\python-qgis.bat" -m pip install pytest
+
+# "C:\Program Files\QGIS 3.34.1\bin\python-qgis.bat" C:\Users\katri\AppData\Roaming\QGIS\QGIS3\profiles\development\python\plugins\speckle-qgis\tests\unit\geometry_tests\conftest.py
 
 def someF(path):
     import importlib.util
