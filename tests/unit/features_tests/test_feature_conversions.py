@@ -1,4 +1,4 @@
-from speckle.converter.features import (
+from speckle.converter.features.feature_conversions import (
     featureToSpeckle,
     rasterFeatureToSpeckle,
     featureToNative,

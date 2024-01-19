@@ -1,23 +1,27 @@
 import inspect
-from qgis.core import (
-    QgsProject,
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
-    QgsPointXY,
-    QgsProject,
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
-    QgsPointXY,
-)
+
+try:
+    from qgis.core import (
+        QgsProject,
+        QgsCoordinateReferenceSystem,
+        QgsCoordinateTransform,
+        QgsPointXY,
+        QgsProject,
+        QgsCoordinateReferenceSystem,
+        QgsCoordinateTransform,
+        QgsPointXY,
+    )
+except ModuleNotFoundError:
+    pass
 
 from speckle.utils.panel_logging import logToUser
 
 
 def transform(
-    project: QgsProject,
-    src: QgsPointXY,
-    crsSrc: QgsCoordinateReferenceSystem,
-    crsDest: QgsCoordinateReferenceSystem,
+    project: "QgsProject",
+    src: "QgsPointXY",
+    crsSrc: "QgsCoordinateReferenceSystem",
+    crsDest: "QgsCoordinateReferenceSystem",
 ):
     """Transforms a QgsPointXY from the source CRS to the destination."""
     try:

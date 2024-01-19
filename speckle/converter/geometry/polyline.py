@@ -15,17 +15,20 @@ from specklepy.objects.geometry import (
 )
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 
-from qgis.core import (
-    QgsLineString,
-    QgsCompoundCurve,
-    QgsCircularString,
-    QgsCircle,
-    QgsFeature,
-    QgsVectorLayer,
-    QgsVertexIterator,
-    QgsEllipse,
-    QgsWkbTypes,
-)
+try:
+    from qgis.core import (
+        QgsLineString,
+        QgsCompoundCurve,
+        QgsCircularString,
+        QgsCircle,
+        QgsFeature,
+        QgsVectorLayer,
+        QgsVertexIterator,
+        QgsEllipse,
+        QgsWkbTypes,
+    )
+except ModuleNotFoundError:
+    pass
 
 from speckle.converter.geometry.utils import (
     addCorrectUnits,
@@ -41,10 +44,10 @@ from speckle.utils.panel_logging import logToUser
 
 
 def polylineFromVerticesToSpeckle(
-    vertices: Union[List[Point], QgsVertexIterator],
+    vertices: Union[List[Point], "QgsVertexIterator"],
     closed: bool,
-    feature: QgsFeature,
-    layer: QgsVectorLayer,
+    feature: "QgsFeature",
+    layer: "QgsVectorLayer",
     dataStorage,
 ):
     """Returns a Speckle Polyline given a list of QgsPoint instances and a boolean indicating if it's closed or not."""
@@ -96,10 +99,10 @@ def polylineFromVerticesToSpeckle(
 
 
 def unknownLineToSpeckle(
-    poly: QgsCompoundCurve,
+    poly: "QgsCompoundCurve",
     closed: bool,
-    feature: QgsFeature,
-    layer: QgsVectorLayer,
+    feature: "QgsFeature",
+    layer: "QgsVectorLayer",
     dataStorage,
 ) -> Union[Polyline, Arc, Line, Polycurve, None]:
     try:
@@ -123,7 +126,10 @@ def unknownLineToSpeckle(
 
 
 def compoudCurveToSpeckle(
-    poly: QgsCompoundCurve, feature: QgsFeature, layer: QgsVectorLayer, dataStorage
+    poly: "QgsCompoundCurve",
+    feature: "QgsFeature",
+    layer: "QgsVectorLayer",
+    dataStorage,
 ):
     try:
         try:
@@ -268,9 +274,9 @@ def anyLineToSpeckle(geom, feature, layer, dataStorage):
 
 
 def polylineToSpeckle(
-    poly: Union[QgsLineString, QgsCircularString],
-    feature: QgsFeature,
-    layer: QgsVectorLayer,
+    poly: Union["QgsLineString", "QgsCircularString"],
+    feature: "QgsFeature",
+    layer: "QgsVectorLayer",
     dataStorage,
 ):
     """Converts a QgsLineString to Speckle"""
@@ -291,7 +297,10 @@ def polylineToSpeckle(
 
 
 def arcToSpeckle(
-    poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorLayer, dataStorage
+    poly: "QgsCircularString",
+    feature: "QgsFeature",
+    layer: "QgsVectorLayer",
+    dataStorage,
 ):
     """Converts a QgsCircularString to Speckle"""
     try:
@@ -345,7 +354,7 @@ def getArcCenter(
         return None, None
 
 
-def lineToNative(line: Line, dataStorage) -> QgsLineString:
+def lineToNative(line: Line, dataStorage) -> "QgsLineString":
     """Converts a Speckle Line to QgsLineString"""
     try:
         line = QgsLineString(
@@ -357,7 +366,7 @@ def lineToNative(line: Line, dataStorage) -> QgsLineString:
         return
 
 
-def polylineToNative(poly: Polyline, dataStorage) -> QgsLineString:
+def polylineToNative(poly: Polyline, dataStorage) -> "QgsLineString":
     """Converts a Speckle Polyline to QgsLineString"""
     try:
         # this function can be called from Multipolyline, hence extra check if the type of segment in not Polyline
@@ -385,7 +394,7 @@ def polylineToNative(poly: Polyline, dataStorage) -> QgsLineString:
         return
 
 
-def ellipseToNative(poly: Ellipse, dataStorage) -> QgsLineString:
+def ellipseToNative(poly: Ellipse, dataStorage) -> "QgsLineString":
     """Converts a Speckle Ellipse to QgsLineString"""
     try:
         try:
@@ -406,7 +415,7 @@ def ellipseToNative(poly: Ellipse, dataStorage) -> QgsLineString:
         return
 
 
-def curveToNative(poly: Curve, dataStorage) -> QgsLineString:
+def curveToNative(poly: Curve, dataStorage) -> "QgsLineString":
     """Converts a Speckle Curve to QgsLineString"""
     try:
         display = poly.displayValue
@@ -417,7 +426,7 @@ def curveToNative(poly: Curve, dataStorage) -> QgsLineString:
         return
 
 
-def arcToNative(poly: Arc, dataStorage) -> QgsCircularString:
+def arcToNative(poly: Arc, dataStorage) -> "QgsCircularString":
     """Converts a Speckle Arc to QgsCircularString"""
     try:
         arc = QgsCircularString(
@@ -431,7 +440,7 @@ def arcToNative(poly: Arc, dataStorage) -> QgsCircularString:
         return
 
 
-def circleToNative(poly: Circle, dataStorage) -> QgsLineString:
+def circleToNative(poly: Circle, dataStorage) -> "QgsLineString":
     """Converts a Speckle Circle to QgsLineString"""
     try:
         scaleFactor = get_scale_factor(poly.units, dataStorage)
@@ -447,7 +456,7 @@ def circleToNative(poly: Circle, dataStorage) -> QgsLineString:
         return
 
 
-def polycurveToNative(poly: Polycurve, dataStorage) -> QgsLineString:
+def polycurveToNative(poly: Polycurve, dataStorage) -> "QgsLineString":
     try:
         curve = QgsCompoundCurve()
 

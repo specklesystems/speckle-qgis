@@ -127,9 +127,9 @@ GEOM_LINE_TYPES = [
 
 def convertSelectedLayersToSpeckle(
     baseCollection: Collection,
-    layers: List[Union[QgsVectorLayer, QgsRasterLayer]],
+    layers: List[Union["QgsVectorLayer", "QgsRasterLayer"]],
     tree_structure: List[str],
-    projectCRS: QgsCoordinateReferenceSystem,
+    projectCRS: "QgsCoordinateReferenceSystem",
     plugin,
 ) -> List[Union[VectorLayer, RasterLayer]]:
     """Converts the current selected layers to Speckle"""
@@ -245,12 +245,12 @@ def convertSelectedLayersToSpeckle(
 
 
 def layerToSpeckle(
-    selectedLayer: Union[QgsVectorLayer, QgsRasterLayer],
-    projectCRS: QgsCoordinateReferenceSystem,
+    selectedLayer: Union["QgsVectorLayer", "QgsRasterLayer"],
+    projectCRS: "QgsCoordinateReferenceSystem",
     plugin,
-) -> (
-    VectorLayer or RasterLayer
-):  # now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
+) -> Union[
+    VectorLayer, RasterLayer
+]:  # now the input is QgsVectorLayer instead of qgis._core.QgsLayerTreeLayer
     """Converts a given QGIS Layer to Speckle"""
     try:
         # print("___layerToSpeckle")
@@ -477,7 +477,7 @@ def layerToNative(
     streamBranch: str,
     nameBase: str,
     plugin,
-) -> Union[QgsVectorLayer, QgsRasterLayer, None]:
+) -> Union["QgsVectorLayer", "QgsRasterLayer", None]:
     try:
         project: QgsProject = plugin.project
         # plugin.dataStorage.currentCRS = project.crs()
@@ -1266,7 +1266,7 @@ def cadVectorLayerToNative(
     streamBranch: str,
     plugin,
     matrix=None,
-) -> QgsVectorLayer:
+) -> "QgsVectorLayer":
     # print("___________cadVectorLayerToNative")
     try:
         project: QgsProject = plugin.project

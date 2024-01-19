@@ -2,14 +2,18 @@
 
 import inspect
 import random
-from qgis.core import (
-    QgsGeometry,
-    QgsPolygon,
-    QgsPointXY,
-    QgsFeature,
-    QgsVectorLayer,
-    QgsCoordinateReferenceSystem,
-)
+
+try:
+    from qgis.core import (
+        QgsGeometry,
+        QgsPolygon,
+        QgsPointXY,
+        QgsFeature,
+        QgsVectorLayer,
+        QgsCoordinateReferenceSystem,
+    )
+except ModuleNotFoundError:
+    pass
 
 from typing import List, Union
 
@@ -43,7 +47,7 @@ import numpy as np
 
 
 def polygonToSpeckleMesh(
-    geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, dataStorage
+    geom: "QgsGeometry", feature: "QgsFeature", layer: "QgsVectorLayer", dataStorage
 ):
     polygon = GisPolygonGeometry(units="m")
     # print(dataStorage)
@@ -197,9 +201,9 @@ def isFlat(ptList):
 
 
 def polygonToSpeckle(
-    geom: QgsGeometry,
-    feature: QgsFeature,
-    layer: QgsVectorLayer,
+    geom: "QgsGeometry",
+    feature: "QgsFeature",
+    layer: "QgsVectorLayer",
     height,
     projectZval,
     dataStorage,
@@ -275,7 +279,7 @@ def polygonToSpeckle(
         return None, None
 
 
-def polygonToNative(poly: Base, dataStorage) -> QgsPolygon:
+def polygonToNative(poly: Base, dataStorage) -> "QgsPolygon":
     """Converts a Speckle Polygon base object to QgsPolygon.
     This object must have a 'boundary' and 'voids' properties.
     Each being a Speckle Polyline and List of polylines respectively."""
@@ -309,7 +313,7 @@ def polygonToNative(poly: Base, dataStorage) -> QgsPolygon:
 
 
 def getPolyBoundaryVoids(
-    geom: QgsGeometry, feature: QgsFeature, layer: QgsVectorLayer, dataStorage
+    geom: "QgsGeometry", feature: "QgsFeature", layer: "QgsVectorLayer", dataStorage
 ):
     boundary = None
     voids: List[Union[None, Polyline, Arc, Line, Polycurve]] = []
