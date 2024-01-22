@@ -63,9 +63,9 @@ def polygonToSpeckleMesh(
             voids = []
             voidsAsPts = []
 
-            for v in voidsNative:
+            for v_speckle in voidsNative:
                 pts_fixed = []
-                v_speckle = unknownLineToSpeckle(v, True, feature, layer, dataStorage)
+                #v_speckle = unknownLineToSpeckle(v, True, feature, layer, dataStorage)
                 pts = speckleBoundaryToSpecklePts(v_speckle, dataStorage)
 
                 plane_pts = [
@@ -223,9 +223,9 @@ def polygonToSpeckle(
         voids = []
         voidsAsPts = []
 
-        for v in voidsNative:
+        for v_speckle in voidsNative:
             pts_fixed = []
-            v_speckle = unknownLineToSpeckle(v, True, feature, layer, dataStorage)
+            #v_speckle = unknownLineToSpeckle(v, True, feature, layer, dataStorage)
             pts = speckleBoundaryToSpecklePts(v_speckle, dataStorage)
 
             plane_pts = [

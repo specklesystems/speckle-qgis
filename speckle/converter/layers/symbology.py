@@ -373,15 +373,15 @@ def rasterRendererToNative(
         if renderer and renderer["type"]:
             if renderer["type"] == "singlebandgray":
                 band = renderer["properties"]["band"]
+                rendererNew = QgsSingleBandGrayRenderer(rInterface, int(band))
                 contrast = QgsContrastEnhancement()
                 contrast.setContrastEnhancementAlgorithm(
                     int(renderer["properties"]["contrast"])
                 )
+                rendererNew.setContrastEnhancement(contrast)
                 contrast.setMaximumValue(float(renderer["properties"]["max"]))
                 contrast.setMinimumValue(float(renderer["properties"]["min"]))
-
-                rendererNew = QgsSingleBandGrayRenderer(rInterface, int(band))
-                rendererNew.setContrastEnhancement(contrast)
+                # rendererNew.setContrastEnhancement(contrast)
 
             if renderer["type"] == "multibandcolor":
                 redBand = renderer["properties"]["redBand"]
@@ -395,6 +395,7 @@ def rasterRendererToNative(
                     contrastR.setContrastEnhancementAlgorithm(
                         int(renderer["properties"]["redContrast"])
                     )
+                    rendererNew.setRedContrastEnhancement(contrastR)
                     contrastR.setMaximumValue(float(renderer["properties"]["redMax"]))
                     contrastR.setMinimumValue(float(renderer["properties"]["redMin"]))
                     # rendererNew.setRedContrastEnhancement(contrastR)
@@ -405,6 +406,7 @@ def rasterRendererToNative(
                     contrastG.setContrastEnhancementAlgorithm(
                         int(renderer["properties"]["greenContrast"])
                     )
+                    rendererNew.setGreenContrastEnhancement(contrastG)
                     contrastG.setMaximumValue(float(renderer["properties"]["greenMax"]))
                     contrastG.setMinimumValue(float(renderer["properties"]["greenMin"]))
                     # rendererNew.setGreenContrastEnhancement(contrastG)
@@ -415,6 +417,7 @@ def rasterRendererToNative(
                     contrastB.setContrastEnhancementAlgorithm(
                         int(renderer["properties"]["blueContrast"])
                     )
+                    rendererNew.setBlueContrastEnhancement(contrastB)
                     contrastB.setMaximumValue(float(renderer["properties"]["blueMax"]))
                     contrastB.setMinimumValue(float(renderer["properties"]["blueMin"]))
                     # rendererNew.setBlueContrastEnhancement(contrastB)

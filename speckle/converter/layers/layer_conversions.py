@@ -1559,8 +1559,8 @@ def vectorLayerToNative(
             geomType = "MultiPolygon"
         elif geomType == "Polyline":
             geomType = "MultiLineString"
-        elif geomType == "Multipoint":
-            geomType = "Point"
+        elif geomType.lower() == "multipoint":
+            geomType = "MultiPoint"
         elif geomType == "MultiPatch":
             geomType = "Polygon"
 
@@ -1613,7 +1613,7 @@ def addVectorMainThread(obj: Tuple):
             dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
             dataStorage.current_layer_crs_offset_y = layer.crs.offset_y
             dataStorage.current_layer_crs_rotation = layer.crs.rotation
-        except Exception as e:
+        except AttributeError as e:
             print(e)
 
         project: QgsProject = plugin.dataStorage.project
@@ -1932,7 +1932,7 @@ def addRasterMainThread(obj: Tuple):
             plugin.dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
             plugin.dataStorage.current_layer_crs_offset_y = layer.crs.offset_y
             plugin.dataStorage.current_layer_crs_rotation = layer.crs.rotation
-        except Exception as e:
+        except AttributeError as e:
             print(e)
 
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50]
@@ -2123,7 +2123,7 @@ def addRasterMainThread(obj: Tuple):
                 dataStorage.current_layer_crs_offset_y
             ) = dataStorage.current_layer_crs_rotation = None
 
-        except Exception as e:
+        except AttributeError as e:
             print(e)
         xform = QgsCoordinateTransform(crs, crsRaster, project)
         pt.transform(xform)

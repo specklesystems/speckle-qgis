@@ -24,3 +24,4 @@ def test_addFeatVariant(qgis_feature):
     value = "value to add"
     result = addFeatVariant(key, variant, value, qgis_feature)
     assert isinstance(result, QgsFeature)
+    

@@ -56,7 +56,7 @@ This repo contains the QGIS plugin for Speckle 2.0. It is written in `python` an
 > The following geometry types are supported for now:
 >
 > - Point
-> - Multipoint
+> - MultiPoint
 > - Polyline (LineString)
 > - MultiLineString
 > - Polygon

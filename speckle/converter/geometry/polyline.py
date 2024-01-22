@@ -69,7 +69,7 @@ def polylineFromVerticesToSpeckle(
         else:
             return None
 
-        if specklePts[0] is None:
+        if len(specklePts)==0 or specklePts[0] is None:
             logToUser("Polyline conversion failed", level=2)
             return
 
@@ -99,7 +99,7 @@ def polylineFromVerticesToSpeckle(
 
 
 def unknownLineToSpeckle(
-    poly: "QgsCompoundCurve",
+    poly: Union["QgsLineString", "QgsCompoundCurve"],
     closed: bool,
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
@@ -315,7 +315,7 @@ def arcToSpeckle(
         arc.plane = Plane()
         arc.plane.origin = Point.from_list(center)
         arc.units = "m"
-        arc.plane.normal = getArcNormal(arc, arc.midPoint)
+        arc.plane.normal = getArcNormal(arc, arc.midPoint, dataStorage)
         arc.plane.origin.units = "m"
         arc.radius = radius
         arc.angleRadians, startAngle, endAngle = getArcRadianAngle(arc)
@@ -379,12 +379,11 @@ def polylineToNative(poly: Polyline, dataStorage) -> "QgsLineString":
         elif isinstance(poly, Ellipse):
             return ellipseToNative(poly, dataStorage)
 
-        if poly.closed is False:
+        if isinstance(poly, Polyline) and poly.closed is False:
             polyline = QgsLineString(
                 [pointToNative(pt, dataStorage) for pt in poly.as_points()]
             )
-            # return polyline
-        else:
+        else: # Line or open Polyline 
             ptList = poly.as_points()
             ptList.append(ptList[0])
             polyline = QgsLineString([pointToNative(pt, dataStorage) for pt in ptList])

@@ -89,13 +89,13 @@ def getLayerGeomType(
             return "PolygonZM"
 
         elif layer.wkbType() == 4:
-            return "Multipoint"
+            return "MultiPoint"
         elif layer.wkbType() == 2004:
-            return "MultipointM"
+            return "MultiPointM"
         elif layer.wkbType() == 1004:
-            return "MultipointZ"
+            return "MultiPointZ"
         elif layer.wkbType() == 3004:
-            return "MultipointZM"
+            return "MultiPointZM"
 
         elif layer.wkbType() == 5:
             return "MultiLineString"
@@ -107,13 +107,13 @@ def getLayerGeomType(
             return "MultiLineStringZM"
 
         elif layer.wkbType() == 6:
-            return "Multipolygon"
+            return "MultiPolygon"
         elif layer.wkbType() == 2006:
-            return "MultipolygonM"
+            return "MultiPolygonM"
         elif layer.wkbType() == 1006:
-            return "MultipolygonZ"
+            return "MultiPolygonZ"
         elif layer.wkbType() == 3006:
-            return "MultipolygonZM"
+            return "MultiPolygonZM"
 
         elif layer.wkbType() == 7:
             return "GeometryCollection"
