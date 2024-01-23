@@ -24,11 +24,14 @@ def pointToSpeckle(
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
     dataStorage,
+    xform = None,
 ):
     """Converts a QgsPoint to Speckle"""
     try:
         if isinstance(pt, QgsPointXY):
             pt = QgsPoint(pt)
+        if xform is not None:
+            pt.transform(xform)
 
         x = pt.x()
         y = pt.y()

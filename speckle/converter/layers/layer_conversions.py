@@ -71,11 +71,6 @@ from specklepy.objects.other import Collection
 
 from speckle.converter.layers import (
     getAllLayers,
-    findAndClearLayerGroup,
-    getAllLayersWithTree,
-    getSavedLayers,
-    getSelectedLayers,
-    getSelectedLayersWithStructure,
 )
 from speckle.converter.features.feature_conversions import (
     featureToSpeckle,
@@ -362,9 +357,6 @@ def layerToSpeckle(
                     fieldnames,
                     f,
                     geomType,
-                    crs,
-                    projectCRS,
-                    project,
                     selectedLayer,
                     plugin.dataStorage,
                 )

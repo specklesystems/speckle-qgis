@@ -67,14 +67,9 @@ def featureToSpeckle(
     fieldnames: List[str],
     f: "QgsFeature",
     geomType,
-    sourceCRS: "QgsCoordinateReferenceSystem",
-    targetCRS: "QgsCoordinateReferenceSystem",
-    project: "QgsProject",
     selectedLayer: Union["QgsVectorLayer", "QgsRasterLayer"],
     dataStorage,
 ):
-    # print("Feature to Speckle")
-    # print(dataStorage)
     if dataStorage is None:
         return
     units = dataStorage.currentUnits

@@ -143,106 +143,10 @@ def compoudCurveToSpeckle(
             poly = poly.constGet()
         except:
             pass
-
-        polycurve = Polycurve(units="m")
-        polycurve.segments = []
-        polycurve.closed = False
-
-        parts = str(poly).split("),")
-        pts = []
-        pt_len = 0
-        closed_segm = False
-        segments_added = 0
-
-        for p in parts:
-            if "CircularString" in p:
-                all_pts = []
-                for k in range(len(p.split(","))):
-                    all_pts.append(poly.childPoint(pt_len - segments_added + k))
-
-                num_curve_segm = (len(all_pts) - 1) / 2
-                startPt = all_pts[0]
-                if (
-                    num_curve_segm.is_integer()
-                ):  # make sure the logic is [startPt, mid-end, mid-end etc]
-                    for i in range(int(num_curve_segm)):
-                        # TODO: check if arc
-                        segm = QgsCircularString(
-                            startPt, all_pts[1:][i * 2], all_pts[1:][i * 2 + 1]
-                        )
-                        newArc = arcToSpeckle(segm, feature, layer, dataStorage, xform)
-                        if newArc is not None:
-                            polycurve.segments.append(newArc)
-                        startPt = all_pts[1:][i * 2 + 1]
-                        pt_len += 3
-                        segments_added += 1
-            else:
-                if xform is not None:
-                    p.transform(xform)
-                segment_pts = (
-                    p.replace(" ", "").replace("(", "").replace(")", "").split(",")
-                )
-                len_segment_pts = len(segment_pts)
-                if len_segment_pts == 2:
-                    st = pointToSpeckle(
-                        poly.childPoint(pt_len - segments_added),
-                        feature,
-                        layer,
-                        dataStorage,
-                    )
-                    en = pointToSpeckle(
-                        poly.childPoint(pt_len - segments_added + 1),
-                        feature,
-                        layer,
-                        dataStorage,
-                    )
-                    if "EMPTY" in str(poly.childPoint(pt_len - segments_added + 1)):
-                        en = pointToSpeckle(
-                            poly.childPoint(0), feature, layer, dataStorage
-                        )
-                    newLine = Line(units="m", start=st, end=en)
-                    polycurve.segments.append(newLine)
-
-                    pt_len += 2  # because the end point will be reused as n-point of the curve
-                    segments_added += 1
-                else:  # polyline
-                    actual_segment_pts = []
-                    for k in range(len(segment_pts)):
-                        ptt = poly.childPoint(pt_len - segments_added + k)
-                        actual_segment_pts.append(
-                            pointToSpeckle(ptt, feature, layer, dataStorage)
-                        )
-
-                    if (
-                        actual_segment_pts[0].x
-                        == actual_segment_pts[len(actual_segment_pts) - 1].x
-                        and actual_segment_pts[0].y
-                        == actual_segment_pts[len(actual_segment_pts) - 1].y
-                        and actual_segment_pts[0].z
-                        == actual_segment_pts[len(actual_segment_pts) - 1].z
-                    ):
-                        closed_segm = True  # last point will not be included (if closed) when Polyline is created
-                        newPolyline = polylineFromVerticesToSpeckle(
-                            actual_segment_pts, closed_segm, feature, layer, dataStorage
-                        )
-                        polycurve.segments.append(newPolyline)
-                        break
-
-                    newPolyline = polylineFromVerticesToSpeckle(
-                        actual_segment_pts, closed_segm, feature, layer, dataStorage
-                    )
-                    polycurve.segments.append(newPolyline)
-                    pt_len += len(actual_segment_pts)
-                    segments_added += 1
-            # polycurve.segments.append(p)
-
-        # if closed_segm: polycurve = p # take the last segment only
-
-        col = featureColorfromNativeRenderer(feature, layer)
-        polycurve["displayStyle"] = {}
-        polycurve["displayStyle"]["color"] = col
-
-        return polycurve
+        new_poly = poly.curveToLine()
+        if xform is not None:
+            new_poly.transform(xform)
+        return polylineToSpeckle(new_poly, feature, layer, dataStorage)
 
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
@@ -276,8 +180,11 @@ def anyLineToSpeckle(geom, feature, layer, dataStorage, xform = None):
             else:
                 result = compoudCurveToSpeckle(geom, feature, layer, dataStorage, xform)
         else:
-            return None
+            result = compoudCurveToSpeckle(geom, feature, layer, dataStorage, xform)
+            #return None
     else:
+        if xform is not None:
+            geom.transform(xform)
         result = polylineToSpeckle(geom, feature, layer, dataStorage)
 
     result = addCorrectUnits(result, dataStorage)
