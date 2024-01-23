@@ -87,15 +87,8 @@ def featureToSpeckle(
             geom = GisNonGeometryElement()
             new_report = {"obj_type": geom.speckle_type, "errors": ""}
         else:
-            # apply transformation if needed
-            if sourceCRS != targetCRS:
-                xform = QgsCoordinateTransform(sourceCRS, targetCRS, project)
-                geometry = f.geometry()
-                geometry.transform(xform)
-                f.setGeometry(geometry)
-
             # Try to extract geometry
-            skipped_msg = "Feature skipped due to invalid geometry"
+            skipped_msg = f"'{geomType}' feature skipped due to invalid geometry"
             try:
                 geom, iterations = convertToSpeckle(f, selectedLayer, dataStorage)
                 if geom is not None and geom != "None":

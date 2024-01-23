@@ -207,14 +207,14 @@ def polygonToSpeckle(
     height,
     projectZval,
     dataStorage,
+    xform = None,
 ):
     """Converts a QgsPolygon to Speckle"""
-    # print("Polygon To Speckle")
-    # print(dataStorage)
+
     polygon = GisPolygonGeometry(units="m")
     iterations = 0
     try:
-        boundary, voidsNative = getPolyBoundaryVoids(geom, feature, layer, dataStorage)
+        boundary, voidsNative = getPolyBoundaryVoids(geom, feature, layer, dataStorage, xform)
 
         if projectZval is not None:
             boundary = moveVertically(boundary, projectZval)
@@ -225,7 +225,6 @@ def polygonToSpeckle(
 
         for v_speckle in voidsNative:
             pts_fixed = []
-            #v_speckle = unknownLineToSpeckle(v, True, feature, layer, dataStorage)
             pts = speckleBoundaryToSpecklePts(v_speckle, dataStorage)
 
             plane_pts = [
@@ -286,26 +285,35 @@ def polygonToNative(poly: Base, dataStorage) -> "QgsPolygon":
 
     polygon = QgsPolygon()
     try:
+        # boundary 
         try:  # if it's indeed a polygon with QGIS properties
             boundary = poly.boundary
-            polygon.setExteriorRing(polylineToNative(boundary, dataStorage))
         except:
             try:
                 boundary = poly["boundary"]
-                polygon.setExteriorRing(polylineToNative(boundary, dataStorage))
             except:
-                return
+                return None
+            
+        if boundary is None: 
+            logToUser(f"Polygon has no valid boundary", level=2, func=inspect.stack()[0][3])
+            return None
+        polygon.setExteriorRing(polylineToNative(boundary, dataStorage))
+        
+        # voids
         try:
             voids = poly.voids
-            for void in voids:
-                polygon.addInteriorRing(polylineToNative(void, dataStorage))
         except:
             try:
                 voids = poly["voids"]
-                for void in voids:
-                    polygon.addInteriorRing(polylineToNative(void, dataStorage))
             except:
                 pass
+        
+        for void in voids:
+            if void is None:
+                logToUser(f"Polygon interior ring is invalid and will be skipped", level=1, func=inspect.stack()[0][3])
+            else:
+                polygon.addInteriorRing(polylineToNative(void, dataStorage))
+
         return polygon
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
@@ -313,7 +321,7 @@ def polygonToNative(poly: Base, dataStorage) -> "QgsPolygon":
 
 
 def getPolyBoundaryVoids(
-    geom: "QgsGeometry", feature: "QgsFeature", layer: "QgsVectorLayer", dataStorage
+    geom: "QgsGeometry", feature: "QgsFeature", layer: "QgsVectorLayer", dataStorage, xform = None
 ):
     boundary = None
     voids: List[Union[None, Polyline, Arc, Line, Polycurve]] = []
@@ -334,7 +342,7 @@ def getPolyBoundaryVoids(
         for pt in pt_iterator:
             pointList.append(pt)
         if extRing is not None:
-            boundary = unknownLineToSpeckle(extRing, True, feature, layer, dataStorage)
+            boundary = unknownLineToSpeckle(extRing, True, feature, layer, dataStorage, xform)
         else:
             return boundary, voids
 
@@ -344,7 +352,7 @@ def getPolyBoundaryVoids(
             pass
         for i in range(geom.numInteriorRings()):
             intRing = unknownLineToSpeckle(
-                geom.interiorRing(i), True, feature, layer, dataStorage
+                geom.interiorRing(i), True, feature, layer, dataStorage, xform
             )
             voids.append(intRing)
 

@@ -19,6 +19,25 @@ from shapely.ops import triangulate
 import geopandas as gpd
 from geovoronoi import voronoi_regions_from_coords
 
+try:
+    from qgis.core import (
+        QgsCoordinateTransform,
+        Qgis,
+        QgsPointXY,
+        QgsGeometry,
+        QgsRasterBandStats,
+        QgsFeature,
+        QgsFields,
+        QgsField,
+        QgsVectorLayer,
+        QgsRasterLayer,
+        QgsCoordinateReferenceSystem,
+        QgsProject,
+        QgsUnitTypes,
+    )
+except ModuleNotFoundError:
+    pass
+
 from speckle.utils.panel_logging import logToUser
 
 import numpy as np
@@ -826,3 +845,20 @@ def apply_pt_transform_matrix(pt: Point, dataStorage) -> Point:
     except Exception as e:
         print(e)
     return pt
+
+
+def apply_feature_crs_transform(f, sourceCRS, targetCRS, dataStorage):
+    
+    if sourceCRS != targetCRS:
+        xform = QgsCoordinateTransform(sourceCRS, targetCRS, dataStorage.project)
+        geometry = f.geometry()
+        geometry.transform(xform)
+        f.setGeometry(geometry)
+    return f 
+
+def apply_qgis_geometry_crs_transform(geometry, sourceCRS, targetCRS, dataStorage):
+    
+    if sourceCRS != targetCRS:
+        xform = QgsCoordinateTransform(sourceCRS, targetCRS, dataStorage.project)
+        geometry.transform(xform)
+    return geometry 

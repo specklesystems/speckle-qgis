@@ -58,7 +58,7 @@ ATTRS_REMOVE = [
 
 def getLayerGeomType(
     layer: "QgsVectorLayer",
-):  # https://qgis.org/pyqgis/3.0/core/Wkb/QgsWkbTypes.html
+) -> str:  # https://qgis.org/pyqgis/3.0/core/Wkb/QgsWkbTypes.html
     # print(layer.wkbType())
     try:
         if layer.wkbType() == 1:
@@ -125,13 +125,13 @@ def getLayerGeomType(
             return "GeometryCollectionZM"
 
         elif layer.wkbType() == 8:
-            return "CircularString"
+            return "LineString" #"CircularString"
         elif layer.wkbType() == 2008:
-            return "CircularStringM"
+            return "LineStringM" #""CircularStringM"
         elif layer.wkbType() == 1008:
-            return "CircularStringZ"
+            return "LineStringZ" #""CircularStringZ"
         elif layer.wkbType() == 3008:
-            return "CircularStringZM"
+            return "LineStringZM" #""CircularStringZM"
 
         elif layer.wkbType() == 9:
             return "CompoundCurve"
@@ -143,13 +143,13 @@ def getLayerGeomType(
             return "CompoundCurveZM"
 
         elif layer.wkbType() == 10:
-            return "CurvePolygon"
+            return "Polygon" #"CurvePolygon"
         elif layer.wkbType() == 2010:
-            return "CurvePolygonM"
+            return "PolygonM" #"CurvePolygonM"
         elif layer.wkbType() == 1010:
-            return "CurvePolygonZ"
+            return "PolygonZ" #"CurvePolygonZ"
         elif layer.wkbType() == 3010:
-            return "CurvePolygonZM"
+            return "PolygonZM" #"CurvePolygonZM"
 
         elif layer.wkbType() == 11:
             return "MultiCurve"
@@ -181,7 +181,7 @@ def getLayerGeomType(
         return "None"
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        return
+        raise TypeError(f"Geometry type of layer '{layer.name()}' is not identified: {e}") 
 
 
 def getVariantFromValue(value: Any) -> Union["QVariant.Type", None]:

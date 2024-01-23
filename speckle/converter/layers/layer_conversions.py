@@ -273,12 +273,9 @@ def layerToSpeckle(
 
         if "unknown" in units_layer:
             units_layer = "m"  # if no-geometry layer
-        # print(units_layer)
-        # print(type(units_layer))
         layerObjs = []
 
         # Convert CRS to speckle, use the projectCRS
-        # print(projectCRS.toWkt())
         speckleReprojectedCrs = CRS(
             authority_id=projectCRS.authid(),
             name=str(projectCRS.description()),
@@ -303,12 +300,10 @@ def layerToSpeckle(
         layerRenderer = rendererToSpeckle(renderer)
 
         if isinstance(selectedLayer, QgsVectorLayer):
-            # print("_____isinstance(selectedLayer, QgsVectorLayer)____")
 
             fieldnames = []  # [str(field.name()) for field in selectedLayer.fields()]
             attributes = Base()
             for field in selectedLayer.fields():
-                # print(str(field.name()))
                 fieldnames.append(str(field.name()))
                 corrected = validateAttributeName(str(field.name()), [])
                 attribute_type = field.type()
@@ -339,10 +334,8 @@ def layerToSpeckle(
             if extrusionApplied is True:
                 if not layerName.endswith("_as_Mesh"):
                     layerName += "_as_Mesh"
-                # attributes["Speckle_ID"] = 10 # string type  # not needed
 
             geomType = getLayerGeomType(selectedLayer)
-            # print(geomType)
             features = selectedLayer.getFeatures()
 
             elevationLayer = getElevationLayer(plugin.dataStorage)
@@ -423,13 +416,12 @@ def layerToSpeckle(
 
             layerBase.renderer = layerRenderer
             layerBase.applicationId = selectedLayer.id()
-            # print(layerBase.features)
+
             return layerBase
 
         if isinstance(selectedLayer, QgsRasterLayer):
             # write feature attributes
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
-            # print(b)
             if b is None:
                 dataStorage.latestActionReport.append(
                     {
@@ -448,7 +440,6 @@ def layerToSpeckle(
                 rasterCrs=layerCRS,
                 elements=layerObjs,
             )
-            # layerBase.type="RasterLayer"
             dataStorage.latestActionReport.append(
                 {
                     "feature_id": layerName,
@@ -1654,22 +1645,22 @@ def addVectorMainThread(obj: Tuple):
 
                 if isinstance(f, GisNonGeometryElement):
                     logToUser(
-                        f"Feature does not contain geometry",
+                        f"'{geomType}' feature does not contain geometry",
                         level=2,
                         func=inspect.stack()[0][3],
                     )
                     report_features[len(report_features) - 1].update(
-                        {"errors": "Feature does not contain geometry"}
+                        {"errors": f"'{geomType}' feature does not contain geometry"}
                     )
                     all_feature_errors_count += 1
             else:
                 logToUser(
-                    f"Feature skipped due to invalid data",
+                    f"'{geomType}' feature skipped due to invalid data",
                     level=2,
                     func=inspect.stack()[0][3],
                 )
                 report_features[len(report_features) - 1].update(
-                    {"errors": "Feature skipped due to invalid data"}
+                    {"errors": f"'{geomType}' feature skipped due to invalid data"}
                 )
                 all_feature_errors_count += 1
 

@@ -17,6 +17,7 @@ from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 
 try:
     from qgis.core import (
+        QgsGeometry,
         QgsLineString,
         QgsCompoundCurve,
         QgsCircularString,
@@ -104,18 +105,23 @@ def unknownLineToSpeckle(
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
     dataStorage,
+    xform = None,
 ) -> Union[Polyline, Arc, Line, Polycurve, None]:
     try:
         if poly.wkbType() == 10:  # CurvePolygon
             actualGeom = poly.constGet()
             actualGeom = actualGeom.segmentize()
+            if xform is not None: 
+                actualGeom.transform(xform)
             return polylineToSpeckle(actualGeom, feature, layer, dataStorage)
 
         elif isinstance(poly, QgsCompoundCurve):
-            return compoudCurveToSpeckle(poly, feature, layer, dataStorage)
+            return compoudCurveToSpeckle(poly, feature, layer, dataStorage, xform)
         elif isinstance(poly, QgsCircularString):
-            return arcToSpeckle(poly, feature, layer, dataStorage)
+            return arcToSpeckle(poly, feature, layer, dataStorage, xform)
         else:
+            if xform is not None: 
+                poly.transform(xform)
             return polylineFromVerticesToSpeckle(
                 poly.vertices(), closed, feature, layer, dataStorage
             )  # initial method
@@ -130,6 +136,7 @@ def compoudCurveToSpeckle(
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
     dataStorage,
+    xform = None,
 ):
     try:
         try:
@@ -163,13 +170,15 @@ def compoudCurveToSpeckle(
                         segm = QgsCircularString(
                             startPt, all_pts[1:][i * 2], all_pts[1:][i * 2 + 1]
                         )
-                        newArc = arcToSpeckle(segm, feature, layer, dataStorage)
+                        newArc = arcToSpeckle(segm, feature, layer, dataStorage, xform)
                         if newArc is not None:
                             polycurve.segments.append(newArc)
                         startPt = all_pts[1:][i * 2 + 1]
                         pt_len += 3
                         segments_added += 1
             else:
+                if xform is not None:
+                    p.transform(xform)
                 segment_pts = (
                     p.replace(" ", "").replace("(", "").replace(")", "").split(",")
                 )
@@ -240,17 +249,19 @@ def compoudCurveToSpeckle(
         return
 
 
-def anyLineToSpeckle(geom, feature, layer, dataStorage):
+def anyLineToSpeckle(geom, feature, layer, dataStorage, xform = None):
     type = geom.wkbType()
     if (
         type == QgsWkbTypes.CircularString
         or type == QgsWkbTypes.CircularStringZ
         or type == QgsWkbTypes.CircularStringM
         or type == QgsWkbTypes.CircularStringZM
-    ):  # Type (not GeometryType)
-        result = arcToSpeckle(geom, feature, layer, dataStorage)
-        result = addCorrectUnits(result, dataStorage)
-        return result
+    ):
+        all_pts = [pt for pt in geom.vertices()]
+        if len(all_pts)==3: 
+            result = arcToSpeckle(geom, feature, layer, dataStorage, xform)
+        else:
+            result = compoudCurveToSpeckle(geom, feature, layer, dataStorage, xform)
 
     elif (
         type == QgsWkbTypes.CompoundCurve
@@ -261,16 +272,16 @@ def anyLineToSpeckle(geom, feature, layer, dataStorage):
         if "CircularString" in str(geom):
             all_pts = [pt for pt in geom.vertices()]
             if len(all_pts) == 3:
-                result = arcToSpeckle(geom, feature, layer, dataStorage)
-                return result
+                result = arcToSpeckle(geom, feature, layer, dataStorage, xform)
             else:
-                result = compoudCurveToSpeckle(geom, feature, layer, dataStorage)
-                return result
+                result = compoudCurveToSpeckle(geom, feature, layer, dataStorage, xform)
         else:
             return None
     else:
         result = polylineToSpeckle(geom, feature, layer, dataStorage)
-        return result
+
+    result = addCorrectUnits(result, dataStorage)
+    return result
 
 
 def polylineToSpeckle(
@@ -297,30 +308,24 @@ def polylineToSpeckle(
 
 
 def arcToSpeckle(
-    poly: "QgsCircularString",
+    poly: Union["QgsCircularString", "QgsGeometry"],
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
     dataStorage,
+    xform=None,
 ):
     """Converts a QgsCircularString to Speckle"""
     try:
-        arc = Arc()
-        vert_list = [pt for pt in poly.vertices()]
-        arc.startPoint = pointToSpeckle(vert_list[0], feature, layer, dataStorage)
-        arc.midPoint = pointToSpeckle(vert_list[1], feature, layer, dataStorage)
-        arc.endPoint = pointToSpeckle(vert_list[2], feature, layer, dataStorage)
-        center, radius = getArcCenter(
-            arc.startPoint, arc.midPoint, arc.endPoint, dataStorage
-        )
-        arc.plane = Plane()
-        arc.plane.origin = Point.from_list(center)
-        arc.units = "m"
-        arc.plane.normal = getArcNormal(arc, arc.midPoint, dataStorage)
-        arc.plane.origin.units = "m"
-        arc.radius = radius
-        arc.angleRadians, startAngle, endAngle = getArcRadianAngle(arc)
-        if arc.angleRadians == 0:
-            return None
+        poly: QgsCircularString = poly.constGet()
+    except:
+        pass
+    try:
+        # convert to polyline due to geometry distorsions 
+        # in case of crs transformations on send
+        linestring = poly.curveToLine()
+        if xform is not None:
+            linestring.transform(xform)
+        arc = polylineToSpeckle(linestring, feature, layer, dataStorage)
         col = featureColorfromNativeRenderer(feature, layer)
         arc["displayStyle"] = {}
         arc["displayStyle"]["color"] = col

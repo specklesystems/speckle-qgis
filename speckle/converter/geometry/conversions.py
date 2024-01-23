@@ -21,6 +21,7 @@ try:
         QgsVectorLayer,
         QgsFeature,
         QgsUnitTypes,
+        QgsCoordinateTransform,
     )
 except ModuleNotFoundError:
     pass
@@ -34,16 +35,12 @@ from speckle.converter.geometry.polygon import (
     isFlat,
     polygonToSpeckle,
     polygonToNative,
-    getPolyBoundaryVoids,
 )
 from speckle.converter.geometry.polyline import (
-    polylineFromVerticesToSpeckle,
-    unknownLineToSpeckle,
     compoudCurveToSpeckle,
     anyLineToSpeckle,
     polylineToSpeckle,
     arcToSpeckle,
-    getArcCenter,
     lineToNative,
     polylineToNative,
     ellipseToNative,
@@ -51,7 +48,6 @@ from speckle.converter.geometry.polyline import (
     arcToNative,
     circleToNative,
     polycurveToNative,
-    speckleEllipseToPoints,
 )
 from speckle.converter.geometry.utils import addCorrectUnits
 
@@ -81,9 +77,12 @@ def convertToSpeckle(
 ) -> Union[Base, Sequence[Base], None]:
     """Converts the provided layer feature to Speckle objects"""
     try:
-        # print("convertToSpeckle")
-        # print(dataStorage)
         iterations = 0
+        sourceCRS = layer.crs() 
+        targetCRS = dataStorage.project.crs()
+        xform = None
+        if sourceCRS != targetCRS:
+            xform = QgsCoordinateTransform(sourceCRS, targetCRS, dataStorage.project)
         try:
             geom: QgsGeometry = feature.geometry()
         except:
@@ -97,11 +96,12 @@ def convertToSpeckle(
 
         if geomType == QgsWkbTypes.PointGeometry:
             # the geometry type can be of single or multi type
+            if xform is not None:
+                geom.transform(xform)
             if geomSingleType:
                 result = pointToSpeckle(geom.constGet(), feature, layer, dataStorage)
                 result.units = units
                 result = [result]
-                # return result
             else:
                 result = [
                     pointToSpeckle(pt, feature, layer, dataStorage)
@@ -109,84 +109,26 @@ def convertToSpeckle(
                 ]
                 for r in result:
                     r.units = units
-                # return result
 
             element = GisPointElement(units=units, geometry=result)
             return element, iterations
 
         elif geomType == QgsWkbTypes.LineGeometry:  # 1
             if geomSingleType:
-                result = anyLineToSpeckle(geom, feature, layer, dataStorage)
+                result = anyLineToSpeckle(geom, feature, layer, dataStorage, xform)
                 result = addCorrectUnits(result, dataStorage)
                 result = [result]
                 # return result
             else:
                 result = [
-                    anyLineToSpeckle(poly, feature, layer, dataStorage)
+                    anyLineToSpeckle(poly, feature, layer, dataStorage, xform)
                     for poly in geom.parts()
                 ]
                 for r in result:
                     r = addCorrectUnits(r, dataStorage)
-                # if len(result) == 1: result = result[0]
-                # return result
 
             element = GisLineElement(units=units, geometry=result)
             return element, iterations
-
-            if (
-                type == QgsWkbTypes.CircularString
-                or type == QgsWkbTypes.CircularStringZ
-                or type == QgsWkbTypes.CircularStringM
-                or type == QgsWkbTypes.CircularStringZM
-            ):  # Type (not GeometryType)
-                if geomSingleType:
-                    result = arcToSpeckle(geom, feature, layer, dataStorage)
-                    result.units = units
-                    return result
-                else:
-                    result = [
-                        arcToSpeckle(poly, feature, layer, dataStorage)
-                        for poly in geom.parts()
-                    ]
-                    for r in result:
-                        r.units = units
-                    return result
-            elif (
-                type == QgsWkbTypes.CompoundCurve
-                or type == QgsWkbTypes.CompoundCurveZ
-                or type == QgsWkbTypes.CompoundCurveM
-                or type == QgsWkbTypes.CompoundCurveZM
-            ):  # 9, 1009, 2009, 3009
-                if "CircularString" in str(geom):
-                    all_pts = [pt for pt in geom.vertices()]
-                    if len(all_pts) == 3:
-                        result = arcToSpeckle(geom, feature, layer, dataStorage)
-                        result.units = units
-                        try:
-                            result.plane.origin.units = units
-                        except:
-                            pass
-                        return result
-                    else:
-                        result = compoudCurveToSpeckle(
-                            geom, feature, layer, dataStorage
-                        )
-                        result.units = units
-                        return result
-                else:
-                    return None
-            elif geomSingleType:  # type = 2
-                result = polylineToSpeckle(geom, feature, layer, dataStorage)
-                result.units = units
-                return result
-            else:
-                result = [
-                    polylineToSpeckle(poly, feature, layer, dataStorage)
-                    for poly in geom.parts()
-                ]
-                for r in result:
-                    r.units = units
-                return result
 
         # check if the layer was received from Mesh originally
         elif (
@@ -195,6 +137,8 @@ def convertToSpeckle(
             and layer.name().endswith("_as_Mesh")
             and "Speckle_ID" in layer.fields().names()
         ):
+            if xform is not None:
+                geom.transform(xform)
             result = polygonToSpeckleMesh(geom, feature, layer, dataStorage)
             if result is None:
                 return None, None
@@ -207,6 +151,7 @@ def convertToSpeckle(
                 result = [result]
             element = GisPolygonElement(units=units, geometry=result)
             return element, iterations
+        
         elif geomType == QgsWkbTypes.PolygonGeometry:  # 2
             height = getPolygonFeatureHeight(feature, layer, dataStorage)
             elevationLayer = getElevationLayer(dataStorage)
@@ -259,7 +204,7 @@ def convertToSpeckle(
                             return None, None
 
                 result, iterations = polygonToSpeckle(
-                    geom, feature, layer, height, translationZaxis, dataStorage
+                    geom, feature, layer, height, translationZaxis, dataStorage, xform
                 )
                 if result is None:
                     return None, None
@@ -331,7 +276,7 @@ def convertToSpeckle(
                                 continue
 
                     polygon, iterations = polygonToSpeckle(
-                        poly, feature, layer, height, translationZaxis, dataStorage
+                        poly, feature, layer, height, translationZaxis, dataStorage, xform
                     )
                     result.append(polygon)
                 for r in result:
