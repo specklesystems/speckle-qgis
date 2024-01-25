@@ -6,13 +6,11 @@ from speckle.converter.geometry.mesh import (
     constructMeshFromRaster,
     constructMesh,
 )
-import inspect
-from typing import List, Tuple
+from typing import Tuple
 import pathlib
 
 import shapefile
-from specklepy.objects.geometry import Mesh, Point
-from specklepy.objects.other import RenderMaterial
+from specklepy.objects.geometry import Mesh
 
 
 def test_deconstructSpeckleMesh(mesh, data_storage):
