@@ -325,8 +325,9 @@ class SpeckleQGIS:
                 if "send" in t.name:
                     name = "Send"
                 logToUser(
-                    f"Previous {name} operation is still running",
+                    f"Previous {name} operation is still running \nClick here to cancel",
                     level=2,
+                    url="cancel",
                     plugin=self.dockwidget,
                 )
                 return
