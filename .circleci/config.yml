@@ -277,25 +277,18 @@ workflows: # happens with every PR to main
     jobs:
       - get-ui:
           context: github-dev-bot
-          filters: &pr_filters
-            branches:
-              only:
-                - /.*/
       - get-ci-tools:
           context: github-dev-bot
-          filters: *pr_filters
       - package:
           requires:
             - get-ui
             - get-ci-tools 
-          filters: *pr_filters
       - test:
           requires:
             - package
           matrix:
             parameters:
               tag: ["3.11"]
-          filters: *pr_filters
   build: # build the installers, but don't persist to workspace for deployment
     jobs:
       - get-ui:
