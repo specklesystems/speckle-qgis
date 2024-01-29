@@ -13,7 +13,7 @@ from specklepy.core.api.models import Stream
 from specklepy.logging import metrics
 from specklepy.core.api.client import SpeckleClient
 
-#from speckle.utils.panel_logging import logger
+# from speckle.utils.panel_logging import logger
 from qgis.core import (Qgis, QgsProject, QgsCoordinateReferenceSystem)
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 from specklepy_qt_ui.qt_ui.logger import displayUserMsg, logToUser
