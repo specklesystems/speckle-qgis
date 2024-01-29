@@ -89,7 +89,7 @@ jobs:
       - run:
           name: Remove qgis tests
           command: |
-            rm ./tests_qgis
+            rm -rf ./tests_qgis
       - run:
           name: ZIP plugin
           command: pb_tool zip
