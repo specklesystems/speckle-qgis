@@ -2,7 +2,11 @@
 import inspect
 from typing import List
 from speckle.converter.layers.utils import getElevationLayer, trySaveCRS
-from speckle_qgis import SpeckleQGIS
+
+try:
+    from speckle_qgis import SpeckleQGIS
+except ModuleNotFoundError:
+    pass
 
 from specklepy.logging.exceptions import SpeckleException
 from specklepy.core.api.wrapper import StreamWrapper
@@ -13,7 +17,7 @@ from specklepy_qt_ui.qt_ui.logger import logToUser
 from speckle.utils.validation import tryGetStream
 
 
-def get_project_streams(plugin: SpeckleQGIS):
+def get_project_streams(plugin: "SpeckleQGIS"):
     try:
         proj = plugin.project
         saved_streams = proj.readEntry("speckle-qgis", "project_streams", "")
@@ -42,7 +46,7 @@ def get_project_streams(plugin: SpeckleQGIS):
         return
 
 
-def set_project_streams(plugin: SpeckleQGIS):
+def set_project_streams(plugin: "SpeckleQGIS"):
     try:
         proj = plugin.project
         value = ",".join([stream[0].stream_url for stream in plugin.current_streams])
@@ -52,7 +56,7 @@ def set_project_streams(plugin: SpeckleQGIS):
         return
 
 
-def get_project_saved_layers(plugin: SpeckleQGIS):
+def get_project_saved_layers(plugin: "SpeckleQGIS"):
     try:
         proj = plugin.project
         saved_layers = proj.readEntry("speckle-qgis", "project_layer_selection", "")
@@ -81,7 +85,7 @@ def get_project_saved_layers(plugin: SpeckleQGIS):
         return
 
 
-def set_project_layer_selection(plugin: SpeckleQGIS):
+def set_project_layer_selection(plugin: "SpeckleQGIS"):
     try:
         proj = plugin.project
         # value = ",".join([x.id() for x in self.iface.layerTreeView().selectedLayers()]) #'points_qgis2_b22ed3d0_0ff9_40d2_97f2_bd17a350d698' <qgis._core.QgsVectorDataProvider object at 0x000002627D9D4790>
