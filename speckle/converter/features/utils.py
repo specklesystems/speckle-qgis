@@ -1,6 +1,6 @@
 import inspect
 import random
-from typing import Any
+from typing import Any, Union
 from speckle.converter.layers.utils import getVariantFromValue, traverseDict
 
 from speckle.utils.panel_logging import logToUser
@@ -36,9 +36,7 @@ def addFeatVariant(key, variant, value, f: "QgsFeature") -> "QgsFeature":
         return feat
 
 
-def updateFeat(
-    feat: "QgsFeature", fields: "QgsFields", feature: Base
-) -> dict[str, Any]:
+def updateFeat(feat: "QgsFeature", fields: "QgsFields", feature: Base) -> "QgsFeature":
     try:
         # print("__updateFeat")
         all_field_names = fields.names()
@@ -107,7 +105,7 @@ def updateFeat(
 
 def getPolygonFeatureHeight(
     feature: "QgsFeature", layer: "QgsVectorLayer", dataStorage: "DataStorage"
-):
+) -> Union[int, float, None]:
     height = None
     ignore = False
     if dataStorage.savedTransforms is not None:

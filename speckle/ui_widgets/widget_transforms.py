@@ -43,8 +43,6 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         self.populateSavedTransforms(self.dataStorage)
         self.populateSavedElevationLayer(self.dataStorage)
 
-        # self.elevationLayerDropdown.currentIndexChanged.connect(self.saveElevationLayer)
-
     def populateSavedTransforms(
         self, dataStorage
     ):  # , savedTransforms: Union[List, None] = None, getLayer: Union[str, None] = None, getTransform: Union[str, None] = None):

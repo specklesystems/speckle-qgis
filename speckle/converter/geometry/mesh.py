@@ -1,5 +1,5 @@
 import inspect
-from typing import List, Union
+from typing import List, Tuple, Union
 from specklepy.objects.geometry import Mesh, Point
 from specklepy.objects.other import RenderMaterial
 
@@ -189,7 +189,13 @@ def meshPartsFromPolygon(
     layer: "QgsVectorLayer",
     height,
     dataStorage,
-):
+) -> Tuple[
+    Union[int, None],
+    Union[List[float], None],
+    Union[List[int], None],
+    Union[List[int], None],
+    Union[int, None],
+]:
     try:
         faces = []
         faces_cap = []

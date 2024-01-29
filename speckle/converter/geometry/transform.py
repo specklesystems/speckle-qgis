@@ -22,7 +22,7 @@ def transform(
     src: "QgsPointXY",
     crsSrc: "QgsCoordinateReferenceSystem",
     crsDest: "QgsCoordinateReferenceSystem",
-):
+) -> "QgsPointXY":
     """Transforms a QgsPointXY from the source CRS to the destination."""
     try:
         transformContext = project.transformContext()

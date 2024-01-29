@@ -41,7 +41,7 @@ class Logging:
                 level = Qgis.Critical
             # return
             QgsMessageLog.logMessage(message, "Speckle", level=level)
-        except ImportError:
+        except ImportError or ModuleNotFoundError:
             pass
         except Exception as e:
             try:

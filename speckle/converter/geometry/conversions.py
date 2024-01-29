@@ -4,7 +4,7 @@ from specklepy.objects.GIS.geometry import (
     GisPolygonElement,
 )
 
-from typing import List, Sequence, Union
+from typing import List, Sequence, Tuple, Union
 import inspect
 
 try:
@@ -74,11 +74,11 @@ from speckle.converter.layers.utils import (
 
 def convertToSpeckle(
     feature: "QgsFeature", layer: "QgsVectorLayer" or "QgsRasterLayer", dataStorage
-) -> Union[Base, Sequence[Base], None]:
+) -> Tuple[Union[Base, Sequence[Base], None], Union[int, None]]:
     """Converts the provided layer feature to Speckle objects"""
     try:
         iterations = 0
-        sourceCRS = layer.crs() 
+        sourceCRS = layer.crs()
         targetCRS = dataStorage.project.crs()
         xform = None
         if sourceCRS != targetCRS:
@@ -151,7 +151,7 @@ def convertToSpeckle(
                 result = [result]
             element = GisPolygonElement(units=units, geometry=result)
             return element, iterations
-        
+
         elif geomType == QgsWkbTypes.PolygonGeometry:  # 2
             height = getPolygonFeatureHeight(feature, layer, dataStorage)
             elevationLayer = getElevationLayer(dataStorage)
@@ -276,7 +276,13 @@ def convertToSpeckle(
                                 continue
 
                     polygon, iterations = polygonToSpeckle(
-                        poly, feature, layer, height, translationZaxis, dataStorage, xform
+                        poly,
+                        feature,
+                        layer,
+                        height,
+                        translationZaxis,
+                        dataStorage,
+                        xform,
                     )
                     result.append(polygon)
                 for r in result:
@@ -427,7 +433,9 @@ def multiPolygonToNative(items: List[Base], dataStorage) -> "QgsMultiPolygon":
         return None
 
 
-def convertToNativeMulti(items: List[Base], dataStorage):
+def convertToNativeMulti(
+    items: List[Base], dataStorage
+) -> Union["QgsMultiPoint", "QgsMultiLineString", "QgsMultiPolygon", None]:
     try:
         first = items[0]
         if isinstance(first, Point):
