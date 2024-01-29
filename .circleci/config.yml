@@ -272,7 +272,7 @@ jobs:
               -o << parameters.os >> \
               -a << parameters.arch >> \
               -f speckle-sharp-ci-tools/Installers/qgis/<< parameters.slug >>-${SEMVER}.<< parameters.extension >>
-workflows: #happens with every PR to main
+workflows: # happens with every PR to main
   test_on_pr: # build the installers, but don't persist to workspace for deployment
     jobs:
       - get-ui:
