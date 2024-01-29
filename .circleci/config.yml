@@ -280,7 +280,7 @@ workflows: #happens with every PR to main
           filters: &pr_filters
             branches:
               only:
-                - main/*
+                - /.*/
       - get-ci-tools:
           context: github-dev-bot
           filters: *pr_filters
