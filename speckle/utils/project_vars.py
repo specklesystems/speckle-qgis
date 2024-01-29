@@ -20,7 +20,7 @@ from specklepy_qt_ui.qt_ui.logger import displayUserMsg, logToUser
 from speckle.utils.validation import tryGetStream
 from specklepy_qt_ui.qt_ui.widget_custom_crs import CustomCRSDialog
 
-def get_project_streams(plugin: SpeckleQGIS):
+def get_project_streams(plugin: SpeckleQGIS): 
     try:
         proj = plugin.project
         saved_streams = proj.readEntry("speckle-qgis", "project_streams", "")
