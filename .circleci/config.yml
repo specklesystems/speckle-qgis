@@ -270,7 +270,7 @@ workflows: #happens with every PR to main
             - build-connector-win
           filters: *build_filters
 
-  deploy: # build installers and deploy
+  deploy: # build installers and deploy 
     jobs:
       - get-ui:
           context: github-dev-bot
