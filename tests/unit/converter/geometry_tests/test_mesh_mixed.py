@@ -5,6 +5,8 @@ from speckle.converter.geometry.mesh import (
     fill_mesh_parts,
     constructMeshFromRaster,
     constructMesh,
+    meshPartsFromPolygon,
+    meshToNative,
 )
 from typing import Tuple
 import pathlib
