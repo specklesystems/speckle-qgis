@@ -14,8 +14,9 @@ from specklepy.objects.other import RevitParameter
 
 # from OSGeo4W shell: 
 # "C:\Program Files\QGIS 3.34.1\bin\python-qgis.bat" -m pip install pytest
+# python -m pytest -cov C:\Users\katri\AppData\Roaming\QGIS\QGIS3\profiles\development\python\plugins\speckle-qgis\ 
 
-# "C:\Program Files\QGIS 3.34.1\bin\python-qgis.bat" C:\Users\katri\AppData\Roaming\QGIS\QGIS3\profiles\development\python\plugins\speckle-qgis\tests\unit\geometry_tests\conftest.py
+# "C:\Program Files\QGIS 3.34.1\bin\python-qgis.bat" C:\Users\katri\AppData\Roaming\QGIS\QGIS3\profiles\development\python\plugins\speckle-qgis\tests_qgis\unit\geometry_tests\test_point_mixed.py 
 
 def someF(path):
     import importlib.util

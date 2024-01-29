@@ -276,7 +276,7 @@ def to_triangles(data: dict, attempt: int = 0) -> Tuple[Union[dict, None], int]:
             poly_points, polygon.buffer(0.000001)
         )
         gdf_poly_voronoi = (
-            gpd.GeoDataFrame({"geometry": poly_shapes}).explode().reset_index()
+            gpd.GeoDataFrame({"geometry": poly_shapes}).explode(index_parts=True).reset_index()
         )
 
         tri_geom = []
@@ -855,6 +855,7 @@ def apply_feature_crs_transform(f, sourceCRS, targetCRS, dataStorage):
         geometry.transform(xform)
         f.setGeometry(geometry)
     return f 
+
 
 def apply_qgis_geometry_crs_transform(geometry, sourceCRS, targetCRS, dataStorage):
     

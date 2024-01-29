@@ -87,6 +87,10 @@ jobs:
           command: |
             rm ./specklepy_qt_ui/LICENSE
       - run:
+          name: Remove qgis tests
+          command: |
+            rm ./tests_qgis
+      - run:
           name: ZIP plugin
           command: pb_tool zip
       - store_artifacts:
