@@ -87,10 +87,6 @@ jobs:
           command: |
             rm ./specklepy_qt_ui/LICENSE
       - run:
-          name: Remove qgis tests
-          command: |
-            rm -rf ./tests_qgis
-      - run:
           name: ZIP plugin
           command: pb_tool zip
       - store_artifacts:
@@ -130,6 +126,10 @@ jobs:
           command: |
             poetry lock --no-update
             poetry install
+      - run:
+          name: Remove qgis tests
+          command: |
+            rm -rf ./tests_qgis
       - run:
           name: Run tests
           command: poetry run pytest --cov --cov-report xml:reports/coverage.xml --junitxml=reports/test-results.xml
