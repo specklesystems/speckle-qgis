@@ -103,11 +103,11 @@ def featureToSpeckle(
                         elif isinstance(g, GisPolygonGeometry):
                             if len(g.displayValue) == 0:
                                 all_errors += (
-                                    "Polygon sent, but display mesh not generated"
+                                    "Polygon converted, but display mesh not generated"
                                     + ", "
                                 )
                                 logToUser(
-                                    "Polygon sent, but display mesh not generated",
+                                    "Polygon converted, but display mesh not generated",
                                     level=1,
                                     func=inspect.stack()[0][3],
                                 )

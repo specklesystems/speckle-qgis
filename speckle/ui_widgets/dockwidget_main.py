@@ -88,7 +88,7 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
                 )
             if len(plugin.current_streams) == 0:
                 self.streamList.addItems([""])
-            self.streamList.addItems(["Create New Stream"])
+            self.streamList.addItems(["Create New Project"])
             set_project_streams(plugin)
             index = self.streamList.currentIndex()
             if index == -1:
