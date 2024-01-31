@@ -389,7 +389,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
                 "Connector Action",
                 self.dataStorage.active_account,
                 {
-                    "name": "Add transformation on Send",
+                    "name": "Transformation on Send Add",
                     "Transformation": "Set Layer as Elevation",
                     "connector_version": str(self.dataStorage.plugin_version),
                 },
