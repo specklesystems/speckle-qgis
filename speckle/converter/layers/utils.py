@@ -15,10 +15,13 @@ from specklepy.objects.geometry import (
     Mesh,
 )
 
+from speckle.converter.geometry import transform
+
 
 try:
     from qgis._core import (
         Qgis,
+        QgsPointXY,
         QgsProject,
         QgsCoordinateReferenceSystem,
         QgsLayerTreeLayer,
@@ -125,13 +128,13 @@ def getLayerGeomType(
             return "GeometryCollectionZM"
 
         elif layer.wkbType() == 8:
-            return "LineString" #"CircularString"
+            return "LineString"  # "CircularString"
         elif layer.wkbType() == 2008:
-            return "LineStringM" #""CircularStringM"
+            return "LineStringM"  # ""CircularStringM"
         elif layer.wkbType() == 1008:
-            return "LineStringZ" #""CircularStringZ"
+            return "LineStringZ"  # ""CircularStringZ"
         elif layer.wkbType() == 3008:
-            return "LineStringZM" #""CircularStringZM"
+            return "LineStringZM"  # ""CircularStringZM"
 
         elif layer.wkbType() == 9:
             return "CompoundCurve"
@@ -143,13 +146,13 @@ def getLayerGeomType(
             return "CompoundCurveZM"
 
         elif layer.wkbType() == 10:
-            return "Polygon" #"CurvePolygon"
+            return "Polygon"  # "CurvePolygon"
         elif layer.wkbType() == 2010:
-            return "PolygonM" #"CurvePolygonM"
+            return "PolygonM"  # "CurvePolygonM"
         elif layer.wkbType() == 1010:
-            return "PolygonZ" #"CurvePolygonZ"
+            return "PolygonZ"  # "CurvePolygonZ"
         elif layer.wkbType() == 3010:
-            return "PolygonZM" #"CurvePolygonZM"
+            return "PolygonZM"  # "CurvePolygonZM"
 
         elif layer.wkbType() == 11:
             return "MultiCurve"
@@ -181,7 +184,9 @@ def getLayerGeomType(
         return "None"
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        raise TypeError(f"Geometry type of layer '{layer.name()}' is not identified: {e}") 
+        raise TypeError(
+            f"Geometry type of layer '{layer.name()}' is not identified: {e}"
+        )
 
 
 def getVariantFromValue(value: Any) -> Union["QVariant.Type", None]:
@@ -510,11 +515,22 @@ def getHeightWithRemainderFromArray(height_array, texture_transform, ind1, ind2)
     return val
 
 
-def getXYofArrayPoint(settings, indexX, indexY, targetWKT, targetPROJ):
-    resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings
+def getXYofArrayPoint(
+    settings, indexX, indexY, selectedLayer, elevationLayer, dataStorage
+):
+    resX, resY, minX, minY = settings
     x = minX + resX * indexX
     y = minY + resY * indexY
-    newX, newY = reprojectPt(x, y, wkt, proj, targetWKT, targetPROJ)
+    # newX, newY = reprojectPt(x, y, wkt, proj, targetWKT, targetPROJ)
+    reprojected_pt = transform.transform(
+        dataStorage.project,
+        QgsPointXY(x, y),
+        selectedLayer.crs(),
+        elevationLayer.crs(),
+    )
+    newX = reprojected_pt.x()
+    newY = reprojected_pt.y()
+
     return newX, newY
 
 

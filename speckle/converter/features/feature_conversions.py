@@ -560,16 +560,14 @@ def rasterFeatureToSpeckle(
                                 rasterResXY[1],
                                 originX,
                                 originY,
-                                rasterDimensions[1],
-                                rasterDimensions[0],
-                                rasterWkt,
-                                rasterProj,
                             ),
                             h,
                             v,
-                            elevationWkt,
-                            elevationProj,
+                            selectedLayer,
+                            elevationLayer,
+                            dataStorage,
                         )
+                        
                         index1, index2, remainder1, remainder2 = getArrayIndicesFromXY(
                             (
                                 elevationResX,

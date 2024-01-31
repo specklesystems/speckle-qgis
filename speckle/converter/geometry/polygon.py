@@ -3,6 +3,8 @@
 import inspect
 import random
 
+from speckle.converter.geometry import transform
+
 try:
     from qgis.core import (
         QgsGeometry,
@@ -65,7 +67,7 @@ def polygonToSpeckleMesh(
 
             for v_speckle in voidsNative:
                 pts_fixed = []
-                #v_speckle = unknownLineToSpeckle(v, True, feature, layer, dataStorage)
+                # v_speckle = unknownLineToSpeckle(v, True, feature, layer, dataStorage)
                 pts = speckleBoundaryToSpecklePts(v_speckle, dataStorage)
 
                 plane_pts = [
@@ -159,9 +161,17 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
 
         allElevations = []
         for pt in boundaryPts:
-            posX, posY = reprojectPt(
-                pt.x(), pt.y(), polygonWkt, polygonProj, rasterWkt, rasterProj
+            # posX, posY = reprojectPt(
+            #    pt.x(), pt.y(), polygonWkt, polygonProj, rasterWkt, rasterProj
+            # )
+            reprojected_pt = transform.transform(
+                dataStorage.project,
+                QgsPointXY(pt.x(), pt.y()),
+                layer.crs(),
+                elevationLayer.crs(),
             )
+            posX = reprojected_pt.x()
+            posY = reprojected_pt.y()
             index1, index2, remainder1, remainder2 = getArrayIndicesFromXY(
                 settings_elevation_layer, posX, posY
             )
@@ -207,14 +217,16 @@ def polygonToSpeckle(
     height,
     projectZval,
     dataStorage,
-    xform = None,
+    xform=None,
 ):
     """Converts a QgsPolygon to Speckle"""
 
     polygon = GisPolygonGeometry(units="m")
     iterations = 0
     try:
-        boundary, voidsNative = getPolyBoundaryVoids(geom, feature, layer, dataStorage, xform)
+        boundary, voidsNative = getPolyBoundaryVoids(
+            geom, feature, layer, dataStorage, xform
+        )
 
         if projectZval is not None:
             boundary = moveVertically(boundary, projectZval)
@@ -285,7 +297,7 @@ def polygonToNative(poly: Base, dataStorage) -> "QgsPolygon":
 
     polygon = QgsPolygon()
     try:
-        # boundary 
+        # boundary
         try:  # if it's indeed a polygon with QGIS properties
             boundary = poly.boundary
         except:
@@ -293,12 +305,14 @@ def polygonToNative(poly: Base, dataStorage) -> "QgsPolygon":
                 boundary = poly["boundary"]
             except:
                 return None
-            
-        if boundary is None: 
-            logToUser(f"Polygon has no valid boundary", level=2, func=inspect.stack()[0][3])
+
+        if boundary is None:
+            logToUser(
+                f"Polygon has no valid boundary", level=2, func=inspect.stack()[0][3]
+            )
             return None
         polygon.setExteriorRing(polylineToNative(boundary, dataStorage))
-        
+
         # voids
         try:
             voids = poly.voids
@@ -307,10 +321,14 @@ def polygonToNative(poly: Base, dataStorage) -> "QgsPolygon":
                 voids = poly["voids"]
             except:
                 pass
-        
+
         for void in voids:
             if void is None:
-                logToUser(f"Polygon interior ring is invalid and will be skipped", level=1, func=inspect.stack()[0][3])
+                logToUser(
+                    f"Polygon interior ring is invalid and will be skipped",
+                    level=1,
+                    func=inspect.stack()[0][3],
+                )
             else:
                 polygon.addInteriorRing(polylineToNative(void, dataStorage))
 
@@ -321,7 +339,11 @@ def polygonToNative(poly: Base, dataStorage) -> "QgsPolygon":
 
 
 def getPolyBoundaryVoids(
-    geom: "QgsGeometry", feature: "QgsFeature", layer: "QgsVectorLayer", dataStorage, xform = None
+    geom: "QgsGeometry",
+    feature: "QgsFeature",
+    layer: "QgsVectorLayer",
+    dataStorage,
+    xform=None,
 ):
     boundary = None
     voids: List[Union[None, Polyline, Arc, Line, Polycurve]] = []
@@ -342,7 +364,9 @@ def getPolyBoundaryVoids(
         for pt in pt_iterator:
             pointList.append(pt)
         if extRing is not None:
-            boundary = unknownLineToSpeckle(extRing, True, feature, layer, dataStorage, xform)
+            boundary = unknownLineToSpeckle(
+                extRing, True, feature, layer, dataStorage, xform
+            )
         else:
             return boundary, voids
 
