@@ -357,9 +357,6 @@ def rasterFeatureToSpeckle(
                 and elevationProj != rasterProj
             ):
                 try:
-                    # print("reproject elevation layer")
-                    # print(elevationLayer.source())
-                    # print(elevationLayer.crs().authid())
                     p = (
                         os.path.expandvars(r"%LOCALAPPDATA%")
                         + "\\Temp\\Speckle_QGIS_temp\\"
@@ -727,8 +724,11 @@ def rasterFeatureToSpeckle(
                 )
 
                 # color vertices according to QGIS renderer
-                color = (255 << 24) + (0 << 16) + (0 << 8) + 0
-                noValColor = selectedLayer.renderer().nodataColor().getRgb()
+                alpha = 255
+                color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
+                noValColor: tuple[int] = (
+                    selectedLayer.renderer().nodataColor().getRgb()
+                )  # RGB or RGBA, 3 or 4 values
 
                 colorLayer = selectedLayer
                 currentRasterBandCount = rasterBandCount
@@ -738,7 +738,8 @@ def rasterFeatureToSpeckle(
                     and height_array is not None
                     and (index1 is None or index1_0 is None)
                 ):  # transparent color
-                    color = (0 << 24) + (0 << 16) + (0 << 8) + 0
+                    alpha = 0
+                    color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
                 elif rendererType == "multibandcolor":
                     valR = 0
                     valG = 0
@@ -747,7 +748,6 @@ def rasterFeatureToSpeckle(
                     bandGreen = int(colorLayer.renderer().greenBand())
                     bandBlue = int(colorLayer.renderer().blueBand())
 
-                    alpha = 255
                     for k in range(currentRasterBandCount):
                         valRange = rasterBandMaxVal[k] - rasterBandMinVal[k]
                         if valRange == 0:
@@ -756,7 +756,7 @@ def rasterFeatureToSpeckle(
                             rasterBandVals[k][int(count / 4)] == rasterBandNoDataVal[k]
                         ):
                             colorVal = 0
-                        #    alpha = 0
+                            alpha = 0
                         #   break
                         else:
                             colorVal = int(
@@ -797,6 +797,9 @@ def rasterFeatureToSpeckle(
                                 (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
                             )
                             break
+                    if value == rasterBandNoDataVal[bandIndex]:
+                        alpha = 0
+                        color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
 
                 elif rendererType == "singlebandpseudocolor":
                     bandIndex = colorLayer.renderer().band() - 1  # int
@@ -817,13 +820,16 @@ def rasterFeatureToSpeckle(
                                 (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
                             )
                             break
+                    if value == rasterBandNoDataVal[bandIndex]:
+                        alpha = 0
+                        color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
 
                 else:
                     if rendererType == "singlebandgray":
                         bandIndex = colorLayer.renderer().grayBand() - 1
-                    if rendererType == "hillshade":
+                    elif rendererType == "hillshade":
                         bandIndex = colorLayer.renderer().band() - 1
-                    if rendererType == "contour":
+                    elif rendererType == "contour":
                         try:
                             bandIndex = colorLayer.renderer().inputBand() - 1
                         except:
@@ -834,9 +840,11 @@ def rasterFeatureToSpeckle(
                     else:  # e.g. single band data
                         bandIndex = 0
 
+                    value = rasterBandVals[bandIndex][int(count / 4)]
                     if (
-                        rasterBandVals[bandIndex][int(count / 4)]
-                        >= rasterBandMinVal[bandIndex]
+                        rasterBandMinVal[bandIndex]
+                        <= value
+                        <= rasterBandMaxVal[bandIndex]
                     ):
                         # REMAP band values to (0,255) range
                         valRange = (
@@ -854,8 +862,14 @@ def rasterFeatureToSpeckle(
                                 * 255
                             )
                         color = (
-                            (255 << 24) + (colorVal << 16) + (colorVal << 8) + colorVal
+                            (alpha << 24)
+                            + (colorVal << 16)
+                            + (colorVal << 8)
+                            + colorVal
                         )
+                    elif value == rasterBandNoDataVal[bandIndex]:
+                        alpha = 0
+                        color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
 
                 colors.append([color, color, color, color])
                 count += 4
