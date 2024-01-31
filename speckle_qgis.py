@@ -588,6 +588,69 @@ class SpeckleQGIS:
                 func=inspect.stack()[0][3],
                 plugin=self.dockwidget,
             )
+
+            time_end_transfer = datetime.now()
+            try:
+                metr_filter = "Selected" if bySelection is True else "Saved"
+                metr_main = True if branchName == "main" else False
+                metr_saved_streams = len(self.current_streams)
+                metr_branches = len(self.active_stream[1].branches.items)
+                metr_collab = len(self.active_stream[1].collaborators)
+                metr_projected = True if not projectCRS.isGeographic() else False
+                if self.project.crs().isValid() is False:
+                    metr_projected = None
+
+                try:
+                    metr_crs = (
+                        True
+                        if self.dataStorage.custom_lat != 0
+                        and self.dataStorage.custom_lon != 0
+                        and str(self.dataStorage.custom_lat) in projectCRS.toWkt()
+                        and str(self.dataStorage.custom_lon) in projectCRS.toWkt()
+                        else False
+                    )
+                except:
+                    metr_crs = False
+
+                metrics.track(
+                    metrics.SEND,
+                    self.dataStorage.active_account,
+                    {
+                        "hostAppFullVersion": self.gis_version,
+                        "branches": metr_branches,
+                        "collaborators": metr_collab,
+                        "connector_version": str(self.version),
+                        "filter": metr_filter,
+                        "isMain": metr_main,
+                        "savedStreams": metr_saved_streams,
+                        "projectedCRS": metr_projected,
+                        "customCRS": metr_crs,
+                        "time_conversion": (
+                            time_end_conversion - time_start_conversion
+                        ).total_seconds(),
+                        "time_transfer": (
+                            time_end_transfer - time_start_transfer
+                        ).total_seconds(),
+                        "error": str(e),
+                    },
+                )
+            except:
+                metrics.track(
+                    metrics.SEND,
+                    self.dataStorage.active_account,
+                    {
+                        "hostAppFullVersion": self.gis_version,
+                        "connector_version": str(self.version),
+                        "time_conversion": (
+                            time_end_conversion - time_start_conversion
+                        ).total_seconds(),
+                        "time_transfer": (
+                            time_end_transfer - time_start_transfer
+                        ).total_seconds(),
+                        "error": str(e),
+                    },
+                )
+
             return
         time_end_transfer = datetime.now()
 
@@ -654,8 +717,21 @@ class SpeckleQGIS:
                         ).total_seconds(),
                     },
                 )
-            except:
-                metrics.track(metrics.SEND, self.dataStorage.active_account)
+            except Exception as e:
+                metrics.track(
+                    metrics.SEND,
+                    self.dataStorage.active_account,
+                    {
+                        "hostAppFullVersion": self.gis_version,
+                        "connector_version": str(self.version),
+                        "time_conversion": (
+                            time_end_conversion - time_start_conversion
+                        ).total_seconds(),
+                        "time_transfer": (
+                            time_end_transfer - time_start_transfer
+                        ).total_seconds(),
+                    },
+                )
 
             if isinstance(commit_id, SpeckleException):
                 logToUser(
