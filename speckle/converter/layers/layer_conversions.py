@@ -148,6 +148,17 @@ def convertSelectedLayersToSpeckle(
             jsonTree = jsonFromList(jsonTree, levels)
 
         for i, layer in enumerate(layers):
+            data_provider_type = (
+                layer.providerType()
+            )  # == ogr, memory, gdal, delimitedtext
+            if data_provider_type in ["WFS", "wms", "wcs", "vectortile"]:
+                logToUser(
+                    f"Layer '{layer.name()}' has unsupported provider type '{data_provider_type}' and cannot be sent",
+                    level=2,
+                    plugin=plugin.dockwidget,
+                )
+                return None
+
             logToUser(
                 f"Converting layer '{layer.name()}'...",
                 level=0,
@@ -295,7 +306,6 @@ def layerToSpeckle(
         layerRenderer = rendererToSpeckle(renderer)
 
         if isinstance(selectedLayer, QgsVectorLayer):
-
             fieldnames = []  # [str(field.name()) for field in selectedLayer.fields()]
             attributes = Base()
             for field in selectedLayer.fields():
@@ -411,7 +421,7 @@ def layerToSpeckle(
 
             return layerBase
 
-        if isinstance(selectedLayer, QgsRasterLayer):
+        elif isinstance(selectedLayer, QgsRasterLayer):
             # write feature attributes
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
             if b is None:
