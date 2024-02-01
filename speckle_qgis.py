@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from copy import copy
 import inspect
 import os.path
 import time
@@ -473,6 +474,7 @@ class SpeckleQGIS:
                     plugin=self.dockwidget,
                 )
                 return
+            current_active_stream = copy(self.active_stream)
 
             # Check if no layers are selected
             if len(layers) == 0 or layers is None:  # len(selectedLayerNames) == 0:
@@ -546,8 +548,8 @@ class SpeckleQGIS:
 
             logToUser(f"Sending data to the server...", level=0, plugin=self.dockwidget)
             # Get the stream wrapper
-            streamWrapper = self.active_stream[0]
-            streamName = self.active_stream[1].name
+            streamWrapper = current_active_stream[0]
+            streamName = current_active_stream[1].name
             streamId = streamWrapper.stream_id
             # client = streamWrapper.get_client()
             client, stream = tryGetClient(
@@ -594,8 +596,8 @@ class SpeckleQGIS:
                 metr_filter = "Selected" if bySelection is True else "Saved"
                 metr_main = True if branchName == "main" else False
                 metr_saved_streams = len(self.current_streams)
-                metr_branches = len(self.active_stream[1].branches.items)
-                metr_collab = len(self.active_stream[1].collaborators)
+                metr_branches = len(current_active_stream[1].branches.items)
+                metr_collab = len(current_active_stream[1].collaborators)
                 metr_projected = True if not projectCRS.isGeographic() else False
                 if self.project.crs().isValid() is False:
                     metr_projected = None
@@ -678,8 +680,8 @@ class SpeckleQGIS:
                 metr_filter = "Selected" if bySelection is True else "Saved"
                 metr_main = True if branchName == "main" else False
                 metr_saved_streams = len(self.current_streams)
-                metr_branches = len(self.active_stream[1].branches.items)
-                metr_collab = len(self.active_stream[1].collaborators)
+                metr_branches = len(current_active_stream[1].branches.items)
+                metr_collab = len(current_active_stream[1].collaborators)
                 metr_projected = True if not projectCRS.isGeographic() else False
                 if self.project.crs().isValid() is False:
                     metr_projected = None
