@@ -127,7 +127,9 @@ def projectToPolygon(
     return z
 
 
-def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage"):
+def getPolyPtsSegments(
+    geom: Any, dataStorage: "DataStorage", coef: Union[int, None] = None
+):
     vertices = []
     vertices3d = []
     segmList = []
@@ -146,13 +148,15 @@ def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage"):
     pointListLocal = []
     startLen = len(vertices)
     for i, pt in enumerate(pt_iterator):
-        if (
+        if coef is not None and i % coef != 0:
+            pass
+        elif (
             len(pointListLocal) > 0
             and pt.x() == pointListLocal[0].x()
             and pt.y() == pointListLocal[0].y()
         ):  # don't repeat 1st point
             pass
-        else:
+        elif coef is None or (coef is not None and i % coef == 0):
             pointListLocal.append(pt)
     for i, pt in enumerate(pointListLocal):
         x, y = apply_pt_offsets_rotation_on_send(pt.x(), pt.y(), dataStorage)
@@ -276,7 +280,9 @@ def to_triangles(data: dict, attempt: int = 0) -> Tuple[Union[dict, None], int]:
             poly_points, polygon.buffer(0.000001)
         )
         gdf_poly_voronoi = (
-            gpd.GeoDataFrame({"geometry": poly_shapes}).explode(index_parts=True).reset_index()
+            gpd.GeoDataFrame({"geometry": poly_shapes})
+            .explode(index_parts=True)
+            .reset_index()
         )
 
         tri_geom = []
@@ -318,14 +324,14 @@ def to_triangles(data: dict, attempt: int = 0) -> Tuple[Union[dict, None], int]:
 
 
 def triangulatePolygon(
-    geom: Any, dataStorage: "DataStorage"
+    geom: Any, dataStorage: "DataStorage", coef: Union[int, None] = None
 ) -> Tuple[dict, Union[List[List[float]], None], int]:
     try:
         # import triangle as tr
         vertices = []  # only outer
         segments = []  # including holes
         holes = []
-        pack = getPolyPtsSegments(geom, dataStorage)
+        pack = getPolyPtsSegments(geom, dataStorage, coef)
 
         vertices, vertices3d, segments, holes = pack
 
@@ -848,18 +854,16 @@ def apply_pt_transform_matrix(pt: Point, dataStorage) -> Point:
 
 
 def apply_feature_crs_transform(f, sourceCRS, targetCRS, dataStorage):
-    
     if sourceCRS != targetCRS:
         xform = QgsCoordinateTransform(sourceCRS, targetCRS, dataStorage.project)
         geometry = f.geometry()
         geometry.transform(xform)
         f.setGeometry(geometry)
-    return f 
+    return f
 
 
 def apply_qgis_geometry_crs_transform(geometry, sourceCRS, targetCRS, dataStorage):
-    
     if sourceCRS != targetCRS:
         xform = QgsCoordinateTransform(sourceCRS, targetCRS, dataStorage.project)
         geometry.transform(xform)
-    return geometry 
+    return geometry
