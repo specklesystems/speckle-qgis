@@ -391,6 +391,7 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = VectorLayer(
                 units=units_proj,
+                id=selectedLayer.id(),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 elements=layerObjs,
@@ -437,6 +438,7 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = RasterLayer(
                 units=units_proj,
+                id=selectedLayer.id(),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 rasterCrs=layerCRS,
