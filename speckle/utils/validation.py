@@ -59,6 +59,10 @@ def tryGetClient(sw: StreamWrapper, dataStorage, write=False, dockwidget=None):
                     )
                 else:
                     return client, stream
+        else:
+            return None, None
+    else:
+        return None, None
 
 
 def tryGetStream(
