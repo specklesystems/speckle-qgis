@@ -139,7 +139,7 @@ def convertToSpeckle(
         ):
             if xform is not None:
                 geom.transform(xform)
-            result = polygonToSpeckleMesh(geom, feature, layer, dataStorage)
+            result = polygonToSpeckleMesh(geom, feature, layer, dataStorage, None)
             if result is None:
                 return None, None
             result.units = units

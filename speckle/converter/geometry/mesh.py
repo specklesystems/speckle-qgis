@@ -189,6 +189,7 @@ def meshPartsFromPolygon(
     layer: "QgsVectorLayer",
     height,
     dataStorage,
+    xform=None,
 ) -> Tuple[
     Union[int, None],
     Union[List[float], None],
@@ -347,7 +348,7 @@ def meshPartsFromPolygon(
 
             # get points from original geometry #################################
             triangulated_geom, vertices3d_original, iterations = triangulatePolygon(
-                feature_geom, dataStorage
+                feature_geom, dataStorage, xform
             )
 
             # temporary solution, as the list of points is not the same anymore:

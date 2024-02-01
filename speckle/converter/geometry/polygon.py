@@ -49,7 +49,11 @@ import numpy as np
 
 
 def polygonToSpeckleMesh(
-    geom: "QgsGeometry", feature: "QgsFeature", layer: "QgsVectorLayer", dataStorage
+    geom: "QgsGeometry",
+    feature: "QgsFeature",
+    layer: "QgsVectorLayer",
+    dataStorage,
+    xform=None,
 ):
     polygon = GisPolygonGeometry(units="m")
     # print(dataStorage)
@@ -105,6 +109,7 @@ def polygonToSpeckleMesh(
                 layer,
                 None,
                 dataStorage,
+                xform,
             )
 
             if total_vert is None:
@@ -262,7 +267,7 @@ def polygonToSpeckle(
         polygon.boundary = boundary
         polygon.voids = voids
         iterations, vertices, faces, colors, iterations = meshPartsFromPolygon(
-            polyBorder, voidsAsPts, 0, feature, geom, layer, height, dataStorage
+            polyBorder, voidsAsPts, 0, feature, geom, layer, height, dataStorage, xform
         )
 
         mesh = constructMesh(vertices, faces, colors, dataStorage)
