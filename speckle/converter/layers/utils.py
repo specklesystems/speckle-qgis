@@ -15,20 +15,26 @@ from specklepy.objects.geometry import (
     Mesh,
 )
 
-from PyQt5.QtCore import QVariant, QDate, QDateTime
-from qgis._core import (
-    Qgis,
-    QgsProject,
-    QgsCoordinateReferenceSystem,
-    QgsLayerTreeLayer,
-    QgsVectorLayer,
-    QgsRasterLayer,
-    QgsWkbTypes,
-    QgsField,
-    QgsFields,
-    QgsLayerTreeGroup,
-)
-from PyQt5.QtGui import QColor
+try:
+    from qgis._core import (
+        Qgis,
+        QgsPointXY,
+        QgsProject,
+        QgsCoordinateReferenceSystem,
+        QgsLayerTreeLayer,
+        QgsVectorLayer,
+        QgsRasterLayer,
+        QgsWkbTypes,
+        QgsFeature,
+        QgsField,
+        QgsFields,
+        QgsLayerTreeGroup,
+    )
+    from PyQt5.QtGui import QColor
+    from PyQt5.QtCore import QVariant, QDate, QDateTime
+    from osgeo import gdal, ogr, osr
+except ModuleNotFoundError:
+    pass
 
 from osgeo import gdal, ogr, osr
 
@@ -50,6 +56,55 @@ ATTRS_REMOVE = [
     "displayMesh",
     "displayValue",
 ]
+
+
+def generate_qgis_app_id(
+    base: Base,
+    layer: Union["QgsRasterLayer", "QgsVectorLayer"],
+    f: "QgsFeature",
+):
+    """Generate unique ID for Vector feature."""
+    try:
+        fieldnames = [str(field.name()) for field in layer.fields()]
+        props = [str(f[prop]) for prop in fieldnames]
+        try:
+            geoms = f.geometry()
+        except Exception as e:
+            geoms = ""
+
+        id_data: str = (
+            layer.id()
+            + str(layer.wkbType())
+            + str(fieldnames)
+            + str(props)
+            + str(geoms)
+        )
+        return str(hash(id_data))
+
+    except Exception as e:
+        logToUser(
+            f"Application ID not generated for feature in layer {layer.name()}: {e}",
+            level=1,
+        )
+        return ""
+
+
+def generate_qgis_raster_app_id(rasterLayer):
+    """Generate unique ID for Raster layer."""
+    try:
+        id_data = str(get_raster_stats(rasterLayer))
+        file_ds = gdal.Open(rasterLayer.source(), gdal.GA_ReadOnly)
+        for i in range(rasterLayer.bandCount()):
+            band = file_ds.GetRasterBand(i + 1)
+            id_data += str(band.ReadAsArray())
+        return str(hash(id_data))
+
+    except Exception as e:
+        logToUser(
+            f"Application ID not generated for layer {rasterLayer.name()}: {e}",
+            level=1,
+        )
+        return ""
 
 
 def getLayerGeomType(
