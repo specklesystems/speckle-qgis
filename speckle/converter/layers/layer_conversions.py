@@ -1,6 +1,7 @@
 """
 Contains all Layer related classes and methods.
 """
+
 import enum
 import inspect
 import math
@@ -44,6 +45,7 @@ try:
         QgsLayerTreeLayer,
         QgsCoordinateReferenceSystem,
         QgsCoordinateTransform,
+        QgsFeature,
         QgsFields,
         QgsSingleSymbolRenderer,
         QgsCategorizedSymbolRenderer,
@@ -84,6 +86,8 @@ from speckle.converter.layers.utils import (
     collectionsFromJson,
     colorFromSpeckle,
     colorFromSpeckle,
+    generate_qgis_app_id,
+    generate_qgis_raster_app_id,
     getDisplayValueList,
     getElevationLayer,
     getLayerGeomType,
@@ -372,13 +376,21 @@ def layerToSpeckle(
                 )
                 # if b is None: continue
 
-                if extrusionApplied is True and isinstance(b, GisPolygonElement):
+                if (
+                    extrusionApplied is True
+                    and isinstance(b, GisPolygonElement)
+                    and isinstance(b.geometry, list)
+                ):
                     # b.attributes["Speckle_ID"] = str(i+1) # not needed
                     for g in b.geometry:
                         if g is not None and g != "None":
                             # remove native polygon props, if extruded:
                             g.boundary = None
                             g.voids = None
+
+                if isinstance(b, Base):
+                    b.id = generate_qgis_app_id(b, selectedLayer, f)
+
                 layerObjs.append(b)
                 if (
                     dataStorage.latestActionFeaturesReport[
@@ -391,6 +403,7 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = VectorLayer(
                 units=units_proj,
+                id=str(hash(selectedLayer.id())),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 elements=layerObjs,
@@ -424,6 +437,7 @@ def layerToSpeckle(
         elif isinstance(selectedLayer, QgsRasterLayer):
             # write feature attributes
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
+            b.id = str(hash(generate_qgis_raster_app_id(selectedLayer)))
             if b is None:
                 dataStorage.latestActionReport.append(
                     {
@@ -437,6 +451,7 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = RasterLayer(
                 units=units_proj,
+                id=str(hash(selectedLayer.id())),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 rasterCrs=layerCRS,
