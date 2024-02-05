@@ -83,13 +83,18 @@ def convertToSpeckle(
         xform = None
         if sourceCRS != targetCRS:
             xform = QgsCoordinateTransform(sourceCRS, targetCRS, dataStorage.project)
-        try:
-            geom: QgsGeometry = feature.geometry()
-        except:
-            geom: QgsGeometry = feature
-        geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
-        geomType = geom.type()
-        type = geom.wkbType()
+
+        geom_original: Union[QgsGeometry, QgsAbstractGeometry] = feature.geometry()
+
+        geomSingleType = QgsWkbTypes.isSingleType(geom_original.wkbType())
+        geomType = geom_original.type()
+
+        if isinstance(geom_original, QgsGeometry):
+            geom: QgsAbstractGeometry = geom_original.constGet()
+        else:
+            geom = geom_original
+
+        # type = geom.wkbType()
         units = (
             dataStorage.currentUnits
         )  # QgsUnitTypes.encodeUnit(dataStorage.project.crs().mapUnits())
@@ -99,7 +104,7 @@ def convertToSpeckle(
             if xform is not None:
                 geom.transform(xform)
             if geomSingleType:
-                result = pointToSpeckle(geom.constGet(), feature, layer, dataStorage)
+                result = pointToSpeckle(geom, feature, layer, dataStorage)
                 result.units = units
                 result = [result]
             else:
@@ -164,8 +169,7 @@ def convertToSpeckle(
                     ]
                 except:
                     boundaryPts = [
-                        v[1]
-                        for v in enumerate(geom.constGet().exteriorRing().vertices())
+                        v[1] for v in enumerate(geom.exteriorRing().vertices())
                     ]
                 if height is not None:
                     if isFlat(boundaryPts) is False:
@@ -234,10 +238,7 @@ def convertToSpeckle(
                         ]
                     except:
                         boundaryPts = [
-                            v[1]
-                            for v in enumerate(
-                                poly.constGet().exteriorRing().vertices()
-                            )
+                            v[1] for v in enumerate(poly.exteriorRing().vertices())
                         ]
                     if height is not None:
                         if isFlat(boundaryPts) is False:

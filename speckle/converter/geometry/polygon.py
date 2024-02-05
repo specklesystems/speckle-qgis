@@ -8,6 +8,7 @@ from speckle.converter.geometry import transform
 try:
     from qgis.core import (
         QgsGeometry,
+        QgsAbstractGeometry,
         QgsPolygon,
         QgsPointXY,
         QgsFeature,
@@ -216,7 +217,7 @@ def isFlat(ptList):
 
 
 def polygonToSpeckle(
-    geom: "QgsGeometry",
+    geom_original: "QgsAbstractGeometry",
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
     height,
@@ -229,6 +230,7 @@ def polygonToSpeckle(
     polygon = GisPolygonGeometry(units="m")
     iterations = 0
     try:
+        geom = geom_original.clone()
         boundary, voidsNative = getPolyBoundaryVoids(
             geom, feature, layer, dataStorage, xform
         )

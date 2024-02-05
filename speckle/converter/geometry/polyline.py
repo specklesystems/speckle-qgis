@@ -1,3 +1,4 @@
+from copy import copy
 import inspect
 from math import atan
 import math
@@ -70,7 +71,7 @@ def polylineFromVerticesToSpeckle(
         else:
             return None
 
-        if len(specklePts)==0 or specklePts[0] is None:
+        if len(specklePts) == 0 or specklePts[0] is None:
             logToUser("Polyline conversion failed", level=2)
             return
 
@@ -100,18 +101,22 @@ def polylineFromVerticesToSpeckle(
 
 
 def unknownLineToSpeckle(
-    poly: Union["QgsLineString", "QgsCompoundCurve"],
+    poly_original: Union["QgsLineString", "QgsCompoundCurve"],
     closed: bool,
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
     dataStorage,
-    xform = None,
+    xform=None,
 ) -> Union[Polyline, Arc, Line, Polycurve, None]:
     try:
+        if isinstance(poly_original, QgsGeometry):
+            poly_original = poly_original.constGet()
+        poly = poly_original.clone()
+        
         if poly.wkbType() == 10:  # CurvePolygon
-            actualGeom = poly.constGet()
+            # actualGeom = poly.constGet()
             actualGeom = actualGeom.segmentize()
-            if xform is not None: 
+            if xform is not None:
                 actualGeom.transform(xform)
             return polylineToSpeckle(actualGeom, feature, layer, dataStorage)
 
@@ -120,7 +125,7 @@ def unknownLineToSpeckle(
         elif isinstance(poly, QgsCircularString):
             return arcToSpeckle(poly, feature, layer, dataStorage, xform)
         else:
-            if xform is not None: 
+            if xform is not None:
                 poly.transform(xform)
             return polylineFromVerticesToSpeckle(
                 poly.vertices(), closed, feature, layer, dataStorage
@@ -132,17 +137,17 @@ def unknownLineToSpeckle(
 
 
 def compoudCurveToSpeckle(
-    poly: "QgsCompoundCurve",
+    poly_original: "QgsCompoundCurve",
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
     dataStorage,
-    xform = None,
+    xform=None,
 ):
     try:
-        try:
-            poly = poly.constGet()
-        except:
-            pass
+        if isinstance(poly_original, QgsGeometry):
+            poly_original = poly_original.constGet()
+        poly = poly_original.clone()
+
         new_poly = poly.curveToLine()
         if xform is not None:
             new_poly.transform(xform)
@@ -153,7 +158,11 @@ def compoudCurveToSpeckle(
         return
 
 
-def anyLineToSpeckle(geom, feature, layer, dataStorage, xform = None):
+def anyLineToSpeckle(geom_original, feature, layer, dataStorage, xform=None):
+    if isinstance(geom_original, QgsGeometry):
+        geom_original = geom_original.constGet()
+    geom = geom_original.clone()
+
     type = geom.wkbType()
     if (
         type == QgsWkbTypes.CircularString
@@ -162,7 +171,7 @@ def anyLineToSpeckle(geom, feature, layer, dataStorage, xform = None):
         or type == QgsWkbTypes.CircularStringZM
     ):
         all_pts = [pt for pt in geom.vertices()]
-        if len(all_pts)==3: 
+        if len(all_pts) == 3:
             result = arcToSpeckle(geom, feature, layer, dataStorage, xform)
         else:
             result = compoudCurveToSpeckle(geom, feature, layer, dataStorage, xform)
@@ -181,7 +190,7 @@ def anyLineToSpeckle(geom, feature, layer, dataStorage, xform = None):
                 result = compoudCurveToSpeckle(geom, feature, layer, dataStorage, xform)
         else:
             result = compoudCurveToSpeckle(geom, feature, layer, dataStorage, xform)
-            #return None
+            # return None
     else:
         if xform is not None:
             geom.transform(xform)
@@ -227,7 +236,7 @@ def arcToSpeckle(
     except:
         pass
     try:
-        # convert to polyline due to geometry distorsions 
+        # convert to polyline due to geometry distorsions
         # in case of crs transformations on send
         linestring = poly.curveToLine()
         if xform is not None:
@@ -295,7 +304,7 @@ def polylineToNative(poly: Polyline, dataStorage) -> "QgsLineString":
             polyline = QgsLineString(
                 [pointToNative(pt, dataStorage) for pt in poly.as_points()]
             )
-        else: # Line or open Polyline 
+        else:  # Line or open Polyline
             ptList = poly.as_points()
             ptList.append(ptList[0])
             polyline = QgsLineString([pointToNative(pt, dataStorage) for pt in ptList])
