@@ -4,6 +4,7 @@ Contains all Layer related classes and methods.
 
 import enum
 import inspect
+import hashlib
 import math
 from typing import List, Tuple, Union
 from specklepy.objects import Base
@@ -389,7 +390,7 @@ def layerToSpeckle(
                             g.voids = None
 
                 if isinstance(b, Base):
-                    b.id = generate_qgis_app_id(b, selectedLayer, f)
+                    b.applicationId = generate_qgis_app_id(b, selectedLayer, f)
 
                 layerObjs.append(b)
                 if (
@@ -403,7 +404,7 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = VectorLayer(
                 units=units_proj,
-                id=str(hash(selectedLayer.id())),
+                applicationId=hashlib.md5(selectedLayer.id().encode('utf-8')).hexdigest(),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 elements=layerObjs,
@@ -430,14 +431,14 @@ def layerToSpeckle(
                 dataStorage.latestActionReport.append(item)
 
             layerBase.renderer = layerRenderer
-            layerBase.applicationId = selectedLayer.id()
+            # layerBase.applicationId = selectedLayer.id()
 
             return layerBase
 
         elif isinstance(selectedLayer, QgsRasterLayer):
             # write feature attributes
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
-            b.id = str(hash(generate_qgis_raster_app_id(selectedLayer)))
+            b.applicationId = generate_qgis_raster_app_id(selectedLayer)
             if b is None:
                 dataStorage.latestActionReport.append(
                     {
@@ -451,7 +452,7 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = RasterLayer(
                 units=units_proj,
-                id=str(hash(selectedLayer.id())),
+                applicationId=hashlib.md5(selectedLayer.id().encode('utf-8')).hexdigest(),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 rasterCrs=layerCRS,
@@ -466,7 +467,7 @@ def layerToSpeckle(
             )
 
             layerBase.renderer = layerRenderer
-            layerBase.applicationId = selectedLayer.id()
+            # layerBase.applicationId = selectedLayer.id()
             return layerBase
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)

@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import inspect
 import time
 from plugin_utils.helpers import SYMBOL
@@ -79,7 +80,7 @@ def generate_qgis_app_id(
             + str(props)
             + str(geoms)
         )
-        return str(hash(id_data))
+        return hashlib.md5(id_data.encode('utf-8')).hexdigest()
 
     except Exception as e:
         logToUser(
@@ -97,7 +98,7 @@ def generate_qgis_raster_app_id(rasterLayer):
         for i in range(rasterLayer.bandCount()):
             band = file_ds.GetRasterBand(i + 1)
             id_data += str(band.ReadAsArray())
-        return str(hash(id_data))
+        return hashlib.md5(id_data.encode('utf-8')).hexdigest()
 
     except Exception as e:
         logToUser(
