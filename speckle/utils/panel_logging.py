@@ -14,7 +14,7 @@ def logToUser(
     blue=False,
     report=False,
 ):
-    from specklepy_qt_ui.qt_ui.logger import logToUser as logToUser_UI
+    from specklepy_qt_ui.qt_ui.utils.logger import logToUser as logToUser_UI
 
     msg = str(msg)
     logToUser_UI(msg, func, level, plugin, url, blue, report)
