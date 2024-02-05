@@ -1659,17 +1659,6 @@ def addVectorMainThread(obj: Tuple):
             new_feat = featureToNative(f, newFields, plugin.dataStorage)
             if new_feat is not None and new_feat != "":
                 fets.append(new_feat)
-
-                if isinstance(f, GisNonGeometryElement):
-                    logToUser(
-                        f"'{geomType}' feature does not contain geometry",
-                        level=2,
-                        func=inspect.stack()[0][3],
-                    )
-                    report_features[len(report_features) - 1].update(
-                        {"errors": f"'{geomType}' feature does not contain geometry"}
-                    )
-                    all_feature_errors_count += 1
             else:
                 logToUser(
                     f"'{geomType}' feature skipped due to invalid data",
