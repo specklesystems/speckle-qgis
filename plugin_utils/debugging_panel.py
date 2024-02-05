@@ -12,11 +12,36 @@ from specklepy.objects.other import RevitParameter
 # https://pypi.org/project/poetry-dotenv-plugin/
 # USE_PATH_FOR_GDAL_PYTHON=YES
 
-# from OSGeo4W shell: 
+# from OSGeo4W shell:
 # "C:\Program Files\QGIS 3.34.1\bin\python-qgis.bat" -m pip install pytest
-# python -m pytest -cov C:\Users\katri\AppData\Roaming\QGIS\QGIS3\profiles\development\python\plugins\speckle-qgis\ 
+# python -m pytest -cov C:\Users\katri\AppData\Roaming\QGIS\QGIS3\profiles\development\python\plugins\speckle-qgis\
 
-# "C:\Program Files\QGIS 3.34.1\bin\python-qgis.bat" C:\Users\katri\AppData\Roaming\QGIS\QGIS3\profiles\development\python\plugins\speckle-qgis\tests_qgis\unit\geometry_tests\test_point_mixed.py 
+# "C:\Program Files\QGIS 3.34.1\bin\python-qgis.bat" C:\Users\katri\AppData\Roaming\QGIS\QGIS3\profiles\development\python\plugins\speckle-qgis\tests_qgis\unit\geometry_tests\test_point_mixed.py
+
+
+##################### debug serverInfo
+def getServerInfo():
+    from specklepy.core.api.client import SpeckleClient
+    from specklepy.core.api.resources.server import Resource as ServerResource
+    from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
+    d = DataStorage()
+    d.check_for_accounts()
+    acc = d.accounts[0]
+    clientSpeckle = SpeckleClient(
+        acc.serverInfo.url, acc.serverInfo.url.startswith("https")
+    )
+    r = ServerResource(
+        acc,
+        r"C:\Users\katri\AppData\Roaming\Speckle\Accounts",
+        clientSpeckle.httpclient,
+    )
+    r.get()
+
+
+getServerInfo()
+
+#####################################
+
 
 def someF(path):
     import importlib.util
@@ -114,9 +139,7 @@ def createCommit():
     element.parameters[name_1] = RevitParameter()
     element.parameters[name_1].isTypeParameter = False
     element.parameters[name_1].value = "some text here"
-    element.parameters[
-        name_1
-    ].applicationUnitType = (
+    element.parameters[name_1].applicationUnitType = (
         "autodesk.spec:spec.string-2.0.0"  # "autodesk.spec:spec.string-2.0.0"
     )
     element.parameters[name_1].applicationInternalName = "text_param"
@@ -127,9 +150,7 @@ def createCommit():
     element.parameters[name_2].isTypeParameter = False
     element.parameters[name_2].value = 1122
     element.parameters[name_2].applicationUnit = "autodesk.unit.unit:centimeters-1.0.1"
-    element.parameters[
-        name_2
-    ].applicationUnitType = (
+    element.parameters[name_2].applicationUnitType = (
         "autodesk.spec.aec:distance-2.0.0"  # "autodesk.spec:spec.string-2.0.0"
     )
     element.parameters[name_2].applicationInternalName = name_2
