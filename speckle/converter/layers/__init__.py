@@ -2,6 +2,7 @@
 Contains all Layer related classes and methods.
 """
 import enum
+import hashlib
 import inspect
 import math
 from typing import List, Tuple, Union
@@ -30,7 +31,7 @@ from specklepy.objects.GIS.layers import VectorLayer, RasterLayer, Layer
 from specklepy.objects.other import Collection
 
 from speckle.converter.layers.feature import featureToSpeckle, nonGeomFeatureToNative, rasterFeatureToSpeckle, featureToNative, cadFeatureToNative, bimFeatureToNative 
-from speckle.converter.layers.utils import collectionsFromJson, colorFromSpeckle, colorFromSpeckle, getDisplayValueList, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, tryCreateGroupTree, trySaveCRS, validateAttributeName
+from speckle.converter.layers.utils import collectionsFromJson, colorFromSpeckle, colorFromSpeckle, generate_qgis_app_id, generate_qgis_raster_app_id, getDisplayValueList, getElevationLayer, getLayerGeomType, getLayerAttributes, isAppliedLayerTransformByKeywords, tryCreateGroup, tryCreateGroupTree, trySaveCRS, validateAttributeName
 from speckle.converter.geometry.mesh import writeMeshToShp
 
 from speckle.converter.layers.symbology import vectorRendererToNative, rasterRendererToNative, rendererToSpeckle
@@ -456,12 +457,24 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                             # remove native polygon props, if extruded:
                                 g.boundary = None
                                 g.voids = None
+                                
+                if isinstance(b, Base):
+                    b.applicationId = generate_qgis_app_id(b, selectedLayer, f)
+
                 layerObjs.append(b)
                 if dataStorage.latestActionFeaturesReport[len(dataStorage.latestActionFeaturesReport)-1]["errors"] != "":
                     all_errors_count +=1
 
             # Convert layer to speckle
-            layerBase = VectorLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, elements=layerObjs, attributes = attributes, geomType=geomType)
+            layerBase = VectorLayer(
+                units = units_proj, 
+                applicationId=hashlib.md5(selectedLayer.id().encode('utf-8')).hexdigest(),
+                name=layerName, 
+                crs=speckleReprojectedCrs, 
+                elements=layerObjs, 
+                attributes = attributes, 
+                geomType=geomType
+            )
             if all_errors_count == 0:
                 dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": layerBase.speckle_type, "errors": ""})
             else: 
@@ -470,25 +483,33 @@ def layerToSpeckle(selectedLayer: Union[QgsVectorLayer, QgsRasterLayer], project
                 dataStorage.latestActionReport.append(item)
 
             layerBase.renderer = layerRenderer
-            layerBase.applicationId = selectedLayer.id()
+            #layerBase.applicationId = selectedLayer.id()
             #print(layerBase.features)
             return layerBase
 
         if isinstance(selectedLayer, QgsRasterLayer):
             # write feature attributes
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
+            b.applicationId = generate_qgis_raster_app_id(selectedLayer)
             #print(b)
             if b is None: 
                 dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": "Raster Layer", "errors": "Layer failed to send"})
                 return None 
             layerObjs.append(b)
             # Convert layer to speckle
-            layerBase = RasterLayer(units = units_proj, name=layerName, crs=speckleReprojectedCrs, rasterCrs=layerCRS, elements=layerObjs)
+            layerBase = RasterLayer(
+                units = units_proj,
+                applicationId=hashlib.md5(selectedLayer.id().encode('utf-8')).hexdigest(),
+                name=layerName, 
+                crs=speckleReprojectedCrs, 
+                rasterCrs=layerCRS, 
+                elements=layerObjs
+            )
             #layerBase.type="RasterLayer"
             dataStorage.latestActionReport.append({"feature_id": layerName, "obj_type": layerBase.speckle_type, "errors": ""})
 
             layerBase.renderer = layerRenderer
-            layerBase.applicationId = selectedLayer.id()
+            #layerBase.applicationId = selectedLayer.id()
             return layerBase
     except Exception as e:
         logToUser(e, level = 2, func = inspect.stack()[0][3], plugin = plugin.dockwidget)
