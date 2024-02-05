@@ -229,10 +229,10 @@ def arcToSpeckle(poly: QgsCircularString, feature: QgsFeature, layer: QgsVectorL
         arc.units = "m"
         #arc.plane.xdir=Vector.from_list([1,0,0])
         #arc.plane.ydir=Vector.from_list([0,1,0])
-        arc.plane.normal = getArcNormal(arc, arc.midPoint)
+        arc.plane.normal = getArcNormal(arc, arc.midPoint, dataStorage)
         arc.plane.origin.units = "m" 
         arc.radius = radius
-        arc.angleRadians, startAngle, endAngle = getArcRadianAngle(arc)
+        arc.angleRadians, startAngle, endAngle = getArcRadianAngle(arc, dataStorage)
         if arc.angleRadians == 0: return None
         col = featureColorfromNativeRenderer(feature, layer)
         arc['displayStyle'] = {}
@@ -389,7 +389,7 @@ def polycurveToNative(poly: Polycurve, dataStorage) -> QgsLineString:
                     #    curve.addVertex(converted.childPoint(k))
                         
                 elif isinstance(segm,Circle):  
-                    pts = [pointToNative(pt, dataStorage ) for pt in speckleArcCircleToPoints(segm)]
+                    pts = [pointToNative(pt, dataStorage ) for pt in speckleArcCircleToPoints(segm, dataStorage)]
                     converted = QgsLineString(pts) # QgsLineString
                     if singleSegm == 1: return circleToNative(segm, dataStorage)
                     else: return None

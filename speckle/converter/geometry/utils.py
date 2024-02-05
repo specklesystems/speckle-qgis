@@ -503,7 +503,7 @@ def speckleArcCircleToPoints(poly: Union[Arc, Circle], dataStorage) -> List[Poin
             range_start = 0
 
             # angle1, angle2 = getArcAngles(poly)
-            interval, angle1, angle2 = getArcRadianAngle(poly)
+            interval, angle1, angle2 = getArcRadianAngle(poly, dataStorage)
 
             if (angle1 > angle2 and normal == -1) or (angle2 > angle1 and normal == 1):
                 pass
@@ -592,7 +592,7 @@ def getArcRadianAngle(arc: Arc, dataStorage) -> List[float]:
     try:
         interval = None
         normal = arc.plane.normal.z
-        angle1, angle2 = getArcAngles(arc)
+        angle1, angle2 = getArcAngles(arc, dataStorage)
         if angle1 is None or angle2 is None:
             return None
         interval = abs(angle2 - angle1)
@@ -672,7 +672,7 @@ def getArcAngles(poly: Arc, dataStorage) -> Tuple[float]:
 def getArcNormal(poly: Arc, midPt: Point, dataStorage):
     # print("____getArcNormal___")
     try:
-        angle1, angle2 = getArcAngles(poly)
+        angle1, angle2 = getArcAngles(poly, dataStorage)
 
         if midPt.x == poly.plane.origin.x:
             angle = math.pi / 2
