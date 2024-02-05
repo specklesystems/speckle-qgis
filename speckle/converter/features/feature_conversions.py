@@ -305,9 +305,9 @@ def rasterFeatureToSpeckle(
             rasterBandVals.append(bandValsFlat)
             rasterBandMinVal.append(valMin)
             rasterBandMaxVal.append(valMax)
-            b[
-                "@(10000)" + selectedLayer.bandName(index + 1) + "_values"
-            ] = bandValsFlat  # [0:int(max_values/rasterBandCount)]
+            b["@(10000)" + selectedLayer.bandName(index + 1) + "_values"] = (
+                bandValsFlat  # [0:int(max_values/rasterBandCount)]
+            )
 
         b.x_resolution = rasterResXY[0]
         b.y_resolution = rasterResXY[1]
@@ -419,11 +419,9 @@ def rasterFeatureToSpeckle(
                     ]
         else:
             elevation_arrays = all_mins = all_maxs = all_na = None
-            elevationResX = (
-                elevationResY
-            ) = (
-                elevationOriginX
-            ) = elevationOriginY = elevationSizeX = elevationSizeY = elevationWkt = None
+            elevationResX = elevationResY = elevationOriginX = elevationOriginY = (
+                elevationSizeX
+            ) = elevationSizeY = elevationWkt = None
             height_array = None
 
         largeTransform = False
@@ -567,7 +565,7 @@ def rasterFeatureToSpeckle(
                             elevationLayer,
                             dataStorage,
                         )
-                        
+
                         index1, index2, remainder1, remainder2 = getArrayIndicesFromXY(
                             (
                                 elevationResX,
@@ -882,7 +880,7 @@ def rasterFeatureToSpeckle(
             array_z.append(row_z_bottom)
 
         time1 = datetime.now()
-        print(f"Time to get Raster: {(time1-time0).total_seconds()} sec")
+        # print(f"Time to get Raster: {(time1-time0).total_seconds()} sec")
         # after the entire loop
         faces_filtered = []
         colors_filtered = []
