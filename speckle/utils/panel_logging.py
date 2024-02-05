@@ -1,4 +1,5 @@
 """Logging Utility Module for Speckle QGIS"""
+
 import inspect
 from typing import Union
 import webbrowser

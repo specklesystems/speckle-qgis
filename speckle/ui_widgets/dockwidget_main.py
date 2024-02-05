@@ -10,8 +10,7 @@ from PyQt5 import uic
 import os
 import inspect
 from specklepy.logging.exceptions import SpeckleException
-
-from specklepy_qt_ui.qt_ui.logger import logToUser
+from specklepy_qt_ui.qt_ui.utils.logger import logToUser
 
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(
