@@ -112,7 +112,7 @@ import numpy as np
 
 from speckle.utils.panel_logging import logToUser
 
-from plugin_utils.helpers import SYMBOL
+from plugin_utils.helpers import SYMBOL, UNSUPPORTED_PROVIDERS
 
 GEOM_LINE_TYPES = [
     "Objects.Geometry.Line",
@@ -156,7 +156,7 @@ def convertSelectedLayersToSpeckle(
             data_provider_type = (
                 layer.providerType()
             )  # == ogr, memory, gdal, delimitedtext
-            if data_provider_type in ["WFS", "wms", "wcs", "vectortile"]:
+            if data_provider_type in UNSUPPORTED_PROVIDERS:
                 logToUser(
                     f"Layer '{layer.name()}' has unsupported provider type '{data_provider_type}' and cannot be sent",
                     level=2,
@@ -404,7 +404,9 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = VectorLayer(
                 units=units_proj,
-                applicationId=hashlib.md5(selectedLayer.id().encode('utf-8')).hexdigest(),
+                applicationId=hashlib.md5(
+                    selectedLayer.id().encode("utf-8")
+                ).hexdigest(),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 elements=layerObjs,
@@ -452,7 +454,9 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = RasterLayer(
                 units=units_proj,
-                applicationId=hashlib.md5(selectedLayer.id().encode('utf-8')).hexdigest(),
+                applicationId=hashlib.md5(
+                    selectedLayer.id().encode("utf-8")
+                ).hexdigest(),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 rasterCrs=layerCRS,

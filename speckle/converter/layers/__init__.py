@@ -1,6 +1,7 @@
 """
 Contains all Layer related classes and methods.
 """
+
 import inspect
 from typing import List, Union
 
@@ -18,7 +19,7 @@ except ModuleNotFoundError:
 
 from speckle.utils.panel_logging import logToUser
 
-from plugin_utils.helpers import SYMBOL
+from plugin_utils.helpers import SYMBOL, UNSUPPORTED_PROVIDERS
 
 
 def getAllLayers(
@@ -272,8 +273,17 @@ def getTreeFromLayers(
         tree_structure_list = []
         for item in layers:
             results = getAllLayersWithTree(layerTreeRoot, item)
-            layers_list.extend(results[0])
-            tree_structure_list.extend(results[1])
+            for i, layer in enumerate(results[0]):
+                data_provider_type = layer.providerType()
+                if data_provider_type in UNSUPPORTED_PROVIDERS:
+                    logToUser(
+                        f"Layer '{layer.name()}' has unsupported provider type '{data_provider_type}' and cannot be sent",
+                        level=2,
+                        plugin=plugin.dockwidget,
+                    )
+                else:
+                    layers_list.append(layer)
+                    tree_structure_list.append(results[1][i])
 
         return layers_list, tree_structure_list
 
