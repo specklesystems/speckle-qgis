@@ -1,6 +1,7 @@
 """
 Contains all Layer related classes and methods.
 """
+
 import inspect
 from typing import List, Union
 
@@ -18,7 +19,7 @@ except ModuleNotFoundError:
 
 from speckle.utils.panel_logging import logToUser
 
-from plugin_utils.helpers import SYMBOL
+from plugin_utils.helpers import SYMBOL, UNSUPPORTED_PROVIDERS
 
 
 def getAllLayers(
@@ -83,16 +84,18 @@ def getAllLayersWithTree(
         if isinstance(parent, QgsLayerTreeLayer):
             newStructure = (existingStructure + SYMBOL).replace(SYMBOL + SYMBOL, SYMBOL)
             tree_structure.append(newStructure)
-            return ([parent.layer()], tree_structure)
+            if parent.layer().providerType() not in UNSUPPORTED_PROVIDERS:
+                return ([parent.layer()], tree_structure)
 
         elif isinstance(parent, QgsLayerTreeGroup):
             children = parent.children()
 
             for node in children:
                 if tree.isLayer(node) and isinstance(node, QgsLayerTreeLayer):
-                    if isinstance(node.layer(), QgsVectorLayer) or isinstance(
-                        node.layer(), QgsRasterLayer
-                    ):
+                    if (
+                        isinstance(node.layer(), QgsVectorLayer)
+                        or isinstance(node.layer(), QgsRasterLayer)
+                    ) and node.layer().providerType() not in UNSUPPORTED_PROVIDERS:
                         layers.append(node.layer())
                         newStructure = (existingStructure + SYMBOL).replace(
                             SYMBOL + SYMBOL, SYMBOL
@@ -107,9 +110,10 @@ def getAllLayersWithTree(
                         tree, node, newStructure + parent.name()
                     )
                     for i, lyr in enumerate(result[0]):
-                        if isinstance(lyr, QgsVectorLayer) or isinstance(
-                            lyr, QgsRasterLayer
-                        ):
+                        if (
+                            isinstance(lyr, QgsVectorLayer)
+                            or isinstance(lyr, QgsRasterLayer)
+                        ) and lyr.providerType() not in UNSUPPORTED_PROVIDERS:
                             layers.append(lyr)
                             newStructureGroup = (
                                 existingStructure + result[1][i]
@@ -120,9 +124,10 @@ def getAllLayersWithTree(
                         visible = node.itemVisibilityChecked()
                         node.setItemVisibilityChecked(True)
                         for lyr in node.checkedLayers():
-                            if isinstance(lyr, QgsVectorLayer) or isinstance(
-                                lyr, QgsRasterLayer
-                            ):
+                            if (
+                                isinstance(lyr, QgsVectorLayer)
+                                or isinstance(lyr, QgsRasterLayer)
+                            ) and lyr.providerType() not in UNSUPPORTED_PROVIDERS:
                                 layers.append(lyr)
                                 newStructure = (existingStructure + SYMBOL).replace(
                                     SYMBOL + SYMBOL, SYMBOL
@@ -137,9 +142,10 @@ def getAllLayersWithTree(
                 visible = parent.itemVisibilityChecked()
                 parent.setItemVisibilityChecked(True)
                 for lyr in parent.checkedLayers():
-                    if isinstance(lyr, QgsVectorLayer) or isinstance(
-                        lyr, QgsRasterLayer
-                    ):
+                    if (
+                        isinstance(lyr, QgsVectorLayer)
+                        or isinstance(lyr, QgsRasterLayer)
+                    ) and lyr.providerType() not in UNSUPPORTED_PROVIDERS:
                         layers.append(lyr)
                         newStructure = (existingStructure + SYMBOL).replace(
                             SYMBOL + SYMBOL, SYMBOL

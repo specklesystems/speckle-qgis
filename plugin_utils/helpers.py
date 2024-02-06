@@ -5,6 +5,7 @@ from textwrap import wrap
 import inspect
 
 SYMBOL = "_x_x_"
+UNSUPPORTED_PROVIDERS = ["WFS", "wms", "wcs", "vectortile"]
 
 
 def get_scale_factor(units: str, dataStorage) -> float:
