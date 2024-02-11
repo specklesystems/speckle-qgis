@@ -107,9 +107,9 @@ class SpeckleQGIS:
     add_stream_modal: AddStreamModalDialog
     create_stream_modal: CreateStreamModalDialog
     current_streams: List[Tuple[StreamWrapper, Stream]]  # {id:(sw,st),id2:()}
-    current_layers: List[
-        Tuple[Union["QgsVectorLayer", "QgsRasterLayer"], str, str]
-    ] = []
+    current_layers: List[Tuple[Union["QgsVectorLayer", "QgsRasterLayer"], str, str]] = (
+        []
+    )
     # current_layer_group: Any
     receive_layer_tree: Dict
 
@@ -555,21 +555,29 @@ class SpeckleQGIS:
             client, stream = tryGetClient(
                 streamWrapper, self.dataStorage, True, self.dockwidget
             )
-            if not isinstance(client, SpeckleClient) or not isinstance(stream, Stream):
+            if not isinstance(client, SpeckleClient):
+                logToUser(
+                    f"SpeckleClient invalid: {client}", level=2, plugin=self.dockwidget
+                )
                 return
 
             stream = validateStream(stream, self.dockwidget)
             if not isinstance(stream, Stream):
+                logToUser(f"Stream invalid: {stream}", level=2, plugin=self.dockwidget)
                 return
 
             branchName = str(self.dockwidget.streamBranchDropdown.currentText())
             branch = validateBranch(stream, branchName, False, self.dockwidget)
             branchId = branch.id
             if branch == None:
+                logToUser(f"Branch invalid: {branch}", level=2, plugin=self.dockwidget)
                 return
 
             transport = validateTransport(client, streamId)
             if transport == None:
+                logToUser(
+                    f"Transport invalid: {transport}", level=2, plugin=self.dockwidget
+                )
                 return
 
         except Exception as e:
@@ -578,11 +586,12 @@ class SpeckleQGIS:
 
         # data transfer
 
-        self.dockwidget.signal_remove_btn_url.emit("cancel")
-        time_start_transfer = datetime.now()
         try:
+            self.dockwidget.signal_remove_btn_url.emit("cancel")
+            time_start_transfer = datetime.now()
             # this serialises the block and sends it to the transport
             objId = operations.send(base=base_obj, transports=[transport])
+            time_end_transfer = datetime.now()
         except Exception as e:
             logToUser(
                 "Error sending data: " + str(e),
@@ -652,9 +661,7 @@ class SpeckleQGIS:
                         "error": str(e),
                     },
                 )
-
             return
-        time_end_transfer = datetime.now()
 
         try:
             # you can now create a commit on your stream with this object
@@ -971,9 +978,9 @@ class SpeckleQGIS:
             self.dataStorage.latestActionReport = []
 
             # conversions
-            time_start_conversion = (
-                self.dataStorage.latestConversionTime
-            ) = datetime.now()
+            time_start_conversion = self.dataStorage.latestConversionTime = (
+                datetime.now()
+            )
             traverseObject(self, commitObj, callback, check, str(newGroupName), "")
             time_end_conversion = self.dataStorage.latestConversionTime
 

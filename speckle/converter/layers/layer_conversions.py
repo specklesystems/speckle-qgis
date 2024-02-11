@@ -266,6 +266,7 @@ def layerToSpeckle(
     try:
         # print("___layerToSpeckle")
         dataStorage = plugin.dataStorage
+        dataStorage.latestActionFeaturesReport = []
         project: QgsProject = plugin.project
         layerName = selectedLayer.name()
 
