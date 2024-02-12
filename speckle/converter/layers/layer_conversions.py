@@ -2049,7 +2049,7 @@ def addRasterMainThread(obj: Tuple):
             rasterband = np.array(bandValues[i])
             try:
                 rasterband = np.reshape(rasterband, (feat.y_size, feat.x_size))
-            except:
+            except Exception as e:
                 rasterband = np.reshape(
                     rasterband, (feat["Y pixels"], feat["X pixels"])
                 )
