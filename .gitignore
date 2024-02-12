@@ -1,5 +1,4 @@
 ./idea/
-/.vscode/
 /speckle_qgis_dialog_base.ui.autosave
 
 # Byte-compiled / optimized / DLL files
@@ -118,6 +117,9 @@ zip_build
 .qt_for_python
 speckle-sharp-ci-tools*
 zip-build*
+*.dbf
+*.shp
+*.shx 
 
 /typings/*
 *.csv

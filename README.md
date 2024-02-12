@@ -56,12 +56,18 @@ This repo contains the QGIS plugin for Speckle 2.0. It is written in `python` an
 > The following geometry types are supported for now:
 >
 > - Point
-> - Multipoint
+> - MultiPoint
 > - Polyline (LineString)
 > - MultiLineString
 > - Polygon
 > - MultiPolygon
 > - **More to come!!**
+>
+> Data types currently not supported for sending:
+> - Layers depending on the server connection (WMS, WFC, WCS etc.) 
+> - Scenes 
+> - Mesh Vector layers 
+> - Pointclouds 
 >
 > If you have questions, you can always find us at our [Community forum](https://speckle.community)
 
@@ -140,7 +146,7 @@ YOUR_PYTHON_EXECUTABLE -m pip install pb_tool
 
 For a better development experience in your editor, we recommend creating a virtual environment. In the venv, you'll just need to install `specklepy`. You will also need to copy over the `qgis` module into the `{venv}/Lib/site-packages`. You can find the `qgis` module in your QGIS install directory:
 
-- Windows: `C:\Program Files\QGIS 3.20.1\apps\qgis\python`
+- Windows: `C:\Program Files\QGIS 3.28.15\apps\qgis\python`
 - MacOS: `/Applications/QGIS.app/Contents/Resources/python`
 
 ![qgis dependency for venv](https://user-images.githubusercontent.com/7717434/129324330-1744cc1e-8657-4ef1-90eb-d1ffb2b0229e.png)

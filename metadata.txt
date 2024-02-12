@@ -4,7 +4,7 @@
 
 [general]
 name=Speckle
-qgisMinimumVersion=3.20.2
+qgisMinimumVersion=3.28.15
 description=Speckle 2.0 Connector for QGIS
 version=0.0.99
 author=Speckle Systems
@@ -27,7 +27,12 @@ about=
     If you're having issues with this plugin, you can always reach us at https://speckle.community
 
     Plugin is using the external libraries such as pyshp, scipy, triangle and specklepy, which will be installed automatically to a custom folder.
-
+    
+    Data types currently not supported for sending:
+    - Layers depending on the server connection (WMS, WFC, WCS etc.) 
+    - Scenes 
+    - Mesh Vector layers 
+    - Pointclouds 
 
 
 tracker=http://github.com/specklesystems/speckle-qgis/issues

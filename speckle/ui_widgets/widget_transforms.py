@@ -1,17 +1,15 @@
 import inspect
 import os
-from typing import Any, List, Tuple, Union
 from speckle.converter.layers import getAllLayers
 from speckle.converter.layers.utils import getElevationLayer, getLayerGeomType
 from specklepy_qt_ui.qt_ui.widget_transforms import MappingSendDialog
-from specklepy_qt_ui.qt_ui.logger import displayUserMsg
-from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
+from specklepy_qt_ui.qt_ui.utils.logger import displayUserMsg
 
 from speckle.utils.panel_logging import logToUser
 
 from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsIconUtils
 
-from PyQt5 import QtWidgets, uic, QtCore
+from PyQt5 import uic, QtCore
 from PyQt5.QtWidgets import QListWidgetItem
 
 from specklepy.logging import metrics
@@ -43,8 +41,6 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         self.populateLayersByTransform()
         self.populateSavedTransforms(self.dataStorage)
         self.populateSavedElevationLayer(self.dataStorage)
-
-        # self.elevationLayerDropdown.currentIndexChanged.connect(self.saveElevationLayer)
 
     def populateSavedTransforms(
         self, dataStorage
@@ -392,7 +388,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
                 "Connector Action",
                 self.dataStorage.active_account,
                 {
-                    "name": "Add transformation on Send",
+                    "name": "Transformation on Send Add",
                     "Transformation": "Set Layer as Elevation",
                     "connector_version": str(self.dataStorage.plugin_version),
                 },

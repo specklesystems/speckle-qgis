@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import inspect
 import time
 from plugin_utils.helpers import SYMBOL
@@ -15,22 +16,30 @@ from specklepy.objects.geometry import (
     Mesh,
 )
 
-from PyQt5.QtCore import QVariant, QDate, QDateTime
-from qgis._core import (
-    Qgis,
-    QgsProject,
-    QgsCoordinateReferenceSystem,
-    QgsLayerTreeLayer,
-    QgsVectorLayer,
-    QgsRasterLayer,
-    QgsWkbTypes,
-    QgsField,
-    QgsFields,
-    QgsLayerTreeGroup,
-)
-from PyQt5.QtGui import QColor
+from speckle.converter.geometry import transform
 
-from osgeo import gdal, ogr, osr
+
+try:
+    from qgis._core import (
+        Qgis,
+        QgsPointXY,
+        QgsProject,
+        QgsCoordinateReferenceSystem,
+        QgsLayerTreeLayer,
+        QgsVectorLayer,
+        QgsRasterLayer,
+        QgsWkbTypes,
+        QgsFeature,
+        QgsField,
+        QgsFields,
+        QgsLayerTreeGroup,
+    )
+    from PyQt5.QtGui import QColor
+    from PyQt5.QtCore import QVariant, QDate, QDateTime
+    from osgeo import gdal, ogr, osr
+except ModuleNotFoundError:
+    pass
+
 
 import math
 import numpy as np
@@ -52,9 +61,58 @@ ATTRS_REMOVE = [
 ]
 
 
+def generate_qgis_app_id(
+    base: Base,
+    layer: Union["QgsRasterLayer", "QgsVectorLayer"],
+    f: "QgsFeature",
+):
+    """Generate unique ID for Vector feature."""
+    try:
+        fieldnames = [str(field.name()) for field in layer.fields()]
+        props = [str(f[prop]) for prop in fieldnames]
+        try:
+            geoms = f.geometry()
+        except Exception as e:
+            geoms = ""
+
+        id_data: str = (
+            layer.id()
+            + str(layer.wkbType())
+            + str(fieldnames)
+            + str(props)
+            + str(geoms)
+        )
+        return hashlib.md5(id_data.encode('utf-8')).hexdigest()
+
+    except Exception as e:
+        logToUser(
+            f"Application ID not generated for feature in layer {layer.name()}: {e}",
+            level=1,
+        )
+        return ""
+
+
+def generate_qgis_raster_app_id(rasterLayer):
+    """Generate unique ID for Raster layer."""
+    try:
+        id_data = str(get_raster_stats(rasterLayer))
+        file_ds = gdal.Open(rasterLayer.source(), gdal.GA_ReadOnly)
+        for i in range(rasterLayer.bandCount()):
+            band = file_ds.GetRasterBand(i + 1)
+            id_data += str(band.ReadAsArray())
+        return hashlib.md5(id_data.encode('utf-8')).hexdigest()
+
+    except Exception as e:
+        logToUser(
+            f"Application ID not generated for layer {rasterLayer.name()}: {e}",
+            level=1,
+        )
+        return ""
+
+
 def getLayerGeomType(
-    layer: QgsVectorLayer,
-):  # https://qgis.org/pyqgis/3.0/core/Wkb/QgsWkbTypes.html
+    layer: "QgsVectorLayer",
+) -> str:  # https://qgis.org/pyqgis/3.0/core/Wkb/QgsWkbTypes.html
     # print(layer.wkbType())
     try:
         if layer.wkbType() == 1:
@@ -85,13 +143,13 @@ def getLayerGeomType(
             return "PolygonZM"
 
         elif layer.wkbType() == 4:
-            return "Multipoint"
+            return "MultiPoint"
         elif layer.wkbType() == 2004:
-            return "MultipointM"
+            return "MultiPointM"
         elif layer.wkbType() == 1004:
-            return "MultipointZ"
+            return "MultiPointZ"
         elif layer.wkbType() == 3004:
-            return "MultipointZM"
+            return "MultiPointZM"
 
         elif layer.wkbType() == 5:
             return "MultiLineString"
@@ -103,13 +161,13 @@ def getLayerGeomType(
             return "MultiLineStringZM"
 
         elif layer.wkbType() == 6:
-            return "Multipolygon"
+            return "MultiPolygon"
         elif layer.wkbType() == 2006:
-            return "MultipolygonM"
+            return "MultiPolygonM"
         elif layer.wkbType() == 1006:
-            return "MultipolygonZ"
+            return "MultiPolygonZ"
         elif layer.wkbType() == 3006:
-            return "MultipolygonZM"
+            return "MultiPolygonZM"
 
         elif layer.wkbType() == 7:
             return "GeometryCollection"
@@ -121,13 +179,13 @@ def getLayerGeomType(
             return "GeometryCollectionZM"
 
         elif layer.wkbType() == 8:
-            return "CircularString"
+            return "LineString"  # "CircularString"
         elif layer.wkbType() == 2008:
-            return "CircularStringM"
+            return "LineStringM"  # ""CircularStringM"
         elif layer.wkbType() == 1008:
-            return "CircularStringZ"
+            return "LineStringZ"  # ""CircularStringZ"
         elif layer.wkbType() == 3008:
-            return "CircularStringZM"
+            return "LineStringZM"  # ""CircularStringZM"
 
         elif layer.wkbType() == 9:
             return "CompoundCurve"
@@ -139,13 +197,13 @@ def getLayerGeomType(
             return "CompoundCurveZM"
 
         elif layer.wkbType() == 10:
-            return "CurvePolygon"
+            return "Polygon"  # "CurvePolygon"
         elif layer.wkbType() == 2010:
-            return "CurvePolygonM"
+            return "PolygonM"  # "CurvePolygonM"
         elif layer.wkbType() == 1010:
-            return "CurvePolygonZ"
+            return "PolygonZ"  # "CurvePolygonZ"
         elif layer.wkbType() == 3010:
-            return "CurvePolygonZM"
+            return "PolygonZM"  # "CurvePolygonZM"
 
         elif layer.wkbType() == 11:
             return "MultiCurve"
@@ -177,10 +235,12 @@ def getLayerGeomType(
         return "None"
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        return
+        raise TypeError(
+            f"Geometry type of layer '{layer.name()}' is not identified: {e}"
+        )
 
 
-def getVariantFromValue(value: Any) -> Union[QVariant.Type, None]:
+def getVariantFromValue(value: Any) -> Union["QVariant.Type", None]:
     try:
         # TODO add Base object
         pairs = {
@@ -223,7 +283,7 @@ def colorFromSpeckle(rgb):
         return QColor.fromRgb(245, 245, 245)
 
 
-def getLayerAttributes(features: List[Base]) -> QgsFields:
+def getLayerAttributes(features: List[Base]) -> "QgsFields":
     try:
         # print("___________getLayerAttributes")
         fields = QgsFields()
@@ -389,52 +449,6 @@ def traverseDict(
         return
 
 
-def get_scale_factor(units: str, dataStorage) -> float:
-    scale_to_meter = get_scale_factor_to_meter(units)
-    if dataStorage is not None:
-        scale_back = scale_to_meter / get_scale_factor_to_meter(
-            dataStorage.currentUnits
-        )
-        return scale_back
-    else:
-        return scale_to_meter
-
-
-def get_scale_factor_to_meter(units: str) -> float:
-    try:
-        unit_scale = {
-            "meters": 1.0,
-            "centimeters": 0.01,
-            "millimeters": 0.001,
-            "inches": 0.0254,
-            "feet": 0.3048,
-            "kilometers": 1000.0,
-            "mm": 0.001,
-            "cm": 0.01,
-            "m": 1.0,
-            "km": 1000.0,
-            "in": 0.0254,
-            "ft": 0.3048,
-            "yd": 0.9144,
-            "mi": 1609.340,
-        }
-        if (
-            units is not None
-            and isinstance(units, str)
-            and units.lower() in unit_scale.keys()
-        ):
-            return unit_scale[units]
-        logToUser(
-            f"Units {units} are not supported. Meters will be applied by default.",
-            level=1,
-            func=inspect.stack()[0][3],
-        )
-        return 1.0
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3])
-        return
-
-
 def validateAttributeName(name: str, fieldnames: List[str]) -> str:
     try:
         new_list = [x for x in fieldnames if x != name]
@@ -552,11 +566,22 @@ def getHeightWithRemainderFromArray(height_array, texture_transform, ind1, ind2)
     return val
 
 
-def getXYofArrayPoint(settings, indexX, indexY, targetWKT, targetPROJ):
-    resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings
+def getXYofArrayPoint(
+    settings, indexX, indexY, selectedLayer, elevationLayer, dataStorage
+):
+    resX, resY, minX, minY = settings
     x = minX + resX * indexX
     y = minY + resY * indexY
-    newX, newY = reprojectPt(x, y, wkt, proj, targetWKT, targetPROJ)
+    # newX, newY = reprojectPt(x, y, wkt, proj, targetWKT, targetPROJ)
+    reprojected_pt = transform.transform(
+        dataStorage.project,
+        QgsPointXY(x, y),
+        selectedLayer.crs(),
+        elevationLayer.crs(),
+    )
+    newX = reprojected_pt.x()
+    newY = reprojected_pt.y()
+
     return newX, newY
 
 
@@ -812,13 +837,6 @@ def findUpdateJsonItemPath(tree: Dict, full_path_str: str):
 def collectionsFromJson(
     jsonObj: dict, levels: list, layerConverted, baseCollection: Collection
 ):
-    # print("collectionsFromJson")
-    # print(jsonObj)
-    # print(levels)
-    # print(layerConverted)
-    # print(baseCollection)
-    # print(baseCollection.name)
-    # print(baseCollection.elements)
     if jsonObj == {} or len(levels) == 0:
         # print("RETURN")
         baseCollection.elements.append(layerConverted)

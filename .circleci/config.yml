@@ -6,6 +6,7 @@ orbs:
   win: circleci/windows@2.4.0
   # Upload artifacts to s3
   aws-s3: circleci/aws-s3@2.0.0
+  codecov: codecov/codecov@3.3.0
 
 jobs:
 
@@ -94,7 +95,50 @@ jobs:
           root: ./
           paths:
             - zip_build
-   
+  
+  test:
+    machine:
+      image: ubuntu-2204:2023.02.1
+      docker_layer_caching: false
+    resource_class: medium
+    parameters:
+      tag:
+        default: "3.11"
+        type: string
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Install python
+          command: |
+            pyenv install -s << parameters.tag >>
+            pyenv global << parameters.tag >>
+      - run:
+          name: Startup the Speckle Server
+          command: docker compose -f docker-compose.yml up -d
+      - run:
+          name: Install Poetry
+          command: |
+            pip install poetry
+      - run:
+          name: Install packages
+          command: |
+            poetry lock --no-update
+            poetry install
+      - run:
+          name: Remove qgis tests
+          command: |
+            rm -rf ./tests_qgis
+      - run:
+          name: Run tests
+          command: poetry run pytest --cov --cov-report xml:reports/coverage.xml --junitxml=reports/test-results.xml
+      - store_test_results:
+          path: reports
+      - store_artifacts:
+          path: reports
+      - codecov/upload
+
   build-connector-win: # Reusable job for basic connectors
     executor:
       name: win/default # comes with python 3.7.3
@@ -228,7 +272,23 @@ jobs:
               -o << parameters.os >> \
               -a << parameters.arch >> \
               -f speckle-sharp-ci-tools/Installers/qgis/<< parameters.slug >>-${SEMVER}.<< parameters.extension >>
-workflows: #happens with every PR to main
+workflows: # happens with every PR to main
+  test_on_pr: # build the installers, but don't persist to workspace for deployment
+    jobs:
+      - get-ui:
+          context: github-dev-bot
+      - get-ci-tools:
+          context: github-dev-bot
+      - package:
+          requires:
+            - get-ui
+            - get-ci-tools 
+      - test:
+          requires:
+            - package
+          matrix:
+            parameters:
+              tag: ["3.11"]
   build: # build the installers, but don't persist to workspace for deployment
     jobs:
       - get-ui:
@@ -246,9 +306,16 @@ workflows: #happens with every PR to main
             - get-ui
             - get-ci-tools 
           filters: *build_filters
-      - build-connector-win:
+      - test:
           requires:
             - package
+          matrix:
+            parameters:
+              tag: ["3.11"]
+          filters: *build_filters
+      - build-connector-win:
+          requires:
+            - test
           filters: *build_filters
           context: innosetup
 
@@ -257,7 +324,6 @@ workflows: #happens with every PR to main
           slug: qgis-mac-arm
           runtime: osx-arm64
           requires:
-            - package
             - build-connector-win
           filters: *build_filters
 
@@ -266,11 +332,10 @@ workflows: #happens with every PR to main
           slug: qgis-mac-intel
           runtime: osx-x64
           requires:
-            - package
             - build-connector-win
           filters: *build_filters
 
-  deploy: # build installers and deploy
+  deploy: # build installers and deploy 
     jobs:
       - get-ui:
           context: github-dev-bot
@@ -295,11 +360,22 @@ workflows: #happens with every PR to main
           requires:
             - get-ui
             - get-ci-tools 
+      - test:
+          requires:
+            - package
+          matrix:
+            parameters:
+              tag: ["3.11"]
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
       - build-connector-win:
           slug: qgis
           installer: true
           requires:
-            - package
+            - test
           filters: &deploy_filters
             tags:
               only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/

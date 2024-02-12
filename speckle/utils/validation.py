@@ -12,71 +12,56 @@ from speckle.utils.panel_logging import logToUser
 
 def tryGetClient(sw: StreamWrapper, dataStorage, write=False, dockwidget=None):
     # only streams with write access
-    try:
-        client = None
-        savedRole = None
-        savedStreamId = None
-        for acc in dataStorage.accounts:
-            # only check accounts on selected server
-            if acc.serverInfo.url in sw.server_url:
-                client = SpeckleClient(
-                    acc.serverInfo.url, acc.serverInfo.url.startswith("https")
-                )
-                try:
-                    client.authenticate_with_account(acc)
-                    if client.account.token is not None:
-                        break
-                except SpeckleException as ex:
-                    if "already connected" in ex.message:
-                        logToUser(
-                            "Dependencies versioning error.\nClick here for details.",
-                            url="dependencies_error",
-                            level=2,
-                            plugin=dockwidget,
-                        )
-                        return
-                    else:
-                        raise ex
-
-        # if token still not found
-        if client is None or client.account.token is None:
-            for acc in dataStorage.accounts:
-                client = sw.get_client()
-                if client is not None:
+    client = None
+    savedRole = None
+    savedStreamId = None
+    for acc in dataStorage.accounts:
+        # only check accounts on selected server
+        if acc.serverInfo.url in sw.server_url:
+            client = SpeckleClient(
+                acc.serverInfo.url, acc.serverInfo.url.startswith("https")
+            )
+            try:
+                client.authenticate_with_account(acc)
+                if client.account.token is not None:
                     break
-
-        if client is not None:
-            stream = client.stream.get(
-                id=sw.stream_id, branch_limit=100, commit_limit=100
-            )
-            if isinstance(stream, Stream):
-                # print(stream.role)
-                if write == False:
-                    # try get stream, only read access needed
-                    # print("only read access needed")
-                    return client, stream
+            except SpeckleException as ex:
+                if "already connected" in ex.message:
+                    logToUser(
+                        "Dependencies versioning error.\nClick here for details.",
+                        url="dependencies_error",
+                        level=2,
+                        plugin=dockwidget,
+                    )
+                    return None, None
                 else:
-                    # check write access
-                    # print("write access needed")
-                    if stream.role is None or (
-                        isinstance(stream.role, str) and "reviewer" in stream.role
-                    ):
-                        savedRole = stream.role
-                        savedStreamId = stream.id
-                    else:
-                        return client, stream
+                    raise ex
 
-        if savedRole is not None and savedStreamId is not None:
-            logToUser(
-                f"You don't have write access to the stream '{savedStreamId}'. You role is '{savedRole}'",
-                level=2,
-                func=inspect.stack()[0][3],
-                plugin=dockwidget,
-            )
+    # if token still not found
+    if client is None or client.account.token is None:
+        client = sw.get_client()
 
-        return None, None
-    except Exception as e:
-        logToUser(e, level=2, func=inspect.stack()[0][3], plugin=dockwidget)
+    if client is not None:
+        stream = client.stream.get(id=sw.stream_id, branch_limit=100, commit_limit=100)
+        if isinstance(stream, Stream):
+            if write is False:
+                # try get stream, only read access needed
+                return client, stream
+            else:
+                # check write access
+                if stream.role is None:
+                    raise Exception(
+                        f"You don't have write access to the stream '{stream.id}'. You role is '{stream.role}'"
+                    )
+                elif isinstance(stream.role, str) and "reviewer" in stream.role:
+                    raise Exception(
+                        f"You don't have write access to the stream '{savedStreamId}'. You role is '{savedRole}'"
+                    )
+                else:
+                    return client, stream
+        else:
+            return None, None
+    else:
         return None, None
 
 

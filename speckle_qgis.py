@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
+from copy import copy
 import inspect
 import os.path
-import sys
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -11,29 +11,30 @@ from datetime import datetime
 import threading
 from plugin_utils.threads import KThread
 from plugin_utils.helpers import constructCommitURL, getAppName, removeSpecialCharacters
-from qgis.core import (
-    Qgis,
-    QgsProject,
-    QgsRasterLayer,
-    QgsVectorLayer,
-    QgsUnitTypes,
-)
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import (
-    QApplication,
-    QAction,
-    QMenu,
-    QDockWidget,
-    QVBoxLayout,
-    QWidget,
-)
-from qgis.PyQt import QtWidgets
-from qgis import PyQt
 
-# from PyQt5.QtCore import pyqtSignal
+try:
+    from qgis.core import (
+        Qgis,
+        QgsProject,
+        QgsRasterLayer,
+        QgsVectorLayer,
+        QgsUnitTypes,
+    )
+    from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator
+    from qgis.PyQt.QtGui import QIcon
+    from qgis.PyQt.QtWidgets import (
+        QApplication,
+        QAction,
+        QMenu,
+        QDockWidget,
+        QVBoxLayout,
+        QWidget,
+    )
+    from qgis.PyQt import QtWidgets
+    from qgis import PyQt
+except ModuleNotFoundError:
+    pass
 
-import sip
 
 from specklepy.core.api import operations
 from specklepy.logging.exceptions import (
@@ -46,37 +47,35 @@ from specklepy.core.api.wrapper import StreamWrapper
 from specklepy.objects import Base
 from specklepy.objects.other import Collection
 from specklepy.objects.units import get_units_from_string
-from specklepy.transports.server import ServerTransport
 from specklepy.core.api.credentials import (
     Account,
-    get_local_accounts,
-)  # , StreamWrapper
+)
 from specklepy.core.api.client import SpeckleClient
 from specklepy.logging import metrics
-import webbrowser
 
 # Initialize Qt resources from file resources.py
 from resources import *
 from plugin_utils.object_utils import callback, traverseObject
 from speckle.converter.layers import (
+    getAllLayers,
+    getSavedLayers,
+    getSelectedLayers,
+    getSelectedLayersWithStructure,
+)
+
+from speckle.converter.layers.layer_conversions import (
     addBimMainThread,
     addCadMainThread,
     addExcelMainThread,
     addNonGeometryMainThread,
     addRasterMainThread,
     addVectorMainThread,
-    convertSelectedLayers,
-    getAllLayers,
-    getAllLayersWithTree,
-    getSavedLayers,
-    getSelectedLayers,
-    getSelectedLayersWithStructure,
+    convertSelectedLayersToSpeckle,
 )
 from speckle.converter.layers import findAndClearLayerGroup
 
 from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
 
-# from speckle.utils.panel_logging import logger
 from specklepy_qt_ui.qt_ui.widget_add_stream import AddStreamModalDialog
 from specklepy_qt_ui.qt_ui.widget_create_stream import CreateStreamModalDialog
 from specklepy_qt_ui.qt_ui.widget_create_branch import CreateBranchModalDialog
@@ -102,13 +101,15 @@ SPECKLE_COLOR_LIGHT = (69, 140, 255)
 class SpeckleQGIS:
     """Speckle Connector Plugin for QGIS"""
 
-    dockwidget: Optional[QDockWidget]
+    dockwidget: Optional["QDockWidget"]
     version: str
     gis_version: str
     add_stream_modal: AddStreamModalDialog
     create_stream_modal: CreateStreamModalDialog
     current_streams: List[Tuple[StreamWrapper, Stream]]  # {id:(sw,st),id2:()}
-    current_layers: List[Tuple[Union[QgsVectorLayer, QgsRasterLayer], str, str]] = []
+    current_layers: List[Tuple[Union["QgsVectorLayer", "QgsRasterLayer"], str, str]] = (
+        []
+    )
     # current_layer_group: Any
     receive_layer_tree: Dict
 
@@ -116,7 +117,7 @@ class SpeckleQGIS:
     active_branch: Optional[Branch] = None
     active_commit: Optional[Commit] = None
 
-    project: QgsProject
+    project: "QgsProject"
 
     # lat: float
     # lon: float
@@ -325,8 +326,9 @@ class SpeckleQGIS:
                 if "send" in t.name:
                     name = "Send"
                 logToUser(
-                    f"Previous {name} operation is still running",
+                    f"Previous {name} operation is still running \nClick here to cancel",
                     level=2,
+                    url="cancel",
                     plugin=self.dockwidget,
                 )
                 return
@@ -458,7 +460,7 @@ class SpeckleQGIS:
             bySelection = True
             if self.dockwidget.layerSendModeDropdown.currentIndex() == 1:
                 bySelection = False
-                layers = getSavedLayers(self)
+                layers, tree_structure = getSavedLayers(self)
             else:
                 # layers = getSelectedLayers(self) # List[QgsLayerTreeNode]
                 layers, tree_structure = getSelectedLayersWithStructure(self)
@@ -472,6 +474,8 @@ class SpeckleQGIS:
                     plugin=self.dockwidget,
                 )
                 return
+            current_active_stream = copy(self.active_stream)
+            branchName = str(self.dockwidget.streamBranchDropdown.currentText())
 
             # Check if no layers are selected
             if len(layers) == 0 or layers is None:  # len(selectedLayerNames) == 0:
@@ -530,7 +534,7 @@ class SpeckleQGIS:
 
             # conversions
             time_start_conversion = datetime.now()
-            base_obj = convertSelectedLayers(
+            base_obj = convertSelectedLayersToSpeckle(
                 base_obj, layers, tree_structure, projectCRS, self
             )
             time_end_conversion = datetime.now()
@@ -545,28 +549,35 @@ class SpeckleQGIS:
 
             logToUser(f"Sending data to the server...", level=0, plugin=self.dockwidget)
             # Get the stream wrapper
-            streamWrapper = self.active_stream[0]
-            streamName = self.active_stream[1].name
+            streamWrapper = current_active_stream[0]
+            streamName = current_active_stream[1].name
             streamId = streamWrapper.stream_id
             # client = streamWrapper.get_client()
             client, stream = tryGetClient(
                 streamWrapper, self.dataStorage, True, self.dockwidget
             )
-            if not isinstance(client, SpeckleClient) or not isinstance(stream, Stream):
+            if not isinstance(client, SpeckleClient):
+                logToUser(
+                    f"SpeckleClient invalid: {client}", level=2, plugin=self.dockwidget
+                )
                 return
 
             stream = validateStream(stream, self.dockwidget)
             if not isinstance(stream, Stream):
+                logToUser(f"Stream invalid: {stream}", level=2, plugin=self.dockwidget)
                 return
 
-            branchName = str(self.dockwidget.streamBranchDropdown.currentText())
             branch = validateBranch(stream, branchName, False, self.dockwidget)
             branchId = branch.id
             if branch == None:
+                logToUser(f"Branch invalid: {branch}", level=2, plugin=self.dockwidget)
                 return
 
             transport = validateTransport(client, streamId)
             if transport == None:
+                logToUser(
+                    f"Transport invalid: {transport}", level=2, plugin=self.dockwidget
+                )
                 return
 
         except Exception as e:
@@ -574,10 +585,13 @@ class SpeckleQGIS:
             return
 
         # data transfer
-        time_start_transfer = datetime.now()
+
         try:
+            self.dockwidget.signal_remove_btn_url.emit("cancel")
+            time_start_transfer = datetime.now()
             # this serialises the block and sends it to the transport
             objId = operations.send(base=base_obj, transports=[transport])
+            time_end_transfer = datetime.now()
         except Exception as e:
             logToUser(
                 "Error sending data: " + str(e),
@@ -585,10 +599,69 @@ class SpeckleQGIS:
                 func=inspect.stack()[0][3],
                 plugin=self.dockwidget,
             )
-            return
-        time_end_transfer = datetime.now()
 
-        self.dockwidget.signal_remove_btn_url.emit("cancel")
+            time_end_transfer = datetime.now()
+            try:
+                metr_filter = "Selected" if bySelection is True else "Saved"
+                metr_main = True if branchName == "main" else False
+                metr_saved_streams = len(self.current_streams)
+                metr_branches = len(current_active_stream[1].branches.items)
+                metr_collab = len(current_active_stream[1].collaborators)
+                metr_projected = True if not projectCRS.isGeographic() else False
+                if self.project.crs().isValid() is False:
+                    metr_projected = None
+
+                try:
+                    metr_crs = (
+                        True
+                        if self.dataStorage.custom_lat != 0
+                        and self.dataStorage.custom_lon != 0
+                        and str(self.dataStorage.custom_lat) in projectCRS.toWkt()
+                        and str(self.dataStorage.custom_lon) in projectCRS.toWkt()
+                        else False
+                    )
+                except:
+                    metr_crs = False
+
+                metrics.track(
+                    metrics.SEND,
+                    self.dataStorage.active_account,
+                    {
+                        "hostAppFullVersion": self.gis_version,
+                        "branches": metr_branches,
+                        "collaborators": metr_collab,
+                        "connector_version": str(self.version),
+                        "filter": metr_filter,
+                        "isMain": metr_main,
+                        "savedStreams": metr_saved_streams,
+                        "projectedCRS": metr_projected,
+                        "customCRS": metr_crs,
+                        "time_conversion": (
+                            time_end_conversion - time_start_conversion
+                        ).total_seconds(),
+                        "time_transfer": (
+                            time_end_transfer - time_start_transfer
+                        ).total_seconds(),
+                        "error": str(e),
+                    },
+                )
+            except:
+                metrics.track(
+                    metrics.SEND,
+                    self.dataStorage.active_account,
+                    {
+                        "hostAppFullVersion": self.gis_version,
+                        "connector_version": str(self.version),
+                        "time_conversion": (
+                            time_end_conversion - time_start_conversion
+                        ).total_seconds(),
+                        "time_transfer": (
+                            time_end_transfer - time_start_transfer
+                        ).total_seconds(),
+                        "error": str(e),
+                    },
+                )
+            return
 
         try:
             # you can now create a commit on your stream with this object
@@ -614,8 +687,8 @@ class SpeckleQGIS:
                 metr_filter = "Selected" if bySelection is True else "Saved"
                 metr_main = True if branchName == "main" else False
                 metr_saved_streams = len(self.current_streams)
-                metr_branches = len(self.active_stream[1].branches.items)
-                metr_collab = len(self.active_stream[1].collaborators)
+                metr_branches = len(current_active_stream[1].branches.items)
+                metr_collab = len(current_active_stream[1].collaborators)
                 metr_projected = True if not projectCRS.isGeographic() else False
                 if self.project.crs().isValid() is False:
                     metr_projected = None
@@ -653,8 +726,21 @@ class SpeckleQGIS:
                         ).total_seconds(),
                     },
                 )
-            except:
-                metrics.track(metrics.SEND, self.dataStorage.active_account)
+            except Exception as e:
+                metrics.track(
+                    metrics.SEND,
+                    self.dataStorage.active_account,
+                    {
+                        "hostAppFullVersion": self.gis_version,
+                        "connector_version": str(self.version),
+                        "time_conversion": (
+                            time_end_conversion - time_start_conversion
+                        ).total_seconds(),
+                        "time_transfer": (
+                            time_end_transfer - time_start_transfer
+                        ).total_seconds(),
+                    },
+                )
 
             if isinstance(commit_id, SpeckleException):
                 logToUser(
@@ -892,9 +978,9 @@ class SpeckleQGIS:
             self.dataStorage.latestActionReport = []
 
             # conversions
-            time_start_conversion = (
-                self.dataStorage.latestConversionTime
-            ) = datetime.now()
+            time_start_conversion = self.dataStorage.latestConversionTime = (
+                datetime.now()
+            )
             traverseObject(self, commitObj, callback, check, str(newGroupName), "")
             time_end_conversion = self.dataStorage.latestConversionTime
 
@@ -1299,7 +1385,7 @@ class SpeckleQGIS:
                 self.add_stream_modal.handleStreamAdd.disconnect(self.handleStreamAdd)
             except:
                 pass
-            #set_project_streams(self)
+            # set_project_streams(self)
             self.dockwidget.populateProjectStreams(self)
         except Exception as e:
             logToUser(e, level=2, func=inspect.stack()[0][3], plugin=self.dockwidget)
