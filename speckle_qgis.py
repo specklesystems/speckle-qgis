@@ -475,6 +475,7 @@ class SpeckleQGIS:
                 )
                 return
             current_active_stream = copy(self.active_stream)
+            branchName = str(self.dockwidget.streamBranchDropdown.currentText())
 
             # Check if no layers are selected
             if len(layers) == 0 or layers is None:  # len(selectedLayerNames) == 0:
@@ -566,7 +567,6 @@ class SpeckleQGIS:
                 logToUser(f"Stream invalid: {stream}", level=2, plugin=self.dockwidget)
                 return
 
-            branchName = str(self.dockwidget.streamBranchDropdown.currentText())
             branch = validateBranch(stream, branchName, False, self.dockwidget)
             branchId = branch.id
             if branch == None:
