@@ -1891,7 +1891,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, pl
     try:
         # project = plugin.project
         # layerName = removeSpecialCharacters(layer.name) + "_Speckle"
-        layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name) + "_Speckle"
+        layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name)
 
         newName = layerName  # f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
@@ -1938,7 +1938,9 @@ def addRasterMainThread(obj: Tuple):
         except AttributeError as e:
             print(e)
 
-        shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50]
+        shortName = (
+            newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50] + "_Speckle"
+        )
         # print(f"Final short name: {shortName}")
         try:
             layerName = newName.split(shortName)[0] + shortName  # + ("_" + geom_print)
