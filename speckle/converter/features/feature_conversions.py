@@ -976,7 +976,7 @@ def rasterFeatureToSpeckle(
 
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        return None
+        raise e
 
 
 def featureToNative(feature: Base, fields: "QgsFields", dataStorage):

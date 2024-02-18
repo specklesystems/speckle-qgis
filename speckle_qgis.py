@@ -1112,7 +1112,7 @@ class SpeckleQGIS:
                 self.dataStorage.all_layers = getAllLayers(root)
                 self.dockwidget.addDataStorage(self)
                 self.dockwidget.runSetup(self)
-                self.dockwidget.createMappingDialog()
+                self.dockwidget.createMappingDialog(self)
 
                 self.project.fileNameChanged.connect(self.reloadUI)
                 self.project.homePathChanged.connect(self.reloadUI)

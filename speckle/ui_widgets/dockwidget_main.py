@@ -28,12 +28,21 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
         self.setupUi(self)
         self.runAllSetup()
 
-    def createMappingDialog(self):
+    def createMappingDialog(self, plugin):
         if self.mappingSendDialog is None:
             self.mappingSendDialog = MappingSendDialogQGIS(None)
             self.mappingSendDialog.dataStorage = self.dataStorage
+            self.mappingSendDialog.dialog_button.disconnect()
+            self.mappingSendDialog.dialog_button.clicked.connect(
+                lambda: self.read_elevation_from_dialog(plugin)
+            )
 
         self.mappingSendDialog.runSetup()
+
+    def read_elevation_from_dialog(self, plugin):
+        self.dataStorage = self.mappingSendDialog.saveElevationLayer()
+        plugin.dataStorage = self.dataStorage
+        self.mappingSendDialog.close()
 
     def completeStreamSection(self, plugin):
         try:
@@ -80,9 +89,12 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
             for stream in plugin.current_streams:
                 self.streamList.addItems(
                     [
-                        f"Stream not accessible - {stream[0].stream_id}"
-                        if stream[1] is None or isinstance(stream[1], SpeckleException)
-                        else f"{stream[1].name}, {stream[1].id} | {stream[0].stream_url.split('/streams')[0].split('/projects')[0]}"
+                        (
+                            f"Stream not accessible - {stream[0].stream_id}"
+                            if stream[1] is None
+                            or isinstance(stream[1], SpeckleException)
+                            else f"{stream[1].name}, {stream[1].id} | {stream[0].stream_url.split('/streams')[0].split('/projects')[0]}"
+                        )
                     ]
                 )
             if len(plugin.current_streams) == 0:
