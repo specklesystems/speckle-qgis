@@ -214,6 +214,9 @@ def meshPartsFromPolygon(
         if len(polyBorder) >= maxPoints:
             coef = int(len(polyBorder) / maxPoints)
 
+        if len(polyBorder) < 3:
+            return None, None, None, None, None
+
         col = featureColorfromNativeRenderer(feature, layer)
 
         if (

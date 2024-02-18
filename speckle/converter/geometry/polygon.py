@@ -67,6 +67,8 @@ def polygonToSpeckleMesh(
         for p in geom.parts():
             boundary, voidsNative = getPolyBoundaryVoids(p, feature, layer, dataStorage)
             polyBorder = speckleBoundaryToSpecklePts(boundary, dataStorage)
+            if len(polyBorder) < 3:
+                continue
             voids = []
             voidsAsPts = []
 
@@ -94,7 +96,6 @@ def polygonToSpeckleMesh(
                     )
                 )
                 voidsAsPts.append(pts_fixed)
-
             (
                 total_vert,
                 vertices_x,
@@ -239,6 +240,8 @@ def polygonToSpeckle(
             boundary = moveVertically(boundary, projectZval)
 
         polyBorder = speckleBoundaryToSpecklePts(boundary, dataStorage)
+        if len(polyBorder) < 3:
+            return None, None
         voids = []
         voidsAsPts = []
 
@@ -346,7 +349,7 @@ def polygonToNative(poly: Base, dataStorage) -> "QgsPolygon":
 
 
 def getPolyBoundaryVoids(
-    geom: "QgsGeometry",
+    geom_original: "QgsGeometry",
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
     dataStorage,
@@ -355,21 +358,21 @@ def getPolyBoundaryVoids(
     boundary = None
     voids: List[Union[None, Polyline, Arc, Line, Polycurve]] = []
     try:
-        pointList = []
         pt_iterator = []
         extRing = None
+
+        if isinstance(geom_original, QgsGeometry):
+            geom_original = geom_original.constGet()
+        geom = geom_original.clone()
+
         try:
             extRing = geom.exteriorRing()
             pt_iterator = extRing.vertices()
         except:
-            try:
-                extRing = geom.constGet().exteriorRing()
-                pt_iterator = geom.vertices()
-            except:
-                extRing = geom
-                pt_iterator = geom.vertices()
-        for pt in pt_iterator:
-            pointList.append(pt)
+            extRing = geom
+            pt_iterator = geom.vertices()
+        # for pt in pt_iterator:
+        #     pointList.append(pt)
         if extRing is not None:
             boundary = unknownLineToSpeckle(
                 extRing, True, feature, layer, dataStorage, xform
@@ -377,10 +380,7 @@ def getPolyBoundaryVoids(
         else:
             return boundary, voids
 
-        try:
-            geom = geom.constGet()
-        except:
-            pass
+        # get voids
         for i in range(geom.numInteriorRings()):
             intRing = unknownLineToSpeckle(
                 geom.interiorRing(i), True, feature, layer, dataStorage, xform
