@@ -26,7 +26,7 @@ def test_triangulatePolygon(qgis_polygon, data_storage):
 
 
 def test_getPolyPtsSegments(qgis_polygon, data_storage):
-    result = getPolyPtsSegments(qgis_polygon, data_storage)
+    result = getPolyPtsSegments(qgis_polygon, data_storage, None)
     assert isinstance(result, tuple)
     assert len(result) == 4
     assert isinstance(result[0], list)
