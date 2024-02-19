@@ -1938,15 +1938,13 @@ def addRasterMainThread(obj: Tuple):
         except AttributeError as e:
             print(e)
 
-        shortName = (
-            newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50] + "_Speckle"
-        )
+        shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50]
         # print(f"Final short name: {shortName}")
         try:
-            layerName = newName.split(shortName)[0] + shortName  # + ("_" + geom_print)
+            layerName = newName.split(shortName)[0] + shortName + "_Speckle"
         except:
-            layerName = newName
-        finalName = shortName  # + ("_" + geom_print)
+            layerName = newName + "_Speckle"
+        finalName = shortName + "_Speckle"
 
         # report on receive:
         dataStorage.latestActionLayers.append(finalName)
