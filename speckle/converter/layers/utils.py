@@ -62,31 +62,34 @@ ATTRS_REMOVE = [
 
 
 def generate_qgis_app_id(
-    base: Base,
     layer: Union["QgsRasterLayer", "QgsVectorLayer"],
     f: "QgsFeature",
 ):
     """Generate unique ID for Vector feature."""
     try:
-        fieldnames = [str(field.name()) for field in layer.fields()]
-        props = [str(f[prop]) for prop in fieldnames]
+
         try:
-            geoms = f.geometry()
+            geoms = str(f.geometry())
         except Exception as e:
             geoms = ""
 
-        id_data: str = (
-            layer.id()
-            + str(layer.wkbType())
-            + str(fieldnames)
-            + str(props)
-            + str(geoms)
-        )
-        return hashlib.md5(id_data.encode('utf-8')).hexdigest()
+        if layer is not None:
+            layer_id = layer.id()
+            layer_geom_type = str(layer.wkbType())
+            fieldnames = [str(field.name()) for field in layer.fields()]
+            props = [str(f[prop]) for prop in fieldnames]
+        else:
+            layer_id = ""
+            layer_geom_type = ""
+            fieldnames = []
+            props = [attr for attr in f.attributes()]
+
+        id_data: str = layer_id + layer_geom_type + str(fieldnames) + str(props) + geoms
+        return hashlib.md5(id_data.encode("utf-8")).hexdigest()
 
     except Exception as e:
         logToUser(
-            f"Application ID not generated for feature in layer {layer.name()}: {e}",
+            f"Application ID not generated for feature in layer {layer.name() if layer is not None else ''}: {e}",
             level=1,
         )
         return ""
@@ -100,7 +103,7 @@ def generate_qgis_raster_app_id(rasterLayer):
         for i in range(rasterLayer.bandCount()):
             band = file_ds.GetRasterBand(i + 1)
             id_data += str(band.ReadAsArray())
-        return hashlib.md5(id_data.encode('utf-8')).hexdigest()
+        return hashlib.md5(id_data.encode("utf-8")).hexdigest()
 
     except Exception as e:
         logToUser(

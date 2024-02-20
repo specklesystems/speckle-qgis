@@ -118,3 +118,110 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
             if "speckle_" in t.name:
                 t.kill()
                 t.join()
+
+    def overwriteStartSettings(self):
+        self.reportBtn.disconnect()
+        self.reportBtn.clicked.connect(self.showDebugReport)
+
+    def showDebugReport(self):
+        from plugin_utils.installer import _debug
+
+        self.msgLog.showReport()
+        if _debug is True:
+            text = ""
+            report_new = self.dataStorage.flat_report_receive
+            report_old = self.dataStorage.flat_report_latest
+
+            for key, val in report_new.items():
+                if key in report_old:
+                    if report_new[key]["hash"] != report_old[key]["hash"]:
+                        diff: str = "GEOMETRY"
+                        if (
+                            report_old[key]["attributes"]
+                            != report_new[key]["attributes"]
+                        ):
+                            diff = "ATTRIBUTES"
+                            if (
+                                report_old[key]["geometry"]
+                                != report_new[key]["geometry"]
+                            ):
+                                diff = "BOTH"
+
+                        # add symbol
+                        if diff == "ATTRIBUTES":
+                            text += "🔶 "
+                        elif diff == "GEOMETRY":
+                            text += "🔷 "
+                        else:
+                            text += "🔷🔶 "
+
+                        # basic report item
+                        report_item = {
+                            key: {
+                                "diff": diff,
+                                "layer_name": report_new[key]["layer_name"],
+                                "speckle_ids": [
+                                    report_old[key]["speckle_id"],
+                                    report_new[key]["speckle_id"],
+                                ],
+                            }
+                        }
+                        text += str(report_item) + "\n"
+
+                        # add details about diff
+                        if diff in ["ATTRIBUTES", "GEOMETRY"]:
+                            extra_report_item = {
+                                diff.lower(): [
+                                    report_old[key][diff.lower()],
+                                ]
+                            }
+                            text += str(extra_report_item) + "\n"
+                            extra_report_item = {
+                                diff.lower(): [
+                                    report_new[key][diff.lower()],
+                                ]
+                            }
+                            text += str(extra_report_item) + "\n" + "\n"
+                        else:
+                            for keyword in ["ATTRIBUTES", "GEOMETRY"]:
+                                extra_report_item = {
+                                    keyword.lower(): [
+                                        report_old[key][keyword.lower()],
+                                    ]
+                                }
+                                text += str(extra_report_item) + "\n"
+                                extra_report_item = {
+                                    keyword.lower(): [
+                                        report_new[key][keyword.lower()],
+                                    ]
+                                }
+                                text += str(extra_report_item) + "\n" + "\n"
+
+                else:
+                    report_item = {
+                        key: {
+                            "diff": "ADDED OBJECT",
+                            "layer_name": report_new[key]["layer_name"],
+                            "speckle_ids": [
+                                report_new[key]["speckle_id"],
+                            ],
+                        }
+                    }
+                    text += "✅ "
+                    text += str(report_item) + "\n" + "\n"
+
+            for key, val in report_old.items():
+                if key not in report_new:
+                    report_item = {
+                        key: {
+                            "diff": "DELETED OBJECT",
+                            "layer_name": report_old[key]["layer_name"],
+                            "speckle_ids": [
+                                report_old[key]["speckle_id"],
+                            ],
+                        }
+                    }
+                    text += "❌ "
+                    text += str(report_item) + "\n" + "\n"
+
+            self.msgLog.reportDialog.report_text.setText(str(text))

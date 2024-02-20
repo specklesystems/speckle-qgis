@@ -391,7 +391,7 @@ def layerToSpeckle(
                             g.voids = None
 
                 if isinstance(b, Base):
-                    b.applicationId = generate_qgis_app_id(b, selectedLayer, f)
+                    b.applicationId = generate_qgis_app_id(selectedLayer, f)
 
                 layerObjs.append(b)
                 if (
