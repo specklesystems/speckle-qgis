@@ -200,7 +200,7 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
                 else:
                     report_item = {
                         key: {
-                            "diff": "ADDED OBJECT",
+                            "diff": "ADDED",
                             "layer_name": report_new[key]["layer_name"],
                             "speckle_ids": [
                                 report_new[key]["speckle_id"],
@@ -214,7 +214,7 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
                 if key not in report_new:
                     report_item = {
                         key: {
-                            "diff": "DELETED OBJECT",
+                            "diff": "DELETED",
                             "layer_name": report_old[key]["layer_name"],
                             "speckle_ids": [
                                 report_old[key]["speckle_id"],
