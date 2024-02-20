@@ -1,4 +1,5 @@
 import threading
+from plugin_utils.helpers import string_diff
 from specklepy_qt_ui.qt_ui.dockwidget_main import (
     SpeckleQGISDialog as SpeckleQGISDialog_UI,
 )
@@ -135,17 +136,32 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
             for key, val in report_new.items():
                 if key in report_old:
                     if report_new[key]["hash"] != report_old[key]["hash"]:
+
                         diff: str = "GEOMETRY"
+                        diff_string = ""
                         if (
                             report_old[key]["attributes"]
                             != report_new[key]["attributes"]
                         ):
                             diff = "ATTRIBUTES"
+                            diff_string = string_diff(
+                                report_new[key]["attributes"],
+                                report_old[key]["attributes"],
+                            )
                             if (
                                 report_old[key]["geometry"]
                                 != report_new[key]["geometry"]
                             ):
                                 diff = "BOTH"
+                                diff_string += "\n" + string_diff(
+                                    report_new[key]["attributes"],
+                                    report_old[key]["attributes"],
+                                )
+                        if diff == "GEOMETRY":
+                            diff_string = string_diff(
+                                report_new[key]["geometry"],
+                                report_old[key]["geometry"],
+                            )
 
                         # add symbol
                         if diff == "ATTRIBUTES":
@@ -156,72 +172,40 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
                             text += "🔷🔶 "
 
                         # basic report item
-                        report_item = {
-                            key: {
-                                "diff": diff,
-                                "layer_name": report_new[key]["layer_name"],
-                                "speckle_ids": [
-                                    report_old[key]["speckle_id"],
-                                    report_new[key]["speckle_id"],
-                                ],
-                            }
-                        }
-                        text += str(report_item) + "\n"
+                        text += f"{key}:\ndiff: {diff},\nlayer_name: {report_new[key]['layer_name']},\nspeckle_ids: [{report_old[key]['speckle_id']}, {report_new[key]['speckle_id']}]\n{diff_string}\n\n"
 
-                        # add details about diff
+                        # add extra details about diff
                         if diff in ["ATTRIBUTES", "GEOMETRY"]:
-                            extra_report_item = {
-                                diff.lower(): [
-                                    report_old[key][diff.lower()],
-                                ]
-                            }
-                            text += str(extra_report_item) + "\n"
-                            extra_report_item = {
-                                diff.lower(): [
-                                    report_new[key][diff.lower()],
-                                ]
-                            }
-                            text += str(extra_report_item) + "\n" + "\n"
+
+                            text += f"{diff.lower()}: {report_old[key][diff.lower()]}\n"
+                            text += (
+                                f"{diff.lower()}: {report_new[key][diff.lower()]}\n\n"
+                            )
+
                         else:
                             for keyword in ["ATTRIBUTES", "GEOMETRY"]:
-                                extra_report_item = {
-                                    keyword.lower(): [
-                                        report_old[key][keyword.lower()],
-                                    ]
-                                }
-                                text += str(extra_report_item) + "\n"
-                                extra_report_item = {
-                                    keyword.lower(): [
-                                        report_new[key][keyword.lower()],
-                                    ]
-                                }
-                                text += str(extra_report_item) + "\n" + "\n"
+                                text += f"{keyword.lower()}: {report_old[key][keyword.lower()]}\n"
+                                text += f"{keyword.lower()}: {report_new[key][keyword.lower()]}\n\n"
 
                 else:
-                    report_item = {
-                        key: {
-                            "diff": "ADDED",
-                            "layer_name": report_new[key]["layer_name"],
-                            "speckle_ids": [
-                                report_new[key]["speckle_id"],
-                            ],
-                        }
-                    }
-                    text += "✅ "
-                    text += str(report_item) + "\n" + "\n"
+                    text += f"✅ {key}:\ndiff: ADDED,\nlayer_name: {report_new[key]['layer_name']},\nspeckle_ids: [{report_new[key]['speckle_id']},]\n\n"
+
+                    # extra details
+                    for keyword in ["ATTRIBUTES", "GEOMETRY"]:
+                        text += (
+                            f"{keyword.lower()}: {report_new[key][keyword.lower()]}\n"
+                        )
+                    text += "\n"
 
             for key, val in report_old.items():
                 if key not in report_new:
-                    report_item = {
-                        key: {
-                            "diff": "DELETED",
-                            "layer_name": report_old[key]["layer_name"],
-                            "speckle_ids": [
-                                report_old[key]["speckle_id"],
-                            ],
-                        }
-                    }
-                    text += "❌ "
-                    text += str(report_item) + "\n" + "\n"
+                    text += f"❌ {key}:\ndiff: DELETED,\nlayer_name: {report_old[key]['layer_name']},\nspeckle_ids: [{report_old[key]['speckle_id']},]\n\n"
+
+                    # extra details
+                    for keyword in ["ATTRIBUTES", "GEOMETRY"]:
+                        text += (
+                            f"{keyword.lower()}: {report_old[key][keyword.lower()]}\n"
+                        )
+                    text += "\n"
 
             self.msgLog.reportDialog.report_text.setText(str(text))
