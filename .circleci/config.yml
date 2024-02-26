@@ -142,7 +142,6 @@ jobs:
   build-connector-win: # Reusable job for basic connectors
     executor:
       name: win/default # comes with python 3.7.3
-      shell: cmd.exe
     parameters:
       slug:
         type: string
