@@ -3,6 +3,7 @@ from datetime import datetime
 import hashlib
 import inspect
 import os
+import random
 import time
 from plugin_utils.helpers import SYMBOL, findOrCreatePath
 from typing import Any, Dict, List, Tuple, Union
@@ -133,12 +134,12 @@ def create_geopackage(dataStorage: "DataStorage", streamBranch: str):
     QgsVectorFileWriter.writeAsVectorFormat(
         mock_layer, path_geopackage, "utf-8", driverName="GPKG", onlySelected=False
     )
-    return path_geopackage
+    return path_geopackage + ".gpkg"
 
 
 def add_layer_to_geopackage(layer, dataStorage: "DataStorage"):
     # https://stackoverflow.com/questions/65020423/how-to-append-add-layers-to-geopackages-in-pyqgis
-    uri = dataStorage.geopackage_path + ".gpkg"
+    uri = dataStorage.geopackage_path
     options = QgsVectorFileWriter.SaveVectorOptions()
     context = dataStorage.project.transformContext()
     # options.driverName = "GPKG"
@@ -147,8 +148,16 @@ def add_layer_to_geopackage(layer, dataStorage: "DataStorage"):
 
     # switch mode to append layer instead of overwriting the file
     options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
-    options.layerName = layer.name()
+    new_name = (
+        dataStorage.geopackage_path.split("\\")[-1].split("/")[-1].split(".gpkg")[0]
+        + "_"
+        + layer.name()
+        + "_"
+        + str(random.randint(10000, 99999))
+    )
+    options.layerName = new_name
     QgsVectorFileWriter.writeAsVectorFormatV2(layer, uri, context, options)
+    return new_name
 
 
 def getLayerGeomType(
