@@ -171,7 +171,7 @@ jobs:
           steps:
             - run:
                 name: Build Installer
-                shell: cmd.exe #does not work in powershell
+                shell: cmd.exe # does not work in powershell
                 command: 
                   speckle-sharp-ci-tools\InnoSetup\ISCC.exe speckle-sharp-ci-tools\qgis.iss /Sbyparam=$p
 
