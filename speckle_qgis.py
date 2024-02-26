@@ -11,6 +11,7 @@ from datetime import datetime
 import threading
 from plugin_utils.threads import KThread
 from plugin_utils.helpers import constructCommitURL, getAppName, removeSpecialCharacters
+from speckle.converter.layers.utils import create_geopackage
 
 try:
     from qgis.core import (
@@ -74,7 +75,7 @@ from speckle.converter.layers.layer_conversions import (
 )
 from speckle.converter.layers import findAndClearLayerGroup
 
-from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
+from speckle.ui_widgets.DataStorage import DataStorage
 
 from specklepy_qt_ui.qt_ui.widget_add_stream import AddStreamModalDialog
 from specklepy_qt_ui.qt_ui.widget_create_stream import CreateStreamModalDialog
@@ -879,6 +880,9 @@ class SpeckleQGIS:
                     plugin=self.dockwidget,
                 )
                 return
+
+            # create empty geopackage 
+            self.dataStorage.geopackage_path = create_geopackage(self.dataStorage, f"{stream.id}_{commit.id}")
 
             # data transfer
             time_start_transfer = datetime.now()
