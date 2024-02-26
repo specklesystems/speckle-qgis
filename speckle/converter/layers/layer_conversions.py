@@ -760,13 +760,6 @@ def addNonGeometryMainThread(obj: Tuple):
             plugin.dataStorage.currentUnits = "m"
         # authid = trySaveCRS(crs, streamBranch)
 
-        if crs.isGeographic is True:
-            logToUser(
-                f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly",
-                level=1,
-                func=inspect.stack()[0][3],
-            )
-
         vl = QgsVectorLayer(
             geomType + "?crs=" + crs.authid(), finalName, "memory"
         )  # do something to distinguish: stream_id_latest_name
