@@ -1,8 +1,10 @@
 import copy
+from datetime import datetime
 import hashlib
 import inspect
+import os
 import time
-from plugin_utils.helpers import SYMBOL
+from plugin_utils.helpers import SYMBOL, findOrCreatePath
 from typing import Any, Dict, List, Tuple, Union
 from specklepy.objects import Base
 from specklepy.objects.other import Collection
@@ -33,6 +35,7 @@ try:
         QgsField,
         QgsFields,
         QgsLayerTreeGroup,
+        QgsVectorFileWriter,
     )
     from PyQt5.QtGui import QColor
     from PyQt5.QtCore import QVariant, QDate, QDateTime
@@ -111,6 +114,41 @@ def generate_qgis_raster_app_id(rasterLayer):
             level=1,
         )
         return ""
+
+
+def create_geopackage(dataStorage: "DataStorage", streamBranch: str):
+    project = dataStorage.project
+    package_path = project.absolutePath()
+    if package_path == "":
+        package_path = (
+            os.path.expandvars(r"%LOCALAPPDATA%")
+            + "\\Temp\\Speckle_QGIS_temp\\"
+            + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        )
+        findOrCreatePath(package_path)
+
+    path_geopackage = package_path + "/Layers_Speckle/" + streamBranch
+    mock_layer = QgsVectorLayer("NoGeometry", "create_memory_layer", "memory")
+    # write to disk
+    QgsVectorFileWriter.writeAsVectorFormat(
+        mock_layer, path_geopackage, "utf-8", driverName="GPKG", onlySelected=False
+    )
+    return path_geopackage
+
+
+def add_layer_to_geopackage(layer, dataStorage: "DataStorage"):
+    # https://stackoverflow.com/questions/65020423/how-to-append-add-layers-to-geopackages-in-pyqgis
+    uri = dataStorage.geopackage_path + ".gpkg"
+    options = QgsVectorFileWriter.SaveVectorOptions()
+    context = dataStorage.project.transformContext()
+    # options.driverName = "GPKG"
+    # options.layerName = layer.name()
+    # QgsVectorFileWriter.writeAsVectorFormatV2(layer,uri,context,options)
+
+    # switch mode to append layer instead of overwriting the file
+    options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+    options.layerName = layer.name()
+    QgsVectorFileWriter.writeAsVectorFormatV2(layer, uri, context, options)
 
 
 def getLayerGeomType(

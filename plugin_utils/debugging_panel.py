@@ -23,7 +23,7 @@ from specklepy.objects.other import RevitParameter
 def getServerInfo():
     from specklepy.core.api.client import SpeckleClient
     from specklepy.core.api.resources.server import Resource as ServerResource
-    from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
+    from speckle.ui_widgets.DataStorage import DataStorage
     d = DataStorage()
     d.check_for_accounts()
     acc = d.accounts[0]
