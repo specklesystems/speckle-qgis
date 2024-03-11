@@ -190,7 +190,6 @@ jobs:
                   cd C:\
                   echo $env:SM_CLIENT_CERT_FILE_B64 > certificate.txt
                   certutil -decode certificate.txt certificate.p12
-                  echo $env:SM_OV_PEM_CERT > SpeckleOVCertificate-2024.pem
             - run: # Syncs certificates from Digicert into local user store
                 name: Sync Certs
                 shell: powershell.exe
