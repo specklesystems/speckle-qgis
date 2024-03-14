@@ -200,10 +200,7 @@ jobs:
                 shell: cmd.exe
                 command:
                   | # If no tag, use 0.0.0.1 and don't make any YML (for testing only!)
-                  speckle-sharp-ci-tools\InnoSetup\ISCC.exe speckle-sharp-ci-tools\qgis.iss \
-                  /Sbyparam=$p \
-                  /DSIGN_INSTALLER \
-                  /DCODE_SIGNING_CERT_FINGERPRINT=%SM_CODE_SIGNING_CERT_SHA1_HASH%
+                  speckle-sharp-ci-tools\InnoSetup\ISCC.exe speckle-sharp-ci-tools\qgis.iss /Sbyparam=$p /DSIGN_INSTALLER /DCODE_SIGNING_CERT_FINGERPRINT=%SM_CODE_SIGNING_CERT_SHA1_HASH%
       - when:
           condition: << parameters.installer >>
           steps:
