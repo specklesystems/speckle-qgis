@@ -806,6 +806,11 @@ class SpeckleQGIS:
             if not self.dockwidget:
                 return
 
+            self.dataStorage.flat_report_latest = copy(
+                self.dataStorage.flat_report_receive
+            )
+            self.dataStorage.flat_report_receive = {}
+
             self.dataStorage.latestHostApp = ""
 
             # Check if stream id/url is empty
@@ -1112,7 +1117,7 @@ class SpeckleQGIS:
                 self.dataStorage.all_layers = getAllLayers(root)
                 self.dockwidget.addDataStorage(self)
                 self.dockwidget.runSetup(self)
-                self.dockwidget.createMappingDialog()
+                self.dockwidget.createMappingDialog(self)
 
                 self.project.fileNameChanged.connect(self.reloadUI)
                 self.project.homePathChanged.connect(self.reloadUI)
@@ -1157,6 +1162,7 @@ class SpeckleQGIS:
             # show the dockwidget
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
             self.dockwidget.enableElements(self)
+            self.dockwidget.overwriteStartSettings()
 
         import urllib3
         import requests

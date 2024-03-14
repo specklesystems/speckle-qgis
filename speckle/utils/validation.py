@@ -1,5 +1,5 @@
 import inspect
-from typing import Union
+from typing import Tuple, Union
 from specklepy.core.api.credentials import get_default_account
 from specklepy.core.api.wrapper import StreamWrapper
 from specklepy.core.api.models import Stream, Branch, Commit
@@ -10,7 +10,9 @@ from specklepy.logging.exceptions import SpeckleException, GraphQLException
 from speckle.utils.panel_logging import logToUser
 
 
-def tryGetClient(sw: StreamWrapper, dataStorage, write=False, dockwidget=None):
+def tryGetClient(
+    sw: StreamWrapper, dataStorage: "DataStorage", write=False, dockwidget=None
+) -> Tuple[Union[SpeckleClient, None], Union[Stream, None]]:
     # only streams with write access
     client = None
     savedRole = None
@@ -66,10 +68,9 @@ def tryGetClient(sw: StreamWrapper, dataStorage, write=False, dockwidget=None):
 
 
 def tryGetStream(
-    sw: StreamWrapper, dataStorage, write=False, dockwidget=None
+    sw: StreamWrapper, dataStorage: "DataStorage", write=False, dockwidget=None
 ) -> Union[Stream, None]:
     try:
-        # print("tryGetStream")
         client, stream = tryGetClient(sw, dataStorage, write, dockwidget)
         return stream
     except Exception as e:
@@ -79,9 +80,6 @@ def tryGetStream(
 
 def validateStream(stream: Stream, dockwidget) -> Union[Stream, None]:
     try:
-        # dockwidget.dataStorage.check_for_accounts()
-        # stream = tryGetStream(streamWrapper, dockwidget.dataStorage)
-
         if isinstance(stream, SpeckleException):
             return None
 

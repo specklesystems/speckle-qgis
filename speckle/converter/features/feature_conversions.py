@@ -5,6 +5,7 @@ import os
 from typing import List, Union
 
 import numpy as np
+import hashlib
 
 import scipy as sp
 from plugin_utils.helpers import findOrCreatePath, get_scale_factor_to_meter
@@ -17,6 +18,7 @@ from speckle.converter.geometry.conversions import (
 from speckle.converter.geometry.mesh import constructMeshFromRaster
 from speckle.converter.geometry.utils import apply_pt_offsets_rotation_on_send
 from speckle.converter.layers.utils import (
+    generate_qgis_app_id,
     get_raster_stats,
     getArrayIndicesFromXY,
     getElevationLayer,
@@ -976,7 +978,7 @@ def rasterFeatureToSpeckle(
 
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        return None
+        raise e
 
 
 def featureToNative(feature: Base, fields: "QgsFields", dataStorage):
@@ -1064,6 +1066,17 @@ def featureToNative(feature: Base, fields: "QgsFields", dataStorage):
             ):
                 feat[name] = value
 
+        dataStorage.flat_report_receive.update(
+            {
+                feature.applicationId: {
+                    "speckle_id": feature.id,
+                    "hash": generate_qgis_app_id(None, feat),
+                    "layer_name": dataStorage.latestActionLayers[-1],
+                    "attributes": [attr for attr in feat.attributes()],
+                    "geometry": str(feat.geometry()),
+                }
+            }
+        )
         return feat
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
@@ -1086,7 +1099,17 @@ def bimFeatureToNative(
         # print(fields.toList())
         # print(feature)
         # print(feat_updated)
-
+        dataStorage.flat_report_receive.update(
+            {
+                feature.applicationId: {
+                    "speckle_id": feature.id,
+                    "hash": generate_qgis_app_id(None, feat_updated),
+                    "layer_name": dataStorage.latestActionLayers[-1],
+                    "attributes": [attr for attr in feat_updated.attributes()],
+                    "geometry": str(feat_updated.geometry()),
+                }
+            }
+        )
         return feat_updated
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
@@ -1098,6 +1121,17 @@ def nonGeomFeatureToNative(feature: Base, fields: "QgsFields", dataStorage):
         exist_feat = QgsFeature()
         exist_feat.setFields(fields)
         feat_updated = updateFeat(exist_feat, fields, feature)
+        dataStorage.flat_report_receive.update(
+            {
+                feature.applicationId: {
+                    "speckle_id": feature.id,
+                    "hash": generate_qgis_app_id(None, feat_updated),
+                    "layer_name": dataStorage.latestActionLayers[-1],
+                    "attributes": [attr for attr in feat_updated.attributes()],
+                    "geometry": "",
+                }
+            }
+        )
         return feat_updated
 
     except Exception as e:
@@ -1125,7 +1159,17 @@ def cadFeatureToNative(feature: Base, fields: "QgsFields", dataStorage):
 
         exist_feat.setFields(fields)
         feat_updated = updateFeat(exist_feat, fields, feature)
-
+        dataStorage.flat_report_receive.update(
+            {
+                feature.applicationId: {
+                    "speckle_id": feature.id,
+                    "hash": generate_qgis_app_id(None, feat_updated),
+                    "layer_name": dataStorage.latestActionLayers[-1],
+                    "attributes": [attr for attr in feat_updated.attributes()],
+                    "geometry": str(feat_updated.geometry()),
+                }
+            }
+        )
         return feat_updated
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])

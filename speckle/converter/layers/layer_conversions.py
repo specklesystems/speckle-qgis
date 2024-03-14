@@ -391,7 +391,7 @@ def layerToSpeckle(
                             g.voids = None
 
                 if isinstance(b, Base):
-                    b.applicationId = generate_qgis_app_id(b, selectedLayer, f)
+                    b.applicationId = generate_qgis_app_id(selectedLayer, f)
 
                 layerObjs.append(b)
                 if (
@@ -1891,7 +1891,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, pl
     try:
         # project = plugin.project
         # layerName = removeSpecialCharacters(layer.name) + "_Speckle"
-        layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name) + "_Speckle"
+        layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name)
 
         newName = layerName  # f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
@@ -1941,10 +1941,10 @@ def addRasterMainThread(obj: Tuple):
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50]
         # print(f"Final short name: {shortName}")
         try:
-            layerName = newName.split(shortName)[0] + shortName  # + ("_" + geom_print)
+            layerName = newName.split(shortName)[0] + shortName + "_Speckle"
         except:
-            layerName = newName
-        finalName = shortName  # + ("_" + geom_print)
+            layerName = newName + "_Speckle"
+        finalName = shortName + "_Speckle"
 
         # report on receive:
         dataStorage.latestActionLayers.append(finalName)
@@ -2061,13 +2061,13 @@ def addRasterMainThread(obj: Tuple):
             # get noDataVal or use default
             try:
                 try:
-                    noDataVal = float(feat.noDataValue)
+                    noDataVal = feat.noDataValue[i]
                 except:
-                    noDataVal = float(feat["NoDataVal"][i])  # if value available
+                    noDataVal = feat["NoDataVal"][i]  # if value available
                 try:
-                    band.SetNoDataValue(noDataVal)
-                except:
                     band.SetNoDataValue(float(noDataVal))
+                except:
+                    band.SetNoDataValue(noDataVal)
             except:
                 pass
 

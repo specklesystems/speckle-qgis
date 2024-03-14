@@ -3,9 +3,21 @@ from typing import List
 from textwrap import wrap
 
 import inspect
+from difflib import SequenceMatcher
 
 SYMBOL = "_x_x_"
 UNSUPPORTED_PROVIDERS = ["WFS", "wms", "wcs", "vectortile"]
+
+
+def string_diff(string1: str, string2: str) -> str:
+
+    match = SequenceMatcher(None, string1, string2).find_longest_match(
+        0, len(string1), 0, len(string2)
+    )
+    diff = f"\n{string1[: match.a]} [...] {string1[match.a + match.size :]}"
+    diff += f"\n{string2[: match.b]} [...] {string2[match.b + match.size :]}"
+
+    return diff
 
 
 def get_scale_factor(units: str, dataStorage) -> float:

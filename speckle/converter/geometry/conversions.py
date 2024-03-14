@@ -238,7 +238,7 @@ def convertToSpeckle(
                         ]
                     except:
                         boundaryPts = [
-                            v[1] for v in enumerate(poly.exteriorRing().vertices())
+                            v[1] for v in enumerate(poly.vertices())
                         ]
                     if height is not None:
                         if isFlat(boundaryPts) is False:
