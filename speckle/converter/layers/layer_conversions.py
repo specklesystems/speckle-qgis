@@ -2061,13 +2061,13 @@ def addRasterMainThread(obj: Tuple):
             # get noDataVal or use default
             try:
                 try:
-                    noDataVal = float(feat.noDataValue)
+                    noDataVal = feat.noDataValue[i]
                 except:
-                    noDataVal = float(feat["NoDataVal"][i])  # if value available
+                    noDataVal = feat["NoDataVal"][i]  # if value available
                 try:
-                    band.SetNoDataValue(noDataVal)
-                except:
                     band.SetNoDataValue(float(noDataVal))
+                except:
+                    band.SetNoDataValue(noDataVal)
             except:
                 pass
 
