@@ -177,6 +177,35 @@ def featureToSpeckle(
         return geom
 
 
+def show_progress(current_row: int, rows: int, layer_name: str, plugin: "SpeckleQGIS"):
+    """Updates UI with raster conversion %."""
+    percentage: int = int(current_row / rows)  # i = percentage
+    if percentage % 10 == 0 or percentage == 5:
+        logToUser(
+            f"Converting layer '{layer_name}': {percentage}%...",
+            level=0,
+            plugin=plugin.dockwidget,
+        )
+
+
+def reproject_raster(layer, crs, resolutionX, resolutionY):
+    path = (
+        os.path.expandvars(r"%LOCALAPPDATA%")
+        + "\\Temp\\Speckle_QGIS_temp\\"
+        + datetime.now().strftime("%Y-%m-%d_%H-%M")
+    )
+    findOrCreatePath(path)
+    out = path + "\\out.tif"
+    gdal.Warp(
+        out,
+        layer.source(),
+        dstSRS=crs.authid(),
+        xRes=resolutionX,
+        yRes=resolutionY,
+    )
+    return QgsRasterLayer(out, "", "gdal")
+
+
 def rasterFeatureToSpeckle(
     selectedLayer: "QgsRasterLayer",
     projectCRS: "QgsCoordinateReferenceSystem",
@@ -227,7 +256,7 @@ def rasterFeatureToSpeckle(
         rasterBandVals = []
 
         # Try to extract geometry
-        reprojectedPt = QgsGeometry.fromPointXY(QgsPointXY())
+        reprojectedPt: QgsPointXY = QgsGeometry.fromPointXY(QgsPointXY())
         try:
             reprojectedPt = rasterOriginPoint
             if selectedLayer.crs() != projectCRS:
@@ -359,23 +388,12 @@ def rasterFeatureToSpeckle(
                 and elevationProj != rasterProj
             ):
                 try:
-                    p = (
-                        os.path.expandvars(r"%LOCALAPPDATA%")
-                        + "\\Temp\\Speckle_QGIS_temp\\"
-                        + datetime.now().strftime("%Y-%m-%d_%H-%M")
+                    elevationLayer = reproject_raster(
+                        elevationLayer,
+                        selectedLayer.crs(),
+                        elevationResX,
+                        elevationResY,
                     )
-                    findOrCreatePath(p)
-                    path = p
-                    out = p + "\\out.tif"
-                    gdal.Warp(
-                        out,
-                        elevationLayer.source(),
-                        dstSRS=selectedLayer.crs().authid(),
-                        xRes=elevationResX,
-                        yRes=elevationResY,
-                    )
-
-                    elevationLayer = QgsRasterLayer(out, "", "gdal")
                     settings_elevation_layer = get_raster_stats(elevationLayer)
                     (
                         elevationResX,
@@ -462,431 +480,524 @@ def rasterFeatureToSpeckle(
         faces_array = []
         colors_array = []
         vertices_array = []
-        array_z = []  # size is large by 1 than the raster size, in both dimensions
+        array_z = []  # size is larger by 1 than the raster size, in both dimensions
         time0 = datetime.now()
-        for v in range(rasterDimensions[1]):  # each row, Y
-            if largeTransform is True:
-                if v == int(rasterDimensions[1] / 20):
-                    logToUser(
-                        f"Converting layer '{selectedLayer.name()}': 5%...",
-                        level=0,
-                        plugin=plugin.dockwidget,
-                    )
-                elif v == int(rasterDimensions[1] / 10):
-                    logToUser(
-                        f"Converting layer '{selectedLayer.name()}': 10%...",
-                        level=0,
-                        plugin=plugin.dockwidget,
-                    )
-                elif v == int(rasterDimensions[1] / 5):
-                    logToUser(
-                        f"Converting layer '{selectedLayer.name()}': 20%...",
-                        level=0,
-                        plugin=plugin.dockwidget,
-                    )
-                elif v == int(rasterDimensions[1] * 2 / 5):
-                    logToUser(
-                        f"Converting layer '{selectedLayer.name()}': 40%...",
-                        level=0,
-                        plugin=plugin.dockwidget,
-                    )
-                elif v == int(rasterDimensions[1] * 3 / 5):
-                    logToUser(
-                        f"Converting layer '{selectedLayer.name()}': 60%...",
-                        level=0,
-                        plugin=plugin.dockwidget,
-                    )
-                elif v == int(rasterDimensions[1] * 4 / 5):
-                    logToUser(
-                        f"Converting layer '{selectedLayer.name()}': 80%...",
-                        level=0,
-                        plugin=plugin.dockwidget,
-                    )
-                elif v == int(rasterDimensions[1] * 9 / 10):
-                    logToUser(
-                        f"Converting layer '{selectedLayer.name()}': 90%...",
-                        level=0,
-                        plugin=plugin.dockwidget,
-                    )
-            vertices = []
-            faces = []
-            colors = []
-            row_z = []
-            row_z_bottom = []
-            for h in range(rasterDimensions[0]):  # item in a row, X
-                pt1 = QgsPointXY(
-                    rasterOriginPoint.x() + h * rasterResXY[0],
-                    rasterOriginPoint.y() + v * rasterResXY[1],
-                )
-                pt2 = QgsPointXY(
-                    rasterOriginPoint.x() + h * rasterResXY[0],
-                    rasterOriginPoint.y() + (v + 1) * rasterResXY[1],
-                )
-                pt3 = QgsPointXY(
-                    rasterOriginPoint.x() + (h + 1) * rasterResXY[0],
-                    rasterOriginPoint.y() + (v + 1) * rasterResXY[1],
-                )
-                pt4 = QgsPointXY(
-                    rasterOriginPoint.x() + (h + 1) * rasterResXY[0],
-                    rasterOriginPoint.y() + v * rasterResXY[1],
-                )
-                # first, get point coordinates with correct position and resolution, then reproject each:
-                if selectedLayer.crs() != projectCRS:
-                    pt1 = transform.transform(
-                        project, src=pt1, crsSrc=selectedLayer.crs(), crsDest=projectCRS
-                    )
-                    pt2 = transform.transform(
-                        project, src=pt2, crsSrc=selectedLayer.crs(), crsDest=projectCRS
-                    )
-                    pt3 = transform.transform(
-                        project, src=pt3, crsSrc=selectedLayer.crs(), crsDest=projectCRS
-                    )
-                    pt4 = transform.transform(
-                        project, src=pt4, crsSrc=selectedLayer.crs(), crsDest=projectCRS
-                    )
 
-                z1 = z2 = z3 = z4 = 0
-                index1 = index1_0 = None
-
-                #############################################################
-                if (
-                    terrain_transform is True or texture_transform is True
-                ) and height_array is not None:
-                    if texture_transform is True:  # texture
-                        # index1: index on y-scale
-                        posX, posY = getXYofArrayPoint(
-                            (
-                                rasterResXY[0],
-                                rasterResXY[1],
-                                originX,
-                                originY,
-                            ),
-                            h,
-                            v,
-                            selectedLayer,
-                            elevationLayer,
-                            dataStorage,
-                        )
-
-                        index1, index2, remainder1, remainder2 = getArrayIndicesFromXY(
-                            (
-                                elevationResX,
-                                elevationResY,
-                                elevationOriginX,
-                                elevationOriginY,
-                                elevationSizeX,
-                                elevationSizeY,
-                                elevationWkt,
-                                elevationProj,
-                            ),
-                            posX,
-                            posY,
-                        )
-                        (
-                            index1_0,
-                            index2_0,
-                            remainder1_0,
-                            remainder2_0,
-                        ) = getArrayIndicesFromXY(
-                            (
-                                elevationResX,
-                                elevationResY,
-                                elevationOriginX,
-                                elevationOriginY,
-                                elevationSizeX,
-                                elevationSizeY,
-                                elevationWkt,
-                                elevationProj,
-                            ),
-                            posX - rasterResXY[0],
-                            posY - rasterResXY[1],
-                        )
-                    else:  # elevation
-                        index1 = v
-                        index1_0 = v - 1
-                        index2 = h
-                        index2_0 = h - 1
-
-                    if index1 is None or index1_0 is None:
-                        # count += 4
-                        # continue # skip the pixel
-                        z1 = z2 = z3 = z4 = np.nan
-                    else:
-                        # top vertices ######################################
-                        try:
-                            z1 = z_list[xy_list.index((pt1.x(), pt1.y()))]
-                        except:
-                            if index1 > 0 and index2 > 0:
-                                z1 = getHeightWithRemainderFromArray(
-                                    height_array, texture_transform, index1_0, index2_0
-                                )
-                            elif index1 > 0:
-                                z1 = getHeightWithRemainderFromArray(
-                                    height_array, texture_transform, index1_0, index2
-                                )
-                            elif index2 > 0:
-                                z1 = getHeightWithRemainderFromArray(
-                                    height_array, texture_transform, index1, index2_0
-                                )
-                            else:
-                                z1 = getHeightWithRemainderFromArray(
-                                    height_array, texture_transform, index1, index2
-                                )
-
-                            if z1 is not None:
-                                z_list.append(z1)
-                                xy_list.append((pt1.x(), pt1.y()))
-
-                        #################### z4
-                        try:
-                            z4 = z_list[xy_list.index((pt4.x(), pt4.y()))]
-                        except:
-                            if index1 > 0:
-                                z4 = getHeightWithRemainderFromArray(
-                                    height_array, texture_transform, index1_0, index2
-                                )
-                            else:
-                                z4 = getHeightWithRemainderFromArray(
-                                    height_array, texture_transform, index1, index2
-                                )
-
-                            if z4 is not None:
-                                z_list.append(z4)
-                                xy_list.append((pt4.x(), pt4.y()))
-
-                        # bottom vertices ######################################
-                        z3 = getHeightWithRemainderFromArray(
-                            height_array, texture_transform, index1, index2
-                        )
-                        if z3 is not None:
-                            z_list.append(z3)
-                            xy_list.append((pt3.x(), pt3.y()))
-
-                        try:
-                            z2 = z_list[xy_list.index((pt2.x(), pt2.y()))]
-                        except:
-                            if index2 > 0:
-                                z2 = getHeightWithRemainderFromArray(
-                                    height_array, texture_transform, index1, index2_0
-                                )
-                            else:
-                                z2 = getHeightWithRemainderFromArray(
-                                    height_array, texture_transform, index1, index2
-                                )
-                            if z2 is not None:
-                                z_list.append(z2)
-                                xy_list.append((pt2.x(), pt2.y()))
-
-                        ##############################################
-
-                    max_len = rasterDimensions[0] * 4 + 4
-                    if len(z_list) > max_len:
-                        z_list = z_list[len(z_list) - max_len :]
-                        xy_list = xy_list[len(xy_list) - max_len :]
-
-                    ### list to smoothen later:
-                    if h == 0:
-                        row_z.append(z1)
-                        row_z_bottom.append(z2)
-                    row_z.append(z4)
-                    row_z_bottom.append(z3)
-
-                ########################################################
-                x1, y1 = apply_pt_offsets_rotation_on_send(
-                    pt1.x(), pt1.y(), dataStorage
-                )
-                x2, y2 = apply_pt_offsets_rotation_on_send(
-                    pt2.x(), pt2.y(), dataStorage
-                )
-                x3, y3 = apply_pt_offsets_rotation_on_send(
-                    pt3.x(), pt3.y(), dataStorage
-                )
-                x4, y4 = apply_pt_offsets_rotation_on_send(
-                    pt4.x(), pt4.y(), dataStorage
-                )
-
-                vertices.append(
-                    [x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4]
-                )  ## add 4 points
-                current_vertices = (
-                    v * rasterDimensions[0] * 4 + h * 4
-                )  # len(np.array(faces_array).flatten()) * 4 / 5
-                faces.append(
-                    [
-                        4,
-                        current_vertices,
-                        current_vertices + 1,
-                        current_vertices + 2,
-                        current_vertices + 3,
-                    ]
-                )
-
-                # color vertices according to QGIS renderer
-                alpha = 255
-                color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
-                noValColor: tuple[int] = (
-                    selectedLayer.renderer().nodataColor().getRgb()
-                )  # RGB or RGBA, 3 or 4 values
-
-                colorLayer = selectedLayer
-                currentRasterBandCount = rasterBandCount
-
-                if (
-                    (terrain_transform is True or texture_transform is True)
-                    and height_array is not None
-                    and (index1 is None or index1_0 is None)
-                ):  # transparent color
-                    alpha = 0
-                    color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
-                elif rendererType == "multibandcolor":
-                    valR = 0
-                    valG = 0
-                    valB = 0
-                    bandRed = int(colorLayer.renderer().redBand())
-                    bandGreen = int(colorLayer.renderer().greenBand())
-                    bandBlue = int(colorLayer.renderer().blueBand())
-
-                    for k in range(currentRasterBandCount):
-                        valRange = rasterBandMaxVal[k] - rasterBandMinVal[k]
-                        if valRange == 0:
-                            colorVal = 0
-                        elif (
-                            rasterBandVals[k][int(count / 4)] == rasterBandNoDataVal[k]
-                        ):
-                            colorVal = 0
-                            alpha = 0
-                        #   break
-                        else:
-                            colorVal = int(
-                                (
-                                    rasterBandVals[k][int(count / 4)]
-                                    - rasterBandMinVal[k]
-                                )
-                                / valRange
-                                * 255
-                            )
-
-                        if k + 1 == bandRed:
-                            valR = colorVal
-                        if k + 1 == bandGreen:
-                            valG = colorVal
-                        if k + 1 == bandBlue:
-                            valB = colorVal
-
-                    color = (alpha << 24) + (valR << 16) + (valG << 8) + valB
-
-                elif rendererType == "paletted":
-                    bandIndex = colorLayer.renderer().band() - 1  # int
-                    # if textureLayer is not None:
-                    #    value = texture_arrays[bandIndex][index1][index2]
-                    # else:
-                    value = rasterBandVals[bandIndex][
-                        int(count / 4)
-                    ]  # find in the list and match with color
-
-                    rendererClasses = colorLayer.renderer().classes()
-                    for c in range(len(rendererClasses) - 1):
-                        if (
-                            value >= rendererClasses[c].value
-                            and value <= rendererClasses[c + 1].value
-                        ):
-                            rgb = rendererClasses[c].color.getRgb()
-                            color = (
-                                (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
-                            )
-                            break
-                    if value == rasterBandNoDataVal[bandIndex]:
-                        alpha = 0
-                        color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
-
-                elif rendererType == "singlebandpseudocolor":
-                    bandIndex = colorLayer.renderer().band() - 1  # int
-                    # if textureLayer is not None:
-                    #    value = texture_arrays[bandIndex][index1][index2]
-                    # else:
-                    value = rasterBandVals[bandIndex][
-                        int(count / 4)
-                    ]  # find in the list and match with color
-
-                    rendererClasses = colorLayer.renderer().legendSymbologyItems()
-                    for c in range(len(rendererClasses) - 1):
-                        if value >= float(rendererClasses[c][0]) and value <= float(
-                            rendererClasses[c + 1][0]
-                        ):
-                            rgb = rendererClasses[c][1].getRgb()
-                            color = (
-                                (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
-                            )
-                            break
-                    if value == rasterBandNoDataVal[bandIndex]:
-                        alpha = 0
-                        color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
-
-                else:
-                    if rendererType == "singlebandgray":
-                        bandIndex = colorLayer.renderer().grayBand() - 1
-                    elif rendererType == "hillshade":
-                        bandIndex = colorLayer.renderer().band() - 1
-                    elif rendererType == "contour":
-                        try:
-                            bandIndex = colorLayer.renderer().inputBand() - 1
-                        except:
-                            try:
-                                bandIndex = colorLayer.renderer().band() - 1
-                            except:
-                                bandIndex = 0
-                    else:  # e.g. single band data
-                        bandIndex = 0
-
-                    value = rasterBandVals[bandIndex][int(count / 4)]
-                    if (
-                        rasterBandMinVal[bandIndex]
-                        <= value
-                        <= rasterBandMaxVal[bandIndex]
-                    ):
-                        # REMAP band values to (0,255) range
-                        valRange = (
-                            rasterBandMaxVal[bandIndex] - rasterBandMinVal[bandIndex]
-                        )
-                        if valRange == 0:
-                            colorVal = 0
-                        else:
-                            colorVal = int(
-                                (
-                                    rasterBandVals[bandIndex][int(count / 4)]
-                                    - rasterBandMinVal[bandIndex]
-                                )
-                                / valRange
-                                * 255
-                            )
-                        color = (
-                            (alpha << 24)
-                            + (colorVal << 16)
-                            + (colorVal << 8)
-                            + colorVal
-                        )
-                    elif value == rasterBandNoDataVal[bandIndex]:
-                        alpha = 0
-                        color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
-
-                colors.append([color, color, color, color])
-                count += 4
-
-            # after each row
-            vertices_array.append(vertices)
-            faces_array.append(faces)
-            colors_array.append(colors)
-
-            if v == 0:
-                array_z.append(row_z)
-            array_z.append(row_z_bottom)
-
-        time1 = datetime.now()
-        # print(f"Time to get Raster: {(time1-time0).total_seconds()} sec")
-        # after the entire loop
         faces_filtered = []
         colors_filtered = []
         vertices_filtered = []
+
+        xOrigin = reprojectedPt.x()
+        yOrigin = reprojectedPt.x()
+
+        if texture_transform is False and terrain_transform is False:
+            # reproject raster
+            newRaster = reproject_raster(
+                selectedLayer, selectedLayer.crs(), rasterResXY[0], rasterResXY[1]
+            )
+            # construct mesh
+            band1_values = ds.GetRasterBand(1).ReadAsArray()  # .tolist() # numpy array
+            list_nested = [
+                (4, 4 * ind, 4 * ind + 1, 4 * ind + 2, 4 * ind + 3)
+                for ind, _ in enumerate(band1_values)
+            ]
+            faces_filtered = [item for sublist in list_nested for item in sublist]
+
+            def get_raster_mesh_coords(
+                xOrigin, yOrigin, rasterResXY: list, rasterDimensions: list
+            ):
+                list_nested = [
+                    (
+                        xOrigin
+                        + rasterResXY[0] * math.floor(ind / rasterDimensions[1]),
+                        yOrigin + rasterResXY[1] * (ind % rasterDimensions[1]),
+                        0,
+                        xOrigin
+                        + rasterResXY[0] * (math.floor(ind / rasterDimensions[1]) + 1),
+                        yOrigin + rasterResXY[1] * (ind % rasterDimensions[1]),
+                        0,
+                        xOrigin
+                        + rasterResXY[0] * math.floor(ind / rasterDimensions[1] + 1),
+                        yOrigin + rasterResXY[1] * (ind % rasterDimensions[1] + 1),
+                        0,
+                        xOrigin
+                        + rasterResXY[0] * math.floor(ind / rasterDimensions[1]),
+                        yOrigin + rasterResXY[1] * (ind % rasterDimensions[1] + 1),
+                        0,
+                    )
+                    for ind, _ in enumerate(band1_values)
+                ]
+
+                return [item for sublist in list_nested for item in sublist]
+
+            vertices_filtered = get_raster_mesh_coords(
+                xOrigin, yOrigin, rasterResXY, rasterDimensions
+            )
+
+            def get_raster_colors(
+                band_count: int, rasterBandVals, rasterBandMinVal, rasterBandMaxVal
+            ):
+                list_nested = []
+                if band_count == 3 or band_count == 4:  # RGB
+                    list_nested = [
+                        (255 << 24)
+                        | (
+                            255
+                            * (rasterBandVals[0][ind] - rasterBandMinVal[0])
+                            / (rasterBandMaxVal[0] - rasterBandMinVal[0])
+                            << 16
+                        )
+                        | (
+                            255
+                            * (rasterBandVals[1][ind] - rasterBandMinVal[1])
+                            / (rasterBandMaxVal[1] - rasterBandMinVal[1])
+                            << 8
+                        )
+                        | 255
+                        * (rasterBandVals[2][ind] - rasterBandMinVal[2])
+                        / (rasterBandMaxVal[2] - rasterBandMinVal[2])
+                        for ind, _ in enumerate(rasterBandVals[0])
+                        for _ in range(4)
+                    ]
+                else:  # RGB
+                    pixMin = rasterBandMinVal[0]
+                    pixMax = rasterBandMaxVal[0]
+                    list_nested = [
+                        (255 << 24)
+                        | (
+                            255 * (rasterBandVals[0][ind] - pixMin) / (pixMax - pixMin)
+                            << 16
+                        )
+                        | (
+                            255 * (rasterBandVals[0][ind] - pixMin) / (pixMax - pixMin)
+                            << 8
+                        )
+                        | 255 * (rasterBandVals[0][ind] - pixMin) / (pixMax - pixMin)
+                        for ind, _ in rasterBandVals[0]
+                        for _ in range(4)
+                    ]
+                return [item for sublist in list_nested for item in sublist]
+
+            colors_filtered = get_raster_colors(
+                rasterBandCount, rasterBandVals, rasterBandMinVal, rasterBandMaxVal
+            )
+        else:
+            for v in range(rasterDimensions[1]):  # each row, Y
+                if largeTransform is True:
+                    show_progress(v, rasterDimensions[1], selectedLayer.name(), plugin)
+                vertices = []
+                faces = []
+                colors = []
+                row_z = []
+                row_z_bottom = []
+                for h in range(rasterDimensions[0]):  # item in a row, X
+                    pt1 = QgsPointXY(
+                        rasterOriginPoint.x() + h * rasterResXY[0],
+                        rasterOriginPoint.y() + v * rasterResXY[1],
+                    )
+                    pt2 = QgsPointXY(
+                        rasterOriginPoint.x() + h * rasterResXY[0],
+                        rasterOriginPoint.y() + (v + 1) * rasterResXY[1],
+                    )
+                    pt3 = QgsPointXY(
+                        rasterOriginPoint.x() + (h + 1) * rasterResXY[0],
+                        rasterOriginPoint.y() + (v + 1) * rasterResXY[1],
+                    )
+                    pt4 = QgsPointXY(
+                        rasterOriginPoint.x() + (h + 1) * rasterResXY[0],
+                        rasterOriginPoint.y() + v * rasterResXY[1],
+                    )
+                    # first, get point coordinates with correct position and resolution, then reproject each:
+                    if selectedLayer.crs() != projectCRS:
+                        pt1 = transform.transform(
+                            project,
+                            src=pt1,
+                            crsSrc=selectedLayer.crs(),
+                            crsDest=projectCRS,
+                        )
+                        pt2 = transform.transform(
+                            project,
+                            src=pt2,
+                            crsSrc=selectedLayer.crs(),
+                            crsDest=projectCRS,
+                        )
+                        pt3 = transform.transform(
+                            project,
+                            src=pt3,
+                            crsSrc=selectedLayer.crs(),
+                            crsDest=projectCRS,
+                        )
+                        pt4 = transform.transform(
+                            project,
+                            src=pt4,
+                            crsSrc=selectedLayer.crs(),
+                            crsDest=projectCRS,
+                        )
+
+                    z1 = z2 = z3 = z4 = 0
+                    index1 = index1_0 = None
+
+                    #############################################################
+                    if (
+                        terrain_transform is True or texture_transform is True
+                    ) and height_array is not None:
+                        if texture_transform is True:  # texture
+                            # index1: index on y-scale
+                            posX, posY = getXYofArrayPoint(
+                                (
+                                    rasterResXY[0],
+                                    rasterResXY[1],
+                                    originX,
+                                    originY,
+                                ),
+                                h,
+                                v,
+                                selectedLayer,
+                                elevationLayer,
+                                dataStorage,
+                            )
+
+                            index1, index2, remainder1, remainder2 = (
+                                getArrayIndicesFromXY(
+                                    (
+                                        elevationResX,
+                                        elevationResY,
+                                        elevationOriginX,
+                                        elevationOriginY,
+                                        elevationSizeX,
+                                        elevationSizeY,
+                                        elevationWkt,
+                                        elevationProj,
+                                    ),
+                                    posX,
+                                    posY,
+                                )
+                            )
+                            (
+                                index1_0,
+                                index2_0,
+                                remainder1_0,
+                                remainder2_0,
+                            ) = getArrayIndicesFromXY(
+                                (
+                                    elevationResX,
+                                    elevationResY,
+                                    elevationOriginX,
+                                    elevationOriginY,
+                                    elevationSizeX,
+                                    elevationSizeY,
+                                    elevationWkt,
+                                    elevationProj,
+                                ),
+                                posX - rasterResXY[0],
+                                posY - rasterResXY[1],
+                            )
+                        else:  # elevation
+                            index1 = v
+                            index1_0 = v - 1
+                            index2 = h
+                            index2_0 = h - 1
+
+                        if index1 is None or index1_0 is None:
+                            # count += 4
+                            # continue # skip the pixel
+                            z1 = z2 = z3 = z4 = np.nan
+                        else:
+                            # top vertices ######################################
+                            try:
+                                z1 = z_list[xy_list.index((pt1.x(), pt1.y()))]
+                            except:
+                                if index1 > 0 and index2 > 0:
+                                    z1 = getHeightWithRemainderFromArray(
+                                        height_array,
+                                        texture_transform,
+                                        index1_0,
+                                        index2_0,
+                                    )
+                                elif index1 > 0:
+                                    z1 = getHeightWithRemainderFromArray(
+                                        height_array,
+                                        texture_transform,
+                                        index1_0,
+                                        index2,
+                                    )
+                                elif index2 > 0:
+                                    z1 = getHeightWithRemainderFromArray(
+                                        height_array,
+                                        texture_transform,
+                                        index1,
+                                        index2_0,
+                                    )
+                                else:
+                                    z1 = getHeightWithRemainderFromArray(
+                                        height_array, texture_transform, index1, index2
+                                    )
+
+                                if z1 is not None:
+                                    z_list.append(z1)
+                                    xy_list.append((pt1.x(), pt1.y()))
+
+                            #################### z4
+                            try:
+                                z4 = z_list[xy_list.index((pt4.x(), pt4.y()))]
+                            except:
+                                if index1 > 0:
+                                    z4 = getHeightWithRemainderFromArray(
+                                        height_array,
+                                        texture_transform,
+                                        index1_0,
+                                        index2,
+                                    )
+                                else:
+                                    z4 = getHeightWithRemainderFromArray(
+                                        height_array, texture_transform, index1, index2
+                                    )
+
+                                if z4 is not None:
+                                    z_list.append(z4)
+                                    xy_list.append((pt4.x(), pt4.y()))
+
+                            # bottom vertices ######################################
+                            z3 = getHeightWithRemainderFromArray(
+                                height_array, texture_transform, index1, index2
+                            )
+                            if z3 is not None:
+                                z_list.append(z3)
+                                xy_list.append((pt3.x(), pt3.y()))
+
+                            try:
+                                z2 = z_list[xy_list.index((pt2.x(), pt2.y()))]
+                            except:
+                                if index2 > 0:
+                                    z2 = getHeightWithRemainderFromArray(
+                                        height_array,
+                                        texture_transform,
+                                        index1,
+                                        index2_0,
+                                    )
+                                else:
+                                    z2 = getHeightWithRemainderFromArray(
+                                        height_array, texture_transform, index1, index2
+                                    )
+                                if z2 is not None:
+                                    z_list.append(z2)
+                                    xy_list.append((pt2.x(), pt2.y()))
+
+                            ##############################################
+
+                        max_len = rasterDimensions[0] * 4 + 4
+                        if len(z_list) > max_len:
+                            z_list = z_list[len(z_list) - max_len :]
+                            xy_list = xy_list[len(xy_list) - max_len :]
+
+                        ### list to smoothen later:
+                        if h == 0:
+                            row_z.append(z1)
+                            row_z_bottom.append(z2)
+                        row_z.append(z4)
+                        row_z_bottom.append(z3)
+
+                    ########################################################
+                    x1, y1 = apply_pt_offsets_rotation_on_send(
+                        pt1.x(), pt1.y(), dataStorage
+                    )
+                    x2, y2 = apply_pt_offsets_rotation_on_send(
+                        pt2.x(), pt2.y(), dataStorage
+                    )
+                    x3, y3 = apply_pt_offsets_rotation_on_send(
+                        pt3.x(), pt3.y(), dataStorage
+                    )
+                    x4, y4 = apply_pt_offsets_rotation_on_send(
+                        pt4.x(), pt4.y(), dataStorage
+                    )
+
+                    vertices.append(
+                        [x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4]
+                    )  ## add 4 points
+                    current_vertices = (
+                        v * rasterDimensions[0] * 4 + h * 4
+                    )  # len(np.array(faces_array).flatten()) * 4 / 5
+                    faces.append(
+                        [
+                            4,
+                            current_vertices,
+                            current_vertices + 1,
+                            current_vertices + 2,
+                            current_vertices + 3,
+                        ]
+                    )
+
+                    # color vertices according to QGIS renderer
+                    alpha = 255
+                    color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
+                    noValColor: tuple[int] = (
+                        selectedLayer.renderer().nodataColor().getRgb()
+                    )  # RGB or RGBA, 3 or 4 values
+
+                    colorLayer = selectedLayer
+                    currentRasterBandCount = rasterBandCount
+
+                    if (
+                        (terrain_transform is True or texture_transform is True)
+                        and height_array is not None
+                        and (index1 is None or index1_0 is None)
+                    ):  # transparent color
+                        alpha = 0
+                        color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
+                    elif rendererType == "multibandcolor":
+                        valR = 0
+                        valG = 0
+                        valB = 0
+                        bandRed = int(colorLayer.renderer().redBand())
+                        bandGreen = int(colorLayer.renderer().greenBand())
+                        bandBlue = int(colorLayer.renderer().blueBand())
+
+                        for k in range(currentRasterBandCount):
+                            valRange = rasterBandMaxVal[k] - rasterBandMinVal[k]
+                            if valRange == 0:
+                                colorVal = 0
+                            elif (
+                                rasterBandVals[k][int(count / 4)]
+                                == rasterBandNoDataVal[k]
+                            ):
+                                colorVal = 0
+                                alpha = 0
+                            #   break
+                            else:
+                                colorVal = int(
+                                    (
+                                        rasterBandVals[k][int(count / 4)]
+                                        - rasterBandMinVal[k]
+                                    )
+                                    / valRange
+                                    * 255
+                                )
+
+                            if k + 1 == bandRed:
+                                valR = colorVal
+                            if k + 1 == bandGreen:
+                                valG = colorVal
+                            if k + 1 == bandBlue:
+                                valB = colorVal
+
+                        color = (alpha << 24) + (valR << 16) + (valG << 8) + valB
+
+                    elif rendererType == "paletted":
+                        bandIndex = colorLayer.renderer().band() - 1  # int
+                        # if textureLayer is not None:
+                        #    value = texture_arrays[bandIndex][index1][index2]
+                        # else:
+                        value = rasterBandVals[bandIndex][
+                            int(count / 4)
+                        ]  # find in the list and match with color
+
+                        rendererClasses = colorLayer.renderer().classes()
+                        for c in range(len(rendererClasses) - 1):
+                            if (
+                                value >= rendererClasses[c].value
+                                and value <= rendererClasses[c + 1].value
+                            ):
+                                rgb = rendererClasses[c].color.getRgb()
+                                color = (
+                                    (255 << 24)
+                                    + (rgb[0] << 16)
+                                    + (rgb[1] << 8)
+                                    + rgb[2]
+                                )
+                                break
+                        if value == rasterBandNoDataVal[bandIndex]:
+                            alpha = 0
+                            color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
+
+                    elif rendererType == "singlebandpseudocolor":
+                        bandIndex = colorLayer.renderer().band() - 1  # int
+                        # if textureLayer is not None:
+                        #    value = texture_arrays[bandIndex][index1][index2]
+                        # else:
+                        value = rasterBandVals[bandIndex][
+                            int(count / 4)
+                        ]  # find in the list and match with color
+
+                        rendererClasses = colorLayer.renderer().legendSymbologyItems()
+                        for c in range(len(rendererClasses) - 1):
+                            if value >= float(rendererClasses[c][0]) and value <= float(
+                                rendererClasses[c + 1][0]
+                            ):
+                                rgb = rendererClasses[c][1].getRgb()
+                                color = (
+                                    (255 << 24)
+                                    + (rgb[0] << 16)
+                                    + (rgb[1] << 8)
+                                    + rgb[2]
+                                )
+                                break
+                        if value == rasterBandNoDataVal[bandIndex]:
+                            alpha = 0
+                            color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
+
+                    else:
+                        if rendererType == "singlebandgray":
+                            bandIndex = colorLayer.renderer().grayBand() - 1
+                        elif rendererType == "hillshade":
+                            bandIndex = colorLayer.renderer().band() - 1
+                        elif rendererType == "contour":
+                            try:
+                                bandIndex = colorLayer.renderer().inputBand() - 1
+                            except:
+                                try:
+                                    bandIndex = colorLayer.renderer().band() - 1
+                                except:
+                                    bandIndex = 0
+                        else:  # e.g. single band data
+                            bandIndex = 0
+
+                        value = rasterBandVals[bandIndex][int(count / 4)]
+                        if (
+                            rasterBandMinVal[bandIndex]
+                            <= value
+                            <= rasterBandMaxVal[bandIndex]
+                        ):
+                            # REMAP band values to (0,255) range
+                            valRange = (
+                                rasterBandMaxVal[bandIndex]
+                                - rasterBandMinVal[bandIndex]
+                            )
+                            if valRange == 0:
+                                colorVal = 0
+                            else:
+                                colorVal = int(
+                                    (
+                                        rasterBandVals[bandIndex][int(count / 4)]
+                                        - rasterBandMinVal[bandIndex]
+                                    )
+                                    / valRange
+                                    * 255
+                                )
+                            color = (
+                                (alpha << 24)
+                                + (colorVal << 16)
+                                + (colorVal << 8)
+                                + colorVal
+                            )
+                        elif value == rasterBandNoDataVal[bandIndex]:
+                            alpha = 0
+                            color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
+
+                    colors.append([color, color, color, color])
+                    count += 4
+
+                # after each row
+                vertices_array.append(vertices)
+                faces_array.append(faces)
+                colors_array.append(colors)
+
+                if v == 0:
+                    array_z.append(row_z)
+                array_z.append(row_z_bottom)
+
+        time1 = datetime.now()
+        print(f"Time to convert Raster: {(time1-time0).total_seconds()} sec")
+        # after the entire loop
 
         ## end of the the table
         smooth = False
