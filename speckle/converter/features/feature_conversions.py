@@ -206,6 +206,92 @@ def reproject_raster(layer, crs, resolutionX, resolutionY):
     return QgsRasterLayer(out, "", "gdal")
 
 
+def get_raster_mesh_coords(
+    xOrigin,
+    yOrigin,
+    rasterResXY: list,
+    rasterDimensions: list,
+    band1_values: list,
+    dataStorage,
+):
+    list_nested = [
+        (
+            xOrigin + rasterResXY[0] * (ind % rasterDimensions[0]),
+            yOrigin + rasterResXY[1] * math.floor(ind / rasterDimensions[0]),
+            0,
+            xOrigin + rasterResXY[0] * (ind % rasterDimensions[0]),
+            yOrigin + rasterResXY[1] * (math.floor(ind / rasterDimensions[0]) + 1),
+            0,
+            xOrigin + rasterResXY[0] * (ind % rasterDimensions[0] + 1),
+            yOrigin + rasterResXY[1] * math.floor(ind / rasterDimensions[0] + 1),
+            0,
+            xOrigin + rasterResXY[0] * (ind % rasterDimensions[0] + 1),
+            yOrigin + rasterResXY[1] * math.floor(ind / rasterDimensions[0]),
+            0,
+        )
+        for ind, _ in enumerate(band1_values)
+    ]
+    list_flattened = [item for sublist in list_nested for item in sublist]
+    # x1, y1 = apply_pt_offsets_rotation_on_send( pt1.x(), pt1.y(), dataStorage)
+
+    return list_flattened
+
+
+def get_raster_colors(
+    rasterBandVals, rasterBandNoDataVal, rasterBandMinVal, rasterBandMaxVal
+):
+    list_colors = []
+    if len(rasterBandVals) == 3 or len(rasterBandVals) == 4:  # RGB
+
+        vals_range0 = rasterBandMaxVal[0] - rasterBandMinVal[0]
+        vals_range1 = rasterBandMaxVal[1] - rasterBandMinVal[1]
+        vals_range2 = rasterBandMaxVal[2] - rasterBandMinVal[2]
+
+        list_colors = [
+            (
+                (255 << 24)
+                | (
+                    255
+                    * (int(rasterBandVals[0][ind] - rasterBandMinVal[0]) / vals_range0)
+                    << 16
+                )
+                | (
+                    255
+                    * (int(rasterBandVals[1][ind] - rasterBandMinVal[1]) / vals_range1)
+                    << 8
+                )
+                | 255
+                * (int(rasterBandVals[2][ind] - rasterBandMinVal[2]) / vals_range2)
+                if (
+                    rasterBandVals[0][ind] != rasterBandNoDataVal[0]
+                    and rasterBandVals[1][ind] != rasterBandNoDataVal[1]
+                    and rasterBandVals[2][ind] != rasterBandNoDataVal[2]
+                )
+                else (0 << 24) + (0 << 16) + (0 << 8) + 0
+            )
+            for ind, _ in enumerate(rasterBandVals[0])
+            for _ in range(4)
+        ]
+    else:  # greyscale
+        pixMin = rasterBandMinVal[0]
+        pixMax = rasterBandMaxVal[0]
+        vals_range = pixMax - pixMin
+
+        list_colors: List[int] = [
+            (
+                (255 << 24)
+                | (int(255 * (rasterBandVals[0][ind] - pixMin) / vals_range) << 16)
+                | (int(255 * (rasterBandVals[0][ind] - pixMin) / vals_range) << 8)
+                | int(255 * (rasterBandVals[0][ind] - pixMin) / vals_range)
+                if rasterBandVals[0][ind] != rasterBandNoDataVal[0]
+                else (0 << 24) + (0 << 16) + (0 << 8) + 0
+            )
+            for ind, _ in enumerate(rasterBandVals[0])
+            for _ in range(4)
+        ]
+    return list_colors
+
+
 def rasterFeatureToSpeckle(
     selectedLayer: "QgsRasterLayer",
     projectCRS: "QgsCoordinateReferenceSystem",
@@ -490,96 +576,37 @@ def rasterFeatureToSpeckle(
         xOrigin = reprojectedPt.x()
         yOrigin = reprojectedPt.x()
 
+        # reproject raster
+        newRaster = reproject_raster(
+            selectedLayer, selectedLayer.crs(), rasterResXY[0], rasterResXY[1]
+        )
+
+        ds_reprojected = gdal.Open(selectedLayer.source(), gdal.GA_ReadOnly)
+        originX_reprojected = ds.GetGeoTransform()[0]
+        originY_reprojected = ds.GetGeoTransform()[3]
+        rasterOriginPoint_reprojected = QgsPointXY(originX, originY)
+
         if texture_transform is False and terrain_transform is False:
-            # reproject raster
-            newRaster = reproject_raster(
-                selectedLayer, selectedLayer.crs(), rasterResXY[0], rasterResXY[1]
-            )
             # construct mesh
-            band1_values = ds.GetRasterBand(1).ReadAsArray()  # .tolist() # numpy array
+            band1_values = rasterBandVals[
+                0
+            ]  # ds.GetRasterBand(1).ReadAsArray().tolist() # numpy array
             list_nested = [
                 (4, 4 * ind, 4 * ind + 1, 4 * ind + 2, 4 * ind + 3)
                 for ind, _ in enumerate(band1_values)
             ]
             faces_filtered = [item for sublist in list_nested for item in sublist]
-
-            def get_raster_mesh_coords(
-                xOrigin, yOrigin, rasterResXY: list, rasterDimensions: list
-            ):
-                list_nested = [
-                    (
-                        xOrigin
-                        + rasterResXY[0] * math.floor(ind / rasterDimensions[1]),
-                        yOrigin + rasterResXY[1] * (ind % rasterDimensions[1]),
-                        0,
-                        xOrigin
-                        + rasterResXY[0] * (math.floor(ind / rasterDimensions[1]) + 1),
-                        yOrigin + rasterResXY[1] * (ind % rasterDimensions[1]),
-                        0,
-                        xOrigin
-                        + rasterResXY[0] * math.floor(ind / rasterDimensions[1] + 1),
-                        yOrigin + rasterResXY[1] * (ind % rasterDimensions[1] + 1),
-                        0,
-                        xOrigin
-                        + rasterResXY[0] * math.floor(ind / rasterDimensions[1]),
-                        yOrigin + rasterResXY[1] * (ind % rasterDimensions[1] + 1),
-                        0,
-                    )
-                    for ind, _ in enumerate(band1_values)
-                ]
-
-                return [item for sublist in list_nested for item in sublist]
-
             vertices_filtered = get_raster_mesh_coords(
-                xOrigin, yOrigin, rasterResXY, rasterDimensions
+                xOrigin,
+                yOrigin,
+                rasterResXY,
+                rasterDimensions,
+                band1_values,
+                dataStorage,
             )
 
-            def get_raster_colors(
-                band_count: int, rasterBandVals, rasterBandMinVal, rasterBandMaxVal
-            ):
-                list_nested = []
-                if band_count == 3 or band_count == 4:  # RGB
-                    list_nested = [
-                        (255 << 24)
-                        | (
-                            255
-                            * (rasterBandVals[0][ind] - rasterBandMinVal[0])
-                            / (rasterBandMaxVal[0] - rasterBandMinVal[0])
-                            << 16
-                        )
-                        | (
-                            255
-                            * (rasterBandVals[1][ind] - rasterBandMinVal[1])
-                            / (rasterBandMaxVal[1] - rasterBandMinVal[1])
-                            << 8
-                        )
-                        | 255
-                        * (rasterBandVals[2][ind] - rasterBandMinVal[2])
-                        / (rasterBandMaxVal[2] - rasterBandMinVal[2])
-                        for ind, _ in enumerate(rasterBandVals[0])
-                        for _ in range(4)
-                    ]
-                else:  # RGB
-                    pixMin = rasterBandMinVal[0]
-                    pixMax = rasterBandMaxVal[0]
-                    list_nested = [
-                        (255 << 24)
-                        | (
-                            255 * (rasterBandVals[0][ind] - pixMin) / (pixMax - pixMin)
-                            << 16
-                        )
-                        | (
-                            255 * (rasterBandVals[0][ind] - pixMin) / (pixMax - pixMin)
-                            << 8
-                        )
-                        | 255 * (rasterBandVals[0][ind] - pixMin) / (pixMax - pixMin)
-                        for ind, _ in rasterBandVals[0]
-                        for _ in range(4)
-                    ]
-                return [item for sublist in list_nested for item in sublist]
-
             colors_filtered = get_raster_colors(
-                rasterBandCount, rasterBandVals, rasterBandMinVal, rasterBandMaxVal
+                rasterBandVals, rasterBandNoDataVal, rasterBandMinVal, rasterBandMaxVal
             )
         else:
             for v in range(rasterDimensions[1]):  # each row, Y
@@ -1066,10 +1093,10 @@ def rasterFeatureToSpeckle(
                         # print(faces_filtered)
                         colors_filtered.extend(colors_array[v][h])
                         # print(colors_array[v][h])
-        else:
-            faces_filtered = np.array(faces_array).flatten().tolist()
-            colors_filtered = np.array(colors_array).flatten().tolist()
-            vertices_filtered = np.array(vertices_array).flatten().tolist()
+        # else:
+        #    faces_filtered = np.array(faces_array).flatten().tolist()
+        #    colors_filtered = np.array(colors_array).flatten().tolist()
+        #    vertices_filtered = np.array(vertices_array).flatten().tolist()
 
         # if len(colors)/4*5 == len(faces) and len(colors)*3 == len(vertices):
         mesh = constructMeshFromRaster(
