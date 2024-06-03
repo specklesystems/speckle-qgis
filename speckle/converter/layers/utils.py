@@ -518,7 +518,7 @@ def getClosestIndex(x):
 
 def getArrayIndicesFromXY(settings, x, y):
     """Get cell x&y incices (and remainders) on a given layer, from absolute XY coordinates."""
-    resX, resY, minX, minY, sizeX, sizeY = settings
+    resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings
     index2 = (x - minX) / resX
     index1 = (y - minY) / resY
     if index2 == -0.0:
@@ -605,7 +605,6 @@ def getElevationLayer(dataStorage):
 
 def get_raster_stats(rasterLayer):
     try:
-        s = rasterLayer.source()
         file_ds = gdal.Open(rasterLayer.source(), gdal.GA_ReadOnly)
         xres, yres = (
             float(file_ds.GetGeoTransform()[1]),
