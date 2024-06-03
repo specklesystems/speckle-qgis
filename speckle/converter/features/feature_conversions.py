@@ -192,6 +192,8 @@ def show_progress(current_row: int, rows: int, layer_name: str, plugin: "Speckle
 
 
 def reproject_raster(layer, crs, resolutionX, resolutionY):
+    if layer.crs() == crs:
+        return layer
     path = (
         os.path.expandvars(r"%LOCALAPPDATA%")
         + "\\Temp\\Speckle_QGIS_temp\\"
@@ -200,36 +202,65 @@ def reproject_raster(layer, crs, resolutionX, resolutionY):
     findOrCreatePath(path)
 
     out = path + "\\out.tif"
-    options = gdal.WarpOptions(
-        xRes=resolutionX, yRes=resolutionY, srcSRS=layer.crs(), dstSRS=crs
+    file = gdal.Warp(
+        out,
+        layer.source(),
+        dstSRS=crs.authid(),
+        xRes=resolutionX,
+        yRes=resolutionY,
     )
-    gdal.Warp(out, layer.source(), options=options)
     return QgsRasterLayer(out, "", "gdal")
 
 
 def get_raster_mesh_coords(
-    reprojectedOriginPt,
-    reprojectedMaxPt,
+    reprojected_raster_stats,
     rasterResXY: list,
-    rasterDimensions: list,
     band1_values: list,
     dataStorage,
 ) -> List[float]:
+    (
+        reprojected_top_right,
+        reprojectedOriginPt,
+        reprojectedMaxPt,
+        reprojected_bottom_left,
+        rasterResXY_reprojected,
+        rasterDimensions,
+    ) = reprojected_raster_stats
+
     xOrigin = reprojectedOriginPt.x()
     yOrigin = reprojectedOriginPt.y()
+    x_correction = (reprojectedMaxPt.x() - xOrigin) / rasterDimensions[0]
+    y_correction = (reprojectedMaxPt.y() - yOrigin) / rasterDimensions[1]
+
     list_nested = [
         (
-            xOrigin + rasterResXY[0] * (ind % rasterDimensions[0]),
-            yOrigin + rasterResXY[1] * math.floor(ind / rasterDimensions[0]),
+            xOrigin
+            + rasterResXY[0] * (ind % rasterDimensions[0])
+            + x_correction * (ind % rasterDimensions[0]),
+            yOrigin
+            + rasterResXY[1] * math.floor(ind / rasterDimensions[0])
+            + y_correction * math.floor(ind / rasterDimensions[0]),
             0,
-            xOrigin + rasterResXY[0] * (ind % rasterDimensions[0]),
-            yOrigin + rasterResXY[1] * (math.floor(ind / rasterDimensions[0]) + 1),
+            xOrigin
+            + rasterResXY[0] * (ind % rasterDimensions[0])
+            + x_correction * (ind % rasterDimensions[0]),
+            yOrigin
+            + rasterResXY[1] * math.floor(ind / rasterDimensions[0] + 1)
+            + y_correction * math.floor(ind / rasterDimensions[0] + 1),
             0,
-            xOrigin + rasterResXY[0] * (ind % rasterDimensions[0] + 1),
-            yOrigin + rasterResXY[1] * math.floor(ind / rasterDimensions[0] + 1),
+            xOrigin
+            + rasterResXY[0] * (ind % rasterDimensions[0] + 1)
+            + x_correction * (ind % rasterDimensions[0] + 1),
+            yOrigin
+            + rasterResXY[1] * math.floor(ind / rasterDimensions[0] + 1)
+            + y_correction * math.floor(ind / rasterDimensions[0] + 1),
             0,
-            xOrigin + rasterResXY[0] * (ind % rasterDimensions[0] + 1),
-            yOrigin + rasterResXY[1] * math.floor(ind / rasterDimensions[0]),
+            xOrigin
+            + rasterResXY[0] * (ind % rasterDimensions[0] + 1)
+            + x_correction * (ind % rasterDimensions[0] + 1),
+            yOrigin
+            + rasterResXY[1] * math.floor(ind / rasterDimensions[0])
+            + y_correction * math.floor(ind / rasterDimensions[0]),
             0,
         )
         for ind, _ in enumerate(band1_values)
@@ -266,17 +297,24 @@ def get_raster_colors(
             (
                 (255 << 24)
                 | (
-                    255
-                    * (int(rasterBandVals[0][ind] - rasterBandMinVal[0]) / vals_range0)
+                    int(
+                        255
+                        * (rasterBandVals[0][ind] - rasterBandMinVal[0])
+                        / vals_range0
+                    )
                     << 16
                 )
                 | (
-                    255
-                    * (int(rasterBandVals[1][ind] - rasterBandMinVal[1]) / vals_range1)
+                    int(
+                        255
+                        * (rasterBandVals[1][ind] - rasterBandMinVal[1])
+                        / vals_range1
+                    )
                     << 8
                 )
-                | 255
-                * (int(rasterBandVals[2][ind] - rasterBandMinVal[2]) / vals_range2)
+                | int(
+                    255 * (rasterBandVals[2][ind] - rasterBandMinVal[2]) / vals_range2
+                )
                 if (
                     rasterBandVals[0][ind] != rasterBandNoDataVal[0]
                     and rasterBandVals[1][ind] != rasterBandNoDataVal[1]
@@ -361,7 +399,7 @@ def get_raster_colors(
     return list_colors
 
 
-def add_vertices_height(
+def get_vertices_height(
     vertices_filtered: List[float],
     xy_z_values: dict,
     vertices_list_index: int,
@@ -377,7 +415,7 @@ def add_vertices_height(
                 vertices_filtered[vertices_list_index + 1],
             )
         ]
-    except:
+    except KeyError:
         if index1 > 0 and index2 > 0:
             z1 = height_array[index1_0][index2_0]
         elif index1 > 0:
@@ -527,6 +565,100 @@ def get_raster_band_data(
     return bandValsFlat
 
 
+def get_height_array_from_elevation_layer(elevationLayer):
+    elevation_arrays, _, _, all_na = getRasterArrays(elevationLayer)
+    if elevation_arrays is None:
+        return None
+    array_band = elevation_arrays[0]
+
+    const = float(-1 * math.pow(10, 30))
+    height_array = np.where(
+        (array_band < const) | (array_band > -1 * const) | (array_band == all_na[0]),
+        np.nan,
+        array_band,
+    )
+    try:
+        height_array = height_array.astype(float)
+    except:
+        try:
+            arr = []
+            for row in height_array:
+                new_row = []
+                for item in row:
+                    try:
+                        new_row.append(float(item))
+                    except:
+                        new_row.append(np.nan)
+                arr.append(new_row)
+            height_array = np.array(arr).astype(float)
+        except:
+            height_array = height_array[[isinstance(i, float) for i in height_array]]
+    return height_array
+
+
+def get_raster_reprojected_stats(
+    project, projectCRS, selectedLayer, originX, originY, rasterResXY, rasterDimensions
+):
+    # get 4 corners of raster
+    raster_top_right = QgsPointXY(
+        originX + rasterResXY[0] * rasterDimensions[0], originY
+    )
+    rasterOriginPoint = QgsPointXY(originX, originY)
+    rasterMaxPt = QgsPointXY(
+        originX + rasterResXY[0] * rasterDimensions[0],
+        originY + rasterResXY[1] * rasterDimensions[1],
+    )
+    raster_bottom_left = QgsPointXY(
+        originX,
+        originY + rasterResXY[1] * rasterDimensions[1],
+    )
+    # reproject corners to the project CRS
+    scale_factor_x = scale_factor_y = 1
+    if selectedLayer.crs() != projectCRS:
+        reprojected_top_right = transform.transform(
+            project, raster_top_right, selectedLayer.crs(), projectCRS
+        )
+        reprojectedOriginPt = transform.transform(
+            project, rasterOriginPoint, selectedLayer.crs(), projectCRS
+        )
+        reprojectedMaxPt = transform.transform(
+            project, rasterMaxPt, selectedLayer.crs(), projectCRS
+        )
+        reprojected_bottom_left = transform.transform(
+            project, raster_bottom_left, selectedLayer.crs(), projectCRS
+        )
+
+        scale_factor_x = (reprojected_top_right.x() - reprojectedOriginPt.x()) / (
+            raster_top_right.x() - rasterOriginPoint.x()
+        )
+        scale_factor_y = (reprojected_top_right.y() - reprojectedMaxPt.y()) / (
+            raster_top_right.y() - rasterMaxPt.y()
+        )
+
+    rasterResXY_reprojected = [
+        rasterResXY[0] * scale_factor_x,
+        rasterResXY[1] * scale_factor_y,
+    ]
+    rasterDimensions_reprojected = (
+        round(
+            (reprojected_top_right.x() - reprojectedOriginPt.x())
+            / rasterResXY_reprojected[0]
+        ),
+        round(
+            (reprojected_top_right.y() - reprojectedMaxPt.y())
+            / abs(rasterResXY_reprojected[1])
+        ),
+    )
+    return (
+        reprojected_top_right,
+        reprojectedOriginPt,
+        reprojectedMaxPt,
+        reprojected_bottom_left,
+        rasterResXY_reprojected,
+        rasterDimensions_reprojected,
+    )
+
+
 def rasterFeatureToSpeckle(
     selectedLayer: "QgsRasterLayer",
     projectCRS: "QgsCoordinateReferenceSystem",
@@ -551,7 +683,6 @@ def rasterFeatureToSpeckle(
             b = GisTopography(units=dataStorage.currentUnits)
 
         rasterBandCount = selectedLayer.bandCount()
-        rasterBandNames = []
         rasterDimensions = [selectedLayer.width(), selectedLayer.height()]
 
         ds = gdal.Open(selectedLayer.source(), gdal.GA_ReadOnly)
@@ -559,42 +690,35 @@ def rasterFeatureToSpeckle(
 
         originX = ds.GetGeoTransform()[0]
         originY = ds.GetGeoTransform()[3]
-        rasterOriginPoint = QgsPointXY(originX, originY)
-        rasterMaxPt = QgsPointXY(
-            originX + rasterResXY[0] * rasterDimensions[0],
-            originY + rasterResXY[1] * rasterDimensions[1],
+
+        reprojected_raster_stats = get_raster_reprojected_stats(
+            project,
+            projectCRS,
+            selectedLayer,
+            originX,
+            originY,
+            rasterResXY,
+            rasterDimensions,
         )
-
-        # reproject raster TODO
-        # raster_reprojected = reproject_raster(
-        #    selectedLayer, projectCRS, rasterResXY[0], rasterResXY[1]
-        # )
-        reprojectedOriginPt = rasterOriginPoint
-        reprojectedMaxPt = rasterMaxPt
-        scale_factor = 1
-
-        if selectedLayer.crs() != projectCRS:
-            reprojectedOriginPt = transform.transform(
-                project, rasterOriginPoint, selectedLayer.crs(), projectCRS
-            )
-            reprojectedMaxPt = transform.transform(
-                project, rasterMaxPt, selectedLayer.crs(), projectCRS
-            )
-            scale_factor = get_scale_factor(
-                str(QgsUnitTypes.encodeUnit(selectedLayer.crs().mapUnits())),
-                dataStorage,
-            )
-
-        rasterResXY_reprojected = [
-            rasterResXY[0] * scale_factor,
-            rasterResXY[1] * scale_factor,
-        ]
+        (
+            reprojected_top_right,
+            reprojectedOriginPt,
+            reprojectedMaxPt,
+            reprojected_bottom_left,
+            rasterResXY_reprojected,
+            rasterDimensions_reprojected,
+        ) = reprojected_raster_stats
+        reprojectedOriginX, reprojectedOriginY = (
+            reprojectedOriginPt.x(),
+            reprojectedOriginPt.y(),
+        )
 
         # fill band values
         rasterBandNoDataVal = []
         rasterBandMinVal = []
         rasterBandMaxVal = []
         rasterBandVals = []
+        rasterBandNames = []
         for index in range(rasterBandCount):
             bandValsFlat = get_raster_band_data(
                 selectedLayer,
@@ -626,73 +750,97 @@ def rasterFeatureToSpeckle(
         #############################################################
 
         elevationLayer = None
-        elevationProj = None
-        if texture_transform is True:
-            elevationLayer = getElevationLayer(dataStorage)
-        elif terrain_transform is True:
+        height_array = None
+
+        if terrain_transform is True:  # same layer, copy props
             elevationLayer = selectedLayer
+            elevationResX, elevationResY = rasterResXY_reprojected
+            elevationOriginX, elevationOriginY = (
+                reprojectedOriginPt.x(),
+                reprojectedOriginPt.y(),
+            )
+            elevationSizeX, elevationSizeY = (
+                rasterDimensions_reprojected[0],
+                rasterDimensions_reprojected[1],
+            )
+
+        elif texture_transform is True:
+            elevation_layer_original: "QgsRasterLayer" = getElevationLayer(dataStorage)
+
+            if elevation_layer_original is None:
+                elevationResX = elevationResY = elevationOriginX = elevationOriginY = (
+                    elevationSizeX
+                ) = elevationSizeY = None
+
+                logToUser(
+                    f"Elevation layer is not found. Texture transformation for layer '{selectedLayer.name()}' will not be applied",
+                    level=1,
+                    plugin=plugin.dockwidget,
+                )
+            else:
+                # match elevation layer props to the reprojected SelectedLayer
+                ds_elevation_original = gdal.Open(
+                    elevation_layer_original.source(), gdal.GA_ReadOnly
+                )
+
+                elevation_original_dimensions = [
+                    elevation_layer_original.width(),
+                    elevation_layer_original.height(),
+                ]
+                elevation_original_ResXY = [
+                    float(ds_elevation_original.GetGeoTransform()[1]),
+                    float(ds_elevation_original.GetGeoTransform()[5]),
+                ]
+                elevation_original_originX = ds_elevation_original.GetGeoTransform()[0]
+                elevation_original_originY = ds_elevation_original.GetGeoTransform()[3]
+
+                reprojected_elevation_stats = get_raster_reprojected_stats(
+                    project,
+                    projectCRS,
+                    elevation_layer_original,
+                    elevation_original_originX,
+                    elevation_original_originY,
+                    elevation_original_ResXY,
+                    elevation_original_dimensions,
+                )
+
+                (
+                    elevation_reprojected_top_right,
+                    elevation_reprojectedOriginPt,
+                    elevation_reprojectedMaxPt,
+                    elevation_reprojected_bottom_left,
+                    elevation_resXY_reprojected,
+                    elevation_dimensions_reprojected,
+                ) = reprojected_elevation_stats
+
+                elevationOriginX = elevation_reprojectedOriginPt.x()
+                elevationOriginY = elevation_reprojectedOriginPt.y()
+
+                # overwrite resolution & dimension to match raster
+                elevationResX, elevationResY = (
+                    elevation_resXY_reprojected[0],
+                    elevation_resXY_reprojected[1],
+                )
+                elevationSizeX, elevationSizeY = (
+                    elevation_dimensions_reprojected[0],
+                    elevation_dimensions_reprojected[1],
+                )
+                elevationLayer = elevation_layer_original
+                #################
 
         if elevationLayer is not None:
-            elevationLayer = reproject_raster(
-                elevationLayer, selectedLayer.crs(), rasterResXY[0], rasterResXY[1]
-            )
-            settings_elevation_layer = get_raster_stats(elevationLayer)
-            (
-                elevationResX,
-                elevationResY,
-                elevationOriginX,
-                elevationOriginY,
-                elevationSizeX,
-                elevationSizeY,
-                _,
-                elevationProj,
-            ) = settings_elevation_layer
-
-            elevation_arrays, _, _, all_na = getRasterArrays(elevationLayer)
-            array_band = elevation_arrays[0]
-
-            const = float(-1 * math.pow(10, 30))
-            height_array = np.where(
-                (array_band < const)
-                | (array_band > -1 * const)
-                | (array_band == all_na[0]),
-                np.nan,
-                array_band,
-            )
-            try:
-                height_array = height_array.astype(float)
-            except:
-                try:
-                    arr = []
-                    for row in height_array:
-                        new_row = []
-                        for item in row:
-                            try:
-                                new_row.append(float(item))
-                            except:
-                                new_row.append(np.nan)
-                        arr.append(new_row)
-                    height_array = np.array(arr).astype(float)
-                except:
-                    height_array = height_array[
-                        [isinstance(i, float) for i in height_array]
-                    ]
-        else:
-            elevation_arrays = all_na = None
-            elevationResX = elevationResY = elevationOriginX = elevationOriginY = (
-                elevationSizeX
-            ) = elevationSizeY = None
-            height_array = None
+            height_array = get_height_array_from_elevation_layer(elevationLayer)
+            if height_array is None:
+                logToUser(
+                    f"Elevation layer is not found. Texture transformation for layer '{selectedLayer.name()}' will not be applied",
+                    level=1,
+                    plugin=plugin.dockwidget,
+                )
 
         largeTransform = False
-        if texture_transform is True and elevationLayer is None:
-            logToUser(
-                f"Elevation layer is not found. Texture transformation for layer '{selectedLayer.name()}' will not be applied",
-                level=1,
-                plugin=plugin.dockwidget,
-            )
-        elif (
+        if (
             texture_transform is True
+            and height_array is not None
             and rasterDimensions[1] * rasterDimensions[0] >= 250000
         ):
             # warning if >= 500x500 raster is being projected to any elevation
@@ -717,10 +865,8 @@ def rasterFeatureToSpeckle(
         ]
         faces_filtered = [item for sublist in list_nested for item in sublist]
         vertices_filtered = get_raster_mesh_coords(
-            reprojectedOriginPt,
-            reprojectedMaxPt,
+            reprojected_raster_stats,
             rasterResXY_reprojected,
-            rasterDimensions,
             band1_values,
             dataStorage,
         )
@@ -741,8 +887,8 @@ def rasterFeatureToSpeckle(
                 row_z = []
                 row_z_bottom = []
                 for h in range(rasterDimensions[0]):  # item in a row, X
-                    vertices_list_index = 3 * 4 * (v * rasterDimensions[1] + h)
-                    colors_list_index = 4 * (v * rasterDimensions[1] + h)
+                    vertices_list_index = 3 * 4 * (v * rasterDimensions[0] + h)
+                    colors_list_index = 4 * (v * rasterDimensions[0] + h)
 
                     z1 = z2 = z3 = z4 = 0
                     index1 = index1_0 = None
@@ -753,8 +899,8 @@ def rasterFeatureToSpeckle(
                             # index1: index on y-scale
                             posX, posY = getXYofArrayPoint(
                                 rasterResXY_reprojected,
-                                originX_reprojected,
-                                originY_reprojected,
+                                reprojectedOriginX,
+                                reprojectedOriginY,
                                 h,
                                 v,
                             )
@@ -793,7 +939,7 @@ def rasterFeatureToSpeckle(
                         if index1 is None or index1_0 is None:
                             z1 = z2 = z3 = z4 = np.nan
                         else:
-                            z1, z2, z3, z4 = add_vertices_height(
+                            z1, z2, z3, z4 = get_vertices_height(
                                 vertices_filtered,
                                 xy_z_values,
                                 vertices_list_index,
@@ -847,8 +993,10 @@ def rasterFeatureToSpeckle(
                 array_z_filled, sigma, mode="nearest"
             )
 
+            # update vertices_filtered with z-value
             for v in range(rasterDimensions[1]):  # each row, Y
                 for h in range(rasterDimensions[0]):  # item in a row, X
+                    vertices_list_index = 3 * 4 * (v * rasterDimensions[0] + h)
                     if not np.isnan(array_z_nans[v][h]):
                         vertices_filtered[vertices_list_index + 2] = gaussian_array[v][
                             h

@@ -605,6 +605,7 @@ def getElevationLayer(dataStorage):
 
 def get_raster_stats(rasterLayer):
     try:
+        s = rasterLayer.source()
         file_ds = gdal.Open(rasterLayer.source(), gdal.GA_ReadOnly)
         xres, yres = (
             float(file_ds.GetGeoTransform()[1]),
@@ -621,7 +622,7 @@ def get_raster_stats(rasterLayer):
         sizeX, sizeY = (band.ReadAsArray().shape[1], band.ReadAsArray().shape[0])
 
         return xres, yres, originX, originY, sizeX, sizeY, rasterWkt, rasterProj
-    except:
+    except Exception as e:
         return None, None, None, None, None, None, None, None
 
 
@@ -630,17 +631,6 @@ def getRasterArrays(elevationLayer):
 
     try:
         elevationSource = gdal.Open(elevationLayer.source(), gdal.GA_ReadOnly)
-        settings_elevation_layer = get_raster_stats(elevationLayer)
-        (
-            xres,
-            yres,
-            originX,
-            originY,
-            sizeX,
-            sizeY,
-            rasterWkt,
-            rasterProj,
-        ) = settings_elevation_layer
 
         all_arrays = []
         all_mins = []

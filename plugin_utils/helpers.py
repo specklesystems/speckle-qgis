@@ -26,7 +26,7 @@ def get_scale_factor(units: str, dataStorage) -> float:
     scale_to_meter = get_scale_factor_to_meter(units)
     if dataStorage is not None:
         scale_back = scale_to_meter / get_scale_factor_to_meter(
-            str(dataStorage.currentUnits)
+            dataStorage.currentUnits.value
         )
         return scale_back
     else:
