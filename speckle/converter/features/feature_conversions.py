@@ -659,6 +659,68 @@ def get_raster_reprojected_stats(
     )
 
 
+def get_elevation_indices(
+    texture_transform,
+    rasterResXY,
+    rasterResXY_reprojected,
+    reprojectedOriginX,
+    reprojectedOriginY,
+    h,
+    v,
+    elevationResX,
+    elevationResY,
+    elevationOriginX,
+    elevationOriginY,
+    elevationSizeX,
+    elevationSizeY,
+):
+    if texture_transform is True:  # texture
+        # index1: index on y-scale
+        posX, posY = getXYofArrayPoint(
+            rasterResXY_reprojected,
+            reprojectedOriginX,
+            reprojectedOriginY,
+            h,
+            v,
+        )
+
+        index1, index2, _, _ = getArrayIndicesFromXY(
+            (
+                elevationResX,
+                elevationResY,
+                elevationOriginX,
+                elevationOriginY,
+                elevationSizeX,
+                elevationSizeY,
+                None,
+                None,
+            ),
+            posX,
+            posY,
+        )
+
+        index1_0, index2_0, _, _ = getArrayIndicesFromXY(
+            (
+                elevationResX,
+                elevationResY,
+                elevationOriginX,
+                elevationOriginY,
+                elevationSizeX,
+                elevationSizeY,
+                None,
+                None,
+            ),
+            posX - rasterResXY[0],
+            posY - rasterResXY[1],
+        )
+    else:  # elevation
+        index1 = v
+        index1_0 = v - 1
+        index2 = h
+        index2_0 = h - 1
+    return index1, index1_0, index2, index2_0
+
+
 def rasterFeatureToSpeckle(
     selectedLayer: "QgsRasterLayer",
     projectCRS: "QgsCoordinateReferenceSystem",
@@ -895,51 +957,21 @@ def rasterFeatureToSpeckle(
 
                     #############################################################
                     if height_array is not None:
-                        if texture_transform is True:  # texture
-                            # index1: index on y-scale
-                            posX, posY = getXYofArrayPoint(
-                                rasterResXY_reprojected,
-                                reprojectedOriginX,
-                                reprojectedOriginY,
-                                h,
-                                v,
-                            )
-
-                            index1, index2, _, _ = getArrayIndicesFromXY(
-                                (
-                                    elevationResX,
-                                    elevationResY,
-                                    elevationOriginX,
-                                    elevationOriginY,
-                                    elevationSizeX,
-                                    elevationSizeY,
-                                    None,
-                                    None,
-                                ),
-                                posX,
-                                posY,
-                            )
-
-                            index1_0, index2_0, _, _ = getArrayIndicesFromXY(
-                                (
-                                    elevationResX,
-                                    elevationResY,
-                                    elevationOriginX,
-                                    elevationOriginY,
-                                    elevationSizeX,
-                                    elevationSizeY,
-                                    None,
-                                    None,
-                                ),
-                                posX - rasterResXY[0],
-                                posY - rasterResXY[1],
-                            )
-                        else:  # elevation
-                            index1 = v
-                            index1_0 = v - 1
-                            index2 = h
-                            index2_0 = h - 1
-
+                        index1, index1_0, index2, index2_0 = get_elevation_indices(
+                            texture_transform,
+                            rasterResXY,
+                            rasterResXY_reprojected,
+                            reprojectedOriginX,
+                            reprojectedOriginY,
+                            h,
+                            v,
+                            elevationResX,
+                            elevationResY,
+                            elevationOriginX,
+                            elevationOriginY,
+                            elevationSizeX,
+                            elevationSizeY,
+                        )
                         if index1 is None or index1_0 is None:
                             z1 = z2 = z3 = z4 = np.nan
                         else:
