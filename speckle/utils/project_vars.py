@@ -286,7 +286,7 @@ def setProjectReferenceSystem(dataStorage: DataStorage, dockwidget=None):
         newCrsString = (
             "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0="
             + str(dataStorage.custom_lon)
-            + " lat_0="
+            + " +lat_0="
             + str(dataStorage.custom_lat)
             + " +x_0=0 +y_0=0 +k_0=1"
         )

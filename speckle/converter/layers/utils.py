@@ -517,7 +517,8 @@ def getClosestIndex(x):
 
 
 def getArrayIndicesFromXY(settings, x, y):
-    resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings
+    """Get cell x&y incices (and remainders) on a given layer, from absolute XY coordinates."""
+    resX, resY, minX, minY, sizeX, sizeY = settings
     index2 = (x - minX) / resX
     index1 = (y - minY) / resY
     if index2 == -0.0:
@@ -545,47 +546,10 @@ def getArrayIndicesFromXY(settings, x, y):
         return ind1, ind2, remainder1, remainder2
 
 
-def getHeightWithRemainderFromArray(height_array, texture_transform, ind1, ind2):
-    if texture_transform is True:
-        z = height_array[ind1][ind2]
-        r"""
-        # TODO 
-        indexFloor1 = index1_0 if ind1>0 else ind1
-        indexFloor2 = index2_0 if ind2>0 else ind2
-
-        rem1 = remainder1 if ind1>0 else remainder1_0
-        rem2 = remainder2 if ind2>0 else remainder2_0
-
-        rem1_share = rem1/ (rem1 + rem2)
-        rem2_share = rem2/ (rem1 + rem2)
-        z = height_array[indexFloor1][indexFloor2] +  (height_array[ind1][ind2] - height_array[indexFloor1][ind2])*rem1*rem1_share + (height_array[ind1][ind2] - height_array[ind1][indexFloor2])*rem2*rem2_share 
-        """
-    else:
-        z = height_array[ind1][ind2]
-    try:
-        val = float(z)
-    except:
-        val = None
-    return val
-
-
-def getXYofArrayPoint(
-    settings, indexX, indexY, selectedLayer, elevationLayer, dataStorage
-):
-    resX, resY, minX, minY = settings
-    x = minX + resX * indexX
-    y = minY + resY * indexY
-    # newX, newY = reprojectPt(x, y, wkt, proj, targetWKT, targetPROJ)
-    reprojected_pt = transform.transform(
-        dataStorage.project,
-        QgsPointXY(x, y),
-        selectedLayer.crs(),
-        elevationLayer.crs(),
-    )
-    newX = reprojected_pt.x()
-    newY = reprojected_pt.y()
-
-    return newX, newY
+def getXYofArrayPoint(rasterResXY, minX, minY, indexX, indexY):
+    x = minX + rasterResXY[0] * indexX
+    y = minY + rasterResXY[1] * indexY
+    return x, y
 
 
 def isAppliedLayerTransformByKeywords(
