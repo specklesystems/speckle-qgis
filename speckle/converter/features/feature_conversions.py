@@ -628,11 +628,13 @@ def get_raster_reprojected_stats(
             project, raster_bottom_left, selectedLayer.crs(), projectCRS
         )
 
-        scale_factor_x = (reprojected_top_right.x() - reprojectedOriginPt.x()) / (
-            raster_top_right.x() - rasterOriginPoint.x()
+        scale_factor_x = abs(
+            (reprojected_top_right.x() - reprojectedOriginPt.x())
+            / (raster_top_right.x() - rasterOriginPoint.x())
         )
-        scale_factor_y = (reprojected_top_right.y() - reprojectedMaxPt.y()) / (
-            raster_top_right.y() - rasterMaxPt.y()
+        scale_factor_y = abs(
+            (reprojected_top_right.y() - reprojectedMaxPt.y())
+            / (raster_top_right.y() - rasterMaxPt.y())
         )
 
     rasterResXY_reprojected = [
@@ -640,13 +642,17 @@ def get_raster_reprojected_stats(
         rasterResXY[1] * scale_factor_y,
     ]
     rasterDimensions_reprojected = (
-        round(
-            (reprojected_top_right.x() - reprojectedOriginPt.x())
-            / rasterResXY_reprojected[0]
+        abs(
+            round(
+                (reprojected_top_right.x() - reprojectedOriginPt.x())
+                / rasterResXY_reprojected[0]
+            )
         ),
-        round(
-            (reprojected_top_right.y() - reprojectedMaxPt.y())
-            / abs(rasterResXY_reprojected[1])
+        abs(
+            round(
+                (reprojected_top_right.y() - reprojectedMaxPt.y())
+                / rasterResXY_reprojected[1]
+            )
         ),
     )
     return (
