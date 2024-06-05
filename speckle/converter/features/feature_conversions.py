@@ -9,6 +9,7 @@ import hashlib
 
 import scipy as sp
 from plugin_utils.helpers import findOrCreatePath, get_scale_factor_to_meter
+from speckle.converter.features.GisFeature import GisFeature
 from speckle.converter.geometry import transform
 from speckle.converter.geometry.conversions import (
     convertToNative,
@@ -79,15 +80,18 @@ def featureToSpeckle(
     iterations = 0
     try:
         geom = None
+        new_geom = None
 
         if geomType == "None":
-            geom = GisNonGeometryElement()
+            geom = GisNonGeometryElement()  # redundant, delete in refactor
+            new_geom = GisFeature()
             new_report = {"obj_type": geom.speckle_type, "errors": ""}
         else:
             # Try to extract geometry
             skipped_msg = f"'{geomType}' feature skipped due to invalid geometry"
             try:
                 geom, iterations = convertToSpeckle(f, selectedLayer, dataStorage)
+
                 if geom is not None and geom != "None":
                     if not isinstance(geom.geometry, List):
                         logToUser(
@@ -96,6 +100,11 @@ def featureToSpeckle(
                             func=inspect.stack()[0][3],
                         )
                         return None
+
+                    # geom is GisPointElement, GisLineElement, GisPolygonElement
+                    new_geom = GisFeature()
+                    new_geom.geometry = geom.geometry
+                    new_geom.displayValue = []
 
                     all_errors = ""
                     for g in geom.geometry:
@@ -114,6 +123,7 @@ def featureToSpeckle(
                                     func=inspect.stack()[0][3],
                                 )
                             elif iterations is not None and iterations > 0:
+                                new_geom.displayValue.append(g.displayValue)
                                 all_errors += (
                                     "Polygon display mesh is simplified" + ", "
                                 )
@@ -122,6 +132,8 @@ def featureToSpeckle(
                                     level=1,
                                     func=inspect.stack()[0][3],
                                 )
+                            else:
+                                new_geom.displayValue.append(g.displayValue)
 
                     if len(geom.geometry) == 0:
                         all_errors = "No geometry converted"
@@ -129,7 +141,7 @@ def featureToSpeckle(
                         {"obj_type": geom.speckle_type, "errors": all_errors}
                     )
 
-                else:  # geom is None
+                else:  # geom is None, should not happen, but we should pass the object with attributes anyway
                     new_report = {"obj_type": "", "errors": skipped_msg}
                     logToUser(skipped_msg, level=2, func=inspect.stack()[0][3])
                     geom = GisNonGeometryElement()
@@ -162,11 +174,12 @@ def featureToSpeckle(
 
         # if geom is not None and geom!="None":
         geom.attributes = attributes
+        new_geom.attributes = attributes
 
         dataStorage.latestActionFeaturesReport[
             len(dataStorage.latestActionFeaturesReport) - 1
         ].update(new_report)
-        return geom
+        return new_geom
 
     except Exception as e:
         new_report.update({"errors": e})
@@ -174,7 +187,7 @@ def featureToSpeckle(
             len(dataStorage.latestActionFeaturesReport) - 1
         ].update(new_report)
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        return geom
+        return new_geom
 
 
 def rasterFeatureToSpeckle(
