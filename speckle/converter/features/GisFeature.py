@@ -6,7 +6,7 @@ from specklepy.objects.base import Base
 class GisFeature(
     Base, speckle_type="Objects.GIS.GisFeature", detachable={"displayValue"}
 ):
-    """GIS Polygon Geometry"""
+    """GIS Feature"""
 
     geometry: Optional[List[Base]] = None
     attributes: Base

@@ -128,7 +128,7 @@ def featureToSpeckle(
                                     func=inspect.stack()[0][3],
                                 )
                             elif iterations is not None and iterations > 0:
-                                new_geom.displayValue.append(g.displayValue)
+                                new_geom.displayValue.extend(g.displayValue)
                                 all_errors += (
                                     "Polygon display mesh is simplified" + ", "
                                 )
@@ -138,7 +138,7 @@ def featureToSpeckle(
                                     func=inspect.stack()[0][3],
                                 )
                             else:
-                                new_geom.displayValue.append(g.displayValue)
+                                new_geom.displayValue.extend(g.displayValue)
 
                     if len(geom.geometry) == 0:
                         all_errors = "No geometry converted"
@@ -1005,7 +1005,9 @@ def featureToNative(feature: Base, fields: "QgsFields", dataStorage):
     try:
         qgsGeom = None
 
-        if isinstance(feature, GisNonGeometryElement):
+        if isinstance(feature, GisNonGeometryElement) or (
+            isinstance(feature, GisFeature) and feature.geometry is None
+        ):
             pass
         else:
             try:
@@ -1024,7 +1026,10 @@ def featureToNative(feature: Base, fields: "QgsFields", dataStorage):
                 qgsGeom = convertToNative(speckle_geom, dataStorage)
 
             elif isinstance(speckle_geom, list):
-                if len(speckle_geom) == 1:
+                # add condition for new GisFeature class
+                if isinstance(feature, GisFeature):
+                    qgsGeom = convertToNativeMulti(feature.displayValue, dataStorage)
+                elif len(speckle_geom) == 1:
                     qgsGeom = convertToNative(speckle_geom[0], dataStorage)
                 elif len(speckle_geom) > 1:
                     qgsGeom = convertToNativeMulti(speckle_geom, dataStorage)
