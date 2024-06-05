@@ -5,6 +5,8 @@ from textwrap import wrap
 import inspect
 from difflib import SequenceMatcher
 
+from specklepy.objects.units import get_units_from_string
+
 SYMBOL = "_x_x_"
 UNSUPPORTED_PROVIDERS = ["WFS", "wms", "wcs", "vectortile"]
 
@@ -31,13 +33,8 @@ def get_scale_factor(units: str, dataStorage) -> float:
         return scale_to_meter
 
 
-def get_scale_factor_to_meter(units) -> float:
-    if not isinstance(units, str):
-        try:
-            units = units.value
-        except:
-            units = str(units)
-    units = units.lower()
+def get_scale_factor_to_meter(units_src: str) -> float:
+    units = str(get_units_from_string(units_src))
     try:
         unit_scale = {
             "meters": 1.0,
