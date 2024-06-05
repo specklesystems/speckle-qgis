@@ -103,8 +103,13 @@ def featureToSpeckle(
 
                     # geom is GisPointElement, GisLineElement, GisPolygonElement
                     new_geom = GisFeature()
-                    new_geom.geometry = geom.geometry
-                    new_geom.displayValue = []
+                    new_geom.geometry = []
+                    for g in geom.geometry:
+                        obj = g
+                        if isinstance(g, GisPolygonGeometry):
+                            new_geom.displayValue = []
+                            obj = GisPolygonGeometry(boundary=g.boundary, voids=g.voids)
+                        new_geom.geometry.append(obj)
 
                     all_errors = ""
                     for g in geom.geometry:
