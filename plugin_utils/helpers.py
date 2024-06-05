@@ -6,6 +6,7 @@ import inspect
 from difflib import SequenceMatcher
 
 from specklepy.objects.units import get_units_from_string
+from specklepy.objects.units import get_scale_factor_to_meters
 
 SYMBOL = "_x_x_"
 UNSUPPORTED_PROVIDERS = ["WFS", "wms", "wcs", "vectortile"]
@@ -34,30 +35,10 @@ def get_scale_factor(units: str, dataStorage) -> float:
 
 
 def get_scale_factor_to_meter(units_src: str) -> float:
-    units = str(get_units_from_string(units_src))
     try:
-        unit_scale = {
-            "meters": 1.0,
-            "centimeters": 0.01,
-            "millimeters": 0.001,
-            "inches": 0.0254,
-            "feet": 0.3048,
-            "kilometers": 1000.0,
-            "mm": 0.001,
-            "cm": 0.01,
-            "m": 1.0,
-            "km": 1000.0,
-            "in": 0.0254,
-            "ft": 0.3048,
-            "yd": 0.9144,
-            "mi": 1609.340,
-        }
-        if (
-            units is not None
-            and isinstance(units, str)
-            and units.lower() in unit_scale.keys()
-        ):
-            return unit_scale[units]
+        units = get_units_from_string(units_src)
+        return get_scale_factor_to_meters(units)
+    except:
         try:
             from speckle.utils.panel_logging import logToUser
 
@@ -71,19 +52,6 @@ def get_scale_factor_to_meter(units_src: str) -> float:
             print(
                 f"Units {units_src} are not supported. Meters will be applied by default."
             )
-            return 1.0
-    except Exception as e:
-        try:
-            from speckle.utils.panel_logging import logToUser
-
-            logToUser(
-                f"{e}. Meters will be applied by default.",
-                level=2,
-                func=inspect.stack()[0][3],
-            )
-            return 1.0
-        except:
-            print(f"{e}. Meters will be applied by default.")
             return 1.0
 
 
