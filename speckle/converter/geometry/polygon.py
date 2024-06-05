@@ -144,28 +144,11 @@ def polygonToSpeckleMesh(
 def getZaxisTranslation(layer, boundaryPts, dataStorage):
     #### check if elevation is applied and layer exists:
     elevationLayer = getElevationLayer(dataStorage)
-    polygonWkt = dataStorage.project.crs().toWkt()
-    polygonProj = (
-        QgsCoordinateReferenceSystem.fromWkt(polygonWkt)
-        .toProj()
-        .replace(" +type=crs", "")
-    )
-
     translationValue = None
+    
     if elevationLayer is not None:
         all_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
         settings_elevation_layer = get_raster_stats(elevationLayer)
-        (
-            xres,
-            yres,
-            originX,
-            originY,
-            sizeX,
-            sizeY,
-            rasterWkt,
-            rasterProj,
-        ) = settings_elevation_layer
-
         allElevations = []
         for pt in boundaryPts:
             # posX, posY = reprojectPt(

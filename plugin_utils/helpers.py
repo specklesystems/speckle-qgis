@@ -5,6 +5,8 @@ from textwrap import wrap
 import inspect
 from difflib import SequenceMatcher
 
+from specklepy.objects.units import get_units_from_string
+
 SYMBOL = "_x_x_"
 UNSUPPORTED_PROVIDERS = ["WFS", "wms", "wcs", "vectortile"]
 
@@ -24,14 +26,15 @@ def get_scale_factor(units: str, dataStorage) -> float:
     scale_to_meter = get_scale_factor_to_meter(units)
     if dataStorage is not None:
         scale_back = scale_to_meter / get_scale_factor_to_meter(
-            dataStorage.currentUnits
+            dataStorage.currentUnits.value
         )
         return scale_back
     else:
         return scale_to_meter
 
 
-def get_scale_factor_to_meter(units: str) -> float:
+def get_scale_factor_to_meter(units_src: str) -> float:
+    units = str(get_units_from_string(units_src))
     try:
         unit_scale = {
             "meters": 1.0,
@@ -59,14 +62,14 @@ def get_scale_factor_to_meter(units: str) -> float:
             from speckle.utils.panel_logging import logToUser
 
             logToUser(
-                f"Units {units} are not supported. Meters will be applied by default.",
+                f"Units {units_src} are not supported. Meters will be applied by default.",
                 level=1,
                 func=inspect.stack()[0][3],
             )
             return 1.0
         except:
             print(
-                f"Units {units} are not supported. Meters will be applied by default."
+                f"Units {units_src} are not supported. Meters will be applied by default."
             )
             return 1.0
     except Exception as e:
