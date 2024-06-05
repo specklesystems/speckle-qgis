@@ -1027,7 +1027,7 @@ def featureToNative(feature: Base, fields: "QgsFields", dataStorage):
 
             elif isinstance(speckle_geom, list):
                 # add condition for new GisFeature class
-                if isinstance(feature, GisFeature):
+                if isinstance(feature, GisFeature) and isinstance(speckle_geom[0], GisPolygonGeometry) and speckle_geom[0].boundary is None:
                     qgsGeom = convertToNativeMulti(feature.displayValue, dataStorage)
                 elif len(speckle_geom) == 1:
                     qgsGeom = convertToNative(speckle_geom[0], dataStorage)
