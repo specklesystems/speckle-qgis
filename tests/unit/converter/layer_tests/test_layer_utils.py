@@ -11,7 +11,6 @@ from speckle.converter.layers.utils import (
     reprojectPt,
     getClosestIndex,
     getArrayIndicesFromXY,
-    getHeightWithRemainderFromArray,
     getXYofArrayPoint,
     isAppliedLayerTransformByKeywords,
     getElevationLayer,

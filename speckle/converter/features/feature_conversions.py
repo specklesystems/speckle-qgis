@@ -229,38 +229,41 @@ def get_raster_mesh_coords(
 
     xOrigin = reprojectedOriginPt.x()
     yOrigin = reprojectedOriginPt.y()
-    x_correction = (reprojectedMaxPt.x() - xOrigin) / rasterDimensions[0]
-    y_correction = (reprojectedMaxPt.y() - yOrigin) / rasterDimensions[1]
+    sizeX = rasterDimensions[0]
+    x_correction = (reprojected_bottom_left.x() - xOrigin) / sizeX
+    y_correction = (reprojected_top_right.y() - yOrigin) / rasterDimensions[1]
 
     list_nested = [
         (
             xOrigin
-            + rasterResXY[0] * (ind % rasterDimensions[0])
-            + x_correction * (ind % rasterDimensions[0]),
+            + rasterResXY[0]
+            * (ind % sizeX)  # ind%sizeX = current item index in the row; +1 = next item
+            + x_correction * (ind % sizeX),
             yOrigin
-            + rasterResXY[1] * math.floor(ind / rasterDimensions[0])
-            + y_correction * math.floor(ind / rasterDimensions[0]),
+            + rasterResXY[1]
+            * math.floor(
+                ind / sizeX
+            )  # math.floor(ind/sizeX) = current row index; +1 = next row
+            + y_correction * math.floor(ind / sizeX),
+            0,
+            xOrigin + rasterResXY[0] * (ind % sizeX) + x_correction * (ind % sizeX),
+            yOrigin
+            + rasterResXY[1] * math.floor(ind / sizeX + 1)
+            + y_correction * math.floor(ind / sizeX + 1),
             0,
             xOrigin
-            + rasterResXY[0] * (ind % rasterDimensions[0])
-            + x_correction * (ind % rasterDimensions[0]),
+            + rasterResXY[0] * (ind % sizeX + 1)
+            + x_correction * (ind % sizeX + 1),
             yOrigin
-            + rasterResXY[1] * math.floor(ind / rasterDimensions[0] + 1)
-            + y_correction * math.floor(ind / rasterDimensions[0] + 1),
+            + rasterResXY[1] * math.floor(ind / sizeX + 1)
+            + y_correction * math.floor(ind / sizeX + 1),
             0,
             xOrigin
-            + rasterResXY[0] * (ind % rasterDimensions[0] + 1)
-            + x_correction * (ind % rasterDimensions[0] + 1),
+            + rasterResXY[0] * (ind % sizeX + 1)
+            + x_correction * (ind % sizeX + 1),
             yOrigin
-            + rasterResXY[1] * math.floor(ind / rasterDimensions[0] + 1)
-            + y_correction * math.floor(ind / rasterDimensions[0] + 1),
-            0,
-            xOrigin
-            + rasterResXY[0] * (ind % rasterDimensions[0] + 1)
-            + x_correction * (ind % rasterDimensions[0] + 1),
-            yOrigin
-            + rasterResXY[1] * math.floor(ind / rasterDimensions[0])
-            + y_correction * math.floor(ind / rasterDimensions[0]),
+            + rasterResXY[1] * math.floor(ind / sizeX)
+            + y_correction * math.floor(ind / sizeX),
             0,
         )
         for ind, _ in enumerate(band1_values)
@@ -280,14 +283,16 @@ def apply_offset_rotation_to_vertices_send(vertices: List[float], dataStorage):
 
 
 def get_raster_colors(
+    layer,
     rasterBandVals,
     rasterBandNoDataVal,
     rasterBandMinVal,
     rasterBandMaxVal,
     rendererType,
+    plugin,
 ):
     list_colors = []
-    if len(rasterBandVals) == 3 or len(rasterBandVals) == 4:  # RGB
+    if rendererType == "multibandcolor":  # RGB
 
         vals_range0 = rasterBandMaxVal[0] - rasterBandMinVal[0]
         vals_range1 = rasterBandMaxVal[1] - rasterBandMinVal[1]
@@ -325,7 +330,117 @@ def get_raster_colors(
             for ind, _ in enumerate(rasterBandVals[0])
             for _ in range(4)
         ]
+
+    elif rendererType == "paletted":
+        try:
+            bandIndex = layer.renderer().band() - 1  # int
+            renderer_classes = layer.renderer().classes()
+            class_rgbs = [
+                renderer_classes[class_ind].color.getRgb()
+                for class_ind in range(len(renderer_classes) - 1)
+            ]
+
+            for val in rasterBandVals[bandIndex]:
+                rgb = None
+                color = (0 << 24) + (0 << 16) + (0 << 8) + 0
+
+                for class_ind in range(len(renderer_classes) - 1):
+                    if rasterBandVals[bandIndex] == rasterBandNoDataVal[bandIndex]:
+                        rgb = None
+                    elif class_ind < len(renderer_classes) - 1:
+                        if val >= float(
+                            renderer_classes[class_ind].value
+                        ) and val < float(renderer_classes[class_ind + 1].value):
+                            rgb = class_rgbs[class_ind]
+                    elif class_ind == len(renderer_classes) - 1 and val >= float(
+                        renderer_classes[class_ind].value
+                    ):
+                        rgb = class_rgbs[class_ind]
+
+                if rgb is not None:
+                    color = (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
+
+                # add color value after looping through classes/categories
+                list_colors.extend([color, color, color, color])
+
+        except Exception as e:
+            # log warning, but don't prevent conversion
+            logToUser(
+                f"Raster renderer of type 'paletted' couldn't read the renderer class values, default renderer will be applied: {e}",
+                level=1,
+                func=inspect.stack()[0][3],
+                plugin=plugin.dockwidget,
+            )
+
+            return get_raster_colors(
+                layer,
+                rasterBandVals,
+                rasterBandNoDataVal,
+                rasterBandMinVal,
+                rasterBandMaxVal,
+                None,
+                plugin,
+            )
+
+    elif rendererType == "singlebandpseudocolor":
+        try:
+            bandIndex = layer.renderer().band() - 1  # int
+
+            renderer_classes = layer.renderer().legendSymbologyItems()
+            class_rgbs = [
+                renderer_classes[class_ind][1].getRgb()
+                for class_ind in range(len(renderer_classes) - 1)
+            ]
+
+            for val in rasterBandVals[bandIndex]:
+                rgb = None
+                color = (0 << 24) + (0 << 16) + (0 << 8) + 0
+
+                for class_ind in range(len(renderer_classes) - 1):
+                    if rasterBandVals[bandIndex] == rasterBandNoDataVal[bandIndex]:
+                        rgb = None
+                    elif class_ind < len(renderer_classes) - 1:
+                        if val >= float(renderer_classes[class_ind][0]) and val < float(
+                            renderer_classes[class_ind + 1][0]
+                        ):
+                            rgb = class_rgbs[class_ind]
+                    elif class_ind == len(renderer_classes) - 1 and val >= float(
+                        renderer_classes[class_ind][0]
+                    ):
+                        rgb = class_rgbs[class_ind]
+
+                if rgb is not None:
+                    color = (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
+
+                # add color value after looping through classes/categories
+                list_colors.extend([color, color, color, color])
+
+        except Exception as e:
+            # log warning, but don't prevent conversion
+            logToUser(
+                f"Raster renderer of type 'paletted' couldn't read the renderer class values, default renderer will be applied: {e}",
+                level=1,
+                func=inspect.stack()[0][3],
+                plugin=plugin.dockwidget,
+            )
+
+            return get_raster_colors(
+                layer,
+                rasterBandVals,
+                rasterBandNoDataVal,
+                rasterBandMinVal,
+                rasterBandMaxVal,
+                None,
+                plugin,
+            )
+
     else:  # greyscale
+        if rendererType != "singlebandgray":
+            logToUser(
+                f"Raster renderer type {rendererType} is not supported, rendering the raster in greyscale",
+                level=1,
+                func=inspect.stack()[0][3],
+            )
         pixMin = rasterBandMinVal[0]
         pixMax = rasterBandMaxVal[0]
         vals_range = pixMax - pixMin
@@ -342,60 +457,7 @@ def get_raster_colors(
             for ind, _ in enumerate(rasterBandVals[0])
             for _ in range(4)
         ]
-    """
-    elif rendererType == "paletted":
-        bandIndex = colorLayer.renderer().band() - 1  # int
-        # if textureLayer is not None:
-        #    value = texture_arrays[bandIndex][index1][index2]
-        # else:
-        value = rasterBandVals[bandIndex][
-            int(count / 4)
-        ]  # find in the list and match with color
 
-        rendererClasses = colorLayer.renderer().classes()
-        for c in range(len(rendererClasses) - 1):
-            if (
-                value >= rendererClasses[c].value
-                and value <= rendererClasses[c + 1].value
-            ):
-                rgb = rendererClasses[c].color.getRgb()
-                color = (
-                    (255 << 24)
-                    + (rgb[0] << 16)
-                    + (rgb[1] << 8)
-                    + rgb[2]
-                )
-                break
-        if value == rasterBandNoDataVal[bandIndex]:
-            alpha = 0
-            color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
-
-    elif rendererType == "singlebandpseudocolor":
-        bandIndex = colorLayer.renderer().band() - 1  # int
-        # if textureLayer is not None:
-        #    value = texture_arrays[bandIndex][index1][index2]
-        # else:
-        value = rasterBandVals[bandIndex][
-            int(count / 4)
-        ]  # find in the list and match with color
-
-        rendererClasses = colorLayer.renderer().legendSymbologyItems()
-        for c in range(len(rendererClasses) - 1):
-            if value >= float(rendererClasses[c][0]) and value <= float(
-                rendererClasses[c + 1][0]
-            ):
-                rgb = rendererClasses[c][1].getRgb()
-                color = (
-                    (255 << 24)
-                    + (rgb[0] << 16)
-                    + (rgb[1] << 8)
-                    + rgb[2]
-                )
-                break
-        if value == rasterBandNoDataVal[bandIndex]:
-            alpha = 0
-            color = (alpha << 24) + (0 << 16) + (0 << 8) + 0
-    """
     return list_colors
 
 
@@ -940,11 +1002,13 @@ def rasterFeatureToSpeckle(
         )
         rendererType = selectedLayer.renderer().type()
         colors_filtered = get_raster_colors(
+            selectedLayer,
             rasterBandVals,
             rasterBandNoDataVal,
             rasterBandMinVal,
             rasterBandMaxVal,
             rendererType,
+            plugin,
         )
         ###############################################################################
         if texture_transform is True or terrain_transform is True:
