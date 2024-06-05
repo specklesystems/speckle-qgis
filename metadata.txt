@@ -5,6 +5,7 @@
 [general]
 name=Speckle
 qgisMinimumVersion=3.28.15
+qgisMaximumVersion=3.34.3
 description=Speckle 2.0 Connector for QGIS
 version=0.0.99
 author=Speckle Systems
