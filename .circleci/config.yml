@@ -7,6 +7,7 @@ orbs:
   # Upload artifacts to s3
   aws-s3: circleci/aws-s3@2.0.0
   codecov: codecov/codecov@3.3.0
+  macos: circleci/macos@2.4.1
 
 jobs:
 
@@ -213,7 +214,8 @@ jobs:
 
   build-installer-mac:
     macos:
-      xcode: 12.5.1
+      xcode: 13.4.1
+    resource_class: macos.m1.medium.gen1
     parameters:
       runtime:
         type: string
