@@ -150,16 +150,23 @@ def getPolyPtsSegments(
     pointListLocal = []
     startLen = len(vertices)
     for i, pt in enumerate(pt_iterator):
-        if coef is not None and i % coef != 0:
-            pass
-        elif (
+        if (
             len(pointListLocal) > 0
             and pt.x() == pointListLocal[0].x()
             and pt.y() == pointListLocal[0].y()
-        ):  # don't repeat 1st point
+        ):
+            # don't repeat 1st point
             pass
-        elif coef is None or (coef is not None and i % coef == 0):
+        elif coef is None:
             pointListLocal.append(pt)
+        else:
+            if i % coef == 0:
+                pointListLocal.append(pt)
+            else:
+                # don't add points, which are in-between specified step (coeff)
+                # e.g. if coeff=5, we skip ponts 1,2,3,4, but add points 0 and 5
+                pass
+
     for i, pt in enumerate(pointListLocal):
         x, y = apply_pt_offsets_rotation_on_send(pt.x(), pt.y(), dataStorage)
         vertices.append([x, y])
