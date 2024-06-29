@@ -8,6 +8,7 @@ from speckle.converter.geometry import transform
 try:
     from qgis.core import (
         QgsGeometry,
+        QgsAbstractGeometry,
         QgsPolygon,
         QgsPointXY,
         QgsFeature,
@@ -49,7 +50,11 @@ import numpy as np
 
 
 def polygonToSpeckleMesh(
-    geom: "QgsGeometry", feature: "QgsFeature", layer: "QgsVectorLayer", dataStorage
+    geom: "QgsGeometry",
+    feature: "QgsFeature",
+    layer: "QgsVectorLayer",
+    dataStorage,
+    xform=None,
 ):
     polygon = GisPolygonGeometry(units="m")
     # print(dataStorage)
@@ -62,6 +67,8 @@ def polygonToSpeckleMesh(
         for p in geom.parts():
             boundary, voidsNative = getPolyBoundaryVoids(p, feature, layer, dataStorage)
             polyBorder = speckleBoundaryToSpecklePts(boundary, dataStorage)
+            if len(polyBorder) < 3:
+                continue
             voids = []
             voidsAsPts = []
 
@@ -89,7 +96,6 @@ def polygonToSpeckleMesh(
                     )
                 )
                 voidsAsPts.append(pts_fixed)
-
             (
                 total_vert,
                 vertices_x,
@@ -105,6 +111,7 @@ def polygonToSpeckleMesh(
                 layer,
                 None,
                 dataStorage,
+                xform,
             )
 
             if total_vert is None:
@@ -137,28 +144,11 @@ def polygonToSpeckleMesh(
 def getZaxisTranslation(layer, boundaryPts, dataStorage):
     #### check if elevation is applied and layer exists:
     elevationLayer = getElevationLayer(dataStorage)
-    polygonWkt = dataStorage.project.crs().toWkt()
-    polygonProj = (
-        QgsCoordinateReferenceSystem.fromWkt(polygonWkt)
-        .toProj()
-        .replace(" +type=crs", "")
-    )
-
     translationValue = None
+    
     if elevationLayer is not None:
         all_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
         settings_elevation_layer = get_raster_stats(elevationLayer)
-        (
-            xres,
-            yres,
-            originX,
-            originY,
-            sizeX,
-            sizeY,
-            rasterWkt,
-            rasterProj,
-        ) = settings_elevation_layer
-
         allElevations = []
         for pt in boundaryPts:
             # posX, posY = reprojectPt(
@@ -211,7 +201,7 @@ def isFlat(ptList):
 
 
 def polygonToSpeckle(
-    geom: "QgsGeometry",
+    geom_original: "QgsAbstractGeometry",
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
     height,
@@ -224,6 +214,7 @@ def polygonToSpeckle(
     polygon = GisPolygonGeometry(units="m")
     iterations = 0
     try:
+        geom = geom_original.clone()
         boundary, voidsNative = getPolyBoundaryVoids(
             geom, feature, layer, dataStorage, xform
         )
@@ -232,6 +223,8 @@ def polygonToSpeckle(
             boundary = moveVertically(boundary, projectZval)
 
         polyBorder = speckleBoundaryToSpecklePts(boundary, dataStorage)
+        if len(polyBorder) < 3:
+            return None, None
         voids = []
         voidsAsPts = []
 
@@ -262,7 +255,7 @@ def polygonToSpeckle(
         polygon.boundary = boundary
         polygon.voids = voids
         iterations, vertices, faces, colors, iterations = meshPartsFromPolygon(
-            polyBorder, voidsAsPts, 0, feature, geom, layer, height, dataStorage
+            polyBorder, voidsAsPts, 0, feature, geom, layer, height, dataStorage, xform
         )
 
         mesh = constructMesh(vertices, faces, colors, dataStorage)
@@ -339,7 +332,7 @@ def polygonToNative(poly: Base, dataStorage) -> "QgsPolygon":
 
 
 def getPolyBoundaryVoids(
-    geom: "QgsGeometry",
+    geom_original: "QgsGeometry",
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
     dataStorage,
@@ -348,21 +341,21 @@ def getPolyBoundaryVoids(
     boundary = None
     voids: List[Union[None, Polyline, Arc, Line, Polycurve]] = []
     try:
-        pointList = []
         pt_iterator = []
         extRing = None
+
+        if isinstance(geom_original, QgsGeometry):
+            geom_original = geom_original.constGet()
+        geom = geom_original.clone()
+
         try:
             extRing = geom.exteriorRing()
             pt_iterator = extRing.vertices()
         except:
-            try:
-                extRing = geom.constGet().exteriorRing()
-                pt_iterator = geom.vertices()
-            except:
-                extRing = geom
-                pt_iterator = geom.vertices()
-        for pt in pt_iterator:
-            pointList.append(pt)
+            extRing = geom
+            pt_iterator = geom.vertices()
+        # for pt in pt_iterator:
+        #     pointList.append(pt)
         if extRing is not None:
             boundary = unknownLineToSpeckle(
                 extRing, True, feature, layer, dataStorage, xform
@@ -370,10 +363,7 @@ def getPolyBoundaryVoids(
         else:
             return boundary, voids
 
-        try:
-            geom = geom.constGet()
-        except:
-            pass
+        # get voids
         for i in range(geom.numInteriorRings()):
             intRing = unknownLineToSpeckle(
                 geom.interiorRing(i), True, feature, layer, dataStorage, xform

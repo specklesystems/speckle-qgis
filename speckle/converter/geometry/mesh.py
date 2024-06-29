@@ -189,6 +189,7 @@ def meshPartsFromPolygon(
     layer: "QgsVectorLayer",
     height,
     dataStorage,
+    xform=None,
 ) -> Tuple[
     Union[int, None],
     Union[List[float], None],
@@ -212,6 +213,9 @@ def meshPartsFromPolygon(
         maxPoints = 5000
         if len(polyBorder) >= maxPoints:
             coef = int(len(polyBorder) / maxPoints)
+
+        if len(polyBorder) < 3:
+            return None, None, None, None, None
 
         col = featureColorfromNativeRenderer(feature, layer)
 
@@ -347,7 +351,7 @@ def meshPartsFromPolygon(
 
             # get points from original geometry #################################
             triangulated_geom, vertices3d_original, iterations = triangulatePolygon(
-                feature_geom, dataStorage, coef
+                feature_geom, dataStorage, coef, xform
             )
 
             # temporary solution, as the list of points is not the same anymore:

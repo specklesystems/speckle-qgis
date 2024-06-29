@@ -1,10 +1,9 @@
 import inspect
 import os
-from typing import Any, List, Tuple, Union
 from speckle.converter.layers import getAllLayers
 from speckle.converter.layers.utils import getElevationLayer, getLayerGeomType
 from specklepy_qt_ui.qt_ui.widget_transforms import MappingSendDialog
-from specklepy_qt_ui.qt_ui.logger import displayUserMsg
+from specklepy_qt_ui.qt_ui.utils.logger import displayUserMsg
 
 from speckle.utils.panel_logging import logToUser
 
@@ -332,7 +331,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
             logToUser(e, level=2, func=inspect.stack()[0][3])
             return
 
-    def saveElevationLayer(self):
+    def saveElevationLayer(self) -> "DataStorage":
         # print("saveElevationLayer")
         from speckle.utils.project_vars import set_elevationLayer
 
@@ -345,12 +344,13 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
         layerName = str(self.elevationLayerDropdown.currentText())
         try:
             if self.dataStorage.elevationLayer.name() == layerName:
-                return
+                return self.dataStorage
         except:
             pass
 
         if len(layerName) < 1:
             layer = None
+            self.dataStorage.elevationLayer = layer
         else:
             self.dataStorage.all_layers = getAllLayers(root)
             all_l_names = [l.name() for l in self.dataStorage.all_layers]
@@ -370,7 +370,6 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
                             break
                         else:
                             self.dataStorage.elevationLayer = layer
-                            set_elevationLayer(self.dataStorage)
                             logToUser(
                                 f"Elevation layer '{layerName}' successfully set",
                                 level=0,
@@ -383,6 +382,8 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
                         )
                         layer = None
                         break
+                    
+        set_elevationLayer(self.dataStorage)
 
         try:
             metrics.track(
@@ -396,6 +397,8 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
             )
         except Exception as e:
             logToUser(e, level=2, func=inspect.stack()[0][3])
+
+        return self.dataStorage
 
     def onMoreInfo(self):
         webbrowser.open("https://speckle.guide/user/qgis.html#transformations")

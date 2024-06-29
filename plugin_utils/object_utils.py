@@ -39,18 +39,19 @@ def traverseObject(
     memberNames = base.get_member_names()
     for name in memberNames:
         # print("for name in memberNames:")
+        if name in ["id", "applicationId", "units", "speckle_type"]:
+            continue
         try:
-            if ["id", "applicationId", "units", "speckle_type"].index(name):
-                continue
-        except:
-            pass
+            base[name]
+        except KeyError:
+            continue
 
-        if nameBase == SYMBOL + "QGIS commit":
+        if nameBase == SYMBOL + "QGIS commit" or nameBase == SYMBOL + "ArcGIS commit":
             name_pass = getBaseValidName(base, name)
         else:
             name_pass = nameBase + SYMBOL + getBaseValidName(base, name)
         # check again
-        if name_pass == SYMBOL + "QGIS commit":
+        if name_pass == SYMBOL + "QGIS commit" or name_pass == SYMBOL + "ArcGIS commit":
             name_pass = ""
         # print(name_pass)
         traverseValue(plugin, base[name], callback, check, streamBranch, name_pass)

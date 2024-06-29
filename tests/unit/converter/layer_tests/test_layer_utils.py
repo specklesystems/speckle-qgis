@@ -1,4 +1,6 @@
 from speckle.converter.layers.utils import (
+    generate_qgis_app_id,
+    generate_qgis_raster_app_id,
     getLayerGeomType,
     getVariantFromValue,
     colorFromSpeckle,
@@ -9,7 +11,6 @@ from speckle.converter.layers.utils import (
     reprojectPt,
     getClosestIndex,
     getArrayIndicesFromXY,
-    getHeightWithRemainderFromArray,
     getXYofArrayPoint,
     isAppliedLayerTransformByKeywords,
     getElevationLayer,

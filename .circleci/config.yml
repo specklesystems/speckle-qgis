@@ -142,7 +142,6 @@ jobs:
   build-connector-win: # Reusable job for basic connectors
     executor:
       name: win/default # comes with python 3.7.3
-      shell: cmd.exe
     parameters:
       slug:
         type: string
@@ -155,24 +154,53 @@ jobs:
       - attach_workspace:
           at: ./
       - run:
-          name: Create Innosetup signing cert
-          shell: powershell.exe
-          command: |
-            echo $env:PFX_B64 > "speckle-sharp-ci-tools\SignTool\AEC Systems Ltd.txt"
-            certutil -decode "speckle-sharp-ci-tools\SignTool\AEC Systems Ltd.txt" "speckle-sharp-ci-tools\SignTool\AEC Systems Ltd.pfx"
-      - run:
           name: Patch
           shell: powershell.exe
           command: |
             $tag = if([string]::IsNullOrEmpty($env:CIRCLE_TAG)) { "0.0.0" } else { $env:CIRCLE_TAG }
             $semver = if($tag.Contains('/')) {$tag.Split("/")[1] } else { $tag } 
             python patch_version.py $semver
+
       - run:
-          name: Build Installer
-          shell: cmd.exe
-          command:
-            | # If no tag, use 0.0.0.1 and don't make any YML (for testing only!)
-            speckle-sharp-ci-tools\InnoSetup\ISCC.exe speckle-sharp-ci-tools\qgis.iss /Sbyparam=$p
+          name: Exit if External PR
+          shell: bash.exe
+          command: if [ "$CIRCLE_PR_REPONAME" ]; then circleci-agent step halt; fi
+      
+      - unless: # Build installers unsigned on non-tagged builds
+          condition: << pipeline.git.tag >>
+          steps:
+            - run:
+                name: Build Installer
+                shell: cmd.exe # does not work in powershell
+                command: 
+                  speckle-sharp-ci-tools\InnoSetup\ISCC.exe speckle-sharp-ci-tools\qgis.iss /Sbyparam=$p
+
+      - when: # Setup certificates and build installers signed for tagged builds
+          condition: << pipeline.git.tag >>
+          steps:
+            - run: # Installs digicert signing tools for windows
+                name: "Digicert Signing Manager Setup"
+                command: |
+                  cd C:\
+                  curl.exe -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/smtools-windows-x64.msi/download -H "x-api-key:$env:SM_API_KEY" -o smtools-windows-x64.msi
+                  msiexec.exe /i smtools-windows-x64.msi /quiet /qn | Wait-Process
+            - run: # Creates the Auth cert and the signing public PEM cert
+                name: Create Auth & OV Signing Cert
+                command: |
+                  cd C:\
+                  echo $env:SM_CLIENT_CERT_FILE_B64 > certificate.txt
+                  certutil -decode certificate.txt certificate.p12
+            - run: # Syncs certificates from Digicert into local user store
+                name: Sync Certs
+                shell: powershell.exe
+                command: |
+                  & $env:SSM\smksp_cert_sync.exe
+            - run:
+                name: Build Installer
+                shell: cmd.exe
+                command:
+                  | # If no tag, use 0.0.0.1 and don't make any YML (for testing only!)
+                  speckle-sharp-ci-tools\InnoSetup\ISCC.exe speckle-sharp-ci-tools\qgis.iss /Sbyparam=$p /DSIGN_INSTALLER /DCODE_SIGNING_CERT_FINGERPRINT=%SM_CODE_SIGNING_CERT_SHA1_HASH%
       - when:
           condition: << parameters.installer >>
           steps:
@@ -180,7 +208,9 @@ jobs:
                 root: ./
                 paths:
                   - speckle-sharp-ci-tools/Installers
-  
+    environment:
+      SSM: 'C:\Program Files\DigiCert\DigiCert One Signing Manager Tools'
+
   build-installer-mac:
     macos:
       xcode: 12.5.1
@@ -273,51 +303,26 @@ jobs:
               -a << parameters.arch >> \
               -f speckle-sharp-ci-tools/Installers/qgis/<< parameters.slug >>-${SEMVER}.<< parameters.extension >>
 workflows: # happens with every PR to main
-  test_on_pr: # build the installers, but don't persist to workspace for deployment
-    jobs:
-      - get-ui:
-          context: github-dev-bot
-      - get-ci-tools:
-          context: github-dev-bot
-      - package:
-          requires:
-            - get-ui
-            - get-ci-tools 
-      - test:
-          requires:
-            - package
-          matrix:
-            parameters:
-              tag: ["3.11"]
   build: # build the installers, but don't persist to workspace for deployment
     jobs:
       - get-ui:
           context: github-dev-bot
-          filters: &build_filters
-            branches:
-              only:
-                - main
-                - /ci\/.*/
       - get-ci-tools:
           context: github-dev-bot
-          filters: *build_filters
       - package:
           requires:
             - get-ui
             - get-ci-tools 
-          filters: *build_filters
       - test:
           requires:
             - package
           matrix:
             parameters:
               tag: ["3.11"]
-          filters: *build_filters
       - build-connector-win:
           requires:
             - test
-          filters: *build_filters
-          context: innosetup
+          context: digicert-keylocker
 
       - build-installer-mac:
           name: Mac ARM Build
@@ -325,7 +330,6 @@ workflows: # happens with every PR to main
           runtime: osx-arm64
           requires:
             - build-connector-win
-          filters: *build_filters
 
       - build-installer-mac:
           name: Mac Intel Build
@@ -333,9 +337,8 @@ workflows: # happens with every PR to main
           runtime: osx-x64
           requires:
             - build-connector-win
-          filters: *build_filters
 
-  deploy: # build installers and deploy
+  deploy: # build installers and deploy 
     jobs:
       - get-ui:
           context: github-dev-bot
@@ -381,7 +384,7 @@ workflows: # happens with every PR to main
               only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
             branches:
               ignore: /.*/
-          context: innosetup
+          context: digicert-keylocker
       - deploy-marketplace:
           filters: *deploy_filters
           requires:

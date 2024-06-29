@@ -83,13 +83,18 @@ def convertToSpeckle(
         xform = None
         if sourceCRS != targetCRS:
             xform = QgsCoordinateTransform(sourceCRS, targetCRS, dataStorage.project)
-        try:
-            geom: QgsGeometry = feature.geometry()
-        except:
-            geom: QgsGeometry = feature
-        geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
-        geomType = geom.type()
-        type = geom.wkbType()
+
+        geom_original: Union[QgsGeometry, QgsAbstractGeometry] = feature.geometry()
+
+        geomSingleType = QgsWkbTypes.isSingleType(geom_original.wkbType())
+        geomType = geom_original.type()
+
+        if isinstance(geom_original, QgsGeometry):
+            geom: QgsAbstractGeometry = geom_original.constGet()
+        else:
+            geom = geom_original
+
+        # type = geom.wkbType()
         units = (
             dataStorage.currentUnits
         )  # QgsUnitTypes.encodeUnit(dataStorage.project.crs().mapUnits())
@@ -99,7 +104,7 @@ def convertToSpeckle(
             if xform is not None:
                 geom.transform(xform)
             if geomSingleType:
-                result = pointToSpeckle(geom.constGet(), feature, layer, dataStorage)
+                result = pointToSpeckle(geom, feature, layer, dataStorage)
                 result.units = units
                 result = [result]
             else:
@@ -139,7 +144,7 @@ def convertToSpeckle(
         ):
             if xform is not None:
                 geom.transform(xform)
-            result = polygonToSpeckleMesh(geom, feature, layer, dataStorage)
+            result = polygonToSpeckleMesh(geom, feature, layer, dataStorage, None)
             if result is None:
                 return None, None
             result.units = units
@@ -164,8 +169,7 @@ def convertToSpeckle(
                     ]
                 except:
                     boundaryPts = [
-                        v[1]
-                        for v in enumerate(geom.constGet().exteriorRing().vertices())
+                        v[1] for v in enumerate(geom.exteriorRing().vertices())
                     ]
                 if height is not None:
                     if isFlat(boundaryPts) is False:
@@ -233,12 +237,7 @@ def convertToSpeckle(
                             v[1] for v in enumerate(poly.exteriorRing().vertices())
                         ]
                     except:
-                        boundaryPts = [
-                            v[1]
-                            for v in enumerate(
-                                poly.constGet().exteriorRing().vertices()
-                            )
-                        ]
+                        boundaryPts = [v[1] for v in enumerate(poly.vertices())]
                     if height is not None:
                         if isFlat(boundaryPts) is False:
                             logToUser(
@@ -444,6 +443,9 @@ def convertToNativeMulti(
             return multiPolylineToNative(items, dataStorage)
         # elif isinstance(first, Arc) or isinstance(first, Polycurve) or isinstance(first, Ellipse) or isinstance(first, Circle) or isinstance(first, Curve):
         #    return [convertToNative(it, dataStorage) for it in items]
+        elif isinstance(first, Mesh):
+            converted: QgsMultiPolygon = meshToNative(items, dataStorage)
+            return converted
         elif isinstance(first, Base):
             try:
                 displayVals = []
@@ -452,7 +454,7 @@ def convertToNativeMulti(
                         displayVals.extend(it.displayValue)
                     except:
                         displayVals.extend(it["@displayValue"])
-                if isinstance(first, GisPolygonGeometry):
+                if isinstance(first, GisPolygonGeometry) or isinstance(first, Mesh):
                     if first.boundary is None:
                         converted: QgsMultiPolygon = meshToNative(
                             displayVals, dataStorage

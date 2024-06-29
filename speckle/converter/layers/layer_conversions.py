@@ -1,8 +1,10 @@
 """
 Contains all Layer related classes and methods.
 """
+
 import enum
 import inspect
+import hashlib
 import math
 from typing import List, Tuple, Union
 from specklepy.objects import Base
@@ -44,6 +46,7 @@ try:
         QgsLayerTreeLayer,
         QgsCoordinateReferenceSystem,
         QgsCoordinateTransform,
+        QgsFeature,
         QgsFields,
         QgsSingleSymbolRenderer,
         QgsCategorizedSymbolRenderer,
@@ -84,6 +87,8 @@ from speckle.converter.layers.utils import (
     collectionsFromJson,
     colorFromSpeckle,
     colorFromSpeckle,
+    generate_qgis_app_id,
+    generate_qgis_raster_app_id,
     getDisplayValueList,
     getElevationLayer,
     getLayerGeomType,
@@ -107,7 +112,7 @@ import numpy as np
 
 from speckle.utils.panel_logging import logToUser
 
-from plugin_utils.helpers import SYMBOL
+from plugin_utils.helpers import SYMBOL, UNSUPPORTED_PROVIDERS
 
 GEOM_LINE_TYPES = [
     "Objects.Geometry.Line",
@@ -151,7 +156,7 @@ def convertSelectedLayersToSpeckle(
             data_provider_type = (
                 layer.providerType()
             )  # == ogr, memory, gdal, delimitedtext
-            if data_provider_type in ["WFS", "wms", "wcs", "vectortile"]:
+            if data_provider_type in UNSUPPORTED_PROVIDERS:
                 logToUser(
                     f"Layer '{layer.name()}' has unsupported provider type '{data_provider_type}' and cannot be sent",
                     level=2,
@@ -261,6 +266,7 @@ def layerToSpeckle(
     try:
         # print("___layerToSpeckle")
         dataStorage = plugin.dataStorage
+        dataStorage.latestActionFeaturesReport = []
         project: QgsProject = plugin.project
         layerName = selectedLayer.name()
 
@@ -372,13 +378,21 @@ def layerToSpeckle(
                 )
                 # if b is None: continue
 
-                if extrusionApplied is True and isinstance(b, GisPolygonElement):
+                if (
+                    extrusionApplied is True
+                    and isinstance(b, GisPolygonElement)
+                    and isinstance(b.geometry, list)
+                ):
                     # b.attributes["Speckle_ID"] = str(i+1) # not needed
                     for g in b.geometry:
                         if g is not None and g != "None":
                             # remove native polygon props, if extruded:
                             g.boundary = None
                             g.voids = None
+
+                if isinstance(b, Base):
+                    b.applicationId = generate_qgis_app_id(selectedLayer, f)
+
                 layerObjs.append(b)
                 if (
                     dataStorage.latestActionFeaturesReport[
@@ -391,6 +405,9 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = VectorLayer(
                 units=units_proj,
+                applicationId=hashlib.md5(
+                    selectedLayer.id().encode("utf-8")
+                ).hexdigest(),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 elements=layerObjs,
@@ -417,13 +434,14 @@ def layerToSpeckle(
                 dataStorage.latestActionReport.append(item)
 
             layerBase.renderer = layerRenderer
-            layerBase.applicationId = selectedLayer.id()
+            # layerBase.applicationId = selectedLayer.id()
 
             return layerBase
 
         elif isinstance(selectedLayer, QgsRasterLayer):
             # write feature attributes
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
+            b.applicationId = generate_qgis_raster_app_id(selectedLayer)
             if b is None:
                 dataStorage.latestActionReport.append(
                     {
@@ -437,6 +455,9 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = RasterLayer(
                 units=units_proj,
+                applicationId=hashlib.md5(
+                    selectedLayer.id().encode("utf-8")
+                ).hexdigest(),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 rasterCrs=layerCRS,
@@ -451,7 +472,7 @@ def layerToSpeckle(
             )
 
             layerBase.renderer = layerRenderer
-            layerBase.applicationId = selectedLayer.id()
+            # layerBase.applicationId = selectedLayer.id()
             return layerBase
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
@@ -1644,17 +1665,6 @@ def addVectorMainThread(obj: Tuple):
             new_feat = featureToNative(f, newFields, plugin.dataStorage)
             if new_feat is not None and new_feat != "":
                 fets.append(new_feat)
-
-                if isinstance(f, GisNonGeometryElement):
-                    logToUser(
-                        f"'{geomType}' feature does not contain geometry",
-                        level=2,
-                        func=inspect.stack()[0][3],
-                    )
-                    report_features[len(report_features) - 1].update(
-                        {"errors": f"'{geomType}' feature does not contain geometry"}
-                    )
-                    all_feature_errors_count += 1
             else:
                 logToUser(
                     f"'{geomType}' feature skipped due to invalid data",
@@ -1881,7 +1891,7 @@ def rasterLayerToNative(layer: RasterLayer, streamBranch: str, nameBase: str, pl
     try:
         # project = plugin.project
         # layerName = removeSpecialCharacters(layer.name) + "_Speckle"
-        layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name) + "_Speckle"
+        layerName = removeSpecialCharacters(nameBase + SYMBOL + layer.name)
 
         newName = layerName  # f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
 
@@ -1931,10 +1941,10 @@ def addRasterMainThread(obj: Tuple):
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50]
         # print(f"Final short name: {shortName}")
         try:
-            layerName = newName.split(shortName)[0] + shortName  # + ("_" + geom_print)
+            layerName = newName.split(shortName)[0] + shortName + "_Speckle"
         except:
-            layerName = newName
-        finalName = shortName  # + ("_" + geom_print)
+            layerName = newName + "_Speckle"
+        finalName = shortName + "_Speckle"
 
         # report on receive:
         dataStorage.latestActionLayers.append(finalName)
@@ -2039,7 +2049,7 @@ def addRasterMainThread(obj: Tuple):
             rasterband = np.array(bandValues[i])
             try:
                 rasterband = np.reshape(rasterband, (feat.y_size, feat.x_size))
-            except:
+            except Exception as e:
                 rasterband = np.reshape(
                     rasterband, (feat["Y pixels"], feat["X pixels"])
                 )
@@ -2051,13 +2061,13 @@ def addRasterMainThread(obj: Tuple):
             # get noDataVal or use default
             try:
                 try:
-                    noDataVal = float(feat.noDataValue)
+                    noDataVal = feat.noDataValue[i]
                 except:
-                    noDataVal = float(feat["NoDataVal"][i])  # if value available
+                    noDataVal = feat["NoDataVal"][i]  # if value available
                 try:
-                    band.SetNoDataValue(noDataVal)
-                except:
                     band.SetNoDataValue(float(noDataVal))
+                except:
+                    band.SetNoDataValue(noDataVal)
             except:
                 pass
 
