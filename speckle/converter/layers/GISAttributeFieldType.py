@@ -19,7 +19,8 @@ class GISAttributeFieldType(str, Enum):
     BOOL = "Bool"
 
     @staticmethod
-    def assign_speckle_field_type(native_geom_type: int):
+    def assign_speckle_field_type(native_geom_type: int) -> "GISAttributeFieldType":
+        """Assign Speckle representation of the Field type."""
 
         type_index: int = native_geom_type % 1000
         val_dict = {
@@ -31,27 +32,30 @@ class GISAttributeFieldType(str, Enum):
             15: GISAttributeFieldType.TIMEONLY,
             16: GISAttributeFieldType.DATETIME,
         }
-        result: str = val_dict.get(type_index, GISAttributeFieldType.STRING_TYPE)
+        result: GISAttributeFieldType = val_dict.get(
+            type_index, GISAttributeFieldType.STRING_TYPE
+        )
         return result
 
     @staticmethod
-    def get_native_field_type_from_speckle(string_geom_type: str):
+    def get_native_field_type_from_speckle(string_geom_type: str) -> int:
+        """Get native Field type (not currently used)."""
 
         speckle_type = GISAttributeFieldType(string_geom_type)
         val_dict = {
-            GISAttributeFieldType.GUID_TYPE: "Guid",
-            GISAttributeFieldType.OID: "Oid",
-            GISAttributeFieldType.STRING_TYPE: "String",
-            GISAttributeFieldType.FLOAT_TYPE: "Float",
-            GISAttributeFieldType.INTEGER_TYPE: "Integer",
-            GISAttributeFieldType.BIGINTEGER: "BigInteger",
-            GISAttributeFieldType.SMALLINTEGER: "SmallInteger",
-            GISAttributeFieldType.DOUBLE_TYPE: "Double",
-            GISAttributeFieldType.DATETIME: "DateTime",
-            GISAttributeFieldType.DATEONLY: "DateOnly",
-            GISAttributeFieldType.TIMEONLY: "TimeOnly",
-            GISAttributeFieldType.TIMESTAMPOFFSET: "TimeStampOffset",
-            GISAttributeFieldType.BOOL: "Bool",
+            GISAttributeFieldType.GUID_TYPE: 10,
+            GISAttributeFieldType.OID: 10,
+            GISAttributeFieldType.STRING_TYPE: 10,
+            GISAttributeFieldType.FLOAT_TYPE: 6,
+            GISAttributeFieldType.INTEGER_TYPE: 2,
+            GISAttributeFieldType.BIGINTEGER: 2,
+            GISAttributeFieldType.SMALLINTEGER: 2,
+            GISAttributeFieldType.DOUBLE_TYPE: 6,
+            GISAttributeFieldType.DATETIME: 16,
+            GISAttributeFieldType.DATEONLY: 14,
+            GISAttributeFieldType.TIMEONLY: 15,
+            GISAttributeFieldType.TIMESTAMPOFFSET: 10,
+            GISAttributeFieldType.BOOL: 1,
         }
-        result: str = val_dict.get(speckle_type, GISAttributeFieldType.STRING_TYPE)
+        result: int = val_dict.get(speckle_type, 10)
         return result

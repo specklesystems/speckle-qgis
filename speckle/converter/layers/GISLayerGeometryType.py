@@ -13,7 +13,9 @@ class GISLayerGeometryType(str, Enum):
     POINTCLOUD = "Pointcloud"
 
     @staticmethod
-    def assign_speckle_layer_geometry_type(native_geom_type: int):
+    def assign_speckle_layer_geometry_type(
+        native_geom_type: int,
+    ) -> "GISLayerGeometryType":
         """Get Speckle representation of the Layer Geometry Type."""
 
         type_index: int = native_geom_type % 1000
@@ -32,7 +34,9 @@ class GISLayerGeometryType(str, Enum):
             12: "MultiSurface",
             17: "Triangle",
         }
-        result: str = val_dict.get(type_index, GISLayerGeometryType.NONE)
+        result: GISLayerGeometryType = val_dict.get(
+            type_index, GISLayerGeometryType.NONE
+        )
 
         # write 3d polygons as a separate type
         if native_geom_type > 1000 and result == GISLayerGeometryType.POLYGON:
@@ -41,7 +45,9 @@ class GISLayerGeometryType(str, Enum):
         return result
 
     @staticmethod
-    def get_native_layer_geometry_type_from_speckle(string_geom_type: str):
+    def get_native_layer_geometry_type_from_speckle(
+        string_geom_type: str,
+    ) -> str | None:
         """Get native Layer Geometry Type."""
 
         speckle_type = GISLayerGeometryType(string_geom_type)
@@ -54,5 +60,5 @@ class GISLayerGeometryType(str, Enum):
             GISLayerGeometryType.MULTIPATCH: "MultiPolygonZ",
             # GISLayerGeometryType.POINTCLOUD: ,
         }
-        result: str = val_dict.get(speckle_type, "None")
+        result: str | None = val_dict.get(speckle_type)
         return result
