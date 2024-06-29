@@ -116,8 +116,11 @@ def test_validateBranch(stream):
     assert isinstance(result, Branch)
 
 
-def test_validateBranch_no_commits(stream_fe1):
-    branch_name = "main"
+def test_validateBranch_no_commits():
+    sample_wrapper = StreamWrapper("https://latest.speckle.dev/streams/7117052f4e")
+    sample_wrapper.get_client()
+    stream_fe1 = sample_wrapper._client.stream.get(id=sample_wrapper.stream_id)
+    branch_name = "empty_branch"
     result = validateBranch(stream_fe1, branch_name, checkCommits=True, dockwidget=None)
     assert result is None
 

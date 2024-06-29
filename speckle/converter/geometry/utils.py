@@ -735,11 +735,16 @@ def getArcNormal(poly: Arc, midPt: Point, dataStorage) -> Union[Vector, None]:
 
 def apply_pt_offsets_rotation_on_send(
     x: float, y: float, dataStorage
-) -> Tuple[Union[float, None]]:  # on Send
+) -> Tuple[float, float]:  # on Send
     try:
         offset_x = dataStorage.crs_offset_x
         offset_y = dataStorage.crs_offset_y
         rotation = dataStorage.crs_rotation
+        if offset_x == offset_y == rotation == 0:
+            return x, y
+        if offset_x is None and offset_y is None and rotation is None:
+            return x, y
+
         if offset_x is not None and isinstance(offset_x, float):
             x -= offset_x
         if offset_y is not None and isinstance(offset_y, float):
@@ -757,7 +762,7 @@ def apply_pt_offsets_rotation_on_send(
         return x, y
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        return None, None
+        raise e
 
 
 def transform_speckle_pt_on_receive(pt_original: Point, dataStorage) -> Point:
