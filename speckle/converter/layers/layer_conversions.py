@@ -6,7 +6,7 @@ import enum
 import inspect
 import hashlib
 import math
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 from specklepy.objects import Base
 from specklepy.objects.geometry import (
     Mesh,
@@ -986,7 +986,7 @@ def bimVectorLayerToNative(
     geomType: str,
     streamBranch: str,
     plugin,
-    matrix: list | None = None,
+    matrix: Optional[list] = None,
 ):
     # print("02_________BIM vector layer to native_____")
     try:

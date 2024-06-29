@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 
 class GISLayerGeometryType(str, Enum):
@@ -47,7 +48,7 @@ class GISLayerGeometryType(str, Enum):
     @staticmethod
     def get_native_layer_geometry_type_from_speckle(
         string_geom_type: str,
-    ) -> str | None:
+    ) -> Optional[str]:
         """Get native Layer Geometry Type."""
 
         speckle_type = GISLayerGeometryType(string_geom_type)
@@ -60,5 +61,5 @@ class GISLayerGeometryType(str, Enum):
             GISLayerGeometryType.MULTIPATCH: "MultiPolygonZ",
             # GISLayerGeometryType.POINTCLOUD: ,
         }
-        result: str | None = val_dict.get(speckle_type)
+        result: Optional[str] = val_dict.get(speckle_type)
         return result
