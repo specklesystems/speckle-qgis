@@ -66,31 +66,34 @@ ATTRS_REMOVE = [
 
 
 def generate_qgis_app_id(
-    base: Base,
     layer: Union["QgsRasterLayer", "QgsVectorLayer"],
     f: "QgsFeature",
 ):
     """Generate unique ID for Vector feature."""
     try:
-        fieldnames = [str(field.name()) for field in layer.fields()]
-        props = [str(f[prop]) for prop in fieldnames]
+
         try:
-            geoms = f.geometry()
+            geoms = str(f.geometry())
         except Exception as e:
             geoms = ""
 
-        id_data: str = (
-            layer.id()
-            + str(layer.wkbType())
-            + str(fieldnames)
-            + str(props)
-            + str(geoms)
-        )
-        return hashlib.md5(id_data.encode('utf-8')).hexdigest()
+        if layer is not None:
+            layer_id = layer.id()
+            layer_geom_type = str(layer.wkbType())
+            fieldnames = [str(field.name()) for field in layer.fields()]
+            props = [str(f[prop]) for prop in fieldnames]
+        else:
+            layer_id = ""
+            layer_geom_type = ""
+            fieldnames = []
+            props = [attr for attr in f.attributes()]
+
+        id_data: str = layer_id + layer_geom_type + str(fieldnames) + str(props) + geoms
+        return hashlib.md5(id_data.encode("utf-8")).hexdigest()
 
     except Exception as e:
         logToUser(
-            f"Application ID not generated for feature in layer {layer.name()}: {e}",
+            f"Application ID not generated for feature in layer {layer.name() if layer is not None else ''}: {e}",
             level=1,
         )
         return ""
@@ -104,7 +107,7 @@ def generate_qgis_raster_app_id(rasterLayer):
         for i in range(rasterLayer.bandCount()):
             band = file_ds.GetRasterBand(i + 1)
             id_data += str(band.ReadAsArray())
-        return hashlib.md5(id_data.encode('utf-8')).hexdigest()
+        return hashlib.md5(id_data.encode("utf-8")).hexdigest()
 
     except Exception as e:
         logToUser(
@@ -561,6 +564,7 @@ def getClosestIndex(x):
 
 
 def getArrayIndicesFromXY(settings, x, y):
+    """Get cell x&y incices (and remainders) on a given layer, from absolute XY coordinates."""
     resX, resY, minX, minY, sizeX, sizeY, wkt, proj = settings
     index2 = (x - minX) / resX
     index1 = (y - minY) / resY
@@ -589,47 +593,10 @@ def getArrayIndicesFromXY(settings, x, y):
         return ind1, ind2, remainder1, remainder2
 
 
-def getHeightWithRemainderFromArray(height_array, texture_transform, ind1, ind2):
-    if texture_transform is True:
-        z = height_array[ind1][ind2]
-        r"""
-        # TODO 
-        indexFloor1 = index1_0 if ind1>0 else ind1
-        indexFloor2 = index2_0 if ind2>0 else ind2
-
-        rem1 = remainder1 if ind1>0 else remainder1_0
-        rem2 = remainder2 if ind2>0 else remainder2_0
-
-        rem1_share = rem1/ (rem1 + rem2)
-        rem2_share = rem2/ (rem1 + rem2)
-        z = height_array[indexFloor1][indexFloor2] +  (height_array[ind1][ind2] - height_array[indexFloor1][ind2])*rem1*rem1_share + (height_array[ind1][ind2] - height_array[ind1][indexFloor2])*rem2*rem2_share 
-        """
-    else:
-        z = height_array[ind1][ind2]
-    try:
-        val = float(z)
-    except:
-        val = None
-    return val
-
-
-def getXYofArrayPoint(
-    settings, indexX, indexY, selectedLayer, elevationLayer, dataStorage
-):
-    resX, resY, minX, minY = settings
-    x = minX + resX * indexX
-    y = minY + resY * indexY
-    # newX, newY = reprojectPt(x, y, wkt, proj, targetWKT, targetPROJ)
-    reprojected_pt = transform.transform(
-        dataStorage.project,
-        QgsPointXY(x, y),
-        selectedLayer.crs(),
-        elevationLayer.crs(),
-    )
-    newX = reprojected_pt.x()
-    newY = reprojected_pt.y()
-
-    return newX, newY
+def getXYofArrayPoint(rasterResXY, minX, minY, indexX, indexY):
+    x = minX + rasterResXY[0] * indexX
+    y = minY + rasterResXY[1] * indexY
+    return x, y
 
 
 def isAppliedLayerTransformByKeywords(
@@ -701,7 +668,7 @@ def get_raster_stats(rasterLayer):
         sizeX, sizeY = (band.ReadAsArray().shape[1], band.ReadAsArray().shape[0])
 
         return xres, yres, originX, originY, sizeX, sizeY, rasterWkt, rasterProj
-    except:
+    except Exception as e:
         return None, None, None, None, None, None, None, None
 
 
@@ -710,17 +677,6 @@ def getRasterArrays(elevationLayer):
 
     try:
         elevationSource = gdal.Open(elevationLayer.source(), gdal.GA_ReadOnly)
-        settings_elevation_layer = get_raster_stats(elevationLayer)
-        (
-            xres,
-            yres,
-            originX,
-            originY,
-            sizeX,
-            sizeY,
-            rasterWkt,
-            rasterProj,
-        ) = settings_elevation_layer
 
         all_arrays = []
         all_mins = []

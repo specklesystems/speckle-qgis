@@ -1,4 +1,5 @@
 import threading
+from plugin_utils.helpers import string_diff
 from specklepy_qt_ui.qt_ui.dockwidget_main import (
     SpeckleQGISDialog as SpeckleQGISDialog_UI,
 )
@@ -28,12 +29,21 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
         self.setupUi(self)
         self.runAllSetup()
 
-    def createMappingDialog(self):
+    def createMappingDialog(self, plugin):
         if self.mappingSendDialog is None:
             self.mappingSendDialog = MappingSendDialogQGIS(None)
             self.mappingSendDialog.dataStorage = self.dataStorage
+            self.mappingSendDialog.dialog_button.disconnect()
+            self.mappingSendDialog.dialog_button.clicked.connect(
+                lambda: self.read_elevation_from_dialog(plugin)
+            )
 
         self.mappingSendDialog.runSetup()
+
+    def read_elevation_from_dialog(self, plugin):
+        self.dataStorage = self.mappingSendDialog.saveElevationLayer()
+        plugin.dataStorage = self.dataStorage
+        self.mappingSendDialog.close()
 
     def completeStreamSection(self, plugin):
         try:
@@ -80,9 +90,12 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
             for stream in plugin.current_streams:
                 self.streamList.addItems(
                     [
-                        f"Stream not accessible - {stream[0].stream_id}"
-                        if stream[1] is None or isinstance(stream[1], SpeckleException)
-                        else f"{stream[1].name}, {stream[1].id} | {stream[0].stream_url.split('/streams')[0].split('/projects')[0]}"
+                        (
+                            f"Stream not accessible - {stream[0].stream_id}"
+                            if stream[1] is None
+                            or isinstance(stream[1], SpeckleException)
+                            else f"{stream[1].name}, {stream[1].id} | {stream[0].stream_url.split('/streams')[0].split('/projects')[0]}"
+                        )
                     ]
                 )
             if len(plugin.current_streams) == 0:
@@ -106,3 +119,93 @@ class SpeckleQGISDialog(SpeckleQGISDialog_UI, FORM_CLASS):
             if "speckle_" in t.name:
                 t.kill()
                 t.join()
+
+    def overwriteStartSettings(self):
+        self.reportBtn.disconnect()
+        self.reportBtn.clicked.connect(self.showDebugReport)
+
+    def showDebugReport(self):
+        from plugin_utils.installer import _debug
+
+        self.msgLog.showReport()
+        if _debug is True:
+            text = ""
+            report_new = self.dataStorage.flat_report_receive
+            report_old = self.dataStorage.flat_report_latest
+
+            for key, val in report_new.items():
+                if key in report_old:
+                    if report_new[key]["hash"] != report_old[key]["hash"]:
+
+                        diff: str = "GEOMETRY"
+                        diff_string = ""
+                        if (
+                            report_old[key]["attributes"]
+                            != report_new[key]["attributes"]
+                        ):
+                            diff = "ATTRIBUTES"
+                            diff_string = string_diff(
+                                report_new[key]["attributes"],
+                                report_old[key]["attributes"],
+                            )
+                            if (
+                                report_old[key]["geometry"]
+                                != report_new[key]["geometry"]
+                            ):
+                                diff = "BOTH"
+                                diff_string += "\n" + string_diff(
+                                    report_new[key]["attributes"],
+                                    report_old[key]["attributes"],
+                                )
+                        if diff == "GEOMETRY":
+                            diff_string = string_diff(
+                                report_new[key]["geometry"],
+                                report_old[key]["geometry"],
+                            )
+
+                        # add symbol
+                        if diff == "ATTRIBUTES":
+                            text += "🔶 "
+                        elif diff == "GEOMETRY":
+                            text += "🔷 "
+                        else:
+                            text += "🔷🔶 "
+
+                        # basic report item
+                        text += f"{key}:\ndiff: {diff},\nlayer_name: {report_new[key]['layer_name']},\nspeckle_ids: [{report_old[key]['speckle_id']}, {report_new[key]['speckle_id']}]\n{diff_string}\n\n"
+
+                        # add extra details about diff
+                        if diff in ["ATTRIBUTES", "GEOMETRY"]:
+
+                            text += f"{diff.lower()}: {report_old[key][diff.lower()]}\n"
+                            text += (
+                                f"{diff.lower()}: {report_new[key][diff.lower()]}\n\n"
+                            )
+
+                        else:
+                            for keyword in ["ATTRIBUTES", "GEOMETRY"]:
+                                text += f"{keyword.lower()}: {report_old[key][keyword.lower()]}\n"
+                                text += f"{keyword.lower()}: {report_new[key][keyword.lower()]}\n\n"
+
+                else:
+                    text += f"✅ {key}:\ndiff: ADDED,\nlayer_name: {report_new[key]['layer_name']},\nspeckle_ids: [{report_new[key]['speckle_id']},]\n\n"
+
+                    # extra details
+                    for keyword in ["ATTRIBUTES", "GEOMETRY"]:
+                        text += (
+                            f"{keyword.lower()}: {report_new[key][keyword.lower()]}\n"
+                        )
+                    text += "\n"
+
+            for key, val in report_old.items():
+                if key not in report_new:
+                    text += f"❌ {key}:\ndiff: DELETED,\nlayer_name: {report_old[key]['layer_name']},\nspeckle_ids: [{report_old[key]['speckle_id']},]\n\n"
+
+                    # extra details
+                    for keyword in ["ATTRIBUTES", "GEOMETRY"]:
+                        text += (
+                            f"{keyword.lower()}: {report_old[key][keyword.lower()]}\n"
+                        )
+                    text += "\n"
+
+            self.msgLog.reportDialog.report_text.setText(str(text))

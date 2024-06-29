@@ -283,10 +283,11 @@ def setProjectReferenceSystem(dataStorage: DataStorage, dockwidget=None):
     try:
         from qgis.core import QgsCoordinateReferenceSystem
 
+        r"""
         newCrsString = (
             "+proj=tmerc +ellps=WGS84 +datum=WGS84 +units=m +no_defs +lon_0="
             + str(dataStorage.custom_lon)
-            + " lat_0="
+            + " +lat_0="
             + str(dataStorage.custom_lat)
             + " +x_0=0 +y_0=0 +k_0=1"
         )
@@ -294,8 +295,10 @@ def setProjectReferenceSystem(dataStorage: DataStorage, dockwidget=None):
             newCrsString
         )  # fromWkt(newProjWkt)
         validate = QgsCoordinateReferenceSystem().createFromProj(newCrsString)
-
         wkt = newCrs.toWkt()
+        """
+        wkt = f'PROJCS["SpeckleCRS_latlon_{dataStorage.custom_lat}_{dataStorage.custom_lon}", GEOGCS["GCS_WGS_1984", DATUM["D_WGS_1984", SPHEROID["WGS_1984", 6378137.0, 298.257223563]], PRIMEM["Greenwich", 0.0], UNIT["Degree", 0.0174532925199433]], PROJECTION["Transverse_Mercator"], PARAMETER["False_Easting", 0.0], PARAMETER["False_Northing", 0.0], PARAMETER["Central_Meridian", {dataStorage.custom_lon}], PARAMETER["Scale_Factor", 1.0], PARAMETER["Latitude_Of_Origin", {dataStorage.custom_lat}], UNIT["Meter", 1.0]]'
+        validate = QgsCoordinateReferenceSystem().createFromWkt(wkt)
         newCRSfromWkt = QgsCoordinateReferenceSystem.fromWkt(wkt)
 
         if validate:
