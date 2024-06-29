@@ -1,20 +1,38 @@
 from enum import Enum
 
 
-class GISLayerGeometryType(str, Enum):
+class GISAttributeFieldType(str, Enum):
     """GIS VectorLayer geometry types"""
 
-    NONE = "None"
-    POINT = "Point"
-    POLYLINE = "Polyline"
-    POLYGON = "Polygon"
-    POLYGON3D = "Polygon3d"
-    MULTIPATCH = "Multipatch"
-    POINTCLOUD = "Pointcloud"
+    GUID_TYPE = "Guid"
+    OID = "Oid"
+    STRING_TYPE = "String"
+    FLOAT_TYPE = "Float"
+    INTEGER_TYPE = "Integer"
+    BIGINTEGER = "BigInteger"
+    SMALLINTEGER = "SmallInteger"
+    DOUBLE_TYPE = "Double"
+    DATETIME = "DateTime"
+    DATEONLY = "DateOnly"
+    TIMEONLY = "TimeOnly"
+    TIMESTAMPOFFSET = "TimeStampOffset"
 
+    r"""
+    qgis_types = [
+        (1, "bool"), 
+        (2, "int"),
+        (6, "decimal"),
+        (8, "map"),
+        (9, "int_list"),
+        (10, "string"),
+        (11, "string_list"),
+        (12, "binary"),
+        (14, "date"),
+        (15, "time"),
+        (16, "date_time") 
+    ]
     @staticmethod
     def assign_speckle_layer_geometry_type(native_geom_type: int):
-        """Get Speckle representation of the Layer Geometry Type."""
 
         type_index: int = native_geom_type % 1000
         val_dict = {
@@ -42,7 +60,6 @@ class GISLayerGeometryType(str, Enum):
 
     @staticmethod
     def get_native_layer_geometry_type_from_speckle(string_geom_type: str):
-        """Get native Layer Geometry Type."""
 
         speckle_type = GISLayerGeometryType(string_geom_type)
         val_dict = {
@@ -56,3 +73,4 @@ class GISLayerGeometryType(str, Enum):
         }
         result: str = val_dict.get(speckle_type, "None")
         return result
+    """
