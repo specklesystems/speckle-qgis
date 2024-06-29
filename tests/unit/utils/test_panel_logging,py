@@ -1,0 +1,13 @@
+from speckle.utils.panel_logging import logToUser, Logging
+
+
+def test_logToUser():
+    msg = ""
+    func = None
+    level = 1
+    plugin = None
+    url = ""
+    blue = False
+    report = False
+    # logToUser(msg, func, level, plugin, url, blue, report)
+    assert False

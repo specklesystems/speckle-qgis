@@ -3,10 +3,50 @@ from specklepy.objects import Base
 from specklepy.objects.geometry import Point, Line, Mesh
 from specklepy.objects.other import RevitParameter
 
+# run testing locally:
+# in .toml:
+# [tool.pytest.ini_options]
+# pythonpath = "speckle"
+# pytest -o console_output_style=classic
+# poetry self add poetry-dotenv-plugin
+# https://pypi.org/project/poetry-dotenv-plugin/
+# USE_PATH_FOR_GDAL_PYTHON=YES
+
+# from OSGeo4W shell:
+# "C:\Program Files\QGIS 3.34.1\bin\python-qgis.bat" -m pip install pytest
+# python -m pytest -cov C:\Users\katri\AppData\Roaming\QGIS\QGIS3\profiles\development\python\plugins\speckle-qgis\
+
+# "C:\Program Files\QGIS 3.34.1\bin\python-qgis.bat" C:\Users\katri\AppData\Roaming\QGIS\QGIS3\profiles\development\python\plugins\speckle-qgis\tests_qgis\unit\geometry_tests\test_point_mixed.py
+
+
+##################### debug serverInfo
+def getServerInfo():
+    from specklepy.core.api.client import SpeckleClient
+    from specklepy.core.api.resources.server import Resource as ServerResource
+    from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
+    d = DataStorage()
+    d.check_for_accounts()
+    acc = d.accounts[0]
+    clientSpeckle = SpeckleClient(
+        acc.serverInfo.url, acc.serverInfo.url.startswith("https")
+    )
+    r = ServerResource(
+        acc,
+        r"C:\Users\katri\AppData\Roaming\Speckle\Accounts",
+        clientSpeckle.httpclient,
+    )
+    r.get()
+
+
+getServerInfo()
+
+#####################################
+
 
 def someF(path):
     import importlib.util
     import sys
+
     if "/" in path:
         name = path.split("/")[-2]
     else:
@@ -16,22 +56,29 @@ def someF(path):
     sys.modules[name] = foo
     spec.loader.exec_module(foo)
     return foo
-    #foo.MyClass()
+    # foo.MyClass()
 
-import types 
+
+import types
+
+
 def reload_package(root_module):
     package_name = root_module.__name__
     # get a reference to each loaded module
-    loaded_package_modules = dict([
-        (key, value) for key, value in sys.modules.items() 
-        if key.startswith(package_name) and isinstance(value, types.ModuleType)])
+    loaded_package_modules = dict(
+        [
+            (key, value)
+            for key, value in sys.modules.items()
+            if key.startswith(package_name) and isinstance(value, types.ModuleType)
+        ]
+    )
     # delete references to these loaded modules from sys.modules
     for key in loaded_package_modules:
         del sys.modules[key]
-    # load each of the modules again; 
+    # load each of the modules again;
     # make old modules share state with new modules
     for key in loaded_package_modules:
-        print('loading %s' % key)
+        print("loading %s" % key)
         newmodule = __import__(key)
         oldmodule = loaded_package_modules[key]
         oldmodule.__dict__.clear()
@@ -46,15 +93,22 @@ import external_def
 
 from importlib import reload
 import urllib3
+
 urllib3 = reload(urllib3)
 
 ####################
 import os, sys
 from subprocess import run
+
 path = r"C:\Users\katri\AppData\Roaming\Speckle\connector_installations\QGIS"
 pythonExec = os.path.dirname(sys.executable) + "\\python3.exe"
 pythonExec = r"C:\Program Files\QGIS 3.32.2\apps\Python39\python3.exe"
-completed_process = run([pythonExec,"-m", "pip","install","-t",path, "requests-toolbelt==1.0.0"],capture_output=True,text=True)
+completed_process = run(
+    [pythonExec, "-m", "pip", "install", "-t", path, "requests-toolbelt==1.0.0"],
+    capture_output=True,
+    text=True,
+)
+
 
 #################################
 class RevitDirectShape(Base, speckle_type="Objects.BuiltElements.Revit.DirectShape"):
@@ -85,9 +139,7 @@ def createCommit():
     element.parameters[name_1] = RevitParameter()
     element.parameters[name_1].isTypeParameter = False
     element.parameters[name_1].value = "some text here"
-    element.parameters[
-        name_1
-    ].applicationUnitType = (
+    element.parameters[name_1].applicationUnitType = (
         "autodesk.spec:spec.string-2.0.0"  # "autodesk.spec:spec.string-2.0.0"
     )
     element.parameters[name_1].applicationInternalName = "text_param"
@@ -98,9 +150,7 @@ def createCommit():
     element.parameters[name_2].isTypeParameter = False
     element.parameters[name_2].value = 1122
     element.parameters[name_2].applicationUnit = "autodesk.unit.unit:centimeters-1.0.1"
-    element.parameters[
-        name_2
-    ].applicationUnitType = (
+    element.parameters[name_2].applicationUnitType = (
         "autodesk.spec.aec:distance-2.0.0"  # "autodesk.spec:spec.string-2.0.0"
     )
     element.parameters[name_2].applicationInternalName = name_2
