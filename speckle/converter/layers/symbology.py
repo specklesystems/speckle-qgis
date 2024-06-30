@@ -606,20 +606,16 @@ def rendererToSpeckle(
             redBand = renderer.redBand()
             greenBand = renderer.greenBand()
             blueBand = renderer.blueBand()
-            redContrast = (
-                redMin
-            ) = (
-                redMax
-            ) = (
-                greenContrast
-            ) = greenMin = greenMax = blueContrast = blueMin = blueMax = None
+            redContrast = redMin = redMax = greenContrast = greenMin = greenMax = (
+                blueContrast
+            ) = blueMin = blueMax = None
             try:
                 redContrast = (
                     renderer.redContrastEnhancement().contrastEnhancementAlgorithm()
                 )
                 redMin = renderer.redContrastEnhancement().minimumValue()
                 redMax = renderer.redContrastEnhancement().maximumValue()
-            except:
+            except:  # AttributeError: 'NoneType' object has no attribute 'contrastEnhancementAlgorithm'
                 pass
             try:
                 greenContrast = (
@@ -627,7 +623,7 @@ def rendererToSpeckle(
                 )
                 greenMin = renderer.greenContrastEnhancement().minimumValue()
                 greenMax = renderer.greenContrastEnhancement().maximumValue()
-            except:
+            except:  # AttributeError
                 pass
             try:
                 blueContrast = (
@@ -635,7 +631,7 @@ def rendererToSpeckle(
                 )
                 blueMin = renderer.blueContrastEnhancement().minimumValue()
                 blueMax = renderer.blueContrastEnhancement().maximumValue()
-            except:
+            except:  # AttributeError
                 pass
             layerRenderer.update(
                 {

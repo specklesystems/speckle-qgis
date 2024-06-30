@@ -305,38 +305,65 @@ def get_raster_colors(
     plugin,
 ):
     list_colors = []
-    if rendererType == "multibandcolor":  # RGB
+    if rendererType == "multibandcolor":
 
-        vals_range0 = rasterBandMaxVal[0] - rasterBandMinVal[0]
-        vals_range1 = rasterBandMaxVal[1] - rasterBandMinVal[1]
-        vals_range2 = rasterBandMaxVal[2] - rasterBandMinVal[2]
+        # mock values for R,G,B channels
+        vals_red = [0 for _ in rasterBandVals[0]]
+        vals_green = [0 for _ in rasterBandVals[0]]
+        vals_blue = [0 for _ in rasterBandVals[0]]
+
+        vals_range_red = 1
+        vals_range_green = 1
+        vals_range_blue = 1
+
+        val_min_red = 0
+        val_min_green = 0
+        val_min_blue = 0
+
+        val_na_red = None
+        val_na_green = None
+        val_na_blue = None
+
+        # get band index for each color channel
+        bandRed = int(layer.renderer().redBand())
+        bandGreen = int(layer.renderer().greenBand())
+        bandBlue = int(layer.renderer().blueBand())
+
+        # assign correct values to R,G,B channels, where available
+        for band_index in range(len(rasterBandVals)):
+            # if statements are not exclusive, as QGIS allows to assugn 1 band to several color channels
+            if band_index + 1 == bandRed:
+                vals_red = rasterBandVals[band_index]
+                vals_range_red = (
+                    rasterBandMaxVal[band_index] - rasterBandMinVal[band_index]
+                )
+                val_min_red = rasterBandMinVal[band_index]
+                val_na_red = rasterBandNoDataVal[band_index]
+            if band_index + 1 == bandGreen:
+                vals_green = rasterBandVals[band_index]
+                vals_range_green = (
+                    rasterBandMaxVal[band_index] - rasterBandMinVal[band_index]
+                )
+                val_min_green = rasterBandMinVal[band_index]
+                val_na_green = rasterBandNoDataVal[band_index]
+            if band_index + 1 == bandBlue:
+                vals_blue = rasterBandVals[band_index]
+                vals_range_blue = (
+                    rasterBandMaxVal[band_index] - rasterBandMinVal[band_index]
+                )
+                val_min_blue = rasterBandMinVal[band_index]
+                val_na_blue = rasterBandNoDataVal[band_index]
 
         list_colors = [
             (
                 (255 << 24)
-                | (
-                    int(
-                        255
-                        * (rasterBandVals[0][ind] - rasterBandMinVal[0])
-                        / vals_range0
-                    )
-                    << 16
-                )
-                | (
-                    int(
-                        255
-                        * (rasterBandVals[1][ind] - rasterBandMinVal[1])
-                        / vals_range1
-                    )
-                    << 8
-                )
-                | int(
-                    255 * (rasterBandVals[2][ind] - rasterBandMinVal[2]) / vals_range2
-                )
+                | (int(255 * (vals_red[ind] - val_min_red) / vals_range_red) << 16)
+                | (int(255 * (vals_green[ind] - val_min_green) / vals_range_green) << 8)
+                | int(255 * (vals_blue[ind] - val_min_blue) / vals_range_blue)
                 if (
-                    rasterBandVals[0][ind] != rasterBandNoDataVal[0]
-                    and rasterBandVals[1][ind] != rasterBandNoDataVal[1]
-                    and rasterBandVals[2][ind] != rasterBandNoDataVal[2]
+                    vals_red[ind] != val_na_red
+                    and vals_green[ind] != val_na_green
+                    and vals_blue[ind] != val_na_blue
                 )
                 else (0 << 24) + (0 << 16) + (0 << 8) + 0
             )
@@ -379,7 +406,7 @@ def get_raster_colors(
         except Exception as e:
             # log warning, but don't prevent conversion
             logToUser(
-                f"Raster renderer of type 'paletted' couldn't read the renderer class values, default renderer will be applied: {e}",
+                f"Raster renderer of type '{rendererType}' couldn't read the renderer class values, default renderer will be applied: {e}",
                 level=1,
                 func=inspect.stack()[0][3],
                 plugin=plugin.dockwidget,
@@ -431,7 +458,7 @@ def get_raster_colors(
         except Exception as e:
             # log warning, but don't prevent conversion
             logToUser(
-                f"Raster renderer of type 'paletted' couldn't read the renderer class values, default renderer will be applied: {e}",
+                f"Raster renderer of type '{rendererType}' couldn't read the renderer class values, default renderer will be applied: {e}",
                 level=1,
                 func=inspect.stack()[0][3],
                 plugin=plugin.dockwidget,
@@ -450,7 +477,7 @@ def get_raster_colors(
     else:  # greyscale
         if rendererType != "singlebandgray":
             logToUser(
-                f"Raster renderer type {rendererType} is not supported, rendering the raster in greyscale",
+                f"Raster renderer type {rendererType} is not supported, default renderer will be applied",
                 level=1,
                 func=inspect.stack()[0][3],
             )
