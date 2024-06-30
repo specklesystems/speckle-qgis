@@ -211,7 +211,7 @@ def meshPartsFromPolygon(
         iterations = 0
 
         coef = 1
-        maxPoints = 500
+        maxPoints = 5000
         if len(polyBorder) >= maxPoints:
             coef = math.floor(len(polyBorder) / maxPoints)
 
