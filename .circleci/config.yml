@@ -84,9 +84,10 @@ jobs:
             VERSION=$(echo "$SEMVER" | sed -e 's/[a-zA-Z]*\///')
             python patch_version.py $VERSION
       - run:
-          name: Remove extra License
+          name: Remove extra License and Readme
           command: |
             rm ./specklepy_qt_ui/LICENSE
+            rm ./specklepy_qt_ui/qt_ui/README.md
       - run:
           name: ZIP plugin
           command: pb_tool zip
