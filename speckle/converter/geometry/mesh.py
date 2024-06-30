@@ -1,4 +1,5 @@
 import inspect
+import math
 from typing import List, Tuple, Union
 from specklepy.objects.geometry import Mesh, Point
 from specklepy.objects.other import RenderMaterial
@@ -210,18 +211,16 @@ def meshPartsFromPolygon(
         iterations = 0
 
         coef = 1
-        maxPoints = 5000
+        maxPoints = 500
         if len(polyBorder) >= maxPoints:
-            coef = int(len(polyBorder) / maxPoints)
+            coef = math.floor(len(polyBorder) / maxPoints)
 
         if len(polyBorder) < 3:
             return None, None, None, None, None
 
         col = featureColorfromNativeRenderer(feature, layer)
 
-        if (
-            len(voidsAsPts) == 0 or len(polyBorder) > maxPoints / 100
-        ):  # only if there is a mesh with no voids
+        if len(voidsAsPts) == 0:  # only if there is a mesh with no voids
             # floor: need positive - clockwise (looking down); cap need negative (counter-clockwise)
             polyBorder = fix_orientation(polyBorder, True, coef)  # clockwise
 

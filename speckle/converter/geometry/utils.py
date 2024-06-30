@@ -205,9 +205,9 @@ def getPolyPtsSegments(
                 elif pt not in pointListLocalOuter:
                     # make sure it's not already included in the outer part of geometry
 
-                    if coef is None or len(pt_list) / coef < 4:
+                    if coef is None or len(pt_list) / coef < 5:
                         # coef was calculated by the outer ring.
-                        # We need to make sure inner ring will have at least 3 points, otherwise ignore coeff.
+                        # We need to make sure inner ring will have at least 4 points, otherwise ignore coeff.
                         pointListLocal.append(pt)
                     else:
                         if i % coef == 0:
@@ -454,13 +454,20 @@ def fix_orientation(
         index = k + 1
         if k == len(polyBorder) - 1:
             index = 0
-        pt = polyBorder[k * coef]
-        pt2 = polyBorder[index * coef]
 
-        if isinstance(pt, Point) and isinstance(pt2, Point):
-            sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)  # if Speckle Points
-        else:
-            sum_orientation += (pt2.x() - pt.x()) * (pt2.y() + pt.y())  # if QGIS Points
+        try:
+            pt = polyBorder[k * coef]
+            pt2 = polyBorder[index * coef]
+
+            if isinstance(pt, Point) and isinstance(pt2, Point):
+                sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)  # if Speckle Points
+            else:
+                sum_orientation += (pt2.x() - pt.x()) * (
+                    pt2.y() + pt.y()
+                )  # if QGIS Points
+        except IndexError:
+            break
+
     if positive is True:
         if sum_orientation < 0:
             polyBorder.reverse()
