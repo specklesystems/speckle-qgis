@@ -595,6 +595,8 @@ def isAppliedLayerTransformByKeywords(
 
 def getElevationLayer(dataStorage):
     elevationLayer = dataStorage.elevationLayer
+    if elevationLayer is None:
+        return None
     try:
         # check if layer was not deleted
         name = elevationLayer.name()

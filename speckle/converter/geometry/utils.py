@@ -127,7 +127,9 @@ def projectToPolygon(
     return z
 
 
-def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage", xform):
+def getPolyPtsSegments(
+    geom: Any, dataStorage: "DataStorage", coef: Union[int, None] = None, xform=None
+):
     vertices = []
     vertices3d = []
     segmList = []
@@ -145,18 +147,27 @@ def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage", xform):
             pt_iterator = geom.vertices()
 
     # get boundary points and segments
-    pointListLocal = []
+    pointListLocalOuter = []
     startLen = len(vertices)
     for i, pt in enumerate(pt_iterator):
         if (
-            len(pointListLocal) > 0
-            and pt.x() == pointListLocal[0].x()
-            and pt.y() == pointListLocal[0].y()
-        ):  # don't repeat 1st point
+            len(pointListLocalOuter) > 0
+            and pt.x() == pointListLocalOuter[0].x()
+            and pt.y() == pointListLocalOuter[0].y()
+        ):
+            # don't repeat 1st point
             pass
+        elif coef is None:
+            pointListLocalOuter.append(pt)
         else:
-            pointListLocal.append(pt)
-    for i, pt in enumerate(pointListLocal):
+            if i % coef == 0:
+                pointListLocalOuter.append(pt)
+            else:
+                # don't add points, which are in-between specified step (coeff)
+                # e.g. if coeff=5, we skip ponts 1,2,3,4, but add points 0 and 5
+                pass
+
+    for i, pt in enumerate(pointListLocalOuter):
         x, y = apply_pt_offsets_rotation_on_send(pt.x(), pt.y(), dataStorage)
         vertices.append([x, y])
         try:
@@ -182,18 +193,29 @@ def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage", xform):
             pt_list = list(pt_iterator)
             pointListLocal = []
             startLen = len(vertices)
+
             for i, pt in enumerate(pt_list):
                 if (
                     len(pointListLocal) > 0
                     and pt.x() == pointListLocal[0].x()
                     and pt.y() == pointListLocal[0].y()
-                ):  # don't repeat 1st point
+                ):
+                    # don't repeat 1st point
                     continue
-                elif [
-                    pt.x(),
-                    pt.y(),
-                ] not in vertices:  # in case it's not the inner part of geometry
-                    pointListLocal.append(pt)
+                elif pt not in pointListLocalOuter:
+                    # make sure it's not already included in the outer part of geometry
+
+                    if coef is None or len(pt_list) / coef < 5:
+                        # coef was calculated by the outer ring.
+                        # We need to make sure inner ring will have at least 4 points, otherwise ignore coeff.
+                        pointListLocal.append(pt)
+                    else:
+                        if i % coef == 0:
+                            pointListLocal.append(pt)
+                        else:
+                            # don't add points, which are in-between specified step (coeff)
+                            # e.g. if coeff=5, we skip ponts 1,2,3,4, but add points 0 and 5
+                            pass
 
             if len(pointListLocal) > 2:
                 holes.append(
@@ -322,14 +344,14 @@ def to_triangles(data: dict, attempt: int = 0) -> Tuple[Union[dict, None], int]:
 
 
 def triangulatePolygon(
-    geom: Any, dataStorage: "DataStorage", xform=None
+    geom: Any, dataStorage: "DataStorage", coef: Union[int, None] = None, xform=None
 ) -> Tuple[dict, Union[List[List[float]], None], int]:
     try:
         # import triangle as tr
         vertices = []  # only outer
         segments = []  # including holes
         holes = []
-        pack = getPolyPtsSegments(geom, dataStorage, xform)
+        pack = getPolyPtsSegments(geom, dataStorage, coef, xform)
 
         vertices, vertices3d, segments, holes = pack
 
@@ -432,13 +454,20 @@ def fix_orientation(
         index = k + 1
         if k == len(polyBorder) - 1:
             index = 0
-        pt = polyBorder[k * coef]
-        pt2 = polyBorder[index * coef]
 
-        if isinstance(pt, Point) and isinstance(pt2, Point):
-            sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)  # if Speckle Points
-        else:
-            sum_orientation += (pt2.x() - pt.x()) * (pt2.y() + pt.y())  # if QGIS Points
+        try:
+            pt = polyBorder[k * coef]
+            pt2 = polyBorder[index * coef]
+
+            if isinstance(pt, Point) and isinstance(pt2, Point):
+                sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)  # if Speckle Points
+            else:
+                sum_orientation += (pt2.x() - pt.x()) * (
+                    pt2.y() + pt.y()
+                )  # if QGIS Points
+        except IndexError:
+            break
+
     if positive is True:
         if sum_orientation < 0:
             polyBorder.reverse()

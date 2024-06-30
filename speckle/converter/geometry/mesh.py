@@ -1,4 +1,5 @@
 import inspect
+import math
 from typing import List, Tuple, Union
 from specklepy.objects.geometry import Mesh, Point
 from specklepy.objects.other import RenderMaterial
@@ -210,18 +211,16 @@ def meshPartsFromPolygon(
         iterations = 0
 
         coef = 1
-        maxPoints = 5000
+        maxPoints = 500
         if len(polyBorder) >= maxPoints:
-            coef = int(len(polyBorder) / maxPoints)
+            coef = math.floor(len(polyBorder) / maxPoints)
 
         if len(polyBorder) < 3:
             return None, None, None, None, None
 
         col = featureColorfromNativeRenderer(feature, layer)
 
-        if (
-            len(voidsAsPts) == 0
-        ):  # only if there is a mesh with no voids and large amount of points
+        if len(voidsAsPts) == 0:  # only if there is a mesh with no voids
             # floor: need positive - clockwise (looking down); cap need negative (counter-clockwise)
             polyBorder = fix_orientation(polyBorder, True, coef)  # clockwise
 
@@ -229,8 +228,8 @@ def meshPartsFromPolygon(
                 polyBorder.reverse()  # when no extrusions: face up, counter-clockwise
 
             for k, ptt in enumerate(polyBorder):  # pointList:
-                pt = polyBorder[k * coef]
                 if k < maxPoints:
+                    pt = polyBorder[k * coef]
                     vertices.extend([pt.x, pt.y, pt.z])
                     total_vertices += 1
                 else:
@@ -351,7 +350,7 @@ def meshPartsFromPolygon(
 
             # get points from original geometry #################################
             triangulated_geom, vertices3d_original, iterations = triangulatePolygon(
-                feature_geom, dataStorage, xform
+                feature_geom, dataStorage, coef, xform
             )
 
             # temporary solution, as the list of points is not the same anymore:
