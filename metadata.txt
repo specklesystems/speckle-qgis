@@ -49,7 +49,7 @@ hasProcessingProvider=no
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=python, speckle, interoperability, collaboration, bim, cad 
+tags=python, speckle, interoperability, collaboration, 3d, bim, cad, online, server, web, cloud
 
 homepage=http://speckle.systems
 category=Web
