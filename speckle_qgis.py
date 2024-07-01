@@ -496,7 +496,8 @@ class SpeckleQGIS:
             units = str(QgsUnitTypes.encodeUnit(projectCRS.mapUnits()))
             self.dataStorage.latestActionUnits = units
             try:
-                units = get_units_from_string(units)
+                units_class = get_units_from_string(units)
+                units = units_class.value
             except SpeckleInvalidUnitException:
                 units = "none"
             self.dataStorage.currentUnits = units

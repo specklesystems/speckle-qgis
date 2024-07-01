@@ -237,9 +237,7 @@ def convertToSpeckle(
                             v[1] for v in enumerate(poly.exteriorRing().vertices())
                         ]
                     except:
-                        boundaryPts = [
-                            v[1] for v in enumerate(poly.vertices())
-                        ]
+                        boundaryPts = [v[1] for v in enumerate(poly.vertices())]
                     if height is not None:
                         if isFlat(boundaryPts) is False:
                             logToUser(
@@ -445,6 +443,9 @@ def convertToNativeMulti(
             return multiPolylineToNative(items, dataStorage)
         # elif isinstance(first, Arc) or isinstance(first, Polycurve) or isinstance(first, Ellipse) or isinstance(first, Circle) or isinstance(first, Curve):
         #    return [convertToNative(it, dataStorage) for it in items]
+        elif isinstance(first, Mesh):
+            converted: QgsMultiPolygon = meshToNative(items, dataStorage)
+            return converted
         elif isinstance(first, Base):
             try:
                 displayVals = []
@@ -453,7 +454,7 @@ def convertToNativeMulti(
                         displayVals.extend(it.displayValue)
                     except:
                         displayVals.extend(it["@displayValue"])
-                if isinstance(first, GisPolygonGeometry):
+                if isinstance(first, GisPolygonGeometry) or isinstance(first, Mesh):
                     if first.boundary is None:
                         converted: QgsMultiPolygon = meshToNative(
                             displayVals, dataStorage
