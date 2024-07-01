@@ -377,14 +377,14 @@ def get_raster_colors(
             renderer_classes = layer.renderer().classes()
             class_rgbs = [
                 renderer_classes[class_ind].color.getRgb()
-                for class_ind in range(len(renderer_classes) - 1)
+                for class_ind in range(len(renderer_classes))
             ]
 
             for val in rasterBandVals[bandIndex]:
                 rgb = None
                 color = (0 << 24) + (0 << 16) + (0 << 8) + 0
 
-                for class_ind in range(len(renderer_classes) - 1):
+                for class_ind in range(len(renderer_classes)):
                     if rasterBandVals[bandIndex] == rasterBandNoDataVal[bandIndex]:
                         rgb = None
                     elif class_ind < len(renderer_classes) - 1:
@@ -429,14 +429,14 @@ def get_raster_colors(
             renderer_classes = layer.renderer().legendSymbologyItems()
             class_rgbs = [
                 renderer_classes[class_ind][1].getRgb()
-                for class_ind in range(len(renderer_classes) - 1)
+                for class_ind in range(len(renderer_classes))
             ]
 
             for val in rasterBandVals[bandIndex]:
                 rgb = None
                 color = (0 << 24) + (0 << 16) + (0 << 8) + 0
 
-                for class_ind in range(len(renderer_classes) - 1):
+                for class_ind in range(len(renderer_classes)):
                     if rasterBandVals[bandIndex] == rasterBandNoDataVal[bandIndex]:
                         rgb = None
                     elif class_ind < len(renderer_classes) - 1:
