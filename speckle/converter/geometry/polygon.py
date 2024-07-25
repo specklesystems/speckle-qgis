@@ -145,7 +145,7 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
     #### check if elevation is applied and layer exists:
     elevationLayer = getElevationLayer(dataStorage)
     translationValue = None
-    
+
     if elevationLayer is not None:
         all_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
         settings_elevation_layer = get_raster_stats(elevationLayer)
