@@ -601,6 +601,8 @@ def get_raster_band_data(
 ) -> List[float]:
     rasterBandNames.append(selectedLayer.bandName(index + 1))
     rb = ds.GetRasterBand(index + 1)
+
+    # note: raster stats can be messed up and are not reliable (e.g. Min is larger than Max)
     valMin = (
         selectedLayer.dataProvider()
         .bandStatistics(index + 1, QgsRasterBandStats.All)
