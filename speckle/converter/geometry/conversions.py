@@ -135,7 +135,7 @@ def convertToSpeckle(
             element = GisLineElement(units=units, geometry=result)
             return element, iterations
 
-        # check if the layer was received from Mesh originally
+        # check if the layer was received from Mesh originally, don't apply Transformations
         elif (
             geomType == QgsWkbTypes.PolygonGeometry
             and not geomSingleType
