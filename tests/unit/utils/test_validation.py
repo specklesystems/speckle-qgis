@@ -28,13 +28,6 @@ def data_storage():
 
 
 @pytest.fixture()
-def stream_wrapper_fe1():
-    sample_obj = StreamWrapper("https://latest.speckle.dev/streams/2099ac4b5f")
-    sample_obj.get_client()
-    return sample_obj
-
-
-@pytest.fixture()
 def stream_wrapper_fe2():
     sample_obj = StreamWrapper("https://latest.speckle.systems/projects/92b620fb17")
     sample_obj.get_client()
@@ -117,7 +110,7 @@ def test_validateBranch(stream):
 
 
 def test_validateBranch_no_commits():
-    sample_wrapper = StreamWrapper("https://latest.speckle.dev/streams/7117052f4e")
+    sample_wrapper = StreamWrapper("https://latest.speckle.systems/projects/7117052f4e")
     sample_wrapper.get_client()
     stream_fe1 = sample_wrapper._client.stream.get(id=sample_wrapper.stream_id)
     branch_name = "empty_branch"
