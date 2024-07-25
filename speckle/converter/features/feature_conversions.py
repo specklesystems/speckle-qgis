@@ -287,12 +287,14 @@ def get_raster_mesh_coords(
 
 
 def apply_offset_rotation_to_vertices_send(vertices: List[float], dataStorage):
+    new_vertices = []
     for index in range(int(len(vertices) / 3)):
         x, y = apply_pt_offsets_rotation_on_send(
-            vertices[index], vertices[index + 1], dataStorage
+            vertices[3 * index], vertices[3 * index + 1], dataStorage
         )
-        vertices[index] = x
-        vertices[index + 1] = y
+        new_vertices.extend([x, y, vertices[3 * index + 2]])
+
+    return new_vertices
 
 
 def get_raster_colors(
@@ -601,6 +603,8 @@ def get_raster_band_data(
 ) -> List[float]:
     rasterBandNames.append(selectedLayer.bandName(index + 1))
     rb = ds.GetRasterBand(index + 1)
+
+    # note: raster stats can be messed up and are not reliable (e.g. Min is larger than Max)
     valMin = (
         selectedLayer.dataProvider()
         .bandStatistics(index + 1, QgsRasterBandStats.All)
@@ -699,7 +703,15 @@ def get_height_array_from_elevation_layer(elevationLayer):
 
 
 def get_raster_reprojected_stats(
-    project, projectCRS, selectedLayer, originX, originY, rasterResXY, rasterDimensions
+    project,
+    projectCRS,
+    selectedLayer,
+    originX,
+    originY,
+    rasterResXY,
+    rasterDimensions,
+    dataStorage,
+
 ):
     # get 4 corners of raster
     raster_top_right = QgsPointXY(
@@ -716,6 +728,13 @@ def get_raster_reprojected_stats(
     )
     # reproject corners to the project CRS
     scale_factor_x = scale_factor_y = 1
+    
+    reprojected_top_right = raster_top_right
+    reprojectedOriginPt = rasterOriginPoint
+    reprojectedMaxPt = rasterMaxPt
+    reprojected_bottom_left = raster_bottom_left
+
+
     if selectedLayer.crs() != projectCRS:
         reprojected_top_right = transform.transform(
             project, raster_top_right, selectedLayer.crs(), projectCRS
@@ -757,6 +776,30 @@ def get_raster_reprojected_stats(
             )
         ),
     )
+
+    # apply offsets to all 4 pts
+    r"""
+    x1, y1 = apply_pt_offsets_rotation_on_send(
+        reprojectedOriginPt.x(), reprojectedOriginPt.y(), dataStorage
+    )
+    reprojectedOriginPt = QgsPointXY(x1, y1)
+
+    x2, y2 = apply_pt_offsets_rotation_on_send(
+        reprojected_top_right.x(), reprojected_top_right.y(), dataStorage
+    )
+    reprojected_top_right = QgsPointXY(x2, y2)
+
+    x3, y3 = apply_pt_offsets_rotation_on_send(
+        reprojectedMaxPt.x(), reprojectedMaxPt.y(), dataStorage
+    )
+    reprojectedMaxPt = QgsPointXY(x3, y3)
+
+    x4, y4 = apply_pt_offsets_rotation_on_send(
+        reprojected_bottom_left.x(), reprojected_bottom_left.y(), dataStorage
+    )
+    reprojected_bottom_left = QgsPointXY(x4, y4)
+    """
+
     return (
         reprojected_top_right,
         reprojectedOriginPt,
@@ -869,6 +912,7 @@ def rasterFeatureToSpeckle(
             originY,
             rasterResXY,
             rasterDimensions,
+            dataStorage,
         )
         (
             reprojected_top_right,
@@ -882,6 +926,7 @@ def rasterFeatureToSpeckle(
             reprojectedOriginPt.x(),
             reprojectedOriginPt.y(),
         )
+
 
         # fill band values
         rasterBandNoDataVal = []
@@ -908,9 +953,8 @@ def rasterFeatureToSpeckle(
         b.y_resolution = rasterResXY[1]
         b.x_size = rasterDimensions[0]
         b.y_size = rasterDimensions[1]
-        b.x_origin, b.y_origin = apply_pt_offsets_rotation_on_send(
-            reprojectedOriginPt.x(), reprojectedOriginPt.y(), dataStorage
-        )
+        b.x_origin, b.y_origin = (originX, originY)
+
         b.band_count = rasterBandCount
         b.band_names = rasterBandNames
         b.noDataValue = rasterBandNoDataVal
@@ -972,6 +1016,8 @@ def rasterFeatureToSpeckle(
                     elevation_original_originY,
                     elevation_original_ResXY,
                     elevation_original_dimensions,
+                    dataStorage,
+
                 )
 
                 (
@@ -1158,10 +1204,12 @@ def rasterFeatureToSpeckle(
                         ]
 
         # apply offset & rotation
-        apply_offset_rotation_to_vertices_send(vertices_filtered, dataStorage)
+        vertices_filtered2 = apply_offset_rotation_to_vertices_send(
+            vertices_filtered, dataStorage
+        )
 
         mesh = constructMeshFromRaster(
-            vertices_filtered, faces_filtered, colors_filtered, dataStorage
+            vertices_filtered2, faces_filtered, colors_filtered, dataStorage
         )
         if mesh is not None:
             mesh.units = dataStorage.currentUnits

@@ -303,9 +303,9 @@ def layerToSpeckle(
             wkt=crs.toWkt(),
             units=units_layer,
             units_native=units_layer_native,
-            offset_x=offset_x,
-            offset_y=offset_y,
-            rotation=rotation,
+            offset_x=0,  # offset_x,
+            offset_y=0,  # offset_y,
+            rotation=0,  # rotation,
         )
 
         renderer = selectedLayer.renderer()
@@ -1931,13 +1931,6 @@ def addRasterMainThread(obj: Tuple):
         ):
             plugin.dataStorage.currentUnits = "m"
 
-        try:
-            plugin.dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
-            plugin.dataStorage.current_layer_crs_offset_y = layer.crs.offset_y
-            plugin.dataStorage.current_layer_crs_rotation = layer.crs.rotation
-        except AttributeError as e:
-            print(e)
-
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50]
         # print(f"Final short name: {shortName}")
         try:
@@ -2037,6 +2030,9 @@ def addRasterMainThread(obj: Tuple):
                 eType=gdal.GDT_Float32,
             )
 
+        # create a spatial reference object
+        ds.SetProjection(crsRasterWkt)
+
         # Write data to raster band
         # No data issue: https://gis.stackexchange.com/questions/389587/qgis-set-raster-no-data-value
 
@@ -2114,22 +2110,8 @@ def addRasterMainThread(obj: Tuple):
             )
             return
 
-        try:  # if the CRS has offset props
-            dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
-            dataStorage.current_layer_crs_offset_y = layer.crs.offset_y
-            dataStorage.current_layer_crs_rotation = layer.crs.rotation
-
-            pt = pointToNative(
-                ptSpeckle, plugin.dataStorage
-            )  # already transforms the offsets
-            dataStorage.current_layer_crs_offset_x = (
-                dataStorage.current_layer_crs_offset_y
-            ) = dataStorage.current_layer_crs_rotation = None
-
-        except AttributeError as e:
-            print(e)
-        xform = QgsCoordinateTransform(crs, crsRaster, project)
-        pt.transform(xform)
+        # xform = QgsCoordinateTransform(crs, crsRaster, project)
+        # pt.transform(xform)
         try:
             ds.SetGeoTransform(
                 [pt.x(), feat.x_resolution, 0, pt.y(), 0, feat.y_resolution]
@@ -2139,8 +2121,6 @@ def addRasterMainThread(obj: Tuple):
                 [pt.x(), feat["X resolution"], 0, pt.y(), 0, feat["Y resolution"]]
             )
 
-        # create a spatial reference object
-        ds.SetProjection(crsRasterWkt)
         # close the rater datasource by setting it equal to None
         ds = None
 
