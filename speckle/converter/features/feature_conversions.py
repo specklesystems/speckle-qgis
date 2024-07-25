@@ -287,12 +287,14 @@ def get_raster_mesh_coords(
 
 
 def apply_offset_rotation_to_vertices_send(vertices: List[float], dataStorage):
+    new_vertices = []
     for index in range(int(len(vertices) / 3)):
         x, y = apply_pt_offsets_rotation_on_send(
-            vertices[index], vertices[index + 1], dataStorage
+            vertices[3 * index], vertices[3 * index + 1], dataStorage
         )
-        vertices[index] = x
-        vertices[index + 1] = y
+        new_vertices.extend([x, y, vertices[3 * index + 2]])
+
+    return new_vertices
 
 
 def get_raster_colors(
@@ -773,6 +775,7 @@ def get_raster_reprojected_stats(
     )
 
     # apply offsets to all 4 pts
+    r"""
     x1, y1 = apply_pt_offsets_rotation_on_send(
         reprojectedOriginPt.x(), reprojectedOriginPt.y(), dataStorage
     )
@@ -792,7 +795,7 @@ def get_raster_reprojected_stats(
         reprojected_bottom_left.x(), reprojected_bottom_left.y(), dataStorage
     )
     reprojected_bottom_left = QgsPointXY(x4, y4)
-
+    """
     return (
         reprojected_top_right,
         reprojectedOriginPt,
@@ -1194,10 +1197,12 @@ def rasterFeatureToSpeckle(
                         ]
 
         # apply offset & rotation
-        # apply_offset_rotation_to_vertices_send(vertices_filtered, dataStorage)
+        vertices_filtered2 = apply_offset_rotation_to_vertices_send(
+            vertices_filtered, dataStorage
+        )
 
         mesh = constructMeshFromRaster(
-            vertices_filtered, faces_filtered, colors_filtered, dataStorage
+            vertices_filtered2, faces_filtered, colors_filtered, dataStorage
         )
         if mesh is not None:
             mesh.units = dataStorage.currentUnits
