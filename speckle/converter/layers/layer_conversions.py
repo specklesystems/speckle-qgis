@@ -303,9 +303,9 @@ def layerToSpeckle(
             wkt=crs.toWkt(),
             units=units_layer,
             units_native=units_layer_native,
-            offset_x=offset_x,
-            offset_y=offset_y,
-            rotation=rotation,
+            offset_x=0,  # offset_x,
+            offset_y=0,  # offset_y,
+            rotation=0,  # rotation,
         )
 
         renderer = selectedLayer.renderer()
@@ -1930,13 +1930,6 @@ def addRasterMainThread(obj: Tuple):
             or plugin.dataStorage.currentUnits == "degrees"
         ):
             plugin.dataStorage.currentUnits = "m"
-
-        try:
-            plugin.dataStorage.current_layer_crs_offset_x = layer.crs.offset_x
-            plugin.dataStorage.current_layer_crs_offset_y = layer.crs.offset_y
-            plugin.dataStorage.current_layer_crs_rotation = layer.crs.rotation
-        except AttributeError as e:
-            print(e)
 
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50]
         # print(f"Final short name: {shortName}")
