@@ -1632,6 +1632,9 @@ def addVectorMainThread(obj: Tuple):
 
         project: QgsProject = plugin.dataStorage.project
 
+        if newName.endswith("_as_Mesh"):
+            newName = newName[:-8]
+
         # print(layer.name)
 
         shortName = newName.split(SYMBOL)[len(newName.split(SYMBOL)) - 1][:50]
