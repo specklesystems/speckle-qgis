@@ -262,7 +262,7 @@ def polygonToSpeckle(
         if mesh is not None:
             polygon.displayValue = [mesh]
             # polygon["baseGeometry"] = mesh
-            # https://latest.speckle.dev/streams/85bc4f61c6/commits/2a5d23a277
+            # https://latest.speckle.systems/projects/85bc4f61c6/models/6cd9058fba@2a5d23a277
             # https://speckle.community/t/revit-add-new-parameters/5170/2
         else:
             polygon.displayValue = []

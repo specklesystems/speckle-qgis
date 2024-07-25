@@ -28,13 +28,6 @@ def data_storage():
 
 
 @pytest.fixture()
-def stream_wrapper_fe1():
-    sample_obj = StreamWrapper("https://latest.speckle.dev/streams/2099ac4b5f")
-    sample_obj.get_client()
-    return sample_obj
-
-
-@pytest.fixture()
 def stream_wrapper_fe2():
     sample_obj = StreamWrapper("https://latest.speckle.systems/projects/92b620fb17")
     sample_obj.get_client()
@@ -44,12 +37,6 @@ def stream_wrapper_fe2():
 @pytest.fixture()
 def speckle_client(stream_wrapper_fe2):
     sample_obj = stream_wrapper_fe2._client
-    return sample_obj
-
-
-@pytest.fixture()
-def stream_fe1(stream_wrapper_fe1):
-    sample_obj = stream_wrapper_fe1._client.stream.get(id=stream_wrapper_fe1.stream_id)
     return sample_obj
 
 
@@ -73,14 +60,6 @@ def branch(stream_wrapper_fe2):
 @pytest.fixture()
 def commit_id():
     return "6283209680"
-
-
-def test_tryGetClient_fe1(stream_wrapper_fe1, data_storage):
-    result = tryGetClient(
-        stream_wrapper_fe1, data_storage, write=False, dockwidget=None
-    )
-    assert isinstance(result[0], SpeckleClient)
-    assert isinstance(result[1], Stream)
 
 
 def test_tryGetClient_fe2(stream_wrapper_fe2, data_storage):
@@ -117,7 +96,7 @@ def test_validateBranch(stream):
 
 
 def test_validateBranch_no_commits():
-    sample_wrapper = StreamWrapper("https://latest.speckle.dev/streams/7117052f4e")
+    sample_wrapper = StreamWrapper("https://latest.speckle.systems/projects/7117052f4e")
     sample_wrapper.get_client()
     stream_fe1 = sample_wrapper._client.stream.get(id=sample_wrapper.stream_id)
     branch_name = "empty_branch"
