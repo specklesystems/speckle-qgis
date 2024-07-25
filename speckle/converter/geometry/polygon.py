@@ -145,7 +145,7 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
     #### check if elevation is applied and layer exists:
     elevationLayer = getElevationLayer(dataStorage)
     translationValue = None
-    
+
     if elevationLayer is not None:
         all_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
         settings_elevation_layer = get_raster_stats(elevationLayer)
@@ -262,7 +262,7 @@ def polygonToSpeckle(
         if mesh is not None:
             polygon.displayValue = [mesh]
             # polygon["baseGeometry"] = mesh
-            # https://latest.speckle.systems/streams/85bc4f61c6/commits/2a5d23a277
+            # https://latest.speckle.systems/dev/85bc4f61c6/commits/2a5d23a277
             # https://speckle.community/t/revit-add-new-parameters/5170/2
         else:
             polygon.displayValue = []
