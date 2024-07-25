@@ -699,7 +699,14 @@ def get_height_array_from_elevation_layer(elevationLayer):
 
 
 def get_raster_reprojected_stats(
-    project, projectCRS, selectedLayer, originX, originY, rasterResXY, rasterDimensions
+    project,
+    projectCRS,
+    selectedLayer,
+    originX,
+    originY,
+    rasterResXY,
+    rasterDimensions,
+    dataStorage,
 ):
     # get 4 corners of raster
     raster_top_right = QgsPointXY(
@@ -716,6 +723,11 @@ def get_raster_reprojected_stats(
     )
     # reproject corners to the project CRS
     scale_factor_x = scale_factor_y = 1
+    reprojected_top_right = raster_top_right
+    reprojectedOriginPt = rasterOriginPoint
+    reprojectedMaxPt = rasterMaxPt
+    reprojected_bottom_left = raster_bottom_left
+
     if selectedLayer.crs() != projectCRS:
         reprojected_top_right = transform.transform(
             project, raster_top_right, selectedLayer.crs(), projectCRS
@@ -757,6 +769,28 @@ def get_raster_reprojected_stats(
             )
         ),
     )
+
+    # apply offsets to all 4 pts
+    x1, y1 = apply_pt_offsets_rotation_on_send(
+        reprojectedOriginPt.x(), reprojectedOriginPt.y(), dataStorage
+    )
+    reprojectedOriginPt = QgsPointXY(x1, y1)
+
+    x2, y2 = apply_pt_offsets_rotation_on_send(
+        reprojected_top_right.x(), reprojected_top_right.y(), dataStorage
+    )
+    reprojected_top_right = QgsPointXY(x2, y2)
+
+    x3, y3 = apply_pt_offsets_rotation_on_send(
+        reprojectedMaxPt.x(), reprojectedMaxPt.y(), dataStorage
+    )
+    reprojectedMaxPt = QgsPointXY(x3, y3)
+
+    x4, y4 = apply_pt_offsets_rotation_on_send(
+        reprojected_bottom_left.x(), reprojected_bottom_left.y(), dataStorage
+    )
+    reprojected_bottom_left = QgsPointXY(x4, y4)
+
     return (
         reprojected_top_right,
         reprojectedOriginPt,
@@ -869,6 +903,7 @@ def rasterFeatureToSpeckle(
             originY,
             rasterResXY,
             rasterDimensions,
+            dataStorage,
         )
         (
             reprojected_top_right,
@@ -908,9 +943,7 @@ def rasterFeatureToSpeckle(
         b.y_resolution = rasterResXY[1]
         b.x_size = rasterDimensions[0]
         b.y_size = rasterDimensions[1]
-        b.x_origin, b.y_origin = apply_pt_offsets_rotation_on_send(
-            reprojectedOriginPt.x(), reprojectedOriginPt.y(), dataStorage
-        )
+        b.x_origin, b.y_origin = (originX, originY)
         b.band_count = rasterBandCount
         b.band_names = rasterBandNames
         b.noDataValue = rasterBandNoDataVal
@@ -972,6 +1005,7 @@ def rasterFeatureToSpeckle(
                     elevation_original_originY,
                     elevation_original_ResXY,
                     elevation_original_dimensions,
+                    dataStorage,
                 )
 
                 (
@@ -1158,7 +1192,7 @@ def rasterFeatureToSpeckle(
                         ]
 
         # apply offset & rotation
-        apply_offset_rotation_to_vertices_send(vertices_filtered, dataStorage)
+        # apply_offset_rotation_to_vertices_send(vertices_filtered, dataStorage)
 
         mesh = constructMeshFromRaster(
             vertices_filtered, faces_filtered, colors_filtered, dataStorage
