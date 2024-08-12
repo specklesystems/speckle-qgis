@@ -58,6 +58,7 @@ try:
     from osgeo import (  # # C:\Program Files\QGIS 3.20.2\apps\Python39\Lib\site-packages\osgeo
         gdal,
         osr,
+        ogr,
     )
     from PyQt5.QtGui import QColor
 except ModuleNotFoundError:
@@ -84,6 +85,7 @@ from speckle.converter.features.feature_conversions import (
     bimFeatureToNative,
 )
 from speckle.converter.layers.utils import (
+    add_layer_to_geopackage,
     collectionsFromJson,
     colorFromSpeckle,
     colorFromSpeckle,
@@ -760,13 +762,6 @@ def addNonGeometryMainThread(obj: Tuple):
             plugin.dataStorage.currentUnits = "m"
         # authid = trySaveCRS(crs, streamBranch)
 
-        if crs.isGeographic is True:
-            logToUser(
-                f"Project CRS is set to Geographic type, and objects in linear units might not be received correctly",
-                level=1,
-                func=inspect.stack()[0][3],
-            )
-
         vl = QgsVectorLayer(
             geomType + "?crs=" + crs.authid(), finalName, "memory"
         )  # do something to distinguish: stream_id_latest_name
@@ -823,6 +818,11 @@ def addNonGeometryMainThread(obj: Tuple):
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
+
+        layer_gpkg_name = add_layer_to_geopackage(vl, dataStorage)
+        my_gpkg = dataStorage.geopackage_path
+        vl = QgsVectorLayer(f"{my_gpkg}|layername={layer_gpkg_name}", finalName, "ogr")
+        project.addMapLayer(vl, False)
 
         layerGroup.addLayer(vl)
 
@@ -1180,6 +1180,11 @@ def addBimMainThread(obj: Tuple):
         vl.updateExtents()
         vl.commitChanges()
 
+        layer_gpkg_name = add_layer_to_geopackage(vl, dataStorage)
+        my_gpkg = dataStorage.geopackage_path
+        vl = QgsVectorLayer(f"{my_gpkg}|layername={layer_gpkg_name}", finalName, "ogr")
+        project.addMapLayer(vl, False)
+
         layerGroup.addLayer(vl)
 
         try:
@@ -1457,6 +1462,11 @@ def addCadMainThread(obj: Tuple):
         pr.addFeatures(fets)
         vl.updateExtents()
         vl.commitChanges()
+
+        layer_gpkg_name = add_layer_to_geopackage(vl, dataStorage)
+        my_gpkg = dataStorage.geopackage_path
+        vl = QgsVectorLayer(f"{my_gpkg}|layername={layer_gpkg_name}", finalName, "ogr")
+        project.addMapLayer(vl, False)
 
         layerGroup.addLayer(vl)
 
@@ -1815,6 +1825,13 @@ def addVectorMainThread(obj: Tuple):
 
         #################################################
 
+        layer_gpkg_name = add_layer_to_geopackage(vl, dataStorage)
+        my_gpkg = dataStorage.geopackage_path
+        vl = QgsVectorLayer(f"{my_gpkg}|layername={layer_gpkg_name}", finalName, "ogr")
+        project.addMapLayer(vl, False)
+        # gpkg_layers = [l.GetName() for l in ogr.Open(my_gpkg)]
+        # print(gpkg_layers)
+
         layerGroup.addLayer(vl)
 
         rendererNew = vectorRendererToNative(layer, newFields)
@@ -2008,11 +2025,13 @@ def addRasterMainThread(obj: Tuple):
                 plugin=plugin.dockwidget,
             )
 
-        path_fn = source_folder + "/Layers_Speckle/raster_layers/" + streamBranch + "/"
+        path_fn = source_folder + "/Layers_Speckle/raster_layers_" + streamBranch + "/"
         if not os.path.exists(path_fn):
             os.makedirs(path_fn)
 
-        fn = path_fn + layerName + ".tif"  # arcpy.env.workspace + "\\" #
+        fn = (
+            path_fn + layerName.replace(SYMBOL, "_") + ".tif"
+        )  # arcpy.env.workspace + "\\" #
         # fn = source_folder + '/' + newName.replace("/","_") + '.tif' #'_received_raster.tif'
         driver = gdal.GetDriverByName("GTiff")
         # create raster dataset
