@@ -117,11 +117,11 @@ def featureToSpeckle(
                         elif isinstance(g, GisPolygonGeometry):
                             if len(g.displayValue) == 0:
                                 all_errors += (
-                                    "Polygon converted, but display mesh not generated"
+                                    "Polygon part converted, but display mesh not generated"
                                     + ", "
                                 )
                                 logToUser(
-                                    "Polygon converted, but display mesh not generated",
+                                    "Polygon part converted, but display mesh not generated",
                                     level=1,
                                     func=inspect.stack()[0][3],
                                 )
@@ -711,7 +711,6 @@ def get_raster_reprojected_stats(
     rasterResXY,
     rasterDimensions,
     dataStorage,
-
 ):
     # get 4 corners of raster
     raster_top_right = QgsPointXY(
@@ -728,12 +727,11 @@ def get_raster_reprojected_stats(
     )
     # reproject corners to the project CRS
     scale_factor_x = scale_factor_y = 1
-    
+
     reprojected_top_right = raster_top_right
     reprojectedOriginPt = rasterOriginPoint
     reprojectedMaxPt = rasterMaxPt
     reprojected_bottom_left = raster_bottom_left
-
 
     if selectedLayer.crs() != projectCRS:
         reprojected_top_right = transform.transform(
@@ -927,7 +925,6 @@ def rasterFeatureToSpeckle(
             reprojectedOriginPt.y(),
         )
 
-
         # fill band values
         rasterBandNoDataVal = []
         rasterBandMinVal = []
@@ -1017,7 +1014,6 @@ def rasterFeatureToSpeckle(
                     elevation_original_ResXY,
                     elevation_original_dimensions,
                     dataStorage,
-
                 )
 
                 (

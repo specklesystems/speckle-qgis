@@ -1,6 +1,8 @@
+import earcut
 import inspect
 from math import cos, sin, atan
 import math
+import earcut.earcut
 from specklepy.objects.geometry import (
     Point,
     Line,
@@ -344,34 +346,50 @@ def to_triangles(data: dict, attempt: int = 0) -> Tuple[Union[dict, None], int]:
 
 
 def triangulatePolygon(
-    geom: Any, dataStorage: "DataStorage", coef: Union[int, None] = None, xform=None
+    vertices: Any,
+    holes: Any,
+    dimensions: int,
+    dataStorage: "DataStorage",
+    coef: Union[int, None] = None,
+    xform=None,
 ) -> Tuple[dict, Union[List[List[float]], None], int]:
     try:
         # import triangle as tr
-        vertices = []  # only outer
-        segments = []  # including holes
-        holes = []
-        pack = getPolyPtsSegments(geom, dataStorage, coef, xform)
+        # vertices = []  # only outer
+        # holes = []
+        # pack = getPolyPtsSegments(geom, dataStorage, coef, xform)
 
-        vertices, vertices3d, segments, holes = pack
-
+        # close the loop
+        r"""
         if len(vertices) > 0:
-            vertices.append(vertices[0])
-        for i, h in enumerate(holes):
+            vertices.extend(vertices[:dimensions])
+        for i, _ in enumerate(holes):
             if len(holes[i]) > 0:
-                holes[i].append(holes[i][0])
-        dict_shape = {"vertices": vertices, "holes": holes}
+                holes[i].extend(holes[i][:dimensions])
+        """
+
+        if len(holes) == 0:
+            holes = None
 
         try:
-            t, iterations = to_triangles(dict_shape, 0)
+            triangles = earcut.earcut.earcut(vertices, holes, dim=dimensions)
+            triangle_tuples = [
+                (triangles[3 * i], triangles[3 * i + 1], triangles[3 * i + 2])
+                for i, _ in enumerate(triangles)
+                if i < len(triangles) / 3
+            ]
+            # return_dict = {
+            #    "vertices": vertices,
+            #    "triangles": triangle_tuples,
+            # }
         except Exception as e:
             logToUser(e, level=2, func=inspect.stack()[0][3])
-            return None, None, None
-        return t, vertices3d, iterations
+            return None
+        return triangle_tuples
 
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        return None, None, None
+        return None
 
 
 def trianglateQuadMesh(mesh: Mesh) -> Union[Mesh, None]:
