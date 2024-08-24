@@ -214,23 +214,28 @@ def meshPartsFromPolygon(
         maxPoints = 5000
         if len(polyBorder) >= maxPoints:
             coef = math.floor(len(polyBorder) / maxPoints)
+            iterations = 1
 
         if len(polyBorder) < 3:
             return None, None, None, None, None
 
         col = featureColorfromNativeRenderer(feature, layer)
 
-        # floor: need positive - clockwise (looking down); cap need negative (counter-clockwise)
-
-        # if its a large polygon with voids to be triangualted, lower the coef even more:
-        if len(polyBorder) >= maxPoints:
-            coef = int(len(polyBorder) / maxPoints)
-
         universal_z_value = polyBorder[0].z
-        iterations = 0
 
-        vertices3d_original_tuples = [[p.x, p.y, p.z] for p in polyBorder]
-        holes3d_tuples = [[[v.x, v.y, v.z] for v in p] for p in voidsAsPts]
+        vertices3d_original_tuples = [
+            [polyBorder[coef * i].x, polyBorder[coef * i].y, polyBorder[coef * i].z]
+            for i, p in enumerate(polyBorder)
+            if coef * i < len(polyBorder)
+        ]
+        holes3d_tuples = [
+            [
+                [p[coef * i].x, p[coef * i].y, p[coef * i].z]
+                for i, v in enumerate(p)
+                if coef * i < len(p)
+            ]
+            for p in voidsAsPts
+        ]
         # height_set = list(set([p[2] for p in vertices3d_original_tuples]))
 
         vertices3d_original = [
@@ -251,6 +256,7 @@ def meshPartsFromPolygon(
         triangle_list = []
 
         # triangles are normally returned counter-clockwise: face looking up
+        # floor: need positive - clockwise (looking down); cap need negative (counter-clockwise)
         triangle_list = triangulatePolygon(
             vertices3d,
             hole_indices,
@@ -268,6 +274,12 @@ def meshPartsFromPolygon(
 
                 total_vertices += vert_count
                 ran = range(0, total_vertices)
+
+                logToUser(
+                    "Vertical or invalid polygon, display Mesh will be approximated from the boundary",
+                    level=1,
+                    func=inspect.stack()[0][3],
+                )
 
             # if triangulated:
             for trg in triangle_list:
