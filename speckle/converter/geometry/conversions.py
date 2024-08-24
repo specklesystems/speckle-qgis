@@ -245,8 +245,8 @@ def apply_units_to_speckle_polygon(result, units):
 def get_translation_axis(layer, boundaryPts, elevationLayer, dataStorage):
     translationZaxis = None
     if (
-        elevationLayer is not None
-        and isAppliedLayerTransformByKeywords(
+        # elevationLayer is not None
+        isAppliedLayerTransformByKeywords(
             layer,
             ["polygon", "project", "elevation"],
             [],

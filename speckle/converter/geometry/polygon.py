@@ -146,6 +146,8 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
     elevationLayer = getElevationLayer(dataStorage)
     translationValue = None
 
+    min_z = min([p.z() for p in boundaryPts])
+
     if elevationLayer is not None:
         all_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
         settings_elevation_layer = get_raster_stats(elevationLayer)
@@ -181,8 +183,9 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
             if np.isnan(boundaryPts[0].z()):  # for flat polygons with z=0
                 translationValue = min(allElevations)
             else:
-                min_z = min([p.z() for p in boundaryPts])
                 translationValue = min(allElevations) - min_z
+    else:
+        translationValue = -min_z
 
     return translationValue
 
