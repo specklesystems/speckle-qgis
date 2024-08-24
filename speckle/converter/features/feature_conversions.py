@@ -308,6 +308,7 @@ def get_raster_colors(
     plugin,
 ):
     list_colors = []
+    have_transparent_cells = False
     if rendererType == "multibandcolor":
 
         # mock values for R,G,B channels
@@ -365,6 +366,9 @@ def get_raster_colors(
                 val_min_alpha = rasterBandMinVal[band_index]
                 val_na_alpha = rasterBandNoDataVal[band_index]
                 vals_alpha = rasterBandVals[band_index]
+
+        if vals_alpha is not None and 0 in vals_alpha:
+            have_transparent_cells = True
 
         list_colors = [
             (
@@ -515,7 +519,7 @@ def get_raster_colors(
             for _ in range(4)
         ]
 
-    return list_colors
+    return list_colors, have_transparent_cells
 
 
 def get_vertices_height(
@@ -1098,7 +1102,7 @@ def rasterFeatureToSpeckle(
             dataStorage,
         )
         rendererType = selectedLayer.renderer().type()
-        colors_filtered = get_raster_colors(
+        colors_filtered, have_transparent_cells = get_raster_colors(
             selectedLayer,
             rasterBandVals,
             rasterBandNoDataVal,
@@ -1220,38 +1224,61 @@ def rasterFeatureToSpeckle(
         )
 
         # delete faces using invisible vertices
-        vertices_filtered_removed = []
-        colors_filtered_removed = []
-        deleted_vert = []
-        r"""
-        for i, color in enumerate(colors_filtered):
-            if i % 4 != 0:  # only look a the first vertex of a square
-                continue
+        if have_transparent_cells is True:
+            vertices_filtered_removed = []
+            colors_filtered_removed = []
+            deleted_vert = []
+            vertex_remapping = {}
 
-            a, _, _, _ = get_a_r_g_b(color)
-            if a != 0:
-                colors_filtered_removed.extend(colors_filtered[i : i + 4])
-                vertices_filtered_removed.extend(vertices_filtered2[3 * i : 3 * i + 12])
-            else:
-                deleted_vert.append(i)
+            for i, color in enumerate(colors_filtered):
+                if i % 4 != 0:  # only look a the first vertex of a square
+                    if vertex_remapping[i - 1] is None:
+                        vertex_remapping[i] = None
+                        deleted_vert.append(i)
+                    else:
+                        vertex_remapping[i] = vertex_remapping[i - 1] + 1
+                    continue
+                a, _, _, _ = get_a_r_g_b(color)
+                if a != 0:
+                    colors_filtered_removed.extend(colors_filtered[i : i + 4])
+                    vertices_filtered_removed.extend(
+                        vertices_filtered2[3 * i : 3 * i + 12]
+                    )
+                    vertex_remapping[i] = i - len(deleted_vert)
+                else:
+                    deleted_vert.append(i)
+                    vertex_remapping[i] = None
 
-        faces_filtered_removed = []
-        count = 0
-        for f in faces_filtered:
-            if count >= len(faces_filtered):
-                break
-            f_count = faces_filtered[count]
-            # get first vertex color:
-            if faces_filtered[count + 1] not in deleted_vert:
-                faces_filtered_removed.extend(
-                    faces_filtered[count : count + f_count + 1]
-                )
-            count += f_count
-        """
+            faces_filtered_removed = []
+            count = 0
+            for f in faces_filtered:
+                if count >= len(faces_filtered):
+                    break
+                # get first vertex color:
+                if vertex_remapping[faces_filtered[count + 1]] is not None:
+                    faces_filtered_removed.append(4)
+                    faces_filtered_removed.append(
+                        vertex_remapping[faces_filtered[count + 1]]
+                    )
+                    faces_filtered_removed.append(
+                        vertex_remapping[faces_filtered[count + 2]]
+                    )
+                    faces_filtered_removed.append(
+                        vertex_remapping[faces_filtered[count + 3]]
+                    )
+                    faces_filtered_removed.append(
+                        vertex_remapping[faces_filtered[count + 4]]
+                    )
+                count += 5
+        else:
+            vertices_filtered_removed = vertices_filtered2.copy()
+            colors_filtered_removed = colors_filtered.copy()
+            faces_filtered_removed = faces_filtered.copy()
+
         mesh = constructMeshFromRaster(
-            vertices_filtered2,
-            faces_filtered,
-            colors_filtered,
+            vertices_filtered_removed,  # vertices_filtered2,
+            faces_filtered_removed,  # faces_filtered,
+            colors_filtered_removed,  # colors_filtered,
             dataStorage,
         )
         if mesh is not None:
