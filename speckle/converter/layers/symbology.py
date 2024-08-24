@@ -170,12 +170,26 @@ def gradientColorRampToNative(renderer: dict[str, Any]) -> "QgsGradientColorRamp
         return newRamp
 
 
+def get_a_r_g_b(argb: int) -> Tuple[int, int, int, int]:
+    a = r = g = b = 0
+    try:
+        a = (argb & 0xFF000000) >> 24
+        r = (argb & 0xFF0000) >> 16
+        g = (argb & 0xFF00) >> 8
+        b = argb & 0xFF
+        return a, r, g, b
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return 0, 0, 0, 0
+
+
 def get_r_g_b(rgb: int) -> Tuple[int, int, int]:
     r = g = b = 0
     try:
         r = (rgb & 0xFF0000) >> 16
         g = (rgb & 0xFF00) >> 8
         b = rgb & 0xFF
+        return r, g, b
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
         return 0, 0, 0
@@ -201,7 +215,7 @@ def vectorRendererToNative(
         if renderer and renderer["type"]:
             if renderer["type"] == "categorizedSymbol":
                 try:
-                    r, g, b = get_r_g_b(renderer["properties"]["sourceSymbColor"])
+                    _, r, g, b = get_a_r_g_b(renderer["properties"]["sourceSymbColor"])
                 except:
                     r = g = b = 100
                 sourceSymbColor = QColor.fromRgb(r, g, b)

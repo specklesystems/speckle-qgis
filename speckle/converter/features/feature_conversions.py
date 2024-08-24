@@ -18,6 +18,7 @@ from speckle.converter.geometry.conversions import (
 )
 from speckle.converter.geometry.mesh import constructMeshFromRaster
 from speckle.converter.geometry.utils import apply_pt_offsets_rotation_on_send
+from speckle.converter.layers.symbology import get_a_r_g_b
 from speckle.converter.layers.utils import (
     generate_qgis_app_id,
     getArrayIndicesFromXY,
@@ -313,6 +314,7 @@ def get_raster_colors(
         vals_red = [0 for _ in rasterBandVals[0]]
         vals_green = [0 for _ in rasterBandVals[0]]
         vals_blue = [0 for _ in rasterBandVals[0]]
+        vals_alpha = None
 
         vals_range_red = 1
         vals_range_green = 1
@@ -330,6 +332,7 @@ def get_raster_colors(
         bandRed = int(layer.renderer().redBand())
         bandGreen = int(layer.renderer().greenBand())
         bandBlue = int(layer.renderer().blueBand())
+        bandAlpha = int(layer.renderer().alphaBand())
 
         # assign correct values to R,G,B channels, where available
         for band_index in range(len(rasterBandVals)):
@@ -355,10 +358,22 @@ def get_raster_colors(
                 )
                 val_min_blue = rasterBandMinVal[band_index]
                 val_na_blue = rasterBandNoDataVal[band_index]
+            if band_index + 1 == bandAlpha:
+                vals_range_alpha = (
+                    rasterBandMaxVal[band_index] - rasterBandMinVal[band_index]
+                )
+                val_min_alpha = rasterBandMinVal[band_index]
+                val_na_alpha = rasterBandNoDataVal[band_index]
+                vals_alpha = rasterBandVals[band_index]
 
         list_colors = [
             (
-                (255 << 24)
+                (
+                    255
+                    if vals_alpha is None
+                    else int(255 * (vals_alpha[ind] - val_min_alpha) / vals_range_alpha)
+                    << 24
+                )
                 | (int(255 * (vals_red[ind] - val_min_red) / vals_range_red) << 16)
                 | (int(255 * (vals_green[ind] - val_min_green) / vals_range_green) << 8)
                 | int(255 * (vals_blue[ind] - val_min_blue) / vals_range_blue)
@@ -1204,8 +1219,40 @@ def rasterFeatureToSpeckle(
             vertices_filtered, dataStorage
         )
 
+        # delete faces using invisible vertices
+        vertices_filtered_removed = []
+        colors_filtered_removed = []
+        deleted_vert = []
+        r"""
+        for i, color in enumerate(colors_filtered):
+            if i % 4 != 0:  # only look a the first vertex of a square
+                continue
+
+            a, _, _, _ = get_a_r_g_b(color)
+            if a != 0:
+                colors_filtered_removed.extend(colors_filtered[i : i + 4])
+                vertices_filtered_removed.extend(vertices_filtered2[3 * i : 3 * i + 12])
+            else:
+                deleted_vert.append(i)
+
+        faces_filtered_removed = []
+        count = 0
+        for f in faces_filtered:
+            if count >= len(faces_filtered):
+                break
+            f_count = faces_filtered[count]
+            # get first vertex color:
+            if faces_filtered[count + 1] not in deleted_vert:
+                faces_filtered_removed.extend(
+                    faces_filtered[count : count + f_count + 1]
+                )
+            count += f_count
+        """
         mesh = constructMeshFromRaster(
-            vertices_filtered2, faces_filtered, colors_filtered, dataStorage
+            vertices_filtered2,
+            faces_filtered,
+            colors_filtered,
+            dataStorage,
         )
         if mesh is not None:
             mesh.units = dataStorage.currentUnits
