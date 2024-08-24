@@ -181,7 +181,8 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
             if np.isnan(boundaryPts[0].z()):  # for flat polygons with z=0
                 translationValue = min(allElevations)
             else:
-                translationValue = min(allElevations) - boundaryPts[0].z()
+                min_z = min([p.z() for p in boundaryPts])
+                translationValue = min(allElevations) - min_z
 
     return translationValue
 

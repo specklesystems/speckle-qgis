@@ -163,67 +163,24 @@ def convertToSpeckle(
             translationZaxis = None
 
             if geomSingleType:
+
+                boundaryPts = get_boundary_pts(geom)
+                height = validate_height(height, boundaryPts)
                 try:
-                    boundaryPts = [
-                        v[1] for v in enumerate(geom.exteriorRing().vertices())
-                    ]
-                except:
-                    boundaryPts = [
-                        v[1] for v in enumerate(geom.exteriorRing().vertices())
-                    ]
-                if height is not None:
-                    if isFlat(boundaryPts) is False:
-                        logToUser(
-                            "Extrusion can only be applied to flat polygons",
-                            level=1,
-                            func=inspect.stack()[0][3],
-                        )
-                        height = None
-                if (
-                    elevationLayer is not None
-                    and isAppliedLayerTransformByKeywords(
-                        layer,
-                        ["extrude", "polygon", "project", "elevation"],
-                        [],
-                        dataStorage,
+                    translationZaxis = get_translation_axis(
+                        layer, boundaryPts, elevationLayer, dataStorage
                     )
-                    is True
-                ):
-                    if isFlat(boundaryPts) is False:
-                        logToUser(
-                            "Geometry projections can only be applied to flat polygons",
-                            level=1,
-                            func=inspect.stack()[0][3],
-                        )
-                    else:
-                        translationZaxis = getZaxisTranslation(
-                            layer, boundaryPts, dataStorage
-                        )
-                        if translationZaxis is None:
-                            logToUser(
-                                "Some polygons are outside the elevation layer extent or extrusion value is Null",
-                                level=1,
-                                func=inspect.stack()[0][3],
-                            )
-                            return None, None
+                except ValueError:
+                    return None, None
 
                 result, iterations = polygonToSpeckle(
                     geom, feature, layer, height, translationZaxis, dataStorage, xform
                 )
+
                 if result is None:
                     return None, None
-                result.units = units
-                if result.boundary is not None:
-                    result.boundary.units = units
-                for v in result.voids:
-                    if v is not None:
-                        v.units = units
-                try:  # if mesh creation failed, displayValue stays None
-                    for v in result.displayValue:
-                        if v is not None:
-                            v.units = units
-                except:
-                    pass
+
+                apply_units_to_speckle_polygon(result, units)
 
                 if not isinstance(result, List):
                     result = [result]
@@ -232,47 +189,14 @@ def convertToSpeckle(
             else:
                 result = []
                 for poly in geom.parts():
+                    boundaryPts = get_boundary_pts(poly)
+                    height = validate_height(height, boundaryPts)
                     try:
-                        boundaryPts = [
-                            v[1] for v in enumerate(poly.exteriorRing().vertices())
-                        ]
-                    except:
-                        boundaryPts = [v[1] for v in enumerate(poly.vertices())]
-                    if height is not None:
-                        if isFlat(boundaryPts) is False:
-                            logToUser(
-                                "Extrusion can only be applied to flat polygons",
-                                level=1,
-                                func=inspect.stack()[0][3],
-                            )
-                            height = None
-                    if (
-                        elevationLayer is not None
-                        and isAppliedLayerTransformByKeywords(
-                            layer,
-                            ["extrude", "polygon", "project", "elevation"],
-                            [],
-                            dataStorage,
+                        translationZaxis = get_translation_axis(
+                            layer, boundaryPts, elevationLayer, dataStorage
                         )
-                        is True
-                    ):
-                        if isFlat(boundaryPts) is False:
-                            logToUser(
-                                "Geometry projections can only be applied to flat polygons",
-                                level=1,
-                                func=inspect.stack()[0][3],
-                            )
-                        else:
-                            translationZaxis = getZaxisTranslation(
-                                layer, boundaryPts, dataStorage
-                            )
-                            if translationZaxis is None:
-                                logToUser(
-                                    "Some polygons are outside the elevation layer extent or extrusion value is Null",
-                                    level=1,
-                                    func=inspect.stack()[0][3],
-                                )
-                                continue
+                    except ValueError:
+                        continue
 
                     polygon, iterations = polygonToSpeckle(
                         poly,
@@ -284,17 +208,11 @@ def convertToSpeckle(
                         xform,
                     )
                     result.append(polygon)
+
                 for r in result:
                     if r is None:
                         continue
-                    r.units = units
-                    r.boundary.units = units
-                    for v in r.voids:
-                        if v is not None:
-                            v.units = units
-                    for v in r.displayValue:
-                        if v is not None:
-                            v.units = units
+                    apply_units_to_speckle_polygon(r, units)
 
                 element = GisPolygonElement(units=units, geometry=result)
 
@@ -307,6 +225,66 @@ def convertToSpeckle(
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
         return None, None
+
+
+def apply_units_to_speckle_polygon(result, units):
+    result.units = units
+    if result.boundary is not None:
+        result.boundary.units = units
+    for v in result.voids:
+        if v is not None:
+            v.units = units
+    try:  # if mesh creation failed, displayValue stays None
+        for v in result.displayValue:
+            if v is not None:
+                v.units = units
+    except:
+        pass
+
+
+def get_translation_axis(layer, boundaryPts, elevationLayer, dataStorage):
+    translationZaxis = None
+    if (
+        elevationLayer is not None
+        and isAppliedLayerTransformByKeywords(
+            layer,
+            ["polygon", "project", "elevation"],
+            [],
+            dataStorage,
+        )
+        is True
+    ):
+        translationZaxis = getZaxisTranslation(layer, boundaryPts, dataStorage)
+        if translationZaxis is None:
+            logToUser(
+                "Some polygons are outside the elevation layer extent or extrusion value is Null",
+                level=1,
+                func=inspect.stack()[0][3],
+            )
+            raise ValueError(
+                "Some polygons are outside the elevation layer extent or extrusion value is Null"
+            )
+    return translationZaxis
+
+
+def validate_height(height, boundaryPts):
+    if height is not None:
+        if isFlat(boundaryPts) is False:
+            logToUser(
+                "Extrusion can only be applied to flat polygons",
+                level=1,
+                func=inspect.stack()[0][3],
+            )
+            height = None
+    return height
+
+
+def get_boundary_pts(geom) -> List["QgsPoint"]:
+    try:
+        boundaryPts = [v[1] for v in enumerate(geom.exteriorRing().vertices())]
+    except:
+        boundaryPts = [v[1] for v in enumerate(geom.exteriorRing().vertices())]
+    return boundaryPts
 
 
 def convertToNative(base: Base, dataStorage) -> Union["QgsGeometry", None]:
