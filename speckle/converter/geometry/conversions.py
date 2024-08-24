@@ -188,15 +188,27 @@ def convertToSpeckle(
 
             else:
                 result = []
+                all_boundary_pts = []
+                all_heights = []
                 for poly in geom.parts():
                     boundaryPts = get_boundary_pts(poly)
+                    all_boundary_pts.append(boundaryPts)
                     height = validate_height(height, boundaryPts)
-                    try:
-                        translationZaxis = get_translation_axis(
-                            layer, boundaryPts, elevationLayer, dataStorage
-                        )
-                    except ValueError:
-                        continue
+                    all_heights.append(height)
+
+                try:
+                    translationZaxis = get_translation_axis(
+                        layer,
+                        [item for sublist in all_boundary_pts for item in sublist],
+                        elevationLayer,
+                        dataStorage,
+                    )
+                except ValueError:
+                    None, None
+
+                for x, poly in enumerate(geom.parts()):
+                    boundaryPts = all_boundary_pts[x]
+                    height = all_heights[x]
 
                     polygon, iterations = polygonToSpeckle(
                         poly,
