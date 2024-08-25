@@ -276,7 +276,7 @@ def meshPartsFromPolygon(
                 ran = range(0, total_vertices)
 
                 logToUser(
-                    "Vertical or invalid polygon, display Mesh will be approximated from the boundary",
+                    "Invalid polygon, display Mesh will be approximated from the boundary",
                     level=1,
                     func=inspect.stack()[0][3],
                 )
@@ -298,36 +298,36 @@ def meshPartsFromPolygon(
                 )
                 total_vertices += 3
                 # all faces are counter-clockwise now
-                if height is None:
-                    faces.extend(
-                        [
-                            3,
-                            total_vertices - 3,
-                            total_vertices - 2,
-                            total_vertices - 1,
-                        ]
-                    )
-                else:  # if extruding
-                    faces.extend(
-                        [
-                            3,
-                            total_vertices - 1,
-                            total_vertices - 2,
-                            total_vertices - 3,
-                        ]
-                    )  # reverse to clock-wise (facing down)
+                # if height is None:
+                faces.extend(
+                    [
+                        3,
+                        total_vertices - 3,
+                        total_vertices - 2,
+                        total_vertices - 1,
+                    ]
+                )
+                # else:  # if extruding
+                #    faces.extend(
+                #        [
+                #            3,
+                #            total_vertices - 1,
+                #            total_vertices - 2,
+                #            total_vertices - 3,
+                #        ]
+                #    )  # reverse to clock-wise (facing down)
 
             ran = range(0, total_vertices)
         except Exception as e:
             logToUser(e, level=2, func=inspect.stack()[0][3])
 
-        # a cap ##################################
         if len(vertices) == 0:
             logToUser(
                 "Polygon Mesh was not created", level=2, func=inspect.stack()[0][3]
             )
             return None, None, None, None, None
 
+        # a cap ##################################
         if height is not None:
             # change the pt list to height
             pt_list = [
@@ -339,7 +339,7 @@ def meshPartsFromPolygon(
                 b = trg[1]
                 c = trg[2]
                 # all faces are counter-clockwise still
-                vertices.extend(pt_list[a] + pt_list[b] + pt_list[c])
+                vertices_cap.extend(pt_list[a] + pt_list[b] + pt_list[c])
                 total_vertices += 3
                 faces_cap.extend(
                     [3, total_vertices - 3, total_vertices - 2, total_vertices - 1]
@@ -347,7 +347,7 @@ def meshPartsFromPolygon(
 
             ###################################### add extrusions
             polyBorder = fix_orientation(polyBorder, True, coef)  # clockwise
-            universal_z_value = polyBorder[0].z
+            # universal_z_value = polyBorder[0].z
             for k, pt in enumerate(polyBorder):
                 try:
                     vertices_side.extend(

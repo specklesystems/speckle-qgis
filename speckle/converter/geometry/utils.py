@@ -706,7 +706,7 @@ def speckleBoundaryToSpecklePts(
             except:
                 pass  # if Line or None
         for i, p in enumerate(polyBorder):
-            if polyBorder[i].z == -0.0:
+            if polyBorder[i].z == -0.0 or math.isnan(polyBorder[i].z):
                 polyBorder[i].z = 0
         return polyBorder
     except Exception as e:
