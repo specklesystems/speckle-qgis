@@ -373,20 +373,40 @@ def get_raster_colors(
         list_colors = [
             (
                 (
-                    255
-                    if vals_alpha is None
-                    else int(255 * (vals_alpha[ind] - val_min_alpha) / vals_range_alpha)
-                    << 24
+                    (
+                        255 << 24
+                        if vals_alpha is None or vals_range_alpha == 0
+                        else int(
+                            255 * (vals_alpha[ind] - val_min_alpha) / vals_range_alpha
+                        )
+                        << 24
+                    )
+                    | (
+                        (
+                            int(255 * (vals_red[ind] - val_min_red) / vals_range_red)
+                            << 16
+                        )
+                        if vals_range_red != 0
+                        else int(vals_red[ind]) << 16
+                    )
+                    | (
+                        int(255 * (vals_green[ind] - val_min_green) / vals_range_green)
+                        << 8
+                        if vals_range_green != 0
+                        else int(vals_green[ind]) << 8
+                    )
+                    | (
+                        int(255 * (vals_blue[ind] - val_min_blue) / vals_range_blue)
+                        if vals_range_blue != 0
+                        else int(vals_blue[ind])
+                    )
                 )
-                | (int(255 * (vals_red[ind] - val_min_red) / vals_range_red) << 16)
-                | (int(255 * (vals_green[ind] - val_min_green) / vals_range_green) << 8)
-                | int(255 * (vals_blue[ind] - val_min_blue) / vals_range_blue)
                 if (
                     vals_red[ind] != val_na_red
                     and vals_green[ind] != val_na_green
                     and vals_blue[ind] != val_na_blue
                 )
-                else (0 << 24) + (0 << 16) + (0 << 8) + 0
+                else (0 << 24) | (0 << 16) | (0 << 8) | 0
             )
             for ind, _ in enumerate(rasterBandVals[0])
             for _ in range(4)
@@ -403,7 +423,7 @@ def get_raster_colors(
 
             for val in rasterBandVals[bandIndex]:
                 rgb = None
-                color = (0 << 24) + (0 << 16) + (0 << 8) + 0
+                color = (0 << 24) | (0 << 16) | (0 << 8) | 0
 
                 for class_ind in range(len(renderer_classes)):
                     if rasterBandVals[bandIndex] == rasterBandNoDataVal[bandIndex]:
@@ -419,7 +439,7 @@ def get_raster_colors(
                         rgb = class_rgbs[class_ind]
 
                 if rgb is not None:
-                    color = (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
+                    color = (255 << 24) | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
 
                 # add color value after looping through classes/categories
                 list_colors.extend([color, color, color, color])
@@ -455,7 +475,7 @@ def get_raster_colors(
 
             for val in rasterBandVals[bandIndex]:
                 rgb = None
-                color = (0 << 24) + (0 << 16) + (0 << 8) + 0
+                color = (0 << 24) | (0 << 16) | (0 << 8) | 0
 
                 for class_ind in range(len(renderer_classes)):
                     if rasterBandVals[bandIndex] == rasterBandNoDataVal[bandIndex]:
@@ -471,7 +491,7 @@ def get_raster_colors(
                         rgb = class_rgbs[class_ind]
 
                 if rgb is not None:
-                    color = (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
+                    color = (255 << 24) | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
 
                 # add color value after looping through classes/categories
                 list_colors.extend([color, color, color, color])
@@ -513,7 +533,7 @@ def get_raster_colors(
                 | (int(255 * (rasterBandVals[0][ind] - pixMin) / vals_range) << 8)
                 | int(255 * (rasterBandVals[0][ind] - pixMin) / vals_range)
                 if rasterBandVals[0][ind] != rasterBandNoDataVal[0]
-                else (0 << 24) + (0 << 16) + (0 << 8) + 0
+                else (0 << 24) | (0 << 16) | (0 << 8) | 0
             )
             for ind, _ in enumerate(rasterBandVals[0])
             for _ in range(4)
@@ -1170,7 +1190,7 @@ def rasterFeatureToSpeckle(
                         ] = colors_filtered[colors_list_index + 2] = colors_filtered[
                             colors_list_index + 3
                         ] = (
-                            (0 << 24) + (0 << 16) + (0 << 8) + 0
+                            (0 << 24) | (0 << 16) | (0 << 8) | 0
                         )
 
                 if terrain_transform is True or texture_transform is True:

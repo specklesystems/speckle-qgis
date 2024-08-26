@@ -70,7 +70,7 @@ def featureColorfromNativeRenderer(
                         level=2,
                         func=inspect.stack()[0][3],
                     )
-                    return (255 << 24) + (245 << 16) + (245 << 8) + 245
+                    return (255 << 24) | (245 << 16) | (245 << 8) | 245
 
                 for obj in renderer.categories():
                     try:
@@ -105,13 +105,13 @@ def featureColorfromNativeRenderer(
                 r, g, b = color.getRgb()[:3]
             except:
                 r, g, b = [int(i) for i in color.replace(" ", "").split(",")[:3]]
-            col = (255 << 24) + (r << 16) + (g << 8) + b
+            col = (255 << 24) | (r << 16) | (g << 8) | b
             return col
         else:
-            return (255 << 24) + (245 << 16) + (245 << 8) + 245
+            return (255 << 24) | (245 << 16) | (245 << 8) | 245
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        return (255 << 24) + (245 << 16) + (245 << 8) + 245
+        return (255 << 24) | (245 << 16) | (245 << 8) | 245
 
 
 def gradientColorRampToSpeckle(
@@ -129,7 +129,7 @@ def gradientColorRampToSpeckle(
                 r, g, b = s.color.getRgb()[:3]
             except:
                 r, g, b = [int(i) for i in s.color.replace(" ", "").split(",")[:3]]
-            sColor = (255 << 24) + (r << 16) + (g << 8) + b
+            sColor = (255 << 24) | (r << 16) | (g << 8) | b
             stopsStr.append({"color": sColor, "offset": s.offset})
         rampType = rRamp.type()  #'gradient'
         sourceRamp = props
@@ -358,7 +358,7 @@ def makeDefaultRenderer(
         try:
             rgb = renderer["properties"]["sourceSymbColor"]
         except:
-            rgb = (255 << 24) + (0 << 16) + (0 << 8) + 0
+            rgb = (255 << 24) | (0 << 16) | (0 << 8) | 0
         r = (rgb & 0xFF0000) >> 16
         g = (rgb & 0xFF00) >> 8
         b = rgb & 0xFF
@@ -485,7 +485,7 @@ def rendererToSpeckle(
                 rgb = symbol.color().getRgb()
             except:
                 [int(i) for i in symbol().color().replace(" ", "").split(",")[:3]]
-            symbolColor = (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
+            symbolColor = (255 << 24) | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
             layerRenderer["properties"].update(
                 {"symbol": {"symbColor": symbolColor}, "symbType": symbType}
             )
@@ -498,7 +498,7 @@ def rendererToSpeckle(
             attribute = renderer.classAttribute()  # 'id'
             layerRenderer["properties"]["attribute"] = attribute
             symbol = renderer.sourceSymbol()
-            sourceSymbColor = (255 << 24) + (0 << 16) + (0 << 8) + 0
+            sourceSymbColor = (255 << 24) | (0 << 16) | (0 << 8) | 0
             try:
                 symbType = symbol.symbolTypeToString(symbol.type())  # Line
                 try:
@@ -507,7 +507,7 @@ def rendererToSpeckle(
                     r, g, b = [
                         int(i) for i in symbol.color().replace(" ", "").split(",")[:3]
                     ]
-                sourceSymbColor = (255 << 24) + (r << 16) + (g << 8) + b
+                sourceSymbColor = (255 << 24) | (r << 16) | (g << 8) | b
 
                 layerRenderer["properties"].update(
                     {"symbType": symbType, "sourceSymbColor": sourceSymbColor}
@@ -528,7 +528,7 @@ def rendererToSpeckle(
                         int(i)
                         for i in i.symbol().color().replace(" ", "").split(",")[:3]
                     ]
-                symbColor = (255 << 24) + (r << 16) + (g << 8) + b
+                symbColor = (255 << 24) | (r << 16) | (g << 8) | b
                 symbOpacity = i.symbol().opacity()  # QgsSymbol.color()
                 label = i.label()
                 layerRenderer["properties"]["categories"].append(
@@ -559,7 +559,7 @@ def rendererToSpeckle(
                 r, g, b = [
                     int(i) for i in symbol.color().replace(" ", "").split(",")[:3]
                 ]
-            sourceSymbColor = (255 << 24) + (r << 16) + (g << 8) + b
+            sourceSymbColor = (255 << 24) | (r << 16) | (g << 8) | b
             gradMethod = renderer.graduatedMethod()  # 0
             layerRenderer["properties"].update(
                 {
@@ -581,7 +581,7 @@ def rendererToSpeckle(
                     lower = i.lowerValue()
                     upper = i.upperValue()
                     rgb = i.symbol().color().getRgb()  # QgsSymbol.color() -> QColor
-                    symbColor = (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
+                    symbColor = (255 << 24) | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
                     symbOpacity = i.symbol().opacity()  # QgsSymbol.color()
                     label = i.label()
                     width = 0.26
@@ -684,7 +684,7 @@ def rendererToSpeckle(
             for i in rendererClasses:
                 value = i.value
                 rgb = i.color.getRgb()
-                color = (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
+                color = (255 << 24) | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
                 classes.append({"color": color, "value": value, "label": i.label})
             layerRenderer.update(
                 {"properties": {"classes": classes, "ramp": sourceRamp, "band": band}}
