@@ -1,6 +1,7 @@
 """ This module contains all geometry conversion functionality To and From Speckle."""
 
 import inspect
+import math
 import random
 
 from speckle.converter.geometry import transform
@@ -88,6 +89,8 @@ def polygonToSpeckleMesh(
                     # project the pts on the plane
                     point = [pt.x, pt.y, 0]
                     z_val = projectToPolygon(point, plane_pts)
+                    if math.isnan(z_val):
+                        z_val = 0
                     pts_fixed.append(Point(units="m", x=pt.x, y=pt.y, z=z_val))
 
                 voids.append(
@@ -146,6 +149,10 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
     elevationLayer = getElevationLayer(dataStorage)
     translationValue = None
 
+    min_z = min([p.z() for p in boundaryPts])
+    if math.isnan(min_z):
+        min_z = 0
+
     if elevationLayer is not None:
         all_arrays, all_mins, all_maxs, all_na = getRasterArrays(elevationLayer)
         settings_elevation_layer = get_raster_stats(elevationLayer)
@@ -181,7 +188,9 @@ def getZaxisTranslation(layer, boundaryPts, dataStorage):
             if np.isnan(boundaryPts[0].z()):  # for flat polygons with z=0
                 translationValue = min(allElevations)
             else:
-                translationValue = min(allElevations) - boundaryPts[0].z()
+                translationValue = min(allElevations) - min_z
+    else:
+        translationValue = -1 * min_z
 
     return translationValue
 

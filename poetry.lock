@@ -362,6 +362,19 @@ executing = ">=1.1.1"
 pygments = ">=2.15.0"
 
 [[package]]
+name = "earcut"
+version = "1.1.5"
+description = "A pure Python port of the earcut JS triangulation library"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "earcut-1.1.5.tar.gz", hash = "sha256:21c55b032fe0b90658e7f305e1ee408cb4f76782c5066d86273adfb4b6cc23e0"},
+]
+
+[package.dependencies]
+numpy = "*"
+
+[[package]]
 name = "exceptiongroup"
 version = "1.2.0"
 description = "Backport of PEP 654 (exception groups)"
@@ -1311,13 +1324,13 @@ files = [
 
 [[package]]
 name = "specklepy"
-version = "2.18.3"
+version = "2.19.3"
 description = "The Python SDK for Speckle 2.0"
 optional = false
 python-versions = "<4.0,>=3.8.0"
 files = [
-    {file = "specklepy-2.18.3-py3-none-any.whl", hash = "sha256:8d5c2fc6d8b6aa89ee7b955b22b1a6a1872561990b89440539758fdacf8762e6"},
-    {file = "specklepy-2.18.3.tar.gz", hash = "sha256:c6dae98b3ea2457f709099b2dbe4f1f16117caee2946281f03ca6387d12d712a"},
+    {file = "specklepy-2.19.3-py3-none-any.whl", hash = "sha256:54099924086eaccd2226001f7ead73365a3b9509598b4b69e1c1eb082ffa54c0"},
+    {file = "specklepy-2.19.3.tar.gz", hash = "sha256:c8c179f773c20ff071410b569d858e75d9bdfb3bec77097606a5f1770780a3a1"},
 ]
 
 [package.dependencies]
@@ -1741,4 +1754,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9, <4.0"
-content-hash = "f6ecc47468dabc61d99a493e6cc234ef91ca9892f94909814f839045ac1af03c"
+content-hash = "612e8099ae842ff27b52223effdfa13b001634af22aacc858bdd7a5b0da13066"

@@ -350,15 +350,25 @@ def layerToSpeckle(
             features = selectedLayer.getFeatures()
 
             elevationLayer = getElevationLayer(plugin.dataStorage)
+
             projectingApplied = isAppliedLayerTransformByKeywords(
+                selectedLayer,
+                ["polygon", "project", "elevation"],
+                [],
+                plugin.dataStorage,
+            )
+
+            projectingExtrudingApplied = isAppliedLayerTransformByKeywords(
                 selectedLayer,
                 ["extrude", "polygon", "project", "elevation"],
                 [],
                 plugin.dataStorage,
             )
-            if projectingApplied is True and elevationLayer is None:
+            if (
+                projectingExtrudingApplied is True or projectingApplied is True
+            ) and elevationLayer is None:
                 logToUser(
-                    f"Elevation layer is not found. Layer '{selectedLayer.name()}' will not be projected on a 3d elevation.",
+                    f"Elevation layer is not found. Layer '{selectedLayer.name()}' will be projected to zero level.",
                     level=1,
                     plugin=plugin.dockwidget,
                 )
