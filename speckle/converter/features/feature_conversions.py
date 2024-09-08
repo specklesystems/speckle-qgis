@@ -526,9 +526,27 @@ def get_raster_colors(
         pixMax = rasterBandMaxVal[0]
         vals_range = pixMax - pixMin
 
+        vals_alpha = [
+            1 if val != rasterBandNoDataVal[0] else 0 for val in rasterBandVals[0]
+        ]
+        vals_range_alpha = 0
+        val_min_alpha = 0
+        try:
+            val_min_alpha = min(vals_alpha)
+            vals_range_alpha = max(vals_alpha) - val_min_alpha
+            if vals_alpha is not None and 0 in vals_alpha:
+                have_transparent_cells = True
+        except:
+            pass
+
         list_colors: List[int] = [
             (
-                (255 << 24)
+                (
+                    255 << 24
+                    if vals_range_alpha == 0
+                    else int(255 * (vals_alpha[ind] - val_min_alpha) / vals_range_alpha)
+                    << 24
+                )
                 | (int(255 * (rasterBandVals[0][ind] - pixMin) / vals_range) << 16)
                 | (int(255 * (rasterBandVals[0][ind] - pixMin) / vals_range) << 8)
                 | int(255 * (rasterBandVals[0][ind] - pixMin) / vals_range)
