@@ -16,8 +16,6 @@ from specklepy.objects.geometry import (
 from specklepy.objects import Base
 from typing import Any, List, Tuple, Union, Dict
 
-from shapely.geometry import Polygon
-from shapely.ops import triangulate
 import geopandas as gpd
 from geovoronoi import voronoi_regions_from_coords
 
@@ -239,110 +237,6 @@ def getPolyPtsSegments(
         logToUser(e, level=1, func=inspect.stack()[0][3])
         raise e
     return vertices, vertices3d, segmList, holes
-
-
-def to_triangles(data: dict, attempt: int = 0) -> Tuple[Union[dict, None], int]:
-    # https://gis.stackexchange.com/questions/316697/delaunay-triangulation-algorithm-in-shapely-producing-erratic-result
-    try:
-        vert_old = data["vertices"]
-        holes_old = data["holes"]
-
-        # round vertices:
-        digits = 3 - attempt
-
-        vert = []
-        vert_rounded = []
-        for i, v in enumerate(vert_old):
-            if i == len(vert_old) - 1:
-                vert.append(v)
-                break  # don't test last point
-            rounded = [round(v[0], digits), round(v[1], digits)]
-            if v not in vert and rounded not in vert_rounded:
-                vert.append(v)
-                vert_rounded.append(rounded)
-
-        # round holes:
-        holes = []
-        holes_rounded = []
-        for k, h in enumerate(holes_old):
-            hole = []
-            for i, v in enumerate(h):
-                if i == len(h) - 1:
-                    hole.append(v)
-                    break  # don't test last point
-                rounded = [round(v[0], digits), round(v[1], digits)]
-                if v not in holes and rounded not in holes_rounded:
-                    hole.append(v)
-                    holes_rounded.append(rounded)
-            holes.append(hole)
-
-        if len(holes) == 1 and len(holes[0]) == 0:
-            polygon = Polygon([(v[0], v[1]) for v in vert])
-        else:
-            polygon = Polygon([(v[0], v[1]) for v in vert], holes)
-
-        poly_points = []
-        exterior_linearring = polygon.exterior
-        poly_points += np.array(exterior_linearring.coords).tolist()
-
-        try:
-            polygon.interiors[0]
-        except:
-            poly_points = poly_points
-        else:
-            for i, interior_linearring in enumerate(polygon.interiors):
-                a = interior_linearring.coords
-                poly_points += np.array(a).tolist()
-
-        poly_points = np.array(
-            [item for sublist in poly_points for item in sublist]
-        ).reshape(-1, 2)
-
-        poly_shapes, pts = voronoi_regions_from_coords(
-            poly_points, polygon.buffer(0.000001)
-        )
-        gdf_poly_voronoi = (
-            gpd.GeoDataFrame({"geometry": poly_shapes})
-            .explode(index_parts=True)
-            .reset_index()
-        )
-
-        tri_geom = []
-        for geom in gdf_poly_voronoi.geometry:
-            inside_triangles = [
-                tri for tri in triangulate(geom) if tri.centroid.within(polygon)
-            ]
-            tri_geom += inside_triangles
-
-        vertices = []
-        triangles = []
-        for tri in tri_geom:
-            xx, yy = tri.exterior.coords.xy
-            v_list = zip(xx.tolist(), yy.tolist())
-
-            tr_indices = []
-            count = 0
-            for vt in v_list:
-                v = list(vt)
-                if count == 3:
-                    continue
-                if v not in vertices:
-                    vertices.append(v)
-                    tr_indices.append(len(vertices) - 1)
-                else:
-                    tr_indices.append(vertices.index(v))
-                count += 1
-            triangles.append(tr_indices)
-
-        shape = {"vertices": vertices, "triangles": triangles}
-        return shape, attempt
-    except Exception as e:
-        print(e)
-        attempt += 1
-        if attempt <= 3:
-            return to_triangles(data, attempt)
-        else:
-            return None, attempt
 
 
 def triangulatePolygon(
