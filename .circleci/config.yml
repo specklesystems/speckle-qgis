@@ -324,7 +324,7 @@ workflows: # happens with every PR to main
               tag: ["3.11"]
       - build-connector-win:
           requires:
-            - test
+            - package
           context: digicert-keylocker
 
       - build-installer-mac:
@@ -381,7 +381,7 @@ workflows: # happens with every PR to main
           slug: qgis
           installer: true
           requires:
-            - test
+            - package
           filters: &deploy_filters
             tags:
               only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/
