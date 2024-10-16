@@ -1,6 +1,8 @@
+import earcut
 import inspect
 from math import cos, sin, atan
 import math
+import earcut.earcut
 from specklepy.objects.geometry import (
     Point,
     Line,
@@ -14,8 +16,6 @@ from specklepy.objects.geometry import (
 from specklepy.objects import Base
 from typing import Any, List, Tuple, Union, Dict
 
-from shapely.geometry import Polygon
-from shapely.ops import triangulate
 import geopandas as gpd
 from geovoronoi import voronoi_regions_from_coords
 
@@ -127,7 +127,9 @@ def projectToPolygon(
     return z
 
 
-def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage", xform):
+def getPolyPtsSegments(
+    geom: Any, dataStorage: "DataStorage", coef: Union[int, None] = None, xform=None
+):
     vertices = []
     vertices3d = []
     segmList = []
@@ -145,18 +147,27 @@ def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage", xform):
             pt_iterator = geom.vertices()
 
     # get boundary points and segments
-    pointListLocal = []
+    pointListLocalOuter = []
     startLen = len(vertices)
     for i, pt in enumerate(pt_iterator):
         if (
-            len(pointListLocal) > 0
-            and pt.x() == pointListLocal[0].x()
-            and pt.y() == pointListLocal[0].y()
-        ):  # don't repeat 1st point
+            len(pointListLocalOuter) > 0
+            and pt.x() == pointListLocalOuter[0].x()
+            and pt.y() == pointListLocalOuter[0].y()
+        ):
+            # don't repeat 1st point
             pass
+        elif coef is None:
+            pointListLocalOuter.append(pt)
         else:
-            pointListLocal.append(pt)
-    for i, pt in enumerate(pointListLocal):
+            if i % coef == 0:
+                pointListLocalOuter.append(pt)
+            else:
+                # don't add points, which are in-between specified step (coeff)
+                # e.g. if coeff=5, we skip ponts 1,2,3,4, but add points 0 and 5
+                pass
+
+    for i, pt in enumerate(pointListLocalOuter):
         x, y = apply_pt_offsets_rotation_on_send(pt.x(), pt.y(), dataStorage)
         vertices.append([x, y])
         try:
@@ -182,18 +193,29 @@ def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage", xform):
             pt_list = list(pt_iterator)
             pointListLocal = []
             startLen = len(vertices)
+
             for i, pt in enumerate(pt_list):
                 if (
                     len(pointListLocal) > 0
                     and pt.x() == pointListLocal[0].x()
                     and pt.y() == pointListLocal[0].y()
-                ):  # don't repeat 1st point
+                ):
+                    # don't repeat 1st point
                     continue
-                elif [
-                    pt.x(),
-                    pt.y(),
-                ] not in vertices:  # in case it's not the inner part of geometry
-                    pointListLocal.append(pt)
+                elif pt not in pointListLocalOuter:
+                    # make sure it's not already included in the outer part of geometry
+
+                    if coef is None or len(pt_list) / coef < 5:
+                        # coef was calculated by the outer ring.
+                        # We need to make sure inner ring will have at least 4 points, otherwise ignore coeff.
+                        pointListLocal.append(pt)
+                    else:
+                        if i % coef == 0:
+                            pointListLocal.append(pt)
+                        else:
+                            # don't add points, which are in-between specified step (coeff)
+                            # e.g. if coeff=5, we skip ponts 1,2,3,4, but add points 0 and 5
+                            pass
 
             if len(pointListLocal) > 2:
                 holes.append(
@@ -217,139 +239,51 @@ def getPolyPtsSegments(geom: Any, dataStorage: "DataStorage", xform):
     return vertices, vertices3d, segmList, holes
 
 
-def to_triangles(data: dict, attempt: int = 0) -> Tuple[Union[dict, None], int]:
-    # https://gis.stackexchange.com/questions/316697/delaunay-triangulation-algorithm-in-shapely-producing-erratic-result
-    try:
-        vert_old = data["vertices"]
-        holes_old = data["holes"]
-
-        # round vertices:
-        digits = 3 - attempt
-
-        vert = []
-        vert_rounded = []
-        for i, v in enumerate(vert_old):
-            if i == len(vert_old) - 1:
-                vert.append(v)
-                break  # don't test last point
-            rounded = [round(v[0], digits), round(v[1], digits)]
-            if v not in vert and rounded not in vert_rounded:
-                vert.append(v)
-                vert_rounded.append(rounded)
-
-        # round holes:
-        holes = []
-        holes_rounded = []
-        for k, h in enumerate(holes_old):
-            hole = []
-            for i, v in enumerate(h):
-                if i == len(h) - 1:
-                    hole.append(v)
-                    break  # don't test last point
-                rounded = [round(v[0], digits), round(v[1], digits)]
-                if v not in holes and rounded not in holes_rounded:
-                    hole.append(v)
-                    holes_rounded.append(rounded)
-            holes.append(hole)
-
-        if len(holes) == 1 and len(holes[0]) == 0:
-            polygon = Polygon([(v[0], v[1]) for v in vert])
-        else:
-            polygon = Polygon([(v[0], v[1]) for v in vert], holes)
-
-        poly_points = []
-        exterior_linearring = polygon.exterior
-        poly_points += np.array(exterior_linearring.coords).tolist()
-
-        try:
-            polygon.interiors[0]
-        except:
-            poly_points = poly_points
-        else:
-            for i, interior_linearring in enumerate(polygon.interiors):
-                a = interior_linearring.coords
-                poly_points += np.array(a).tolist()
-
-        poly_points = np.array(
-            [item for sublist in poly_points for item in sublist]
-        ).reshape(-1, 2)
-
-        poly_shapes, pts = voronoi_regions_from_coords(
-            poly_points, polygon.buffer(0.000001)
-        )
-        gdf_poly_voronoi = (
-            gpd.GeoDataFrame({"geometry": poly_shapes})
-            .explode(index_parts=True)
-            .reset_index()
-        )
-
-        tri_geom = []
-        for geom in gdf_poly_voronoi.geometry:
-            inside_triangles = [
-                tri for tri in triangulate(geom) if tri.centroid.within(polygon)
-            ]
-            tri_geom += inside_triangles
-
-        vertices = []
-        triangles = []
-        for tri in tri_geom:
-            xx, yy = tri.exterior.coords.xy
-            v_list = zip(xx.tolist(), yy.tolist())
-
-            tr_indices = []
-            count = 0
-            for vt in v_list:
-                v = list(vt)
-                if count == 3:
-                    continue
-                if v not in vertices:
-                    vertices.append(v)
-                    tr_indices.append(len(vertices) - 1)
-                else:
-                    tr_indices.append(vertices.index(v))
-                count += 1
-            triangles.append(tr_indices)
-
-        shape = {"vertices": vertices, "triangles": triangles}
-        return shape, attempt
-    except Exception as e:
-        print(e)
-        attempt += 1
-        if attempt <= 3:
-            return to_triangles(data, attempt)
-        else:
-            return None, attempt
-
-
 def triangulatePolygon(
-    geom: Any, dataStorage: "DataStorage", xform=None
+    vertices: Any,
+    holes: Any,
+    dimensions: int,
+    dataStorage: "DataStorage",
+    coef: Union[int, None] = None,
+    xform=None,
 ) -> Tuple[dict, Union[List[List[float]], None], int]:
     try:
         # import triangle as tr
-        vertices = []  # only outer
-        segments = []  # including holes
-        holes = []
-        pack = getPolyPtsSegments(geom, dataStorage, xform)
+        # vertices = []  # only outer
+        # holes = []
+        # pack = getPolyPtsSegments(geom, dataStorage, coef, xform)
 
-        vertices, vertices3d, segments, holes = pack
-
+        # close the loop
+        r"""
         if len(vertices) > 0:
-            vertices.append(vertices[0])
-        for i, h in enumerate(holes):
+            vertices.extend(vertices[:dimensions])
+        for i, _ in enumerate(holes):
             if len(holes[i]) > 0:
-                holes[i].append(holes[i][0])
-        dict_shape = {"vertices": vertices, "holes": holes}
+                holes[i].extend(holes[i][:dimensions])
+        """
+
+        if len(holes) == 0:
+            holes = None
 
         try:
-            t, iterations = to_triangles(dict_shape, 0)
+            triangles = earcut.earcut.earcut(vertices, holes, dim=dimensions)
+            triangle_tuples = [
+                (triangles[3 * i], triangles[3 * i + 1], triangles[3 * i + 2])
+                for i, _ in enumerate(triangles)
+                if i < len(triangles) / 3
+            ]
+            # return_dict = {
+            #    "vertices": vertices,
+            #    "triangles": triangle_tuples,
+            # }
         except Exception as e:
             logToUser(e, level=2, func=inspect.stack()[0][3])
-            return None, None, None
-        return t, vertices3d, iterations
+            return None
+        return triangle_tuples
 
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
-        return None, None, None
+        return None
 
 
 def trianglateQuadMesh(mesh: Mesh) -> Union[Mesh, None]:
@@ -432,13 +366,20 @@ def fix_orientation(
         index = k + 1
         if k == len(polyBorder) - 1:
             index = 0
-        pt = polyBorder[k * coef]
-        pt2 = polyBorder[index * coef]
 
-        if isinstance(pt, Point) and isinstance(pt2, Point):
-            sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)  # if Speckle Points
-        else:
-            sum_orientation += (pt2.x() - pt.x()) * (pt2.y() + pt.y())  # if QGIS Points
+        try:
+            pt = polyBorder[k * coef]
+            pt2 = polyBorder[index * coef]
+
+            if isinstance(pt, Point) and isinstance(pt2, Point):
+                sum_orientation += (pt2.x - pt.x) * (pt2.y + pt.y)  # if Speckle Points
+            else:
+                sum_orientation += (pt2.x() - pt.x()) * (
+                    pt2.y() + pt.y()
+                )  # if QGIS Points
+        except IndexError:
+            break
+
     if positive is True:
         if sum_orientation < 0:
             polyBorder.reverse()
@@ -659,7 +600,7 @@ def speckleBoundaryToSpecklePts(
             except:
                 pass  # if Line or None
         for i, p in enumerate(polyBorder):
-            if polyBorder[i].z == -0.0:
+            if polyBorder[i].z == -0.0 or math.isnan(polyBorder[i].z):
                 polyBorder[i].z = 0
         return polyBorder
     except Exception as e:

@@ -107,15 +107,16 @@ def getPolygonFeatureHeight(
     feature: "QgsFeature", layer: "QgsVectorLayer", dataStorage: "DataStorage"
 ) -> Union[int, float, None]:
     height = None
-    ignore = False
     if dataStorage.savedTransforms is not None:
         for item in dataStorage.savedTransforms:
             layer_name = item.split("  ->  ")[0].split(" ('")[0]
-            transform_name = item.split("  ->  ")[1].lower()
-            if "ignore" in transform_name:
-                ignore = True
 
+            ignore = False
             if layer_name == layer.name():
+                transform_name = item.split("  ->  ")[1].lower()
+                if "ignore" in transform_name:
+                    ignore = True
+
                 attribute = None
                 if " ('" in item:
                     attribute = item.split(" ('")[1].split("') ")[0]

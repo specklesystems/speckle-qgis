@@ -18,6 +18,7 @@ from speckle.converter.geometry.conversions import (
 )
 from speckle.converter.geometry.mesh import constructMeshFromRaster
 from speckle.converter.geometry.utils import apply_pt_offsets_rotation_on_send
+from speckle.converter.layers.symbology import get_a_r_g_b
 from speckle.converter.layers.utils import (
     generate_qgis_app_id,
     getArrayIndicesFromXY,
@@ -117,11 +118,11 @@ def featureToSpeckle(
                         elif isinstance(g, GisPolygonGeometry):
                             if len(g.displayValue) == 0:
                                 all_errors += (
-                                    "Polygon converted, but display mesh not generated"
+                                    "Polygon part converted, but display mesh not generated"
                                     + ", "
                                 )
                                 logToUser(
-                                    "Polygon converted, but display mesh not generated",
+                                    "Polygon part converted, but display mesh not generated",
                                     level=1,
                                     func=inspect.stack()[0][3],
                                 )
@@ -287,12 +288,14 @@ def get_raster_mesh_coords(
 
 
 def apply_offset_rotation_to_vertices_send(vertices: List[float], dataStorage):
+    new_vertices = []
     for index in range(int(len(vertices) / 3)):
         x, y = apply_pt_offsets_rotation_on_send(
-            vertices[index], vertices[index + 1], dataStorage
+            vertices[3 * index], vertices[3 * index + 1], dataStorage
         )
-        vertices[index] = x
-        vertices[index + 1] = y
+        new_vertices.extend([x, y, vertices[3 * index + 2]])
+
+    return new_vertices
 
 
 def get_raster_colors(
@@ -305,40 +308,105 @@ def get_raster_colors(
     plugin,
 ):
     list_colors = []
-    if rendererType == "multibandcolor":  # RGB
+    have_transparent_cells = False
+    if rendererType == "multibandcolor":
 
-        vals_range0 = rasterBandMaxVal[0] - rasterBandMinVal[0]
-        vals_range1 = rasterBandMaxVal[1] - rasterBandMinVal[1]
-        vals_range2 = rasterBandMaxVal[2] - rasterBandMinVal[2]
+        # mock values for R,G,B channels
+        vals_red = [0 for _ in rasterBandVals[0]]
+        vals_green = [0 for _ in rasterBandVals[0]]
+        vals_blue = [0 for _ in rasterBandVals[0]]
+        vals_alpha = None
+
+        vals_range_red = 1
+        vals_range_green = 1
+        vals_range_blue = 1
+
+        val_min_red = 0
+        val_min_green = 0
+        val_min_blue = 0
+
+        val_na_red = None
+        val_na_green = None
+        val_na_blue = None
+
+        # get band index for each color channel
+        bandRed = int(layer.renderer().redBand())
+        bandGreen = int(layer.renderer().greenBand())
+        bandBlue = int(layer.renderer().blueBand())
+        bandAlpha = int(layer.renderer().alphaBand())
+
+        # assign correct values to R,G,B channels, where available
+        for band_index in range(len(rasterBandVals)):
+            # if statements are not exclusive, as QGIS allows to assugn 1 band to several color channels
+            if band_index + 1 == bandRed:
+                vals_red = rasterBandVals[band_index]
+                vals_range_red = (
+                    rasterBandMaxVal[band_index] - rasterBandMinVal[band_index]
+                )
+                val_min_red = rasterBandMinVal[band_index]
+                val_na_red = rasterBandNoDataVal[band_index]
+            if band_index + 1 == bandGreen:
+                vals_green = rasterBandVals[band_index]
+                vals_range_green = (
+                    rasterBandMaxVal[band_index] - rasterBandMinVal[band_index]
+                )
+                val_min_green = rasterBandMinVal[band_index]
+                val_na_green = rasterBandNoDataVal[band_index]
+            if band_index + 1 == bandBlue:
+                vals_blue = rasterBandVals[band_index]
+                vals_range_blue = (
+                    rasterBandMaxVal[band_index] - rasterBandMinVal[band_index]
+                )
+                val_min_blue = rasterBandMinVal[band_index]
+                val_na_blue = rasterBandNoDataVal[band_index]
+            if band_index + 1 == bandAlpha:
+                vals_range_alpha = (
+                    rasterBandMaxVal[band_index] - rasterBandMinVal[band_index]
+                )
+                val_min_alpha = rasterBandMinVal[band_index]
+                val_na_alpha = rasterBandNoDataVal[band_index]
+                vals_alpha = rasterBandVals[band_index]
+
+        if vals_alpha is not None and 0 in vals_alpha:
+            have_transparent_cells = True
 
         list_colors = [
             (
-                (255 << 24)
-                | (
-                    int(
-                        255
-                        * (rasterBandVals[0][ind] - rasterBandMinVal[0])
-                        / vals_range0
+                (
+                    (
+                        255 << 24
+                        if vals_alpha is None or vals_range_alpha == 0
+                        else int(
+                            255 * (vals_alpha[ind] - val_min_alpha) / vals_range_alpha
+                        )
+                        << 24
                     )
-                    << 16
-                )
-                | (
-                    int(
-                        255
-                        * (rasterBandVals[1][ind] - rasterBandMinVal[1])
-                        / vals_range1
+                    | (
+                        (
+                            int(255 * (vals_red[ind] - val_min_red) / vals_range_red)
+                            << 16
+                        )
+                        if vals_range_red != 0
+                        else int(vals_red[ind]) << 16
                     )
-                    << 8
-                )
-                | int(
-                    255 * (rasterBandVals[2][ind] - rasterBandMinVal[2]) / vals_range2
+                    | (
+                        int(255 * (vals_green[ind] - val_min_green) / vals_range_green)
+                        << 8
+                        if vals_range_green != 0
+                        else int(vals_green[ind]) << 8
+                    )
+                    | (
+                        int(255 * (vals_blue[ind] - val_min_blue) / vals_range_blue)
+                        if vals_range_blue != 0
+                        else int(vals_blue[ind])
+                    )
                 )
                 if (
-                    rasterBandVals[0][ind] != rasterBandNoDataVal[0]
-                    and rasterBandVals[1][ind] != rasterBandNoDataVal[1]
-                    and rasterBandVals[2][ind] != rasterBandNoDataVal[2]
+                    vals_red[ind] != val_na_red
+                    and vals_green[ind] != val_na_green
+                    and vals_blue[ind] != val_na_blue
                 )
-                else (0 << 24) + (0 << 16) + (0 << 8) + 0
+                else (0 << 24) | (0 << 16) | (0 << 8) | 0
             )
             for ind, _ in enumerate(rasterBandVals[0])
             for _ in range(4)
@@ -350,14 +418,14 @@ def get_raster_colors(
             renderer_classes = layer.renderer().classes()
             class_rgbs = [
                 renderer_classes[class_ind].color.getRgb()
-                for class_ind in range(len(renderer_classes) - 1)
+                for class_ind in range(len(renderer_classes))
             ]
 
             for val in rasterBandVals[bandIndex]:
                 rgb = None
-                color = (0 << 24) + (0 << 16) + (0 << 8) + 0
+                color = (0 << 24) | (0 << 16) | (0 << 8) | 0
 
-                for class_ind in range(len(renderer_classes) - 1):
+                for class_ind in range(len(renderer_classes)):
                     if rasterBandVals[bandIndex] == rasterBandNoDataVal[bandIndex]:
                         rgb = None
                     elif class_ind < len(renderer_classes) - 1:
@@ -371,7 +439,7 @@ def get_raster_colors(
                         rgb = class_rgbs[class_ind]
 
                 if rgb is not None:
-                    color = (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
+                    color = (255 << 24) | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
 
                 # add color value after looping through classes/categories
                 list_colors.extend([color, color, color, color])
@@ -379,7 +447,7 @@ def get_raster_colors(
         except Exception as e:
             # log warning, but don't prevent conversion
             logToUser(
-                f"Raster renderer of type 'paletted' couldn't read the renderer class values, default renderer will be applied: {e}",
+                f"Raster renderer of type '{rendererType}' couldn't read the renderer class values, default renderer will be applied: {e}",
                 level=1,
                 func=inspect.stack()[0][3],
                 plugin=plugin.dockwidget,
@@ -402,14 +470,14 @@ def get_raster_colors(
             renderer_classes = layer.renderer().legendSymbologyItems()
             class_rgbs = [
                 renderer_classes[class_ind][1].getRgb()
-                for class_ind in range(len(renderer_classes) - 1)
+                for class_ind in range(len(renderer_classes))
             ]
 
             for val in rasterBandVals[bandIndex]:
                 rgb = None
-                color = (0 << 24) + (0 << 16) + (0 << 8) + 0
+                color = (0 << 24) | (0 << 16) | (0 << 8) | 0
 
-                for class_ind in range(len(renderer_classes) - 1):
+                for class_ind in range(len(renderer_classes)):
                     if rasterBandVals[bandIndex] == rasterBandNoDataVal[bandIndex]:
                         rgb = None
                     elif class_ind < len(renderer_classes) - 1:
@@ -423,7 +491,7 @@ def get_raster_colors(
                         rgb = class_rgbs[class_ind]
 
                 if rgb is not None:
-                    color = (255 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
+                    color = (255 << 24) | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
 
                 # add color value after looping through classes/categories
                 list_colors.extend([color, color, color, color])
@@ -431,7 +499,7 @@ def get_raster_colors(
         except Exception as e:
             # log warning, but don't prevent conversion
             logToUser(
-                f"Raster renderer of type 'paletted' couldn't read the renderer class values, default renderer will be applied: {e}",
+                f"Raster renderer of type '{rendererType}' couldn't read the renderer class values, default renderer will be applied: {e}",
                 level=1,
                 func=inspect.stack()[0][3],
                 plugin=plugin.dockwidget,
@@ -450,7 +518,7 @@ def get_raster_colors(
     else:  # greyscale
         if rendererType != "singlebandgray":
             logToUser(
-                f"Raster renderer type {rendererType} is not supported, rendering the raster in greyscale",
+                f"Raster renderer type {rendererType} is not supported, default renderer will be applied",
                 level=1,
                 func=inspect.stack()[0][3],
             )
@@ -458,20 +526,38 @@ def get_raster_colors(
         pixMax = rasterBandMaxVal[0]
         vals_range = pixMax - pixMin
 
+        vals_alpha = [
+            1 if val != rasterBandNoDataVal[0] else 0 for val in rasterBandVals[0]
+        ]
+        vals_range_alpha = 0
+        val_min_alpha = 0
+        try:
+            val_min_alpha = min(vals_alpha)
+            vals_range_alpha = max(vals_alpha) - val_min_alpha
+            if vals_alpha is not None and 0 in vals_alpha:
+                have_transparent_cells = True
+        except:
+            pass
+
         list_colors: List[int] = [
             (
-                (255 << 24)
+                (
+                    255 << 24
+                    if vals_range_alpha == 0
+                    else int(255 * (vals_alpha[ind] - val_min_alpha) / vals_range_alpha)
+                    << 24
+                )
                 | (int(255 * (rasterBandVals[0][ind] - pixMin) / vals_range) << 16)
                 | (int(255 * (rasterBandVals[0][ind] - pixMin) / vals_range) << 8)
                 | int(255 * (rasterBandVals[0][ind] - pixMin) / vals_range)
                 if rasterBandVals[0][ind] != rasterBandNoDataVal[0]
-                else (0 << 24) + (0 << 16) + (0 << 8) + 0
+                else (0 << 24) | (0 << 16) | (0 << 8) | 0
             )
             for ind, _ in enumerate(rasterBandVals[0])
             for _ in range(4)
         ]
 
-    return list_colors
+    return list_colors, have_transparent_cells
 
 
 def get_vertices_height(
@@ -574,6 +660,8 @@ def get_raster_band_data(
 ) -> List[float]:
     rasterBandNames.append(selectedLayer.bandName(index + 1))
     rb = ds.GetRasterBand(index + 1)
+
+    # note: raster stats can be messed up and are not reliable (e.g. Min is larger than Max)
     valMin = (
         selectedLayer.dataProvider()
         .bandStatistics(index + 1, QgsRasterBandStats.All)
@@ -672,7 +760,14 @@ def get_height_array_from_elevation_layer(elevationLayer):
 
 
 def get_raster_reprojected_stats(
-    project, projectCRS, selectedLayer, originX, originY, rasterResXY, rasterDimensions
+    project,
+    projectCRS,
+    selectedLayer,
+    originX,
+    originY,
+    rasterResXY,
+    rasterDimensions,
+    dataStorage,
 ):
     # get 4 corners of raster
     raster_top_right = QgsPointXY(
@@ -689,6 +784,12 @@ def get_raster_reprojected_stats(
     )
     # reproject corners to the project CRS
     scale_factor_x = scale_factor_y = 1
+
+    reprojected_top_right = raster_top_right
+    reprojectedOriginPt = rasterOriginPoint
+    reprojectedMaxPt = rasterMaxPt
+    reprojected_bottom_left = raster_bottom_left
+
     if selectedLayer.crs() != projectCRS:
         reprojected_top_right = transform.transform(
             project, raster_top_right, selectedLayer.crs(), projectCRS
@@ -730,6 +831,30 @@ def get_raster_reprojected_stats(
             )
         ),
     )
+
+    # apply offsets to all 4 pts
+    r"""
+    x1, y1 = apply_pt_offsets_rotation_on_send(
+        reprojectedOriginPt.x(), reprojectedOriginPt.y(), dataStorage
+    )
+    reprojectedOriginPt = QgsPointXY(x1, y1)
+
+    x2, y2 = apply_pt_offsets_rotation_on_send(
+        reprojected_top_right.x(), reprojected_top_right.y(), dataStorage
+    )
+    reprojected_top_right = QgsPointXY(x2, y2)
+
+    x3, y3 = apply_pt_offsets_rotation_on_send(
+        reprojectedMaxPt.x(), reprojectedMaxPt.y(), dataStorage
+    )
+    reprojectedMaxPt = QgsPointXY(x3, y3)
+
+    x4, y4 = apply_pt_offsets_rotation_on_send(
+        reprojected_bottom_left.x(), reprojected_bottom_left.y(), dataStorage
+    )
+    reprojected_bottom_left = QgsPointXY(x4, y4)
+    """
+
     return (
         reprojected_top_right,
         reprojectedOriginPt,
@@ -842,6 +967,7 @@ def rasterFeatureToSpeckle(
             originY,
             rasterResXY,
             rasterDimensions,
+            dataStorage,
         )
         (
             reprojected_top_right,
@@ -881,9 +1007,8 @@ def rasterFeatureToSpeckle(
         b.y_resolution = rasterResXY[1]
         b.x_size = rasterDimensions[0]
         b.y_size = rasterDimensions[1]
-        b.x_origin, b.y_origin = apply_pt_offsets_rotation_on_send(
-            reprojectedOriginPt.x(), reprojectedOriginPt.y(), dataStorage
-        )
+        b.x_origin, b.y_origin = (originX, originY)
+
         b.band_count = rasterBandCount
         b.band_names = rasterBandNames
         b.noDataValue = rasterBandNoDataVal
@@ -945,6 +1070,7 @@ def rasterFeatureToSpeckle(
                     elevation_original_originY,
                     elevation_original_ResXY,
                     elevation_original_dimensions,
+                    dataStorage,
                 )
 
                 (
@@ -1014,7 +1140,7 @@ def rasterFeatureToSpeckle(
             dataStorage,
         )
         rendererType = selectedLayer.renderer().type()
-        colors_filtered = get_raster_colors(
+        colors_filtered, have_transparent_cells = get_raster_colors(
             selectedLayer,
             rasterBandVals,
             rasterBandNoDataVal,
@@ -1082,7 +1208,7 @@ def rasterFeatureToSpeckle(
                         ] = colors_filtered[colors_list_index + 2] = colors_filtered[
                             colors_list_index + 3
                         ] = (
-                            (0 << 24) + (0 << 16) + (0 << 8) + 0
+                            (0 << 24) | (0 << 16) | (0 << 8) | 0
                         )
 
                 if terrain_transform is True or texture_transform is True:
@@ -1131,10 +1257,67 @@ def rasterFeatureToSpeckle(
                         ]
 
         # apply offset & rotation
-        apply_offset_rotation_to_vertices_send(vertices_filtered, dataStorage)
+        vertices_filtered2 = apply_offset_rotation_to_vertices_send(
+            vertices_filtered, dataStorage
+        )
+
+        # delete faces using invisible vertices
+        if have_transparent_cells is True:
+            vertices_filtered_removed = []
+            colors_filtered_removed = []
+            deleted_vert = []
+            vertex_remapping = {}
+
+            for i, color in enumerate(colors_filtered):
+                if i % 4 != 0:  # only look a the first vertex of a square
+                    if vertex_remapping[i - 1] is None:
+                        vertex_remapping[i] = None
+                        deleted_vert.append(i)
+                    else:
+                        vertex_remapping[i] = vertex_remapping[i - 1] + 1
+                    continue
+                a, _, _, _ = get_a_r_g_b(color)
+                if a != 0:
+                    colors_filtered_removed.extend(colors_filtered[i : i + 4])
+                    vertices_filtered_removed.extend(
+                        vertices_filtered2[3 * i : 3 * i + 12]
+                    )
+                    vertex_remapping[i] = i - len(deleted_vert)
+                else:
+                    deleted_vert.append(i)
+                    vertex_remapping[i] = None
+
+            faces_filtered_removed = []
+            count = 0
+            for f in faces_filtered:
+                if count >= len(faces_filtered):
+                    break
+                # get first vertex color:
+                if vertex_remapping[faces_filtered[count + 1]] is not None:
+                    faces_filtered_removed.append(4)
+                    faces_filtered_removed.append(
+                        vertex_remapping[faces_filtered[count + 1]]
+                    )
+                    faces_filtered_removed.append(
+                        vertex_remapping[faces_filtered[count + 2]]
+                    )
+                    faces_filtered_removed.append(
+                        vertex_remapping[faces_filtered[count + 3]]
+                    )
+                    faces_filtered_removed.append(
+                        vertex_remapping[faces_filtered[count + 4]]
+                    )
+                count += 5
+        else:
+            vertices_filtered_removed = vertices_filtered2.copy()
+            colors_filtered_removed = colors_filtered.copy()
+            faces_filtered_removed = faces_filtered.copy()
 
         mesh = constructMeshFromRaster(
-            vertices_filtered, faces_filtered, colors_filtered, dataStorage
+            vertices_filtered_removed,  # vertices_filtered2,
+            faces_filtered_removed,  # faces_filtered,
+            colors_filtered_removed,  # colors_filtered,
+            dataStorage,
         )
         if mesh is not None:
             mesh.units = dataStorage.currentUnits

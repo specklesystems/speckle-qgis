@@ -7,6 +7,7 @@ orbs:
   # Upload artifacts to s3
   aws-s3: circleci/aws-s3@2.0.0
   codecov: codecov/codecov@3.3.0
+  macos: circleci/macos@2.4.1
 
 jobs:
 
@@ -83,9 +84,10 @@ jobs:
             VERSION=$(echo "$SEMVER" | sed -e 's/[a-zA-Z]*\///')
             python patch_version.py $VERSION
       - run:
-          name: Remove extra License
+          name: Remove extra License and Readme
           command: |
             rm ./specklepy_qt_ui/LICENSE
+            rm ./specklepy_qt_ui/qt_ui/README.md
       - run:
           name: ZIP plugin
           command: pb_tool zip
@@ -213,7 +215,8 @@ jobs:
 
   build-installer-mac:
     macos:
-      xcode: 12.5.1
+      xcode: 13.4.1
+    resource_class: macos.m1.medium.gen1
     parameters:
       runtime:
         type: string
@@ -321,7 +324,7 @@ workflows: # happens with every PR to main
               tag: ["3.11"]
       - build-connector-win:
           requires:
-            - test
+            - package
           context: digicert-keylocker
 
       - build-installer-mac:
@@ -378,7 +381,7 @@ workflows: # happens with every PR to main
           slug: qgis
           installer: true
           requires:
-            - test
+            - package
           filters: &deploy_filters
             tags:
               only: /([0-9]+)\.([0-9]+)\.([0-9]+)(?:-\w+)?$/

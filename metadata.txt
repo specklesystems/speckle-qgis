@@ -4,8 +4,8 @@
 
 [general]
 name=Speckle
-qgisMinimumVersion=3.28.15
-qgisMaximumVersion=3.34.3
+qgisMinimumVersion=3.34.6
+qgisMaximumVersion=3.38.2
 description=Speckle 2.0 Connector for QGIS
 version=0.0.99
 author=Speckle Systems
@@ -15,11 +15,11 @@ about=
     The Speckle QGIS plugin allows you send and receive data from multiple sources to/from several layers in your project, and store their geometry (as well as their contained metadata), in a Speckle server. 
     
     Don't know what Speckle is? You're not alone! Find out more at https://speckle.systems
-    You can start exploring by checking out this commit generated in QGIS from open web data sources (OSM, Google Satellite Tiles and Mapzen Terrain Tiles): https://speckle.xyz/streams/5feae56049/commits/b5f4cc5f3b 
+    You can start exploring by checking out this commit generated in QGIS from open web data sources (OSM, Google Satellite Tiles and Mapzen Terrain Tiles): https://app.speckle.systems/projects/5feae56049/models/1a95ec93ec 
     
     Requirements:
     - Speckle Manager: You can download the installer here -> https://speckle.guide/user/manager
-    - An account in a Speckle server. If you don't have one, feel free to use our public server https://speckle.xyz
+    - An account in a Speckle server. If you don't have one, feel free to use our public server https://app.speckle.systems/
     - An account added in the Accounts section of the Speckle Manager
     - Windows and Mac compatible
     
@@ -49,7 +49,7 @@ hasProcessingProvider=no
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=python, speckle, interoperability, collaboration, bim, cad 
+tags=python, speckle, interoperability, collaboration, 3d, bim, cad, online, server, web, cloud
 
 homepage=http://speckle.systems
 category=Web

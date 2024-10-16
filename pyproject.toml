@@ -8,16 +8,16 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.9, <4.0"
-numpy = "^1.25.2"
-specklepy = "2.18.3"
+numpy = "1.26.4"
+specklepy = "2.19.3"
 pyshp = "2.3.1"
 requests = "2.31.0"
-requests-toolbelt = "0.10.1"
-urllib3 = "1.26.16"
-shapely = "2.0.1"
+requests-toolbelt = "1.0.0"
+urllib3 = "2.2.1"
 geopandas = "0.13.2"
 geovoronoi = "0.4.0"
-scipy = "1.9.3"
+scipy = "^1.13.0"
+earcut = "1.1.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.1.3"
