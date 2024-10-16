@@ -19,10 +19,8 @@ class GISAttributeFieldType(str, Enum):
     BOOL = "Bool"
 
     @staticmethod
-    def assign_speckle_field_type(native_geom_type: int) -> "GISAttributeFieldType":
+    def assign_speckle_field_type(type_index: int) -> "GISAttributeFieldType":
         """Assign Speckle representation of the Field type."""
-
-        type_index: int = native_geom_type % 1000
         val_dict = {
             1: GISAttributeFieldType.BOOL,
             2: GISAttributeFieldType.INTEGER_TYPE,
@@ -43,19 +41,19 @@ class GISAttributeFieldType(str, Enum):
 
         speckle_type = GISAttributeFieldType(string_geom_type)
         val_dict = {
+            GISAttributeFieldType.BOOL: 1,
+            GISAttributeFieldType.STRING_TYPE: 10,
             GISAttributeFieldType.GUID_TYPE: 10,
             GISAttributeFieldType.OID: 10,
-            GISAttributeFieldType.STRING_TYPE: 10,
+            GISAttributeFieldType.TIMESTAMPOFFSET: 10,
             GISAttributeFieldType.FLOAT_TYPE: 6,
+            GISAttributeFieldType.DOUBLE_TYPE: 6,
             GISAttributeFieldType.INTEGER_TYPE: 2,
             GISAttributeFieldType.BIGINTEGER: 2,
             GISAttributeFieldType.SMALLINTEGER: 2,
-            GISAttributeFieldType.DOUBLE_TYPE: 6,
             GISAttributeFieldType.DATETIME: 16,
             GISAttributeFieldType.DATEONLY: 14,
             GISAttributeFieldType.TIMEONLY: 15,
-            GISAttributeFieldType.TIMESTAMPOFFSET: 10,
-            GISAttributeFieldType.BOOL: 1,
         }
         result: int = val_dict.get(speckle_type, 10)
         return result

@@ -19,7 +19,7 @@ class GISLayerGeometryType(str, Enum):
     ) -> "GISLayerGeometryType":
         """Get Speckle representation of the Layer Geometry Type."""
 
-        type_index: int = native_geom_type % 1000
+        type_index: int = native_geom_type % 1000  # e.g.3004->7, 4002->4
         val_dict = {
             1: GISLayerGeometryType.POINT,
             2: GISLayerGeometryType.POLYLINE,
@@ -40,6 +40,7 @@ class GISLayerGeometryType(str, Enum):
         )
 
         # write 3d polygons as a separate type
+        # geometry types of 1,2,3 etc (<1000) have 2 dimensions, rest: 3
         if native_geom_type > 1000 and result == GISLayerGeometryType.POLYGON:
             result = GISLayerGeometryType.POLYGON3D
 
