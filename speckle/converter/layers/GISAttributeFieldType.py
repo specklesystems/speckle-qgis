@@ -36,10 +36,9 @@ class GISAttributeFieldType(str, Enum):
         return result
 
     @staticmethod
-    def get_native_field_type_from_speckle(string_geom_type: str) -> int:
+    def get_native_field_type_from_speckle(field_type: str) -> int:
         """Get native Field type (not currently used)."""
 
-        speckle_type = GISAttributeFieldType(string_geom_type)
         val_dict = {
             GISAttributeFieldType.BOOL: 1,
             GISAttributeFieldType.STRING_TYPE: 10,
@@ -55,5 +54,15 @@ class GISAttributeFieldType(str, Enum):
             GISAttributeFieldType.DATEONLY: 14,
             GISAttributeFieldType.TIMEONLY: 15,
         }
-        result: int = val_dict.get(speckle_type, 10)
+        
+        try:
+            speckle_field_type = GISAttributeFieldType(field_type)
+            result: int = val_dict.get(speckle_field_type, 10)
+        except:
+            # for older commits
+            try:
+                result: int = val_dict.get(int(field_type), 10)
+            except:
+                pass
+
         return result

@@ -48,11 +48,10 @@ class GISLayerGeometryType(str, Enum):
 
     @staticmethod
     def get_native_layer_geometry_type_from_speckle(
-        string_geom_type: str,
+        geom_type: str,
     ) -> Optional[str]:
         """Get native Layer Geometry Type."""
 
-        speckle_type = GISLayerGeometryType(string_geom_type)
         val_dict = {
             GISLayerGeometryType.NONE: "None",
             GISLayerGeometryType.POINT: "MultiPointZ",
@@ -62,5 +61,20 @@ class GISLayerGeometryType(str, Enum):
             GISLayerGeometryType.MULTIPATCH: "MultiPolygonZ",
             # GISLayerGeometryType.POINTCLOUD: ,
         }
-        result: Optional[str] = val_dict.get(speckle_type)
+        
+        try:
+            speckle_geom_type = GISLayerGeometryType(geom_type)
+            result: Optional[str] = val_dict.get(speckle_geom_type)
+        except:
+            # for older commits
+            if "point" in geom_type.lower():
+                result = "MultiPointZ"
+            elif "line" in geom_type.lower():
+                result = "MultiLineStringZ"
+            elif (
+                "polygon" in geom_type.lower()
+                or "multipatch" in geom_type.lower()
+            ):
+                result = "MultiPolygonZ"
+
         return result

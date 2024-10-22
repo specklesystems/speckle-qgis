@@ -1600,21 +1600,6 @@ def vectorLayerToNative(
         geomType = GISLayerGeometryType.get_native_layer_geometry_type_from_speckle(
             layer.geomType
         )
-        # old way:
-        if geomType is None:
-            geomType = (
-                layer.geomType
-            )  # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
-            if geomType == "Point":
-                geomType = "Point"
-            elif geomType == "Polygon":
-                geomType = "MultiPolygon"
-            elif geomType == "Polyline":
-                geomType = "MultiLineString"
-            elif geomType.lower() == "multipoint":
-                geomType = "MultiPoint"
-            elif geomType == "MultiPatch":
-                geomType = "Polygon"
 
         fets = []
         # print("before newFields")
