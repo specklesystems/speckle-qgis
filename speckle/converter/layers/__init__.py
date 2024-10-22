@@ -3,7 +3,7 @@ Contains all Layer related classes and methods.
 """
 
 import inspect
-from typing import List, Union
+from typing import List, Tuple, Union
 
 try:
     from qgis.core import (
@@ -206,17 +206,22 @@ def findAndClearLayerGroup(root, newGroupName: str = "", plugin=None):
         return
 
 
-def getSavedLayers(plugin) -> List[Union["QgsLayerTreeLayer", "QgsLayerTreeNode"]]:
-    """Gets a list of all layers in the given QgsLayerTree"""
+def order_layers(plugin, layer_selection: List[Tuple]):
+    """Order selected or saved layers, extract tree structure."""
 
     layers = []
     tree_structure = []
+    orders = []
+
     try:
         root = plugin.dockwidget.dataStorage.project.layerTreeRoot()
         all_layers = getAllLayersWithTree(root)
-        for item in plugin.dataStorage.current_layers:
+
+        for item in layer_selection:
             try:
                 id = item[0].id()
+            except AttributeError:
+                id = item[0].layer().id()
             except:
                 logToUser(
                     f'Saved layer not found: "{item[1]}"',
@@ -230,6 +235,7 @@ def getSavedLayers(plugin) -> List[Union["QgsLayerTreeLayer", "QgsLayerTreeNode"
                 if id == lyr.id():
                     layers.append(lyr)
                     tree_structure.append(all_layers[1][i])
+                    orders.append(i)
                     found += 1
                     break
             if found == 0:
@@ -238,16 +244,25 @@ def getSavedLayers(plugin) -> List[Union["QgsLayerTreeLayer", "QgsLayerTreeNode"
                     level=1,
                     plugin=plugin.dockwidget,
                 )
-
-        return layers, tree_structure
-
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
         return None, None
 
+    layers = [x for _, x in sorted(zip(orders, layers))]
+    tree_structure = [x for _, x in sorted(zip(orders, tree_structure))]
+
+    return layers, tree_structure
+
+
+def getSavedLayers(plugin) -> List[Union["QgsLayerTreeLayer", "QgsLayerTreeNode"]]:
+    """Gets a list of all layers in the given QgsLayerTree"""
+
+    return order_layers(plugin, plugin.dataStorage.current_layers)
+
 
 def getSelectedLayers(plugin) -> List[Union["QgsLayerTreeLayer", "QgsLayerTreeNode"]]:
     """Gets a list of all layers in the given QgsLayerTree"""
+
     return getSelectedLayersWithStructure(plugin)[0]
 
 
@@ -255,6 +270,10 @@ def getSelectedLayersWithStructure(
     plugin,
 ) -> List[Union["QgsLayerTreeLayer", "QgsLayerTreeNode"]]:
     """Gets a list of all layers in the given QgsLayerTree"""
+
+    return order_layers(
+        plugin, [[x, x.name()] for x in plugin.iface.layerTreeView().selectedNodes()]
+    )
     try:
         selected_layers = plugin.iface.layerTreeView().selectedNodes()
         root = plugin.dockwidget.dataStorage.project.layerTreeRoot()
