@@ -1355,16 +1355,9 @@ def featureToNative(feature: Base, fields: "QgsFields", dataStorage):
             pass
         else:
             try:
-                speckle_geom = (
-                    feature.geometry
-                )  # for QGIS / ArcGIS Layer type from 2.14
+                speckle_geom = feature.geometry
             except:
-                try:
-                    speckle_geom = feature[
-                        "geometry"
-                    ]  # for QGIS / ArcGIS Layer type before 2.14
-                except:
-                    speckle_geom = feature  # for created in other software
+                speckle_geom = feature.displayValue
 
             if not isinstance(speckle_geom, list):
                 qgsGeom = convertToNative(speckle_geom, dataStorage)
