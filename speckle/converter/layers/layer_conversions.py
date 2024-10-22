@@ -428,9 +428,10 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = VectorLayer(
                 units=units_proj,
-                applicationId=hashlib.md5(
-                    selectedLayer.id().encode("utf-8")
-                ).hexdigest(),
+                applicationId=selectedLayer.id(),
+                # hashlib.md5(
+                #    selectedLayer.id().encode("utf-8")
+                # ).hexdigest(),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 elements=layerObjs,
@@ -464,7 +465,9 @@ def layerToSpeckle(
         elif isinstance(selectedLayer, QgsRasterLayer):
             # write feature attributes
             b = rasterFeatureToSpeckle(selectedLayer, projectCRS, project, plugin)
-            b.applicationId = generate_qgis_raster_app_id(selectedLayer)
+            b.applicationId = (
+                f"{selectedLayer.id()}_0"  # generate_qgis_raster_app_id(selectedLayer)
+            )
             if b is None:
                 dataStorage.latestActionReport.append(
                     {
@@ -478,9 +481,10 @@ def layerToSpeckle(
             # Convert layer to speckle
             layerBase = RasterLayer(
                 units=units_proj,
-                applicationId=hashlib.md5(
-                    selectedLayer.id().encode("utf-8")
-                ).hexdigest(),
+                applicationId=selectedLayer.id(),
+                #hashlib.md5(
+                #    selectedLayer.id().encode("utf-8")
+                #).hexdigest(),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 rasterCrs=layerCRS,
