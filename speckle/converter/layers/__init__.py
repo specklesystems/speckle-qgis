@@ -218,32 +218,48 @@ def order_layers(plugin, layer_selection: List[Tuple]):
         all_layers = getAllLayersWithTree(root)
 
         for item in layer_selection:
-            try:
-                id = item[0].id()
-            except AttributeError:
-                id = item[0].layer().id()
-            except:
-                logToUser(
-                    f'Saved layer not found: "{item[1]}"',
-                    level=1,
-                    plugin=plugin.dockwidget,
-                )
-                continue
-            # search ID among all layers
-            found = 0
-            for i, lyr in enumerate(all_layers[0]):
-                if id == lyr.id():
-                    layers.append(lyr)
-                    tree_structure.append(all_layers[1][i])
-                    orders.append(i)
-                    found += 1
-                    break
-            if found == 0:
-                logToUser(
-                    f'Saved layer not found: "{item[1]}"',
-                    level=1,
-                    plugin=plugin.dockwidget,
-                )
+            # item can be a tree layer or a node or a group
+            # need to find all nested layers
+            node = item[0]
+            results = getAllLayersWithTree(root, node)
+            for i, layer in enumerate(results[0]):
+
+                # verify that the layer is supported
+                data_provider_type = layer.providerType()
+                if data_provider_type in UNSUPPORTED_PROVIDERS:
+                    logToUser(
+                        f"Layer '{layer.name()}' has unsupported provider type '{data_provider_type}' and cannot be sent",
+                        level=2,
+                        plugin=plugin.dockwidget,
+                    )
+                    continue
+
+                try:
+                    id = layer.id()
+                except AttributeError:  # if tree layer
+                    id = layer.layer().id()
+                except:
+                    logToUser(
+                        f'Saved layer not found: "{item[1]}"',
+                        level=1,
+                        plugin=plugin.dockwidget,
+                    )
+                    continue
+                # search ID among all layers
+                found = 0
+                for i, lyr in enumerate(all_layers[0]):
+                    if id == lyr.id():
+                        layers.append(lyr)
+                        tree_structure.append(all_layers[1][i])
+                        orders.append(i)
+                        found += 1
+                        break
+                if found == 0:
+                    logToUser(
+                        f'Saved layer not found: "{item[1]}"',
+                        level=1,
+                        plugin=plugin.dockwidget,
+                    )
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3], plugin=plugin.dockwidget)
         return None, None
