@@ -57,8 +57,7 @@ def polygonToSpeckleMesh(
     dataStorage,
     xform=None,
 ):
-    polygon = GisPolygonGeometry(units="m")
-    # print(dataStorage)
+
     try:
         vertices = []
         faces = []
@@ -126,12 +125,15 @@ def polygonToSpeckleMesh(
 
         mesh = constructMesh(vertices, faces, colors, dataStorage)
         if mesh is not None:
-            polygon.displayValue = [mesh]
-            polygon.boundary = None
-            polygon.voids = None
+            polygon = GisPolygonGeometry(units="m")
+            # polygon.units = "m"
+            # polygon.displayValue = [mesh]
+            # polygon.boundary = None
+            # polygon.voids = None
         else:
-            polygon.boundary = boundary
-            polygon.voids = voids
+            polygon = GisPolygonGeometry(units="m", boundary=boundary, voids=voids)
+            # polygon.boundary = boundary
+            # polygon.voids = voids
             logToUser(
                 "Mesh creation from Polygon failed. Boundaries will be used as displayValue",
                 level=1,
@@ -220,7 +222,6 @@ def polygonToSpeckle(
 ):
     """Converts a QgsPolygon to Speckle"""
 
-    polygon = GisPolygonGeometry(units="m")
     iterations = 0
     try:
         geom = geom_original.clone()
@@ -261,8 +262,7 @@ def polygonToSpeckle(
             )
             voidsAsPts.append(pts_fixed)
 
-        polygon.boundary = boundary
-        polygon.voids = voids
+        polygon = GisPolygonGeometry(units="m", boundary=boundary, voids=voids)
         iterations, vertices, faces, colors, iterations = meshPartsFromPolygon(
             polyBorder, voidsAsPts, 0, feature, geom, layer, height, dataStorage, xform
         )
