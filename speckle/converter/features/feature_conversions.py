@@ -103,12 +103,13 @@ def featureToSpeckle(
                     # geom is GisPointElement, GisLineElement, GisPolygonElement
                     new_geom = GisFeature()
                     new_geom.geometry = []
+                    new_geom.displayValue = []
                     for g in geom.geometry:
-                        obj = g
                         if isinstance(g, GisPolygonGeometry):
-                            new_geom.displayValue = []
                             obj = GisPolygonGeometry(boundary=g.boundary, voids=g.voids)
-                        new_geom.geometry.append(obj)
+                            new_geom.geometry.append(obj)
+                        else:
+                            new_geom.geometry.append(g)
 
                     all_errors = ""
                     for g in geom.geometry:
@@ -139,6 +140,9 @@ def featureToSpeckle(
                             else:
                                 new_geom.displayValue.extend(g.displayValue)
 
+                        else:  # Points and Lines
+                            new_geom.displayValue.append(g)
+
                     if len(geom.geometry) == 0:
                         all_errors = "No geometry converted"
                     new_report.update(
@@ -148,7 +152,8 @@ def featureToSpeckle(
                 else:  # geom is None, should not happen, but we should pass the object with attributes anyway
                     new_report = {"obj_type": "", "errors": skipped_msg}
                     logToUser(skipped_msg, level=2, func=inspect.stack()[0][3])
-                    geom = GisNonGeometryElement()
+                    # geom = GisNonGeometryElement()
+                    new_geom = GisNonGeometryElement()
             except Exception as error:
                 new_report = {
                     "obj_type": "",
@@ -177,7 +182,7 @@ def featureToSpeckle(
             attributes[corrected] = f_val
 
         # if geom is not None and geom!="None":
-        geom.attributes = attributes
+        # geom.attributes = attributes
         new_geom.attributes = attributes
 
         dataStorage.latestActionFeaturesReport[
@@ -1350,16 +1355,9 @@ def featureToNative(feature: Base, fields: "QgsFields", dataStorage):
             pass
         else:
             try:
-                speckle_geom = (
-                    feature.geometry
-                )  # for QGIS / ArcGIS Layer type from 2.14
+                speckle_geom = feature.geometry
             except:
-                try:
-                    speckle_geom = feature[
-                        "geometry"
-                    ]  # for QGIS / ArcGIS Layer type before 2.14
-                except:
-                    speckle_geom = feature  # for created in other software
+                speckle_geom = feature.displayValue
 
             if not isinstance(speckle_geom, list):
                 qgsGeom = convertToNative(speckle_geom, dataStorage)

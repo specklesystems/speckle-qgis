@@ -6,7 +6,7 @@ import enum
 import inspect
 import hashlib
 import math
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 from specklepy.objects import Base
 from specklepy.objects.geometry import (
     Mesh,
@@ -29,6 +29,8 @@ from plugin_utils.helpers import (
     jsonFromList,
     removeSpecialCharacters,
 )
+from speckle.converter.layers.GISAttributeFieldType import GISAttributeFieldType
+from speckle.converter.layers.GISLayerGeometryType import GISLayerGeometryType
 
 # from qgis._core import Qgis, QgsVectorLayer, QgsWkbTypes
 try:
@@ -336,7 +338,9 @@ def layerToSpeckle(
                     if attribute_type == att_type[0]:
                         attribute_type = att_type[1]
                 """
-                attributes[corrected] = attribute_type
+                attributes[corrected] = GISAttributeFieldType.assign_speckle_field_type(
+                    attribute_type
+                )
 
             extrusionApplied = isAppliedLayerTransformByKeywords(
                 selectedLayer, ["extrude", "polygon"], [], plugin.dataStorage
@@ -346,7 +350,9 @@ def layerToSpeckle(
                 if not layerName.endswith("_as_Mesh"):
                     layerName += "_as_Mesh"
 
-            geomType = getLayerGeomType(selectedLayer)
+            geomType = GISLayerGeometryType.assign_speckle_layer_geometry_type(
+                selectedLayer.wkbType()
+            )  # getLayerGeomType(selectedLayer)
             features = selectedLayer.getFeatures()
 
             elevationLayer = getElevationLayer(plugin.dataStorage)
@@ -943,19 +949,34 @@ def geometryLayerToNative(
             # print(geom_meshes)
 
         if len(geom_meshes) > 0:
+            geomType: str = str(
+                GISLayerGeometryType.get_native_layer_geometry_type_from_speckle(
+                    GISLayerGeometryType.POLYGON3D
+                )
+            )
             bimVectorLayerToNative(
-                geom_meshes, layerName, val_id, "Mesh", streamBranch, plugin, matrix
+                geom_meshes, layerName, val_id, geomType, streamBranch, plugin, matrix
             )
         if len(geom_points) > 0:
+            geomType: str = str(
+                GISLayerGeometryType.get_native_layer_geometry_type_from_speckle(
+                    GISLayerGeometryType.POINT
+                )
+            )
             cadVectorLayerToNative(
-                geom_points, layerName, val_id, "Points", streamBranch, plugin, matrix
+                geom_points, layerName, val_id, geomType, streamBranch, plugin, matrix
             )
         if len(geom_polylines) > 0:
+            geomType: str = str(
+                GISLayerGeometryType.get_native_layer_geometry_type_from_speckle(
+                    GISLayerGeometryType.POLYLINE
+                )
+            )
             cadVectorLayerToNative(
                 geom_polylines,
                 layerName,
                 val_id,
-                "Polylines",
+                geomType,
                 streamBranch,
                 plugin,
                 matrix,
@@ -975,7 +996,7 @@ def bimVectorLayerToNative(
     geomType: str,
     streamBranch: str,
     plugin,
-    matrix: list = None,
+    matrix: Optional[list] = None,
 ):
     # print("02_________BIM vector layer to native_____")
     try:
@@ -991,8 +1012,10 @@ def bimVectorLayerToNative(
         # layerName = layerName + "_" + geomType
         # print(layerName)
 
+        r"""
         if "mesh" in geomType.lower():
             geomType = "MultiPolygonZ"
+        """
 
         newFields = getLayerAttributes(geomList)
         # print("___________Layer fields_____________")
@@ -1037,11 +1060,11 @@ def addBimMainThread(obj: Tuple):
         project: QgsProject = dataStorage.project
 
         geom_print = geomType
-        if "MultiPolygonZ" in geom_print:
+        if "multipolygon" in geom_print.lower():
             geom_print = "Mesh"
-        elif "LineStringZ" in geom_print:
+        elif "linestring" in geom_print.lower():
             geom_print = "Polyline"
-        elif "PointZ" in geom_print:
+        elif "point" in geom_print.lower():
             geom_print = "Point"
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL)) - 1][:50]
@@ -1306,11 +1329,12 @@ def cadVectorLayerToNative(
         newName = (
             f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}/{layerName}'
         )
-
+        r"""
         if geomType == "Points":
             geomType = "PointZ"
         elif geomType == "Polylines":
             geomType = "LineStringZ"
+        """
 
         newFields = getLayerAttributes(geomList)
         # print(newFields.toList())
@@ -1354,11 +1378,11 @@ def addCadMainThread(obj: Tuple):
         dataStorage.matrix = matrix
 
         geom_print = geomType
-        if "MultiPolygonZ" in geom_print:
+        if "multipolygon" in geom_print.lower():
             geom_print = "Mesh"
-        elif "LineStringZ" in geom_print:
+        elif "linestring" in geom_print.lower():
             geom_print = "Polyline"
-        elif "PointZ" in geom_print:
+        elif "point" in geom_print.lower():
             geom_print = "Point"
 
         shortName = layerName.split(SYMBOL)[len(layerName.split(SYMBOL)) - 1][:50]
@@ -1573,20 +1597,9 @@ def vectorLayerToNative(
         newName = layerName  # f'{streamBranch.split("_")[len(streamBranch.split("_"))-1]}_{layerName}'
         # print(newName)
 
-        # particularly if the layer comes from ArcGIS
-        geomType = (
+        geomType = GISLayerGeometryType.get_native_layer_geometry_type_from_speckle(
             layer.geomType
-        )  # for ArcGIS: Polygon, Point, Polyline, Multipoint, MultiPatch
-        if geomType == "Point":
-            geomType = "Point"
-        elif geomType == "Polygon":
-            geomType = "MultiPolygon"
-        elif geomType == "Polyline":
-            geomType = "MultiLineString"
-        elif geomType.lower() == "multipoint":
-            geomType = "MultiPoint"
-        elif geomType == "MultiPatch":
-            geomType = "Polygon"
+        )
 
         fets = []
         # print("before newFields")
