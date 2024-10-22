@@ -1351,8 +1351,10 @@ def featureToNative(feature: Base, fields: "QgsFields", dataStorage):
     try:
         qgsGeom = None
 
-        if isinstance(feature, GisNonGeometryElement) or (
-            isinstance(feature, GisFeature) and feature.geometry is None
+        if (
+            isinstance(feature, GisNonGeometryElement)
+            or feature.speckle_type.endswith("GisNonGeometricFeature")
+            or (isinstance(feature, GisFeature) and feature.geometry is None)
         ):
             pass
         else:
