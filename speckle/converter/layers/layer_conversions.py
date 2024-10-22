@@ -235,14 +235,9 @@ def convertSelectedLayersToSpeckle(
             # print(converted)
             if converted is not None:
                 # add displayPriority to elements
-                try:
-                    for el in converted.elements:
-                        if isinstance(el.geometry, list) or isinstance(
-                            el.displayValue, list
-                        ):
-                            el["displayOrder"] = i
-                except AttributeError:
-                    pass
+                for el in converted.elements:
+                    if not isinstance(el, GisNonGeometryElement):
+                        el["displayOrder"] = i
 
                 structure = tree_structure[i]
                 if structure.startswith(SYMBOL):
