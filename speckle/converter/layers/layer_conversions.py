@@ -235,11 +235,14 @@ def convertSelectedLayersToSpeckle(
             # print(converted)
             if converted is not None:
                 # add displayPriority to elements
-                for el in converted.elements:
-                    if isinstance(el.geometry, list) or isinstance(
-                        el.displayValue, list
-                    ):
-                        el["displayOrder"] = i
+                try:
+                    for el in converted.elements:
+                        if isinstance(el.geometry, list) or isinstance(
+                            el.displayValue, list
+                        ):
+                            el["displayOrder"] = i
+                except AttributeError:
+                    pass
 
                 structure = tree_structure[i]
                 if structure.startswith(SYMBOL):
@@ -482,9 +485,9 @@ def layerToSpeckle(
             layerBase = RasterLayer(
                 units=units_proj,
                 applicationId=selectedLayer.id(),
-                #hashlib.md5(
+                # hashlib.md5(
                 #    selectedLayer.id().encode("utf-8")
-                #).hexdigest(),
+                # ).hexdigest(),
                 name=layerName,
                 crs=speckleReprojectedCrs,
                 rasterCrs=layerCRS,
