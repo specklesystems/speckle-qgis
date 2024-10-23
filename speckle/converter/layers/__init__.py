@@ -224,6 +224,10 @@ def order_layers(plugin, layer_selection: List[Tuple]):
             results = getAllLayersWithTree(root, node)
             for i, layer in enumerate(results[0]):
 
+                if layer in layers:
+                    # in case both the group, and the layers inside were selected
+                    continue
+
                 # verify that the layer is supported
                 data_provider_type = layer.providerType()
                 if data_provider_type in UNSUPPORTED_PROVIDERS:
