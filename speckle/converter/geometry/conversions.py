@@ -324,6 +324,8 @@ def convertToNative(base: Base, dataStorage) -> Union["QgsGeometry", None]:
         for conversion in conversions:
             # distinguish normal QGIS polygons and the ones sent as Mesh only
             try:
+                # detect hatch
+
                 if isinstance(base, GisPolygonGeometry):
                     if base.boundary is None:
                         try:
