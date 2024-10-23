@@ -75,7 +75,7 @@ def generate_qgis_app_id(
 
         if layer is not None:
             layer_id = layer.id()
-            return f"{layer_id}_{f.id()}"
+            return f"{layer_id}_{f.id() + 1}"
             layer_geom_type = str(layer.wkbType())
             fieldnames = [str(field.name()) for field in layer.fields()]
             props = [str(f[prop]) for prop in fieldnames]
