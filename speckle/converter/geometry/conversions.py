@@ -35,6 +35,7 @@ from speckle.converter.geometry.polygon import (
     isFlat,
     polygonToSpeckle,
     polygonToNative,
+    hatchToNative
 )
 from speckle.converter.geometry.polyline import (
     compoudCurveToSpeckle,
@@ -324,6 +325,11 @@ def convertToNative(base: Base, dataStorage) -> Union["QgsGeometry", None]:
         for conversion in conversions:
             # distinguish normal QGIS polygons and the ones sent as Mesh only
             try:
+                # detect hatch
+                if base.speckle_type.endswith('.Hatch'):
+                    converted = hatchToNative(base, dataStorage)
+                    break
+
                 if isinstance(base, GisPolygonGeometry):
                     if base.boundary is None:
                         try:

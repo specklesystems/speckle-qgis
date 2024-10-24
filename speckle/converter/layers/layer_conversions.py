@@ -906,10 +906,8 @@ def geometryLayerToNative(
 
         geom_points = []
         geom_polylines = []
+        geom_hatches = []
 
-        layer_points = None
-        layer_polylines = None
-        # geom_meshes = []
         val = None
 
         # filter speckle objects by type within each layer, create sub-layer for each type (points, lines, polygons, mesh?)
@@ -917,6 +915,9 @@ def geometryLayerToNative(
             # print(geom)
             if isinstance(geom, Point):
                 geom_points.append(geom)
+                continue
+            elif geom.speckle_type.endswith(".Hatch"):
+                geom_hatches.append(geom)
                 continue
             elif (
                 isinstance(geom, Line)
@@ -965,6 +966,15 @@ def geometryLayerToNative(
             )
             bimVectorLayerToNative(
                 geom_meshes, layerName, val_id, geomType, streamBranch, plugin, matrix
+            )
+        if len(geom_hatches) > 0:
+            geomType: str = str(
+                GISLayerGeometryType.get_native_layer_geometry_type_from_speckle(
+                    GISLayerGeometryType.POLYGON3D
+                )
+            )
+            cadVectorLayerToNative(
+                geom_hatches, layerName, val_id, geomType, streamBranch, plugin, matrix
             )
         if len(geom_points) > 0:
             geomType: str = str(
