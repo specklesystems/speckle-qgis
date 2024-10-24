@@ -112,7 +112,7 @@ def unknownLineToSpeckle(
         if isinstance(poly_original, QgsGeometry):
             poly_original = poly_original.constGet()
         poly = poly_original.clone()
-        
+
         if poly.wkbType() == 10:  # CurvePolygon
             # actualGeom = poly.constGet()
             actualGeom = actualGeom.segmentize()
@@ -299,6 +299,9 @@ def polylineToNative(poly: Polyline, dataStorage) -> "QgsLineString":
             return circleToNative(poly, dataStorage)
         elif isinstance(poly, Ellipse):
             return ellipseToNative(poly, dataStorage)
+
+        if isinstance(poly, Curve):
+            poly = poly.displayValue
 
         if isinstance(poly, Polyline) and poly.closed is False:
             polyline = QgsLineString(

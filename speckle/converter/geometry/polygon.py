@@ -292,6 +292,33 @@ def polygonToSpeckle(
         return None, None
 
 
+def hatchToNative(hatch: Base, dataStorage):
+    """Convert Hatch to QGIS Polygon."""
+
+    polygon = QgsPolygon()
+    try:
+        loops: list = hatch["loops"]
+        boundary = None
+        voids = []
+        for loop in loops:
+            if len(loops) == 1 or loop["Type"] == 1:  # Outer
+                boundary = loop["Curve"]
+            else:
+                voids.append(loop["Curve"])
+        if boundary is None:
+            logToUser("Invalid Hatch outer loop", level=2, func=inspect.stack()[0][3])
+            return polygon
+        polygon.setExteriorRing(polylineToNative(boundary, dataStorage))
+
+        for void in voids:
+            polygon.addInteriorRing(polylineToNative(void, dataStorage))
+
+        return polygon
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return polygon
+
+
 def polygonToNative(poly: Base, dataStorage) -> "QgsPolygon":
     """Converts a Speckle Polygon base object to QgsPolygon.
     This object must have a 'boundary' and 'voids' properties.
