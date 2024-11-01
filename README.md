@@ -11,6 +11,11 @@
     Connector for Spatial Data from QGIS
 </h3>
 
+> [!WARNING]
+> This is a legacy QGIS repo! A new next generation connector will be coming soon. In the meantime, check out our active next generation repos here:
+> [`speckle-sharp-connectors`](https://github.com/specklesystems/speckle-sharp-connectors): our .NET next generation connectors and desktop UI
+> [`speckle-sharp-sdk`](https://github.com/specklesystems/speckle-sharp-sdk): our .NET SDK, Tests, and Objects
+
 ## Repo Structure
 
 This repo contains the QGIS plugin for Speckle 2.0. It is written in `python` and uses our fantastic [Python SDK](https://github.com/specklesystems/speckle-py). The [Speckle Server](https://github.com/specklesystems/Server) is providing all the web-facing functionality and can be found [here](https://github.com/specklesystems/Server).
