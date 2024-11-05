@@ -1020,6 +1020,7 @@ class SpeckleQGIS:
                         "sourceHostApp": app,
                         "isMultiplayer": commit.authorId != client_id,
                         "connector_version": str(self.version),
+                        "workspace_id": get_project_workspace_id(client, streamId),
                         "projectedCRS": metr_projected,
                         "customCRS": metr_crs,
                         "time_transfer": (
