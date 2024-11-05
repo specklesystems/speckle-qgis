@@ -528,7 +528,7 @@ class SpeckleQGIS:
             self.dataStorage.latestActionFeaturesReport = []
             base_obj = Collection(
                 units=units,
-                collectionType="QGIS commit",
+                # collectionType="QGIS commit",
                 name="QGIS commit",
                 elements=[],
             )
