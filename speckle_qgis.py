@@ -10,7 +10,7 @@ from datetime import datetime
 
 import threading
 from plugin_utils.threads import KThread
-from plugin_utils.helpers import constructCommitURL, getAppName, removeSpecialCharacters
+from plugin_utils.helpers import constructCommitURL, get_project_workspace_id, getAppName, removeSpecialCharacters
 
 try:
     from qgis.core import (
@@ -632,6 +632,7 @@ class SpeckleQGIS:
                         "branches": metr_branches,
                         "collaborators": metr_collab,
                         "connector_version": str(self.version),
+                        "workspace_id": get_project_workspace_id(client, streamId),
                         "filter": metr_filter,
                         "isMain": metr_main,
                         "savedStreams": metr_saved_streams,
@@ -725,6 +726,7 @@ class SpeckleQGIS:
                         "time_transfer": (
                             time_end_transfer - time_start_transfer
                         ).total_seconds(),
+                        "workspace_id": get_project_workspace_id(client, streamId),
                     },
                 )
             except Exception as e:
