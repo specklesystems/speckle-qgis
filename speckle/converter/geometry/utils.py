@@ -246,7 +246,7 @@ def triangulatePolygon(
     dataStorage: "DataStorage",
     coef: Union[int, None] = None,
     xform=None,
-) -> Tuple[dict, Union[List[List[float]], None], int]:
+) -> list[list[float]]:
     try:
         # import triangle as tr
         # vertices = []  # only outer
@@ -268,7 +268,7 @@ def triangulatePolygon(
         try:
             triangles = earcut.earcut.earcut(vertices, holes, dim=dimensions)
             triangle_tuples = [
-                (triangles[3 * i], triangles[3 * i + 1], triangles[3 * i + 2])
+                [triangles[3 * i], triangles[3 * i + 1], triangles[3 * i + 2]]
                 for i, _ in enumerate(triangles)
                 if i < len(triangles) / 3
             ]
@@ -356,6 +356,38 @@ def trianglateQuadMesh(mesh: Mesh) -> Union[Mesh, None]:
         print(e)
         return None
     return new_mesh
+
+
+def fix_orientation_triangle(
+    coord_tuples: list[list[float]],
+    triangle_vertex_indices: list[int],
+    positive: bool = True,
+) -> List[Union[Point, "QgsPoint"]]:
+
+    sum_orientation = 0
+    for i, _ in enumerate(triangle_vertex_indices):
+
+        if i == 2:
+            i2 = 0
+        else:
+            i2 = i + 1
+
+        try:
+            pt1 = coord_tuples[triangle_vertex_indices[i]]
+            pt2 = coord_tuples[triangle_vertex_indices[i2]]
+
+            sum_orientation += (pt2[0] - pt1[0]) * (pt2[1] + pt1[1])
+
+        except IndexError:
+            break
+
+    print(sum_orientation > 0)
+    if positive is True:
+        if sum_orientation < 0:
+            triangle_vertex_indices.reverse()
+    else:
+        if sum_orientation > 0:
+            triangle_vertex_indices.reverse()
 
 
 def fix_orientation(
