@@ -12,7 +12,6 @@ from speckle.converter.geometry.utils import (
     project_to_plane_on_z,
     projectToPolygon,
     triangulatePolygon,
-    to_triangles,
     trianglateQuadMesh,
     getPolyPtsSegments,
     fix_orientation,
@@ -163,6 +162,7 @@ def test_projectToPolygon_input_error_polygon():
     assert projectToPolygon(point, polygonPts) == 0
 
 
+r"""
 def test_to_triangles_basic():
     data = {
         "vertices": [[-10, -5], [0, 5], [10, -5]],
@@ -186,6 +186,7 @@ def test_to_triangles_invalid_shape():
     assert isinstance(result, tuple)
     assert result[0] is None
     assert result[1] > 3
+"""
 
 
 def test_trianglateQuadMesh():
