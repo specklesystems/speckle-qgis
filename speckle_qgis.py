@@ -10,7 +10,12 @@ from datetime import datetime
 
 import threading
 from plugin_utils.threads import KThread
-from plugin_utils.helpers import constructCommitURL, get_project_workspace_id, getAppName, removeSpecialCharacters
+from plugin_utils.helpers import (
+    constructCommitURL,
+    get_project_workspace_id,
+    getAppName,
+    removeSpecialCharacters,
+)
 
 try:
     from qgis.core import (
@@ -528,7 +533,7 @@ class SpeckleQGIS:
             self.dataStorage.latestActionFeaturesReport = []
             base_obj = Collection(
                 units=units,
-                # collectionType="QGIS commit",
+                collectionType="model",
                 name="QGIS commit",
                 elements=[],
             )
