@@ -68,10 +68,10 @@ def generate_qgis_app_id(
     """Generate unique ID for Vector feature."""
     try:
 
-        try:
-            geoms = str(f.geometry())
-        except Exception as e:
-            geoms = ""
+        #try:
+        #    geoms = str(f.geometry())
+        #except Exception as e:
+        #    geoms = ""
 
         if layer is not None:
             layer_id = layer.id()

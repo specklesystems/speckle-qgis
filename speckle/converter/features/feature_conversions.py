@@ -18,7 +18,10 @@ from speckle.converter.geometry.conversions import (
 )
 from speckle.converter.geometry.mesh import constructMeshFromRaster
 from speckle.converter.geometry.utils import apply_pt_offsets_rotation_on_send
-from speckle.converter.layers.symbology import get_a_r_g_b
+from speckle.converter.layers.symbology import (
+    featureColorfromNativeRenderer,
+    get_a_r_g_b,
+)
 from speckle.converter.layers.utils import (
     generate_qgis_app_id,
     getArrayIndicesFromXY,
@@ -37,6 +40,7 @@ from specklepy.objects.GIS.geometry import (
     GisNonGeometryElement,
     GisTopography,
 )
+from specklepy.objects.other import DisplayStyle
 
 from specklepy.objects import Base
 
@@ -186,6 +190,15 @@ def featureToSpeckle(
         # if geom is not None and geom!="None":
         # geom.attributes = attributes
         new_geom.attributes = attributes
+        try:
+            if len(new_geom.displayValue) > 0:
+                col = featureColorfromNativeRenderer(f, selectedLayer)
+                new_geom["displayStyle"] = DisplayStyle()
+                new_geom["displayStyle"].color = col
+                new_geom["displayStyle"].name = ""
+                new_geom["displayStyle"].linetype = ""
+        except Exception as e:  # e.g. KeyError for Polygons
+            pass
 
         dataStorage.latestActionFeaturesReport[
             len(dataStorage.latestActionFeaturesReport) - 1

@@ -42,7 +42,6 @@ from speckle.converter.geometry.utils import (
 
 from plugin_utils.helpers import get_scale_factor
 from typing import List, Tuple, Union
-from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.utils.panel_logging import logToUser
 
 
@@ -92,10 +91,7 @@ def polylineFromVerticesToSpeckle(
                 continue
             polyline.value.extend([point.x, point.y, point.z])
 
-        col = featureColorfromNativeRenderer(feature, layer)
         polyline["domain"] = Interval.from_list([0, 1])
-        polyline["displayStyle"] = {}
-        polyline["displayStyle"]["color"] = col
         return polyline
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
@@ -286,10 +282,6 @@ def arcToSpeckle(
             return
 
         arc["domain"] = Interval.from_list([0, 1])
-
-        col = featureColorfromNativeRenderer(feature, layer)
-        arc["displayStyle"] = {}
-        arc["displayStyle"]["color"] = col
         return arc
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
