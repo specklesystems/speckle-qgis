@@ -220,7 +220,7 @@ def get_project_workspace_id(client: SpeckleClient, project_id: str) -> Optional
     workspace_id = None
     server_version = client.project.server_version or client.server.version()
 
-    # Local yarn builds of server will report a server version if "dev"
+    # Local yarn builds of server will report a server version of "dev"
     # We'll assume that local builds are up-to-date with the latest features
     if server_version[0] == "dev":
         maj = 999
