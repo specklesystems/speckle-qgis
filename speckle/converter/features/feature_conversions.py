@@ -112,7 +112,7 @@ def featureToSpeckle(
                         if isinstance(g, GisPolygonGeometry):
                             obj = GisPolygonGeometry(
                                 units=g.units, boundary=g.boundary, voids=g.voids
-                            )
+                            )  # exclude displayValue
                             new_geom.geometry.append(obj)
                         else:
                             new_geom.geometry.append(g)

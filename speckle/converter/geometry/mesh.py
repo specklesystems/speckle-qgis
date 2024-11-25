@@ -271,7 +271,8 @@ def meshPartsFromPolygon(
             if len(triangle_list) == 0:  # triangulation not successful
                 vert_count = len(vertices3d_tuples)
                 vertices.extend(vertices3d)
-                faces.extend([vert_count] + list(range(vert_count)))
+                vertices_list = list(range(vert_count))
+                faces.extend([vert_count] + [existing_vert + x for x in vertices_list])
 
                 total_vertices += vert_count
                 ran = range(0, total_vertices)
@@ -304,9 +305,9 @@ def meshPartsFromPolygon(
                 faces.extend(
                     [
                         3,
-                        total_vertices - 3,
-                        total_vertices - 2,
-                        total_vertices - 1,
+                        existing_vert + total_vertices - 3,
+                        existing_vert + total_vertices - 2,
+                        existing_vert + total_vertices - 1,
                     ]
                 )
 
@@ -335,7 +336,12 @@ def meshPartsFromPolygon(
                 vertices_cap.extend(pt_list[a] + pt_list[b] + pt_list[c])
                 total_vertices += 3
                 faces_cap.extend(
-                    [3, total_vertices - 3, total_vertices - 2, total_vertices - 1]
+                    [
+                        3,
+                        existing_vert + total_vertices - 3,
+                        existing_vert + total_vertices - 2,
+                        existing_vert + total_vertices - 1,
+                    ]
                 )
 
             ###################################### add extrusions
@@ -362,10 +368,10 @@ def meshPartsFromPolygon(
                     faces_side.extend(
                         [
                             4,
-                            total_vertices,
-                            total_vertices + 1,
-                            total_vertices + 2,
-                            total_vertices + 3,
+                            existing_vert + total_vertices,
+                            existing_vert + total_vertices + 1,
+                            existing_vert + total_vertices + 2,
+                            existing_vert + total_vertices + 3,
                         ]
                     )
                     total_vertices += 4
@@ -390,10 +396,10 @@ def meshPartsFromPolygon(
                     faces_side.extend(
                         [
                             4,
-                            total_vertices,
-                            total_vertices + 1,
-                            total_vertices + 2,
-                            total_vertices + 3,
+                            existing_vert + total_vertices,
+                            existing_vert + total_vertices + 1,
+                            existing_vert + total_vertices + 2,
+                            existing_vert + total_vertices + 3,
                         ]
                     )
                     total_vertices += 4
@@ -424,10 +430,10 @@ def meshPartsFromPolygon(
                         faces_side.extend(
                             [
                                 4,
-                                total_vertices,
-                                total_vertices + 1,
-                                total_vertices + 2,
-                                total_vertices + 3,
+                                existing_vert + total_vertices,
+                                existing_vert + total_vertices + 1,
+                                existing_vert + total_vertices + 2,
+                                existing_vert + total_vertices + 3,
                             ]
                         )
                         total_vertices += 4
@@ -452,10 +458,10 @@ def meshPartsFromPolygon(
                         faces_side.extend(
                             [
                                 4,
-                                total_vertices,
-                                total_vertices + 1,
-                                total_vertices + 2,
-                                total_vertices + 3,
+                                existing_vert + total_vertices,
+                                existing_vert + total_vertices + 1,
+                                existing_vert + total_vertices + 2,
+                                existing_vert + total_vertices + 3,
                             ]
                         )
                         total_vertices += 4

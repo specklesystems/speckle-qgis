@@ -381,7 +381,7 @@ def fix_orientation_triangle(
         except IndexError:
             break
 
-    print(sum_orientation > 0)
+    # print(sum_orientation > 0)
     if positive is True:
         if sum_orientation < 0:
             triangle_vertex_indices.reverse()

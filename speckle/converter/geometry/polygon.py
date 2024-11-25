@@ -64,8 +64,17 @@ def polygonToSpeckleMesh(
         colors = []
         existing_vert = 0
         boundary = None
+
+        all_boundaries = []
+        all_voids = []
         for p in geom.parts():
             boundary, voidsNative = getPolyBoundaryVoids(p, feature, layer, dataStorage)
+            all_boundaries.append(boundary)
+            try:
+                all_voids.extend(voidsNative)
+            except:
+                pass
+
             polyBorder = speckleBoundaryToSpecklePts(boundary, dataStorage)
             if len(polyBorder) < 3:
                 continue
@@ -127,11 +136,12 @@ def polygonToSpeckleMesh(
         if mesh is not None:
             polygon = GisPolygonGeometry(units="m")
             # polygon.units = "m"
-            # polygon.displayValue = [mesh]
-            # polygon.boundary = None
-            # polygon.voids = None
+            polygon.displayValue = [mesh]
+            polygon.boundary = None
+            polygon.voids = None
         else:
             polygon = GisPolygonGeometry(units="m", boundary=boundary, voids=voids)
+            polygon.displayValue = all_boundaries + all_voids
             # polygon.boundary = boundary
             # polygon.voids = voids
             logToUser(
