@@ -216,13 +216,18 @@ def featureToSpeckle(
 
 def show_progress(current_row: int, rows: int, layer_name: str, plugin: "SpeckleQGIS"):
     """Updates UI with raster conversion %."""
-    percentage: int = int(current_row / rows)  # i = percentage
-    if percentage % 10 == 0 or percentage == 5:
-        logToUser(
-            f"Converting layer '{layer_name}': {percentage}%...",
-            level=0,
-            plugin=plugin.dockwidget,
-        )
+    percentage: int = int(current_row / rows * 100)
+    if current_row == 0 or (percentage > 0 and percentage % 10 == 0) or percentage == 5:
+        # make sure repeated status is not logged
+        percentage_before: int = int((current_row - 1) / rows * 100)
+        if current_row == 0 or (
+            percentage_before > 0 and percentage != percentage_before
+        ):
+            logToUser(
+                f"Converting layer '{layer_name}': {percentage}%...",
+                level=0,
+                plugin=plugin.dockwidget,
+            )
 
 
 def reproject_raster(layer, crs, resolutionX, resolutionY):
@@ -1151,14 +1156,16 @@ def rasterFeatureToSpeckle(
         list_nested = [
             (4, 4 * ind, 4 * ind + 1, 4 * ind + 2, 4 * ind + 3)
             for ind, _ in enumerate(band1_values)
-        ]
-        faces_filtered = [item for sublist in list_nested for item in sublist]
+        ]  # heavy function
+        faces_filtered = [
+            item for sublist in list_nested for item in sublist
+        ]  # heavy function
         vertices_filtered = get_raster_mesh_coords(
             reprojected_raster_stats,
             rasterResXY_reprojected,
             band1_values,
             dataStorage,
-        )
+        )  # fast
         rendererType = selectedLayer.renderer().type()
         colors_filtered, have_transparent_cells = get_raster_colors(
             selectedLayer,
@@ -1168,7 +1175,7 @@ def rasterFeatureToSpeckle(
             rasterBandMaxVal,
             rendererType,
             plugin,
-        )
+        )  # fast
         ###############################################################################
         if texture_transform is True or terrain_transform is True:
             for v in range(rasterDimensions[1]):  # each row, Y
