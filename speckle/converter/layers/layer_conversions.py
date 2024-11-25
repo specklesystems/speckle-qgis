@@ -544,14 +544,10 @@ def layerToNative(
             return
     except:
         try:
-            if isinstance(layer.type, str) and layer.type.endswith(
-                "VectorLayer"
-            ):  # older commits
+            if layer.speckle_type.endswith("VectorLayer"):  # older commits or DUI3
                 vectorLayerToNative(layer, streamBranch, nameBase, plugin)
                 return
-            elif isinstance(layer.type, str) and layer.type.endswith(
-                "RasterLayer"
-            ):  # older commits
+            elif layer.speckle_type.endswith("RasterLayer"):  # older commits
                 rasterLayerToNative(layer, streamBranch, nameBase, plugin)
                 return
 
