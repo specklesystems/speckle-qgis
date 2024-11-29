@@ -30,6 +30,7 @@ except ModuleNotFoundError:
 from specklepy.objects.GIS.layers import Layer, RasterLayer, VectorLayer
 
 from speckle.utils.panel_logging import logToUser
+from speckle.converter.layers.GISLayerGeometryType import GISLayerGeometryType
 
 # TODO QML format: https://gis.stackexchange.com/questions/202230/loading-style-qml-file-to-layer-via-pyqgis
 
@@ -206,12 +207,15 @@ def vectorRendererToNative(
     try:
         renderer = layer.renderer
         existingAttrs = fields.names()
-        geomType = layer.geomType
-        if geomType == "MultiPatch":
-            geomType = "Polygon"
+        geom_type_raw = str(layer.geomType)
+        geomType = GISLayerGeometryType.get_native_layer_geometry_type_from_speckle(
+            geom_type_raw
+        )
+        # if geomType == "MultiPatch":
+        #    geomType = "Polygon"
 
-        if "polyline" in geomType.lower():
-            geomType = "LineString"
+        # if "polyline" in geomType.lower():
+        #    geomType = "LineString"
         if renderer and renderer["type"]:
             if renderer["type"] == "categorizedSymbol":
                 try:

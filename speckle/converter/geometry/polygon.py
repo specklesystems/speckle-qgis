@@ -57,16 +57,24 @@ def polygonToSpeckleMesh(
     dataStorage,
     xform=None,
 ):
-    polygon = GisPolygonGeometry(units="m")
-    # print(dataStorage)
+
     try:
         vertices = []
         faces = []
         colors = []
         existing_vert = 0
         boundary = None
+
+        all_boundaries = []
+        all_voids = []
         for p in geom.parts():
             boundary, voidsNative = getPolyBoundaryVoids(p, feature, layer, dataStorage)
+            all_boundaries.append(boundary)
+            try:
+                all_voids.extend(voidsNative)
+            except:
+                pass
+
             polyBorder = speckleBoundaryToSpecklePts(boundary, dataStorage)
             if len(polyBorder) < 3:
                 continue
@@ -126,12 +134,16 @@ def polygonToSpeckleMesh(
 
         mesh = constructMesh(vertices, faces, colors, dataStorage)
         if mesh is not None:
+            polygon = GisPolygonGeometry(units="m")
+            # polygon.units = "m"
             polygon.displayValue = [mesh]
             polygon.boundary = None
             polygon.voids = None
         else:
-            polygon.boundary = boundary
-            polygon.voids = voids
+            polygon = GisPolygonGeometry(units="m", boundary=boundary, voids=voids)
+            polygon.displayValue = all_boundaries + all_voids
+            # polygon.boundary = boundary
+            # polygon.voids = voids
             logToUser(
                 "Mesh creation from Polygon failed. Boundaries will be used as displayValue",
                 level=1,
@@ -220,7 +232,6 @@ def polygonToSpeckle(
 ):
     """Converts a QgsPolygon to Speckle"""
 
-    polygon = GisPolygonGeometry(units="m")
     iterations = 0
     try:
         geom = geom_original.clone()
@@ -261,8 +272,7 @@ def polygonToSpeckle(
             )
             voidsAsPts.append(pts_fixed)
 
-        polygon.boundary = boundary
-        polygon.voids = voids
+        polygon = GisPolygonGeometry(units="m", boundary=boundary, voids=voids)
         iterations, vertices, faces, colors, iterations = meshPartsFromPolygon(
             polyBorder, voidsAsPts, 0, feature, geom, layer, height, dataStorage, xform
         )
@@ -290,6 +300,33 @@ def polygonToSpeckle(
             func=inspect.stack()[0][3],
         )
         return None, None
+
+
+def hatchToNative(hatch: Base, dataStorage):
+    """Convert Hatch to QGIS Polygon."""
+
+    polygon = QgsPolygon()
+    try:
+        loops: list = hatch["loops"]
+        boundary = None
+        voids = []
+        for loop in loops:
+            if len(loops) == 1 or loop["Type"] == 1:  # Outer
+                boundary = loop["Curve"]
+            else:
+                voids.append(loop["Curve"])
+        if boundary is None:
+            logToUser("Invalid Hatch outer loop", level=2, func=inspect.stack()[0][3])
+            return polygon
+        polygon.setExteriorRing(polylineToNative(boundary, dataStorage))
+
+        for void in voids:
+            polygon.addInteriorRing(polylineToNative(void, dataStorage))
+
+        return polygon
+    except Exception as e:
+        logToUser(e, level=2, func=inspect.stack()[0][3])
+        return polygon
 
 
 def polygonToNative(poly: Base, dataStorage) -> "QgsPolygon":

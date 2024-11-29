@@ -1,11 +1,9 @@
 geopandas==0.8.1
 geovoronoi==0.4.0
-gql==3.4.1
-pandas==1.3.3
 pyproj==3.2.0
 pyshp==2.3.1
 python-dateutil==2.8.0
-requests-toolbelt==0.10.1
-requests==2.31.0
-specklepy==2.17.12
-urllib3==1.26.16
+specklepy==2.21.0
+earcut==1.1.5
+numpy==1.22.4
+pandas==1.3.3

@@ -15,7 +15,6 @@ from speckle.converter.geometry.utils import (
     apply_pt_transform_matrix,
 )
 from plugin_utils.helpers import get_scale_factor
-from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.utils.panel_logging import logToUser
 
 
@@ -24,7 +23,7 @@ def pointToSpeckle(
     feature: "QgsFeature",
     layer: "QgsVectorLayer",
     dataStorage,
-    xform = None,
+    xform=None,
 ):
     """Converts a QgsPoint to Speckle"""
     try:
@@ -46,9 +45,6 @@ def pointToSpeckle(
             x, y, dataStorage
         )
 
-        col = featureColorfromNativeRenderer(feature, layer)
-        specklePoint["displayStyle"] = {}
-        specklePoint["displayStyle"]["color"] = col
         return specklePoint
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])

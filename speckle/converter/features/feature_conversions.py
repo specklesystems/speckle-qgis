@@ -18,7 +18,10 @@ from speckle.converter.geometry.conversions import (
 )
 from speckle.converter.geometry.mesh import constructMeshFromRaster
 from speckle.converter.geometry.utils import apply_pt_offsets_rotation_on_send
-from speckle.converter.layers.symbology import get_a_r_g_b
+from speckle.converter.layers.symbology import (
+    featureColorfromNativeRenderer,
+    get_a_r_g_b,
+)
 from speckle.converter.layers.utils import (
     generate_qgis_app_id,
     getArrayIndicesFromXY,
@@ -37,6 +40,7 @@ from specklepy.objects.GIS.geometry import (
     GisNonGeometryElement,
     GisTopography,
 )
+from specklepy.objects.other import DisplayStyle
 
 from specklepy.objects import Base
 
@@ -103,12 +107,15 @@ def featureToSpeckle(
                     # geom is GisPointElement, GisLineElement, GisPolygonElement
                     new_geom = GisFeature()
                     new_geom.geometry = []
+                    new_geom.displayValue = []
                     for g in geom.geometry:
-                        obj = g
                         if isinstance(g, GisPolygonGeometry):
-                            new_geom.displayValue = []
-                            obj = GisPolygonGeometry(boundary=g.boundary, voids=g.voids)
-                        new_geom.geometry.append(obj)
+                            obj = GisPolygonGeometry(
+                                units=g.units, boundary=g.boundary, voids=g.voids
+                            )  # exclude displayValue
+                            new_geom.geometry.append(obj)
+                        else:
+                            new_geom.geometry.append(g)
 
                     all_errors = ""
                     for g in geom.geometry:
@@ -139,6 +146,9 @@ def featureToSpeckle(
                             else:
                                 new_geom.displayValue.extend(g.displayValue)
 
+                        else:  # Points and Lines
+                            new_geom.displayValue.append(g)
+
                     if len(geom.geometry) == 0:
                         all_errors = "No geometry converted"
                     new_report.update(
@@ -148,7 +158,8 @@ def featureToSpeckle(
                 else:  # geom is None, should not happen, but we should pass the object with attributes anyway
                     new_report = {"obj_type": "", "errors": skipped_msg}
                     logToUser(skipped_msg, level=2, func=inspect.stack()[0][3])
-                    geom = GisNonGeometryElement()
+                    # geom = GisNonGeometryElement()
+                    new_geom = GisNonGeometryElement()
             except Exception as error:
                 new_report = {
                     "obj_type": "",
@@ -177,8 +188,17 @@ def featureToSpeckle(
             attributes[corrected] = f_val
 
         # if geom is not None and geom!="None":
-        geom.attributes = attributes
+        # geom.attributes = attributes
         new_geom.attributes = attributes
+        try:
+            if len(new_geom.displayValue) > 0:
+                col = featureColorfromNativeRenderer(f, selectedLayer)
+                new_geom["displayStyle"] = DisplayStyle()
+                new_geom["displayStyle"].color = col
+                new_geom["displayStyle"].name = ""
+                new_geom["displayStyle"].linetype = ""
+        except Exception as e:  # e.g. KeyError for Polygons
+            pass
 
         dataStorage.latestActionFeaturesReport[
             len(dataStorage.latestActionFeaturesReport) - 1
@@ -196,13 +216,18 @@ def featureToSpeckle(
 
 def show_progress(current_row: int, rows: int, layer_name: str, plugin: "SpeckleQGIS"):
     """Updates UI with raster conversion %."""
-    percentage: int = int(current_row / rows)  # i = percentage
-    if percentage % 10 == 0 or percentage == 5:
-        logToUser(
-            f"Converting layer '{layer_name}': {percentage}%...",
-            level=0,
-            plugin=plugin.dockwidget,
-        )
+    percentage: int = int(current_row / rows * 100)
+    if current_row == 0 or (percentage > 0 and percentage % 10 == 0) or percentage == 5:
+        # make sure repeated status is not logged
+        percentage_before: int = int((current_row - 1) / rows * 100)
+        if current_row == 0 or (
+            percentage_before > 0 and percentage != percentage_before
+        ):
+            logToUser(
+                f"Converting layer '{layer_name}': {percentage}%...",
+                level=0,
+                plugin=plugin.dockwidget,
+            )
 
 
 def reproject_raster(layer, crs, resolutionX, resolutionY):
@@ -1131,14 +1156,16 @@ def rasterFeatureToSpeckle(
         list_nested = [
             (4, 4 * ind, 4 * ind + 1, 4 * ind + 2, 4 * ind + 3)
             for ind, _ in enumerate(band1_values)
-        ]
-        faces_filtered = [item for sublist in list_nested for item in sublist]
+        ]  # heavy function
+        faces_filtered = [
+            item for sublist in list_nested for item in sublist
+        ]  # heavy function
         vertices_filtered = get_raster_mesh_coords(
             reprojected_raster_stats,
             rasterResXY_reprojected,
             band1_values,
             dataStorage,
-        )
+        )  # fast
         rendererType = selectedLayer.renderer().type()
         colors_filtered, have_transparent_cells = get_raster_colors(
             selectedLayer,
@@ -1148,7 +1175,7 @@ def rasterFeatureToSpeckle(
             rasterBandMaxVal,
             rendererType,
             plugin,
-        )
+        )  # fast
         ###############################################################################
         if texture_transform is True or terrain_transform is True:
             for v in range(rasterDimensions[1]):  # each row, Y
@@ -1344,22 +1371,17 @@ def featureToNative(feature: Base, fields: "QgsFields", dataStorage):
     try:
         qgsGeom = None
 
-        if isinstance(feature, GisNonGeometryElement) or (
-            isinstance(feature, GisFeature) and feature.geometry is None
+        if (
+            isinstance(feature, GisNonGeometryElement)
+            or feature.speckle_type.endswith("GisNonGeometricFeature")
+            or (isinstance(feature, GisFeature) and feature.geometry is None)
         ):
             pass
         else:
             try:
-                speckle_geom = (
-                    feature.geometry
-                )  # for QGIS / ArcGIS Layer type from 2.14
+                speckle_geom = feature.geometry
             except:
-                try:
-                    speckle_geom = feature[
-                        "geometry"
-                    ]  # for QGIS / ArcGIS Layer type before 2.14
-                except:
-                    speckle_geom = feature  # for created in other software
+                speckle_geom = feature.displayValue
 
             if not isinstance(speckle_geom, list):
                 qgsGeom = convertToNative(speckle_geom, dataStorage)

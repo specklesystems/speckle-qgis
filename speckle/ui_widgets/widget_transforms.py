@@ -17,6 +17,8 @@ from osgeo import gdal
 import webbrowser
 import specklepy_qt_ui.qt_ui
 
+from plugin_utils.helpers import UNSUPPORTED_PROVIDERS
+
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(
         os.path.join(
@@ -220,9 +222,11 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
 
                 elif "elevation" in transform.lower():
                     if isinstance(layer, QgsRasterLayer):
-                        # avoiding tiling layers
-                        ds = gdal.Open(layer.source(), gdal.GA_ReadOnly)
-                        if ds is None:
+                        # avoiding Tile and WMS layers
+                        data_provider_type = (
+                            layer.providerType()
+                        )  # == ogr, memory, gdal, delimitedtext
+                        if data_provider_type in UNSUPPORTED_PROVIDERS:
                             continue
 
                         # for satellites
@@ -309,9 +313,11 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
             countRaster = 1
             for i, layer in enumerate(self.dataStorage.all_layers):
                 if isinstance(layer, QgsRasterLayer):
-                    # avoiding tiling layers
-                    ds = gdal.Open(layer.source(), gdal.GA_ReadOnly)
-                    if ds is None:
+                    # avoiding Tile and WMS layers
+                    data_provider_type = (
+                        layer.providerType()
+                    )  # == ogr, memory, gdal, delimitedtext
+                    if data_provider_type in UNSUPPORTED_PROVIDERS:
                         continue
                     elif layer.bandCount() != 1:
                         continue
@@ -382,7 +388,7 @@ class MappingSendDialogQGIS(MappingSendDialog, FORM_CLASS):
                         )
                         layer = None
                         break
-                    
+
         set_elevationLayer(self.dataStorage)
 
         try:
