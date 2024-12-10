@@ -68,17 +68,19 @@ def generate_qgis_app_id(
     """Generate unique ID for Vector feature."""
     try:
 
-        try:
-            geoms = str(f.geometry())
-        except Exception as e:
-            geoms = ""
+        #try:
+        #    geoms = str(f.geometry())
+        #except Exception as e:
+        #    geoms = ""
 
         if layer is not None:
             layer_id = layer.id()
+            return f"{layer_id}_{f.id() + 1}"
             layer_geom_type = str(layer.wkbType())
             fieldnames = [str(field.name()) for field in layer.fields()]
             props = [str(f[prop]) for prop in fieldnames]
         else:
+            return f"no_layer_{f.id()}"
             layer_id = ""
             layer_geom_type = ""
             fieldnames = []
@@ -815,7 +817,7 @@ def collectionsFromJson(
         if sub_collection_found == 0:
             # print("___ SUB COLLECTION NOT FOUND")
             subCollection = Collection(
-                units="m", collectionType="QGIS Layer Group", name=l, elements=[]
+                units="m", collectionType="layer", name=l, elements=[]
             )
             lastLevel.elements.append(subCollection)
             lastLevel = lastLevel.elements[

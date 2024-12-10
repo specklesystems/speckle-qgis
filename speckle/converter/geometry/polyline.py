@@ -13,6 +13,7 @@ from specklepy.objects.geometry import (
     Ellipse,
     Polycurve,
     Plane,
+    Interval,
 )
 from speckle.converter.geometry.point import pointToNative, pointToSpeckle
 
@@ -41,7 +42,6 @@ from speckle.converter.geometry.utils import (
 
 from plugin_utils.helpers import get_scale_factor
 from typing import List, Tuple, Union
-from speckle.converter.layers.symbology import featureColorfromNativeRenderer
 from speckle.utils.panel_logging import logToUser
 
 
@@ -91,9 +91,7 @@ def polylineFromVerticesToSpeckle(
                 continue
             polyline.value.extend([point.x, point.y, point.z])
 
-        col = featureColorfromNativeRenderer(feature, layer)
-        polyline["displayStyle"] = {}
-        polyline["displayStyle"]["color"] = col
+        polyline["domain"] = Interval.from_list([0, 1])
         return polyline
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
@@ -112,24 +110,34 @@ def unknownLineToSpeckle(
         if isinstance(poly_original, QgsGeometry):
             poly_original = poly_original.constGet()
         poly = poly_original.clone()
-        
+
+        result = None
+
         if poly.wkbType() == 10:  # CurvePolygon
             # actualGeom = poly.constGet()
             actualGeom = actualGeom.segmentize()
             if xform is not None:
                 actualGeom.transform(xform)
-            return polylineToSpeckle(actualGeom, feature, layer, dataStorage)
+            result = polylineToSpeckle(actualGeom, feature, layer, dataStorage)
 
         elif isinstance(poly, QgsCompoundCurve):
-            return compoudCurveToSpeckle(poly, feature, layer, dataStorage, xform)
+            result = compoudCurveToSpeckle(poly, feature, layer, dataStorage, xform)
         elif isinstance(poly, QgsCircularString):
-            return arcToSpeckle(poly, feature, layer, dataStorage, xform)
+            result = arcToSpeckle(poly, feature, layer, dataStorage, xform)
         else:
             if xform is not None:
                 poly.transform(xform)
-            return polylineFromVerticesToSpeckle(
+            result = polylineFromVerticesToSpeckle(
                 poly.vertices(), closed, feature, layer, dataStorage
             )  # initial method
+
+        if result is None:
+            logToUser(
+                "LineString conversion failed", level=2, func=inspect.stack()[0][3]
+            )
+            return
+        result["domain"] = Interval.from_list([0, 1])
+        return result
 
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
@@ -151,7 +159,16 @@ def compoudCurveToSpeckle(
         new_poly = poly.curveToLine()
         if xform is not None:
             new_poly.transform(xform)
-        return polylineToSpeckle(new_poly, feature, layer, dataStorage)
+        polyline = polylineToSpeckle(new_poly, feature, layer, dataStorage)
+
+        if polyline is None:
+            logToUser(
+                "LineString conversion failed", level=2, func=inspect.stack()[0][3]
+            )
+            return
+
+        polyline["domain"] = Interval.from_list([0, 1])
+        return polyline
 
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
@@ -162,6 +179,7 @@ def anyLineToSpeckle(geom_original, feature, layer, dataStorage, xform=None):
     if isinstance(geom_original, QgsGeometry):
         geom_original = geom_original.constGet()
     geom = geom_original.clone()
+    result = None
 
     type = geom.wkbType()
     if (
@@ -196,7 +214,13 @@ def anyLineToSpeckle(geom_original, feature, layer, dataStorage, xform=None):
             geom.transform(xform)
         result = polylineToSpeckle(geom, feature, layer, dataStorage)
 
+    if result is None:
+        logToUser("LineString conversion failed", level=2, func=inspect.stack()[0][3])
+        return
+
     result = addCorrectUnits(result, dataStorage)
+    result["domain"] = Interval.from_list([0, 1])
+
     return result
 
 
@@ -217,7 +241,15 @@ def polylineToSpeckle(
             poly.vertices(), closed, feature, layer, dataStorage
         )
 
+        if polyline is None:
+            logToUser(
+                "LineString conversion failed", level=2, func=inspect.stack()[0][3]
+            )
+            return
+
+        polyline["domain"] = Interval.from_list([0, 1])
         return polyline
+
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
         return
@@ -242,9 +274,14 @@ def arcToSpeckle(
         if xform is not None:
             linestring.transform(xform)
         arc = polylineToSpeckle(linestring, feature, layer, dataStorage)
-        col = featureColorfromNativeRenderer(feature, layer)
-        arc["displayStyle"] = {}
-        arc["displayStyle"]["color"] = col
+
+        if arc is None:
+            logToUser(
+                "LineString conversion failed", level=2, func=inspect.stack()[0][3]
+            )
+            return
+
+        arc["domain"] = Interval.from_list([0, 1])
         return arc
     except Exception as e:
         logToUser(e, level=2, func=inspect.stack()[0][3])
@@ -299,6 +336,9 @@ def polylineToNative(poly: Polyline, dataStorage) -> "QgsLineString":
             return circleToNative(poly, dataStorage)
         elif isinstance(poly, Ellipse):
             return ellipseToNative(poly, dataStorage)
+
+        if isinstance(poly, Curve):
+            poly = poly.displayValue
 
         if isinstance(poly, Polyline) and poly.closed is False:
             polyline = QgsLineString(

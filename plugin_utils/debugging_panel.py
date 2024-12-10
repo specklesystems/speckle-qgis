@@ -22,7 +22,7 @@ from specklepy.objects.other import RevitParameter
 ##################### debug serverInfo
 def getServerInfo():
     from specklepy.core.api.client import SpeckleClient
-    from specklepy.core.api.resources.server import Resource as ServerResource
+    from specklepy.core.api.resources import server
     from specklepy_qt_ui.qt_ui.DataStorage import DataStorage
     d = DataStorage()
     d.check_for_accounts()
@@ -30,7 +30,7 @@ def getServerInfo():
     clientSpeckle = SpeckleClient(
         acc.serverInfo.url, acc.serverInfo.url.startswith("https")
     )
-    r = ServerResource(
+    r = server.Resource(
         acc,
         r"C:\Users\katri\AppData\Roaming\Speckle\Accounts",
         clientSpeckle.httpclient,

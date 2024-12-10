@@ -20,6 +20,7 @@ SPECKLE_TYPES_TO_READ = [
     "Objects.Geometry.",
     "Objects.BuiltElements.",
     "IFC",
+    "Objects.Other.Hatch",
 ]  # will properly traverse and check for displayValue
 
 
@@ -261,7 +262,9 @@ def loopVal(
                 ):
                     return
 
-                if not value.speckle_type.startswith("Objects.Geometry."):
+                if not value.speckle_type.startswith(
+                    "Objects.Geometry."
+                ) and not value.speckle_type.endswith(".Hatch"):
                     loopObj(value, name, streamBranch, plugin, used_ids, matrix)
                 elif value.id not in used_ids:  # if geometry
                     used_ids.append(value.id)
@@ -338,7 +341,10 @@ def loopVal(
                     item.speckle_type
                     and item.speckle_type != "Objects.Geometry.Mesh"
                     and item.speckle_type != "Objects.Geometry.Brep"
-                    and item.speckle_type.startswith("Objects.Geometry.")
+                    and (
+                        item.speckle_type.startswith("Objects.Geometry.")
+                        or item.speckle_type.endswith(".Hatch")
+                    )
                 ):  # or item.speckle_type == 'Objects.BuiltElements.Alignment'):
                     geometryLayerToNative(value, name, val_id, streamBranch, plugin)
                     time.sleep(0.3)
