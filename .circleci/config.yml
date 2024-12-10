@@ -59,7 +59,9 @@ jobs:
             - specklepy_qt_ui
          
   package:
-    executor: python/default
+    executor: 
+      name: python/default
+      tag: "3.9"
     steps:
       - checkout
       - attach_workspace:
@@ -260,7 +262,9 @@ jobs:
             - speckle-sharp-ci-tools/Installers/qgis/<< parameters.slug >>*.zip
 
   deploy-marketplace:
-    executor: python/default
+    executor: 
+      name: python/default
+      tag: "3.9"
     steps:
       - checkout
       - run: 
